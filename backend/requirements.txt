@@ -17,7 +17,7 @@ psycopg2-binary==2.9.12
 Pillow==12.3.0
 weasyprint==60.2
 anthropic>=0.112.0
-cryptography==49.0.0
+cryptography==50.0.1
 tenacity==9.1.4
 phonenumbers==9.0.33
 boto3==1.43.36
