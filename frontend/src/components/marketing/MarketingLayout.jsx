@@ -82,12 +82,12 @@ const SIMPLE_LINKS = [
   { label: 'Customers',   to: '/customers' },
   { label: 'Resources',   to: null,
     menu: { single: [
-      { label: 'Blog',          to: '/blog',         desc: 'Marketing tips + product updates' },
-      { label: 'Help Center',   to: '/help',         desc: 'Guides + how-tos' },
-      { label: 'Changelog',     to: '/changelog',    desc: 'What shipped this week' },
-      { label: 'Status',        to: '/status',       desc: 'System uptime' },
-      { label: 'Integrations',  to: '/integrations', desc: 'Connect your stack' },
-      { label: 'Contact',       to: '/contact',      desc: 'Sales + support' },
+      { label: 'Blog',          to: '/blog',         icon: FileText,       desc: 'Marketing tips + product updates' },
+      { label: 'Help Center',   to: '/help',         icon: Users,          desc: 'Guides + how-tos' },
+      { label: 'Changelog',     to: '/changelog',    icon: Calendar,       desc: 'What shipped this week' },
+      { label: 'Status',        to: '/status',       icon: Zap,            desc: 'System uptime' },
+      { label: 'Integrations',  to: '/integrations', icon: Sparkles,       desc: 'Connect your stack' },
+      { label: 'Contact',       to: '/contact',      icon: MessagesSquare, desc: 'Sales + support' },
     ]},
   },
   { label: 'About',       to: '/about' },
@@ -103,6 +103,7 @@ function MarketingNav() {
   const [isMobile, setIsMobile] = useState(() =>
     typeof window !== 'undefined' ? window.innerWidth < 1024 : false);
   const location = useLocation();
+  const headerRef = useRef(null);
 
   // Grace period for the mega-menu hover. Without it the menu closes
   // instantly when the pointer briefly leaves the trigger to reach the
@@ -147,6 +148,18 @@ function MarketingNav() {
     return () => window.removeEventListener('keydown', onKey);
   }, [openMenu]);
 
+  // Close mega-menu on outside click
+  useEffect(() => {
+    if (!openMenu) return;
+    const onClickOutside = (e) => {
+      if (headerRef.current && !headerRef.current.contains(e.target)) {
+        setOpenMenu(null);
+      }
+    };
+    document.addEventListener('pointerdown', onClickOutside);
+    return () => document.removeEventListener('pointerdown', onClickOutside);
+  }, [openMenu]);
+
   // Lock body scroll when mobile menu open
   useEffect(() => {
     if (mobileOpen) {
@@ -160,14 +173,15 @@ function MarketingNav() {
 
   return (
     <header
+      ref={headerRef}
       style={{
         position: 'fixed',
         top: 0, left: 0, right: 0,
         zIndex: 'var(--z-sticky)',
-        background: scrolled || openMenu ? 'var(--surface-overlay)' : 'transparent',
-        backdropFilter: scrolled || openMenu ? 'blur(14px) saturate(180%)' : 'none',
-        WebkitBackdropFilter: scrolled || openMenu ? 'blur(14px) saturate(180%)' : 'none',
-        borderBottom: scrolled || openMenu ? '1px solid var(--border-subtle)' : '1px solid transparent',
+        background: openMenu ? 'var(--surface-card)' : (scrolled ? 'var(--surface-overlay)' : 'transparent'),
+        backdropFilter: openMenu ? 'none' : (scrolled ? 'blur(14px) saturate(180%)' : 'none'),
+        WebkitBackdropFilter: openMenu ? 'none' : (scrolled ? 'blur(14px) saturate(180%)' : 'none'),
+        borderBottom: openMenu || scrolled ? '1px solid var(--border-subtle)' : '1px solid transparent',
         transition: 'background var(--transition-default), border-color var(--transition-default), backdrop-filter var(--transition-default)',
       }}
       onMouseLeave={scheduleClose}
@@ -184,7 +198,12 @@ function MarketingNav() {
           gap: 24,
         }}
       >
-        <Link to="/" style={{ display: 'inline-flex', alignItems: 'center' }} aria-label="Bop Social home">
+        <Link
+          to="/"
+          style={{ display: 'inline-flex', alignItems: 'center' }}
+          aria-label="Bop Social home"
+          onMouseEnter={() => { cancelClose(); setOpenMenu(null); }}
+        >
           <Logo variant="horizontal" height={isMobile ? 32 : 38} inverted={isDarkHeroNav} />
         </Link>
 
@@ -194,11 +213,19 @@ function MarketingNav() {
             <MegaTrigger label="Product"
                          active={openMenu === 'product'}
                          darkHero={isDarkHeroNav}
-                         onEnter={() => { cancelClose(); setOpenMenu('product'); }} />
+                         onEnter={() => { cancelClose(); setOpenMenu('product'); }}
+                         onToggle={() => {
+                           cancelClose();
+                           setOpenMenu((prev) => (prev === 'product' ? null : 'product'));
+                         }} />
             <MegaTrigger label="Solutions"
                          active={openMenu === 'solutions'}
                          darkHero={isDarkHeroNav}
-                         onEnter={() => { cancelClose(); setOpenMenu('solutions'); }} />
+                         onEnter={() => { cancelClose(); setOpenMenu('solutions'); }}
+                         onToggle={() => {
+                           cancelClose();
+                           setOpenMenu((prev) => (prev === 'solutions' ? null : 'solutions'));
+                         }} />
             {SIMPLE_LINKS.map((l) => l.to ? (
               <NavLink key={l.label} to={l.to}
                        active={location.pathname === l.to}
@@ -210,7 +237,12 @@ function MarketingNav() {
               <MegaTrigger key={l.label} label={l.label}
                            active={openMenu === l.label.toLowerCase()}
                            darkHero={isDarkHeroNav}
-                           onEnter={() => { cancelClose(); setOpenMenu(l.label.toLowerCase()); }} />
+                           onEnter={() => { cancelClose(); setOpenMenu(l.label.toLowerCase()); }}
+                           onToggle={() => {
+                             cancelClose();
+                             const key = l.label.toLowerCase();
+                             setOpenMenu((prev) => (prev === key ? null : key));
+                           }} />
             ))}
           </nav>
         )}
@@ -220,10 +252,14 @@ function MarketingNav() {
           {!isMobile && (
             <>
               <Button as={Link} to="/login" variant="ghost" size="sm"
+                      onMouseEnter={() => { cancelClose(); setOpenMenu(null); }}
                       style={{ color: isDarkHeroNav ? '#FFFFFF' : 'var(--text-primary)' }}>
                 Sign in
               </Button>
-              <Button as={Link} to="/signup" size="sm" variant="primary">Get started</Button>
+              <Button as={Link} to="/signup" size="sm" variant="primary"
+                      onMouseEnter={() => { cancelClose(); setOpenMenu(null); }}>
+                Get started
+              </Button>
             </>
           )}
           {isMobile && (
@@ -329,7 +365,7 @@ function NavLink({ to, active, children, onMouseEnter, darkHero = false }) {
   );
 }
 
-function MegaTrigger({ label, active, onEnter, darkHero = false }) {
+function MegaTrigger({ label, active, onEnter, onToggle, darkHero = false }) {
   const normalColor = darkHero ? 'rgba(255, 255, 255, 0.88)' : (active ? 'var(--text-primary)' : 'var(--text-secondary)');
   const activeBg = darkHero ? 'rgba(255, 255, 255, 0.14)' : 'var(--surface-hover)';
   return (
@@ -337,7 +373,7 @@ function MegaTrigger({ label, active, onEnter, darkHero = false }) {
       type="button"
       onMouseEnter={onEnter}
       onFocus={onEnter}
-      onClick={onEnter}
+      onClick={onToggle || onEnter}
       aria-expanded={active}
       aria-haspopup="true"
       style={{
@@ -382,7 +418,14 @@ function MegaPanel({ children, onMouseLeave, onMouseEnter }) {
       onMouseLeave={onMouseLeave}
       style={{
         position: 'absolute',
-        top: '100%', left: 0, right: 0,
+        top: '100%',
+        left: 0,
+        right: 0,
+        background: 'var(--surface-card)',
+        borderTop: '1px solid var(--border-subtle)',
+        borderBottom: '1px solid var(--border-default)',
+        boxShadow: '0 24px 48px -12px rgba(0, 0, 0, 0.28), 0 4px 16px rgba(0, 0, 0, 0.08)',
+        zIndex: 1000,
         animation: 'mkt-mega-fade 180ms var(--ease-out)',
       }}
     >
@@ -442,9 +485,12 @@ function MegaItem({ to, label, desc, icon: Icon }) {
         textDecoration: 'none',
         color: 'var(--text-primary)',
         transition: 'var(--transition-fast)',
+        outline: 'none',
       }}
       onMouseOver={(e) => { e.currentTarget.style.background = 'var(--surface-hover)'; }}
       onMouseOut={(e)  => { e.currentTarget.style.background = 'transparent'; }}
+      onFocus={(e)     => { e.currentTarget.style.background = 'var(--surface-hover)'; }}
+      onBlur={(e)      => { e.currentTarget.style.background = 'transparent'; }}
     >
       {Icon && (
         <span style={{
@@ -458,9 +504,9 @@ function MegaItem({ to, label, desc, icon: Icon }) {
         </span>
       )}
       <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{label}</div>
+        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.3 }}>{label}</div>
         {desc && (
-          <div style={{ marginTop: 2, fontSize: 12, color: 'var(--text-tertiary)', lineHeight: 1.4 }}>
+          <div style={{ marginTop: 2, fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.4 }}>
             {desc}
           </div>
         )}
@@ -616,7 +662,7 @@ function DrawerItem({ to, label, desc, icon: Icon, active }) {
       <div style={{ minWidth: 0 }}>
         <div style={{ fontSize: 14, fontWeight: 500 }}>{label}</div>
         {desc && (
-          <div style={{ marginTop: 1, fontSize: 12, color: 'var(--text-tertiary)' }}>{desc}</div>
+          <div style={{ marginTop: 1, fontSize: 12, color: 'var(--text-secondary)' }}>{desc}</div>
         )}
       </div>
     </Link>

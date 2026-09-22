@@ -195,7 +195,7 @@ function Hero() {
           transition={{ duration: 0.5, delay: 0.6 }}
           style={{ marginTop: 14, fontSize: 13, color: 'rgba(255,255,255,0.5)' }}
         >
-          Multi-company architecture · Real-time analytics · Bop Universe integrated
+          Multi-company architecture · Real-time analytics · Built for the Bop Universe
         </motion.p>
 
         {/* Hero mockup with floating cards */}
@@ -798,7 +798,7 @@ function ComparisonSection() {
     { feature: 'Lead-capture CRM',             cells: ['yes',          'no',      'partial', 'no'] },
     { feature: 'Multi-tenant client workspaces', cells: ['yes',        'partial', 'partial', 'no'] },
     { feature: 'Activity audit trail',         cells: ['yes',          'partial', 'yes',     'no'] },
-    { feature: 'Bop Universe ecosystem',       cells: ['yes',          'no',      'no',      'no'] },
+    { feature: 'Built for Bop Universe',       cells: ['yes',          'no',      'no',      'no'] },
   ];
   return (
     <section style={{
@@ -956,7 +956,7 @@ function FinalCTA() {
         subtitle="Unified social management, real-time analytics, and native AI workflows."
         primary={{ to: '/signup', label: 'Get started' }}
         showEmail
-        microCopy="Enterprise ready · Multi-tenant architecture · Bop Universe integrated"
+        microCopy="Enterprise ready · Multi-tenant architecture · Built for the Bop Universe"
         variant="cta"
       />
     </section>
