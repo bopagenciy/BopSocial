@@ -40,11 +40,12 @@ export default function FloatingUICard({
   const reduced = useReducedMotion();
 
   const glowColor = {
-    cyan:   'rgba(0, 204, 245, 0.30)',
-    purple: 'rgba(139, 92, 246, 0.28)',
-    pink:   'rgba(236, 72, 153, 0.25)',
+    gold:   'rgba(245, 166, 35, 0.28)',
+    cyan:   'rgba(245, 166, 35, 0.28)',
+    purple: 'rgba(224, 150, 18, 0.24)',
+    pink:   'rgba(200, 130, 4, 0.22)',
     green:  'rgba(16, 185, 129, 0.25)',
-  }[tone] || 'rgba(0, 204, 245, 0.30)';
+  }[tone] || 'rgba(245, 166, 35, 0.28)';
 
   const driftAnim = reduced
     ? { y: 0, rotate: 0 }

@@ -33,12 +33,20 @@ describe('BrandLogo Component Suite', () => {
     expect(wordmark).toHaveTextContent('BopSocial');
   });
 
-  test('BrandLogoHorizontal renders both official mark and wordmark', () => {
-    const { container } = render(<BrandLogoHorizontal height={36} />);
+  test('BrandWordmark renders white Bop text when inverted=true for dark surfaces', () => {
+    const { container } = render(<BrandWordmark height={24} inverted />);
+    const bopSpan = container.querySelector('span[role="img"] span:first-child');
+    expect(bopSpan).toHaveStyle({ color: '#FFFFFF' });
+  });
+
+  test('BrandLogoHorizontal renders both official mark and wordmark with inverted support', () => {
+    const { container } = render(<BrandLogoHorizontal height={38} inverted />);
     const img = container.querySelector('img[alt="Bop Social"]');
     expect(img).toBeInTheDocument();
     expect(img).toHaveAttribute('src', LOGO_ASSET_URL);
     expect(container).toHaveTextContent('BopSocial');
+    const bopSpan = container.querySelector('span[role="img"] span:first-child');
+    expect(bopSpan).toHaveStyle({ color: '#FFFFFF' });
   });
 
   test('BrandLogoStacked renders stacked mark and wordmark', () => {

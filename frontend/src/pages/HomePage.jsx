@@ -64,8 +64,8 @@ export default function HomePage() {
     <MarketingLayout>
       <Meta
         noSuffix
-        title="Social Stats — The AI marketing OS for modern agencies"
-        description="Manage analytics, content, conversations, and ads for every client — across 5 platforms — in one place. AI-powered, built for modern teams."
+        title="Bop Social — The Marketing OS for Modern Teams"
+        description="Manage analytics, content, conversations, and campaigns for every client and organization — across multiple platforms — in one place. Part of the Bop Universe."
       />
       <JsonLd id="organization" data={buildOrganization()} />
       <JsonLd id="website"      data={buildWebSite()} />
@@ -119,7 +119,7 @@ function Hero() {
             textDecoration: 'none',
             backdropFilter: 'blur(10px)',
           }}>
-            <Sparkles size={12} style={{ color: '#00CCF5' }} />
+            <Sparkles size={12} style={{ color: '#F5A623' }} />
             <span style={{ color: 'rgba(255,255,255,0.65)' }}>NEW</span>
             CTWA Bot Builder is live
             <ArrowRight size={11} style={{ opacity: 0.6 }} />
@@ -139,13 +139,13 @@ function Hero() {
         >
           The{' '}
           <span style={{
-            background: 'linear-gradient(135deg, #00CCF5 0%, #8b5cf6 100%)',
+            background: 'linear-gradient(135deg, #F5A623 0%, #F7C06D 50%, #E09612 100%)',
             WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
             backgroundClip: 'text',
           }}>
-            AI marketing OS
+            Marketing OS
           </span>
-          <br />for modern agencies
+          <br />for modern teams
         </motion.h1>
 
         {/* Subheading */}
@@ -159,8 +159,8 @@ function Hero() {
             maxWidth: 640,
           }}
         >
-          Manage analytics, content, conversations, and ads for every client —
-          across 5 platforms — in one place.
+          Manage analytics, content, conversations, and campaigns for every client and organization —
+          across multiple platforms — in one place.
         </motion.p>
 
         {/* CTAs */}
@@ -175,10 +175,10 @@ function Hero() {
           <Button as={Link} to="/signup" size="lg"
                   onClick={() => track('signup_click', { source: 'home_hero' })}
                   style={{
-                    background: 'linear-gradient(135deg, #00CCF5, #00A8D8)',
-                    color: '#0a0e14', border: 'none', fontWeight: 600,
+                    background: 'linear-gradient(135deg, #F5A623, #E09612)',
+                    color: '#1E202A', border: 'none', fontWeight: 600,
                   }}>
-            Start free <ArrowRight size={15} />
+            Get started <ArrowRight size={15} />
           </Button>
           <Button as={Link} to="/customers" size="lg" variant="ghost"
                   style={{
@@ -195,7 +195,7 @@ function Hero() {
           transition={{ duration: 0.5, delay: 0.6 }}
           style={{ marginTop: 14, fontSize: 13, color: 'rgba(255,255,255,0.5)' }}
         >
-          No credit card · Free forever · Setup in 2 minutes
+          Multi-company architecture · Real-time analytics · Bop Universe integrated
         </motion.p>
 
         {/* Hero mockup with floating cards */}
@@ -240,7 +240,7 @@ function NotificationCard() {
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-        <span style={floatIconStyle('rgba(0,204,245,0.15)', '#00CCF5')}>
+        <span style={floatIconStyle('rgba(245,166,35,0.15)', '#F5A623')}>
           <Inbox size={11} />
         </span>
         <span style={floatLabel}>NEW MESSAGE · IG</span>
@@ -360,9 +360,9 @@ function TrustStrip() {
 // ─────────────────────────────────────────────────────────────────────────────
 function ThreePillars() {
   const pillars = [
-    { icon: BarChart3, tone: '#00CCF5', toneSoft: 'rgba(0,204,245,0.10)', label: 'ANALYZE',
+    { icon: BarChart3, tone: '#F5A623', toneSoft: 'rgba(245,166,35,0.12)', label: 'ANALYZE',
       title: 'Track everything',
-      blurb: 'Reach, engagement, and revenue across 5 platforms in one dashboard.',
+      blurb: 'Reach, engagement, and revenue across multiple platforms in one dashboard.',
       preview: <AnalyticsPreview /> },
     { icon: MessageCircle, tone: '#a78bfa', toneSoft: 'rgba(139,92,246,0.10)', label: 'ENGAGE',
       title: 'Reply in one place',
@@ -370,7 +370,7 @@ function ThreePillars() {
       preview: <InboxPreview /> },
     { icon: Bot, tone: '#34d399', toneSoft: 'rgba(16,185,129,0.10)', label: 'CONVERT',
       title: 'Capture more leads',
-      blurb: 'Run CTWA ads with AI bots that qualify customers 24/7 and route them to your CRM.',
+      blurb: 'Run conversational campaigns with AI bots that qualify customers 24/7 and route them to your CRM.',
       preview: <BotBuilderPreview /> },
   ];
   return (
@@ -378,9 +378,9 @@ function ThreePillars() {
       <div style={{ maxWidth: 1180, margin: '0 auto' }}>
         <ScrollReveal>
           <SectionHeading
-            eyebrow="What is Social Stats"
-            title="One product, three superpowers"
-            subtitle="Stop juggling 5 different SaaS tools. Social Stats is the single dashboard that runs your client's marketing end-to-end."
+            eyebrow="What is Bop Social"
+            title="One platform, complete visibility"
+            subtitle="Eliminate fragmented tools. Bop Social delivers unified analytics, cross-channel engagement, and automated intelligence for your organization."
           />
         </ScrollReveal>
 
@@ -578,9 +578,9 @@ function UseCaseTabs() {
                 style={{
                   padding: '10px 16px',
                   fontSize: 13, fontWeight: 600,
-                  color: active === t.id ? '#0a0e14' : 'var(--text-secondary)',
+                  color: active === t.id ? '#1E202A' : 'var(--text-secondary)',
                   background: active === t.id
-                    ? 'linear-gradient(135deg, #00CCF5, #00A8D8)' : 'var(--surface-card)',
+                    ? 'linear-gradient(135deg, #F5A623, #E09612)' : 'var(--surface-card)',
                   border: '1px solid',
                   borderColor: active === t.id ? 'transparent' : 'var(--border-default)',
                   borderRadius: 'var(--radius-pill)',
@@ -621,7 +621,7 @@ function UseCaseTabs() {
                     padding: '8px 0',
                     fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.55,
                   }}>
-                    <Check size={14} style={{ color: '#00CCF5', flexShrink: 0, marginTop: 4 }} strokeWidth={2.5} />
+                    <Check size={14} style={{ color: '#F5A623', flexShrink: 0, marginTop: 4 }} strokeWidth={2.5} />
                     <span>{b}</span>
                   </li>
                 ))}
@@ -678,8 +678,8 @@ function HowItWorks() {
         }} className="mkt-steps-grid">
           <div aria-hidden style={{
             position: 'absolute', top: 26, left: '12.5%', right: '12.5%',
-            height: 2, background: 'linear-gradient(90deg, #00CCF5, #8b5cf6)',
-            opacity: 0.3, zIndex: 0,
+            height: 2, background: 'linear-gradient(90deg, #F5A623, #E09612)',
+            opacity: 0.35, zIndex: 0,
           }} className="mkt-steps-connector" />
           {steps.map((s, i) => (
             <ScrollReveal key={s.n} delay={i * 0.1}>
@@ -688,9 +688,9 @@ function HowItWorks() {
                   width: 52, height: 52, margin: '0 auto 16px',
                   display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                   background: 'var(--surface-page)',
-                  border: '2px solid #00CCF5', borderRadius: '50%',
+                  border: '2px solid #F5A623', borderRadius: '50%',
                   fontSize: 18, fontWeight: 700, color: 'var(--text-primary)',
-                  boxShadow: '0 0 0 6px var(--surface-card), 0 12px 32px rgba(0, 204, 245, 0.18)',
+                  boxShadow: '0 0 0 6px var(--surface-card), 0 12px 32px rgba(245, 166, 35, 0.22)',
                 }}>{s.n}</div>
                 <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>{s.title}</h3>
                 <p style={{
@@ -734,9 +734,9 @@ function AIEverywhere() {
               display: 'inline-block',
               padding: '4px 10px', marginBottom: 16,
               fontSize: 11, fontWeight: 700,
-              color: '#00CCF5', background: 'rgba(0,204,245,0.10)',
+              color: '#F5A623', background: 'rgba(245,166,35,0.12)',
               borderRadius: 'var(--radius-pill)', letterSpacing: '0.06em',
-            }}>POWERED BY SOCIAL STATE AI</span>
+            }}>POWERED BY BOP INTELLIGENCE</span>
             <h2 style={{
               margin: 0, fontSize: 'clamp(28px, 4vw, 40px)',
               fontWeight: 700, letterSpacing: '-0.02em',
@@ -747,7 +747,7 @@ function AIEverywhere() {
               fontSize: 16, lineHeight: 1.6,
               color: 'var(--text-secondary)', maxWidth: 480,
             }}>
-              Social Stats isn't an "AI feature". It's an AI-native product — Social Stats shows up wherever you're stuck.
+              Bop Social is engineered with native AI intelligence across analytics, post scheduling, and workspace reporting.
             </p>
             <ul style={{ margin: '24px 0 0', padding: 0, listStyle: 'none' }}>
               {features.map((f) => (
@@ -756,7 +756,7 @@ function AIEverywhere() {
                   padding: '8px 0',
                   fontSize: 14, color: 'var(--text-secondary)',
                 }}>
-                  <Sparkles size={14} style={{ color: '#00CCF5', flexShrink: 0 }} />
+                  <Sparkles size={14} style={{ color: '#F5A623', flexShrink: 0 }} />
                   {f}
                 </li>
               ))}
@@ -788,18 +788,17 @@ function AIEverywhere() {
 // Section 8 — COMPARISON
 // ─────────────────────────────────────────────────────────────────────────────
 function ComparisonSection() {
-  const columns = ['Social Stats', 'Hootsuite', 'Sprout Social', 'Buffer'];
+  const columns = ['Bop Social', 'Hootsuite', 'Sprout Social', 'Buffer'];
   const rows = [
     { feature: 'Multi-platform analytics',     cells: ['yes',          'yes',     'yes',     'partial'] },
-    { feature: 'Deep AI assistant',            cells: ['Social Stats',    'partial', 'partial', 'no'] },
+    { feature: 'Deep AI assistant',            cells: ['Bop Social',   'partial', 'partial', 'no'] },
     { feature: 'WhatsApp Business API',        cells: ['yes',          'no',      'no',      'no'] },
     { feature: 'Click-to-WhatsApp bots',       cells: ['yes',          'no',      'no',      'no'] },
     { feature: 'Visual bot builder',           cells: ['yes',          'no',      'no',      'no'] },
     { feature: 'Lead-capture CRM',             cells: ['yes',          'no',      'partial', 'no'] },
-    { feature: 'Two-sided agency marketplace', cells: ['yes',          'no',      'no',      'no'] },
+    { feature: 'Multi-tenant client workspaces', cells: ['yes',        'partial', 'partial', 'no'] },
     { feature: 'Activity audit trail',         cells: ['yes',          'partial', 'yes',     'no'] },
-    { feature: 'Free for end users',           cells: ['yes',          'no',      'no',      'partial'] },
-    { feature: 'Indian payment + GST',         cells: ['yes',          'no',      'no',      'no'] },
+    { feature: 'Bop Universe ecosystem',       cells: ['yes',          'no',      'no',      'no'] },
   ];
   return (
     <section style={{
@@ -812,8 +811,8 @@ function ComparisonSection() {
         <ScrollReveal>
           <SectionHeading
             eyebrow="Honest comparison"
-            title="How Social Stats stacks up"
-            subtitle="We're not for everyone. We're built for agencies + businesses serious about AI + WhatsApp."
+            title="How Bop Social stacks up"
+            subtitle="Built for multi-company agencies and enterprises serious about AI, messaging, and multi-tenant workflows."
           />
         </ScrollReveal>
         <ScrollReveal delay={0.1}>
@@ -897,20 +896,19 @@ function MarketplaceTeaser() {
 // Section 12 — STATS BAND
 // ─────────────────────────────────────────────────────────────────────────────
 function StatsBand() {
-  // Capability stats — every claim below is a feature of the product, not
-  // a customer-volume metric. We swap to real usage numbers once they're
-  // real and verifiable.
   const stats = [
-    { value: 5,    suffix: '',   label: 'platforms' },
+    { value: 5,    suffix: '',   label: 'platforms integrated' },
     { value: 14,   suffix: '+',  label: 'languages supported' },
-    { value: 2,    suffix: 'min',label: 'time to first post' },
     { value: 99.9, suffix: '%',  label: 'uptime target', decimals: 1 },
+    { value: 100,  suffix: '%',  label: 'multi-tenant architecture' },
   ];
   return (
     <section style={{ position: 'relative', overflow: 'hidden' }}>
       <div style={{
         padding: 'clamp(48px, 8vh, 88px) 24px',
-        background: 'linear-gradient(135deg, #00CCF5 0%, #00A8D8 50%, #8b5cf6 100%)',
+        background: 'linear-gradient(135deg, #1E202A 0%, #2D3142 50%, #1E202A 100%)',
+        borderTop: '1px solid rgba(245, 166, 35, 0.25)',
+        borderBottom: '1px solid rgba(245, 166, 35, 0.25)',
         color: '#fff',
       }}>
         <div style={{ maxWidth: 1080, margin: '0 auto' }}>
@@ -923,7 +921,7 @@ function StatsBand() {
                 <div style={{
                   fontSize: 'clamp(28px, 5vw, 48px)',
                   fontWeight: 700, letterSpacing: '-0.02em',
-                  lineHeight: 1.05, color: '#fff',
+                  lineHeight: 1.05, color: '#F5A623',
                 }}>
                   <MetricCounter value={s.value} suffix={s.suffix}
                                  decimals={s.decimals || 0} duration={1.6} />
@@ -954,11 +952,11 @@ function FinalCTA() {
   return (
     <section style={{ padding: 'clamp(64px, 10vh, 120px) 24px', background: 'var(--surface-page)' }}>
       <CTASection
-        title="Ready to upgrade your marketing?"
-        subtitle="Start free in 2 minutes — no credit card required."
-        primary={{ to: '/signup', label: 'Start free' }}
+        title="Ready to elevate your marketing operations?"
+        subtitle="Unified social management, real-time analytics, and native AI workflows."
+        primary={{ to: '/signup', label: 'Get started' }}
         showEmail
-        microCopy="No credit card · Free forever · Setup in 2 minutes"
+        microCopy="Enterprise ready · Multi-tenant architecture · Bop Universe integrated"
         variant="cta"
       />
     </section>

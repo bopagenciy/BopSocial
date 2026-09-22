@@ -156,6 +156,8 @@ function MarketingNav() {
     }
   }, [mobileOpen]);
 
+  const isDarkHeroNav = !scrolled && !openMenu;
+
   return (
     <header
       style={{
@@ -182,8 +184,8 @@ function MarketingNav() {
           gap: 24,
         }}
       >
-        <Link to="/" style={{ display: 'inline-flex', alignItems: 'center' }} aria-label="Social Stats home">
-          <Logo variant="horizontal" height={isMobile ? 26 : 30} />
+        <Link to="/" style={{ display: 'inline-flex', alignItems: 'center' }} aria-label="Bop Social home">
+          <Logo variant="horizontal" height={isMobile ? 32 : 38} inverted={isDarkHeroNav} />
         </Link>
 
         {/* Desktop nav */}
@@ -191,19 +193,23 @@ function MarketingNav() {
           <nav style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <MegaTrigger label="Product"
                          active={openMenu === 'product'}
+                         darkHero={isDarkHeroNav}
                          onEnter={() => { cancelClose(); setOpenMenu('product'); }} />
             <MegaTrigger label="Solutions"
                          active={openMenu === 'solutions'}
+                         darkHero={isDarkHeroNav}
                          onEnter={() => { cancelClose(); setOpenMenu('solutions'); }} />
             {SIMPLE_LINKS.map((l) => l.to ? (
               <NavLink key={l.label} to={l.to}
                        active={location.pathname === l.to}
+                       darkHero={isDarkHeroNav}
                        onMouseEnter={() => { cancelClose(); setOpenMenu(null); }}>
                 {l.label}
               </NavLink>
             ) : (
               <MegaTrigger key={l.label} label={l.label}
                            active={openMenu === l.label.toLowerCase()}
+                           darkHero={isDarkHeroNav}
                            onEnter={() => { cancelClose(); setOpenMenu(l.label.toLowerCase()); }} />
             ))}
           </nav>
@@ -213,8 +219,11 @@ function MarketingNav() {
           <ThemeToggle size="sm" />
           {!isMobile && (
             <>
-              <Button as={Link} to="/login" variant="ghost" size="sm">Sign in</Button>
-              <Button as={Link} to="/signup" size="sm" variant="primary">Get started free</Button>
+              <Button as={Link} to="/login" variant="ghost" size="sm"
+                      style={{ color: isDarkHeroNav ? '#FFFFFF' : 'var(--text-primary)' }}>
+                Sign in
+              </Button>
+              <Button as={Link} to="/signup" size="sm" variant="primary">Get started</Button>
             </>
           )}
           {isMobile && (
@@ -288,7 +297,10 @@ function MarketingNav() {
 // ─────────────────────────────────────────────────────────────────────────────
 // Nav primitives
 // ─────────────────────────────────────────────────────────────────────────────
-function NavLink({ to, active, children, onMouseEnter }) {
+function NavLink({ to, active, children, onMouseEnter, darkHero = false }) {
+  const normalColor = darkHero ? 'rgba(255, 255, 255, 0.88)' : (active ? 'var(--text-primary)' : 'var(--text-secondary)');
+  const hoverBg = darkHero ? 'rgba(255, 255, 255, 0.12)' : 'var(--surface-hover)';
+  const hoverColor = darkHero ? '#FFFFFF' : 'var(--text-primary)';
   return (
     <Link
       to={to}
@@ -298,17 +310,17 @@ function NavLink({ to, active, children, onMouseEnter }) {
       style={{
         padding: '8px 12px',
         fontSize: 14, fontWeight: 500,
-        color: active ? 'var(--text-primary)' : 'var(--text-secondary)',
+        color: active ? (darkHero ? '#FFFFFF' : 'var(--text-primary)') : normalColor,
         textDecoration: 'none',
         borderRadius: 'var(--radius-md)',
         transition: 'var(--transition-fast)',
       }}
       onMouseOver={(e) => {
-        e.currentTarget.style.color = 'var(--text-primary)';
-        e.currentTarget.style.background = 'var(--surface-hover)';
+        e.currentTarget.style.color = hoverColor;
+        e.currentTarget.style.background = hoverBg;
       }}
       onMouseOut={(e) => {
-        e.currentTarget.style.color = active ? 'var(--text-primary)' : 'var(--text-secondary)';
+        e.currentTarget.style.color = active ? (darkHero ? '#FFFFFF' : 'var(--text-primary)') : normalColor;
         e.currentTarget.style.background = 'transparent';
       }}
     >
@@ -317,7 +329,9 @@ function NavLink({ to, active, children, onMouseEnter }) {
   );
 }
 
-function MegaTrigger({ label, active, onEnter }) {
+function MegaTrigger({ label, active, onEnter, darkHero = false }) {
+  const normalColor = darkHero ? 'rgba(255, 255, 255, 0.88)' : (active ? 'var(--text-primary)' : 'var(--text-secondary)');
+  const activeBg = darkHero ? 'rgba(255, 255, 255, 0.14)' : 'var(--surface-hover)';
   return (
     <button
       type="button"
@@ -329,14 +343,26 @@ function MegaTrigger({ label, active, onEnter }) {
       style={{
         padding: '8px 12px',
         fontSize: 14, fontWeight: 500,
-        color: active ? 'var(--text-primary)' : 'var(--text-secondary)',
-        background: active ? 'var(--surface-hover)' : 'transparent',
+        color: active ? (darkHero ? '#FFFFFF' : 'var(--text-primary)') : normalColor,
+        background: active ? activeBg : 'transparent',
         border: 'none',
         borderRadius: 'var(--radius-md)',
         cursor: 'pointer',
         display: 'inline-flex', alignItems: 'center', gap: 4,
         transition: 'var(--transition-fast)',
         fontFamily: 'inherit',
+      }}
+      onMouseOver={(e) => {
+        if (!active) {
+          e.currentTarget.style.color = darkHero ? '#FFFFFF' : 'var(--text-primary)';
+          e.currentTarget.style.background = darkHero ? 'rgba(255, 255, 255, 0.12)' : 'var(--surface-hover)';
+        }
+      }}
+      onMouseOut={(e) => {
+        if (!active) {
+          e.currentTarget.style.color = normalColor;
+          e.currentTarget.style.background = 'transparent';
+        }
       }}
     >
       {label}

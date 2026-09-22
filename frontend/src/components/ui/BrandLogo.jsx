@@ -41,8 +41,9 @@ function OfficialLogoImg({ size = 40, className, style: extraStyle, inverted = f
   );
 }
 
-function WordmarkText({ height = 22, color = 'currentColor' }) {
+function WordmarkText({ height = 22, color = 'currentColor', inverted = false }) {
   const fontSize = Math.round(height * 0.86);
+  const bopColor = inverted ? '#FFFFFF' : 'var(--text-primary, #1E202A)';
   return (
     <span
       role="img"
@@ -60,7 +61,7 @@ function WordmarkText({ height = 22, color = 'currentColor' }) {
         userSelect: 'none',
       }}
     >
-      <span style={{ color: 'var(--text-primary, #1E202A)' }}>Bop</span>
+      <span style={{ color: bopColor }}>Bop</span>
       <span style={{ color: 'var(--brand-primary, #F5A623)', marginLeft: '0.22em' }}>Social</span>
     </span>
   );
@@ -82,15 +83,15 @@ export function BrandMarkInverted({ size = 40, className, style: extraStyle }) {
   );
 }
 
-export function BrandWordmark({ height = 22, className, style: extraStyle }) {
+export function BrandWordmark({ height = 22, className, style: extraStyle, inverted = false }) {
   return (
     <span className={className} style={{ display: 'inline-flex', height, ...extraStyle }}>
-      <WordmarkText height={height} />
+      <WordmarkText height={height} inverted={inverted} />
     </span>
   );
 }
 
-export function BrandLogoHorizontal({ height = 36, className, style: extraStyle }) {
+export function BrandLogoHorizontal({ height = 38, className, style: extraStyle, inverted = false }) {
   const markSize = Math.round(height);
   return (
     <span
@@ -98,18 +99,18 @@ export function BrandLogoHorizontal({ height = 36, className, style: extraStyle 
       style={{
         display: 'inline-flex',
         alignItems: 'center',
-        gap: Math.round(height * 0.32),
+        gap: Math.max(8, Math.round(height * 0.28)),
         height,
         ...extraStyle,
       }}
     >
-      <OfficialLogoImg size={markSize} />
-      <WordmarkText height={Math.round(height * 0.65)} />
+      <OfficialLogoImg size={markSize} inverted={inverted} />
+      <WordmarkText height={Math.round(height * 0.65)} inverted={inverted} />
     </span>
   );
 }
 
-export function BrandLogoStacked({ height = 100, className, style: extraStyle }) {
+export function BrandLogoStacked({ height = 100, className, style: extraStyle, inverted = false }) {
   const markSize = Math.round(height * 0.6);
   return (
     <span
@@ -123,8 +124,8 @@ export function BrandLogoStacked({ height = 100, className, style: extraStyle })
         ...extraStyle,
       }}
     >
-      <OfficialLogoImg size={markSize} />
-      <WordmarkText height={Math.round(height * 0.24)} />
+      <OfficialLogoImg size={markSize} inverted={inverted} />
+      <WordmarkText height={Math.round(height * 0.24)} inverted={inverted} />
     </span>
   );
 }

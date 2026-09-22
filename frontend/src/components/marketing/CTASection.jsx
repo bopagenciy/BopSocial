@@ -108,8 +108,8 @@ export default function CTASection({
               style={{
                 padding: '14px 22px',
                 fontSize: 15, fontWeight: 600,
-                color: '#0a0e14',
-                background: 'linear-gradient(135deg, #00CCF5, #00A8D8)',
+                color: '#1E202A',
+                background: 'linear-gradient(135deg, #F5A623, #E09612)',
                 border: 'none',
                 borderRadius: 'var(--radius-md)',
                 cursor: 'pointer',
@@ -130,9 +130,10 @@ export default function CTASection({
           }}>
             <Button as={Link} to={primary.to} size="lg" variant="primary"
                     style={{
-                      background: 'linear-gradient(135deg, #00CCF5, #00A8D8)',
-                      color: '#0a0e14',
+                      background: 'linear-gradient(135deg, #F5A623, #E09612)',
+                      color: '#1E202A',
                       border: 'none',
+                      fontWeight: 600,
                     }}>
               {primary.label} <ArrowRight size={15} />
             </Button>

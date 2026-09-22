@@ -70,7 +70,7 @@ export function ComposerPreview() {
       </div>
       <div style={{ marginTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>Auto-resized for IG · 220 chars</span>
-        <Send size={11} style={{ color: '#00CCF5' }} />
+        <Send size={11} style={{ color: '#F5A623' }} />
       </div>
     </div>
   );
@@ -116,7 +116,7 @@ export function InboxPreview() {
           </div>
           <span style={{
             width: 8, height: 8, borderRadius: '50%',
-            background: '#00CCF5', flexShrink: 0,
+            background: '#F5A623', flexShrink: 0,
           }} />
         </motion.div>
       ))}
@@ -133,8 +133,8 @@ export function BotBuilderPreview() {
          style={{ width: '100%', height: '100%' }}>
       <defs>
         <linearGradient id="bb-edge" x1="0" x2="1">
-          <stop offset="0%"   stopColor="#00CCF5" />
-          <stop offset="100%" stopColor="#8b5cf6" />
+          <stop offset="0%"   stopColor="#F5A623" />
+          <stop offset="100%" stopColor="#E09612" />
         </linearGradient>
       </defs>
       {/* Edges */}
@@ -146,7 +146,7 @@ export function BotBuilderPreview() {
                    initial={{ pathLength: 0 }} whileInView={{ pathLength: 1 }} viewport={{ once: true }} transition={{ duration: 0.6, delay: 0.6 }} />
 
       {/* Nodes */}
-      <Node x={20}  y={30} label="Start"   tone="#00CCF5" />
+      <Node x={20}  y={30} label="Start"   tone="#F5A623" />
       <Node x={140} y={30} label="Ask"     tone="#a78bfa" delay={0.4} />
       <Node x={200} y={65} label="Capture" tone="#34d399" delay={0.8} />
       <Node x={80}  y={100} label="Reply"  tone="#fbbf24" delay={0.8} />
@@ -231,7 +231,7 @@ function ChainArrow() {
     <div aria-hidden style={{ height: 14, marginLeft: 16, display: 'flex', alignItems: 'center' }}>
       <span style={{
         display: 'block', width: 1.5, height: '100%',
-        background: 'linear-gradient(to bottom, #00CCF5, #8b5cf6)',
+        background: 'linear-gradient(to bottom, #F5A623, #E09612)',
       }} />
     </div>
   );
@@ -255,12 +255,12 @@ export function AnalyticsPreview() {
       <svg viewBox="0 0 240 80" style={{ width: '100%', height: 80 }}>
         <defs>
           <linearGradient id="ana-line" x1="0" x2="1">
-            <stop offset="0%"  stopColor="#00CCF5" />
-            <stop offset="100%" stopColor="#8b5cf6" />
+            <stop offset="0%"  stopColor="#F5A623" />
+            <stop offset="100%" stopColor="#E09612" />
           </linearGradient>
           <linearGradient id="ana-fill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%"  stopColor="#00CCF5" stopOpacity="0.35" />
-            <stop offset="100%" stopColor="#00CCF5" stopOpacity="0" />
+            <stop offset="0%"  stopColor="#F5A623" stopOpacity="0.35" />
+            <stop offset="100%" stopColor="#F5A623" stopOpacity="0" />
           </linearGradient>
         </defs>
         <motion.path d={path + ' L 240 80 L 0 80 Z'} fill="url(#ana-fill)"
@@ -302,7 +302,7 @@ export function ReportsPreview() {
           <ReportStat label="Posts"  value="42"   />
           <ReportStat label="Leads"  value="312"  />
         </div>
-        <div style={{ marginTop: 8, height: 24, background: 'linear-gradient(90deg, #00CCF5 65%, #e2e8f0 65%)',
+        <div style={{ marginTop: 8, height: 24, background: 'linear-gradient(90deg, #F5A623 65%, #e2e8f0 65%)',
                       borderRadius: 4 }} />
         <div style={{ marginTop: 6, fontSize: 9, color: '#64748b' }}>
           AI summary: Your reach grew 23% MoM, driven by Reels…
@@ -335,7 +335,7 @@ const cardStyle = {
 
 function Bubble({ side, tone = 'plain', children }) {
   const isUser = side === 'user';
-  const cyan = tone === 'cyan';
+  const cyan = tone === 'cyan' || tone === 'gold';
   return (
     <div style={{
       alignSelf: isUser ? 'flex-end' : 'flex-start',
@@ -377,7 +377,8 @@ const ruleTextStyle = {
 
 const kindStyle = (tone) => {
   const colors = {
-    cyan:   { color: '#00CCF5', bg: 'rgba(0,204,245,0.1)' },
+    gold:   { color: '#F5A623', bg: 'rgba(245,166,35,0.12)' },
+    cyan:   { color: '#F5A623', bg: 'rgba(245,166,35,0.12)' },
     purple: { color: '#a78bfa', bg: 'rgba(139,92,246,0.1)' },
     green:  { color: '#34d399', bg: 'rgba(16,185,129,0.1)' },
   }[tone];

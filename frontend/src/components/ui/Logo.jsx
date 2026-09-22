@@ -32,6 +32,7 @@ export default function Logo({
   height,
   className,
   style,
+  inverted = false,
 }) {
   switch (variant) {
     case 'mark':
@@ -39,11 +40,11 @@ export default function Logo({
     case 'mark-inverted':
       return <BrandMarkInverted  size={size ?? 40}  className={className} style={style} />;
     case 'wordmark':
-      return <BrandWordmark      height={height ?? 22} className={className} style={style} />;
+      return <BrandWordmark      height={height ?? 22} className={className} style={style} inverted={inverted} />;
     case 'stacked':
-      return <BrandLogoStacked   height={height ?? 100} className={className} style={style} />;
+      return <BrandLogoStacked   height={height ?? 100} className={className} style={style} inverted={inverted} />;
     case 'horizontal':
     default:
-      return <BrandLogoHorizontal height={height ?? 36} className={className} style={style} />;
+      return <BrandLogoHorizontal height={height ?? 38} className={className} style={style} inverted={inverted} />;
   }
 }

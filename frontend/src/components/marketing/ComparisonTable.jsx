@@ -52,8 +52,8 @@ export default function ComparisonTable({ columns = [], rows = [], highlightInde
                 {i === highlightIndex && (
                   <span style={{
                     display: 'block', marginTop: 4,
-                    fontSize: 10, fontWeight: 600,
-                    color: '#00CCF5', letterSpacing: '0.06em',
+                    fontSize: 10, fontWeight: 700,
+                    color: '#F5A623', letterSpacing: '0.06em',
                   }}>RECOMMENDED</span>
                 )}
               </th>
@@ -124,10 +124,10 @@ const headCellStyle = {
 };
 
 const headHighlightStyle = {
-  background: 'linear-gradient(180deg, rgba(0,204,245,0.12), rgba(0,204,245,0.04))',
-  borderLeft: '1px solid rgba(0,204,245,0.3)',
-  borderRight: '1px solid rgba(0,204,245,0.3)',
-  borderTop: '2px solid #00CCF5',
+  background: 'linear-gradient(180deg, rgba(245,166,35,0.14), rgba(245,166,35,0.04))',
+  borderLeft: '1px solid rgba(245,166,35,0.35)',
+  borderRight: '1px solid rgba(245,166,35,0.35)',
+  borderTop: '2px solid #F5A623',
 };
 
 const featureCellStyle = {

@@ -80,10 +80,10 @@ export default function AnimatedChat({
       }}>
         <span style={{
           width: 24, height: 24,
-          background: 'linear-gradient(135deg, #00CCF5, #8b5cf6)',
+          background: 'linear-gradient(135deg, #F5A623, #E09612)',
           borderRadius: '50%',
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-          color: '#fff',
+          color: '#1E202A',
         }}>
           <Sparkles size={12} />
         </span>
@@ -92,7 +92,7 @@ export default function AnimatedChat({
           letterSpacing: '-0.01em',
           color: 'var(--text-primary)',
         }}>
-          Social Stats
+          Bop Social AI
         </span>
         <span style={{
           marginLeft: 'auto',

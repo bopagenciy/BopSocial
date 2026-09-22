@@ -23,26 +23,26 @@
 export default function MeshGradient({ variant = 'hero', className, style }) {
   const palettes = {
     hero: {
-      bg: '#0a0e14',
+      bg: '#1E202A',
       blobs: [
-        { color: 'rgba(0, 204, 245, 0.50)', x: '15%',  y: '20%',  size: 520 },
-        { color: 'rgba(139, 92, 246, 0.36)', x: '78%',  y: '25%',  size: 460 },
-        { color: 'rgba(0, 168, 216, 0.32)',  x: '45%',  y: '85%',  size: 600 },
+        { color: 'rgba(245, 166, 35, 0.38)', x: '16%',  y: '18%',  size: 540 },
+        { color: 'rgba(224, 150, 18, 0.28)', x: '78%',  y: '24%',  size: 480 },
+        { color: 'rgba(45, 49, 66, 0.55)',   x: '45%',  y: '85%',  size: 600 },
       ],
     },
     soft: {
       bg: 'transparent',
       blobs: [
-        { color: 'rgba(0, 204, 245, 0.15)', x: '20%',  y: '15%',  size: 500 },
-        { color: 'rgba(139, 92, 246, 0.12)', x: '80%',  y: '70%',  size: 480 },
+        { color: 'rgba(245, 166, 35, 0.10)', x: '20%',  y: '15%',  size: 500 },
+        { color: 'rgba(45, 49, 66, 0.12)',   x: '80%',  y: '70%',  size: 480 },
       ],
     },
     cta: {
-      bg: '#0a0e14',
+      bg: '#1E202A',
       blobs: [
-        { color: 'rgba(0, 204, 245, 0.55)',  x: '20%',  y: '50%',  size: 560 },
-        { color: 'rgba(139, 92, 246, 0.42)', x: '80%',  y: '40%',  size: 520 },
-        { color: 'rgba(236, 72, 153, 0.18)', x: '50%',  y: '90%',  size: 480 },
+        { color: 'rgba(245, 166, 35, 0.42)', x: '20%',  y: '50%',  size: 560 },
+        { color: 'rgba(224, 150, 18, 0.30)', x: '80%',  y: '40%',  size: 520 },
+        { color: 'rgba(45, 49, 66, 0.40)',   x: '50%',  y: '90%',  size: 480 },
       ],
     },
   };
