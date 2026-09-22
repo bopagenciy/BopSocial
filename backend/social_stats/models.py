@@ -1784,12 +1784,24 @@ AUTOMATION_ACTION_CHOICES = [
 
 
 # ── Composer & Publishing ─────────────────────────────────────────────────────
+def media_asset_upload_path(instance, filename):
+    now = timezone.now()
+    client_id = getattr(instance, 'client_id', None) or 'shared'
+    return f"media_assets/tenant_{client_id}/{now.year:04d}/{now.month:02d}/{filename}"
+
+
+def media_asset_thumb_upload_path(instance, filename):
+    now = timezone.now()
+    client_id = getattr(instance, 'client_id', None) or 'shared'
+    return f"media_assets/thumbs/tenant_{client_id}/{now.year:04d}/{now.month:02d}/{filename}"
+
+
 class MediaAsset(models.Model):
     """Uploaded media library — photos, videos, gifs available to the composer."""
     client       = models.ForeignKey(Client, on_delete=models.CASCADE, related_name='media_assets')
     uploaded_by  = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='uploaded_media')
-    file         = models.FileField(upload_to='media_assets/%Y/%m/')
-    thumbnail    = models.ImageField(upload_to='media_assets/thumbs/%Y/%m/', null=True, blank=True)
+    file         = models.FileField(upload_to=media_asset_upload_path)
+    thumbnail    = models.ImageField(upload_to=media_asset_thumb_upload_path, null=True, blank=True)
     mime_type    = models.CharField(max_length=100, blank=True)
     file_size    = models.BigIntegerField(default=0)
     width        = models.IntegerField(default=0)
@@ -1810,6 +1822,17 @@ class MediaAsset(models.Model):
 
     def __str__(self):
         return f"{self.client.company} — {self.file.name}"
+
+    def get_authorized_url(self, request=None, thumb=False) -> str:
+        from .media_access import generate_media_asset_url
+        return generate_media_asset_url(self, request=request, thumb=thumb)
+
+    def get_public_publishing_url(self, expires_in=172800) -> str:
+        from .media_access import generate_public_publishing_token
+        from django.conf import settings
+        token = generate_public_publishing_token(self.id, self.client_id, max_age=expires_in)
+        base = (getattr(settings, 'BACKEND_PUBLIC_URL', '') or getattr(settings, 'FRONTEND_URL', '')).rstrip('/')
+        return f"{base}/api/media/public/{token}/"
 
 
 class UnifiedPost(models.Model):

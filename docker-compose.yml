@@ -44,7 +44,7 @@ services:
       - path: .env.docker
         required: false
     environment: &backend-env
-      DEBUG: "False"
+      DEBUG: "${DEBUG:-False}"
       ALLOWED_HOSTS: "localhost,127.0.0.1,backend"
       FRONTEND_URL: "${FRONTEND_URL:-http://localhost:3000}"
       SECRET_KEY: "${SECRET_KEY:-change-me-generate-a-real-secret-key}"
@@ -66,7 +66,7 @@ services:
     volumes:
       - media:/app/media
     ports:
-      - "127.0.0.1:8000:8000"   # direct API + Django admin access
+      - "127.0.0.1:${BACKEND_PORT:-8000}:8000"   # direct API + Django admin access
     depends_on:
       postgres:
         condition: service_healthy

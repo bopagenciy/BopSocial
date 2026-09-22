@@ -294,11 +294,14 @@ def presigned_url(asset: MediaAsset, *, expires: int = 3600) -> str:
             )
         except Exception:
             logger.exception('Failed to sign S3 URL for asset %s', asset.id)
-    # Local fallback — assumes Django is serving MEDIA_URL
+    # Controlled public publishing fallback — signed token with narrow scope (SEC-01)
     try:
-        return asset.file.url
+        return asset.get_public_publishing_url(expires_in=expires)
     except Exception:
-        return ''
+        try:
+            return asset.file.url
+        except Exception:
+            return ''
 
 
 # ── Internals ─────────────────────────────────────────────────────────────────

@@ -378,6 +378,19 @@ class MediaAssetViewSet(TenantScopedMixin, viewsets.ModelViewSet):
                 errors.append({'file': f.name, 'error': str(e)})
         return Response({'created': out, 'errors': errors}, status=201 if out else 400)
 
+    @action(detail=True, methods=['get'])
+    def file(self, request, pk=None):
+        asset = self.get_object()
+        from .media_access import serve_secure_file
+        return serve_secure_file(request, asset.file, asset.id, is_thumbnail=False)
+
+    @action(detail=True, methods=['get'])
+    def thumbnail(self, request, pk=None):
+        asset = self.get_object()
+        from .media_access import serve_secure_file
+        target = asset.thumbnail or asset.file
+        return serve_secure_file(request, target, asset.id, is_thumbnail=True)
+
 
 # ── Queues ────────────────────────────────────────────────────────────────────
 class PostQueueViewSet(TenantScopedMixin, viewsets.ModelViewSet):

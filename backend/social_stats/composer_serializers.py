@@ -36,13 +36,19 @@ class MediaAssetSerializer(serializers.ModelSerializer):
 
     def get_file_url(self, obj):
         try:
-            return obj.file.url if obj.file else ''
+            if not obj.file:
+                return ''
+            request = self.context.get('request')
+            return obj.get_authorized_url(request=request, thumb=False)
         except Exception:
             return ''
 
     def get_thumbnail_url(self, obj):
         try:
-            return obj.thumbnail.url if obj.thumbnail else ''
+            if not obj.thumbnail:
+                return ''
+            request = self.context.get('request')
+            return obj.get_authorized_url(request=request, thumb=True)
         except Exception:
             return ''
 

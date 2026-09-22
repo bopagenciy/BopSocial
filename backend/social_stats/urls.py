@@ -218,6 +218,12 @@ from .manual_token_views import (
 )
 from .health_views import services_health
 from .dashboard_views import dashboard_counts, unified_search, dashboard_today
+from .media_views import (
+    secure_media_serve_view,
+    secure_media_thumb_view,
+    public_publishing_media_view,
+    legacy_media_proxy_view,
+)
 
 router = DefaultRouter()
 router.register(r'clients',     ClientViewSet,    basename='client')
@@ -618,6 +624,12 @@ urlpatterns = [
     path('dashboard/counts/', dashboard_counts, name='dashboard_counts'),
     path('search/unified/',   unified_search,   name='search_unified'),
     path('dashboard/today/',  dashboard_today,  name='dashboard_today'),
+
+    # Secure Tenant Media (SEC-01)
+    path('media/serve/<int:pk>/', secure_media_serve_view, name='secure_media_serve'),
+    path('media/serve/<int:pk>/thumb/', secure_media_thumb_view, name='secure_media_thumb'),
+    path('media/public/<str:signed_token>/', public_publishing_media_view, name='public_publishing_media'),
+    path('media/serve-legacy/', legacy_media_proxy_view, name='legacy_media_proxy'),
 
     # REST API
     path('', include(router.urls)),

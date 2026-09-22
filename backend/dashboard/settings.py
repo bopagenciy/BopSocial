@@ -9,11 +9,33 @@
 from pathlib import Path
 import os
 from dotenv import load_dotenv
+from django.core.exceptions import ImproperlyConfigured
 
 load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-change-in-production')
+DEBUG = os.environ.get('DEBUG', 'True') == 'True'
+
+# ── Security Fail-Safe for Production (SEC-02) ──────────────────────────────
+# Reject known insecure placeholder keys when running in production (DEBUG=False).
+KNOWN_INSECURE_SECRETS = {
+    'django-insecure-change-in-production',
+    'change-me-generate-a-real-secret-key',
+    'your-secret-key-change-this-in-production',
+    'secret',
+    'changeme',
+}
+
+if not DEBUG:
+    raw_secret = (SECRET_KEY or '').strip()
+    if not raw_secret or raw_secret in KNOWN_INSECURE_SECRETS or len(raw_secret) < 32:
+        raise ImproperlyConfigured(
+            "CRITICAL SECURITY CONFIGURATION ERROR (SEC-02): "
+            "In production (DEBUG=False), SECRET_KEY must be configured via environment "
+            "to a strong, unique secret (minimum 32 characters). "
+            "Default and placeholder keys are strictly rejected."
+        )
 
 # Independent keys for field-level encryption of OAuth tokens ( security).
 # Preferred form: FIELD_ENCRYPTION_KEYS — comma-separated, primary first.
@@ -27,7 +49,6 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-change-in-production'
 FIELD_ENCRYPTION_KEYS = os.environ.get('FIELD_ENCRYPTION_KEYS', '')
 FIELD_ENCRYPTION_KEY  = os.environ.get('FIELD_ENCRYPTION_KEY',  '')
 
-DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
 
 INSTALLED_APPS = [
@@ -164,6 +185,7 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATIC_URL = '/static/'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+USE_X_ACCEL_REDIRECT = os.environ.get('USE_X_ACCEL_REDIRECT', 'False').lower() in ('true', '1', 'yes')
 
 # ── Security headers + HTTPS enforcement () ──────────────────────────
 # Defaults flip ON when DEBUG is False. Each can still be overridden per env

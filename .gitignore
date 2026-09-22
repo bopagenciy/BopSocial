@@ -109,6 +109,8 @@ coverage/
 !.env.example
 !.env.sample
 !.env.template
+!.env.docker.example
+!.env.*.example
 *.log
 .DS_Store
 Thumbs.db
