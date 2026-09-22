@@ -12,6 +12,7 @@ import App from './App';
 import './styles/tokens.css';
 import './styles/common.css';
 import { bootstrapTheme } from './hooks/useTheme';
+import './i18n/config';
 
 // Apply persisted theme before React paints, to avoid flash of wrong theme.
 bootstrapTheme();

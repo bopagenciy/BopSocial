@@ -19,8 +19,10 @@ import {
   LogOut, Shield, Mail, Trash2,
   Bell, Palette, Keyboard, Key, Database, Webhook, MoreHorizontal,
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../hooks/useAuth';
 import { profileAPI } from '../services/api';
+import { changePlatformLanguage } from '../i18n/config';
 import PageHeader from '../components/layout/PageHeader';
 import {
   NotificationsSection,
@@ -134,8 +136,10 @@ export default function UserSettingsPage() {
 // ── Profile Tab ───────────────────────────────────────────────────────────────
 
 function ProfileTab({ user, logout, navigate }) {
+  const { t, i18n } = useTranslation('common');
   const [firstName, setFirstName] = useState('');
   const [lastName,  setLastName]  = useState('');
+  const [language,  setLanguage]  = useState(i18n.language ? i18n.language.substring(0, 2) : 'en');
   const [avatar,    setAvatar]    = useState(null);
   const [preview,   setPreview]   = useState(null);
   const [loading,   setLoading]   = useState(true);
@@ -149,6 +153,9 @@ function ProfileTab({ user, logout, navigate }) {
       setFirstName(res.data.first_name || '');
       setLastName(res.data.last_name   || '');
       setPreview(res.data.avatar       || null);
+      if (res.data.language) {
+        setLanguage(res.data.language);
+      }
     }).catch(() => {
       setFirstName(user?.name?.split(' ')[0] || '');
     }).finally(() => setLoading(false));
@@ -180,8 +187,10 @@ function ProfileTab({ user, logout, navigate }) {
       const fd = new FormData();
       fd.append('first_name', firstName.trim());
       fd.append('last_name',  lastName.trim());
+      fd.append('language',   language);
       if (avatar) fd.append('avatar', avatar);
       await profileAPI.update(fd);
+      await changePlatformLanguage(language);
       setSuccess('Profile updated successfully.');
       setAvatar(null);
     } catch (err) {
@@ -240,6 +249,52 @@ function ProfileTab({ user, logout, navigate }) {
             {user?.email || '—'}
           </div>
           <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--text-tertiary)' }}>Email cannot be changed here.</p>
+        </Field>
+
+        <Field label={t('languages.preferred_language', 'Preferred Language')}>
+          <div style={{ display: 'flex', gap: 12, marginTop: 4 }}>
+            <label style={{
+              display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px',
+              border: `1px solid ${language === 'en' ? 'var(--brand-primary)' : 'var(--border-default)'}`,
+              borderRadius: 'var(--radius-md)',
+              background: language === 'en' ? 'var(--brand-primary-soft)' : 'var(--surface-card)',
+              cursor: 'pointer',
+              color: 'var(--text-primary)',
+              fontSize: 14, fontWeight: 500,
+            }}>
+              <input
+                type="radio"
+                name="profile_language"
+                value="en"
+                checked={language === 'en'}
+                onChange={() => setLanguage('en')}
+                style={{ accentColor: 'var(--brand-primary)' }}
+              />
+              English
+            </label>
+            <label style={{
+              display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px',
+              border: `1px solid ${language === 'es' ? 'var(--brand-primary)' : 'var(--border-default)'}`,
+              borderRadius: 'var(--radius-md)',
+              background: language === 'es' ? 'var(--brand-primary-soft)' : 'var(--surface-card)',
+              cursor: 'pointer',
+              color: 'var(--text-primary)',
+              fontSize: 14, fontWeight: 500,
+            }}>
+              <input
+                type="radio"
+                name="profile_language"
+                value="es"
+                checked={language === 'es'}
+                onChange={() => setLanguage('es')}
+                style={{ accentColor: 'var(--brand-primary)' }}
+              />
+              Español
+            </label>
+          </div>
+          <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--text-tertiary)' }}>
+            {t('languages.language_description', 'Select the language you want to use across the platform.')}
+          </p>
         </Field>
 
         {error   && <Alert type="error"   msg={error} />}

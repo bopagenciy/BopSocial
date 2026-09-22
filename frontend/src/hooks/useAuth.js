@@ -8,6 +8,7 @@
  * ========================================================================== */
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { authAPI, mfaAPI } from '../services/api';
+import { changePlatformLanguage } from '../i18n/config';
 
 const AuthContext = createContext(null);
 
@@ -19,7 +20,12 @@ export function AuthProvider({ children }) {
     const token = localStorage.getItem('access_token');
     if (token) {
       authAPI.me()
-        .then(res => setUser(res.data))
+        .then(res => {
+          setUser(res.data);
+          if (res.data?.language) {
+            changePlatformLanguage(res.data.language);
+          }
+        })
         .catch(() => { localStorage.clear(); })
         .finally(() => setLoading(false));
     } else {
@@ -38,6 +44,9 @@ export function AuthProvider({ children }) {
     localStorage.setItem('refresh_token', res.data.refresh);
     const me = await authAPI.me();
     setUser(me.data);
+    if (me.data?.language) {
+      await changePlatformLanguage(me.data.language);
+    }
     return me.data;
   };
 
@@ -53,6 +62,9 @@ export function AuthProvider({ children }) {
     localStorage.setItem('refresh_token', res.data.refresh);
     const me = await authAPI.me();
     setUser(me.data);
+    if (me.data?.language) {
+      await changePlatformLanguage(me.data.language);
+    }
     return me.data;
   };
 

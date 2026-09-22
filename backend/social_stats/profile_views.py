@@ -48,6 +48,7 @@ def user_profile(request):
             'last_name':     user.last_name,
             'email':         user.email,
             'role':          profile.role if profile else 'client',
+            'language':      profile.language if profile else 'en',
             'avatar':        avatar_url,
             'is_social':     not user.has_usable_password(),
             'email_verified': profile.email_verified if profile else True,
@@ -67,6 +68,14 @@ def user_profile(request):
     user.first_name = first_name
     user.last_name  = last_name
     user.save(update_fields=['first_name', 'last_name'])
+
+    # Language preference
+    lang = data.get('language')
+    if lang and profile:
+        lang = lang.strip().lower()
+        if lang in ('en', 'es'):
+            profile.language = lang
+            profile.save(update_fields=['language'])
 
     # Avatar upload
     avatar_file = request.FILES.get('avatar')
@@ -100,6 +109,7 @@ def user_profile(request):
     return Response({
         'first_name': user.first_name,
         'last_name':  user.last_name,
+        'language':   profile.language if profile else 'en',
         'avatar':     avatar_url,
     })
 

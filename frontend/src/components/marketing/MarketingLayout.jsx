@@ -16,9 +16,11 @@ import {
   Briefcase, Stethoscope, UtensilsCrossed, Palette, ShoppingBag, GraduationCap,
 } from 'lucide-react';
 
+import { useTranslation } from 'react-i18next';
 import Logo from '../ui/Logo';
 import Button from '../ui/Button';
 import ThemeToggle from '../ui/ThemeToggle';
+import LanguageSelector from '../ui/LanguageSelector';
 import SkipLink from '../ui/SkipLink';
 import { prefetchRoute } from '../../utils/prefetchRoute';
 
@@ -52,51 +54,52 @@ export default function MarketingLayout({ children }) {
 // Nav data
 // ─────────────────────────────────────────────────────────────────────────────
 const PRODUCT_MENU = [
-  { label: 'Analytics',     to: '/product/analytics',         icon: BarChart3,    desc: 'Cross-platform metrics' },
-  { label: 'Composer',      to: '/product/composer',          icon: PenSquare,    desc: 'Write once, publish 5x' },
-  { label: 'Inbox',         to: '/product/inbox',             icon: Inbox,        desc: 'Every conversation, one place' },
-  { label: 'WhatsApp',      to: '/product/whatsapp',          icon: MessageCircle,desc: 'Campaigns + two-way chat' },
-  { label: 'Bot Builder',   to: '/product/bot-builder',       icon: Bot,          desc: 'Visual CTWA flow editor' },
-  { label: 'AI Studio',     to: '/product/ai',                icon: Sparkles,     desc: 'Bop Social in every corner' },
-  { label: 'AI Assistant',  to: '/product/ai-assistant',      icon: MessagesSquare, desc: 'Cmd+J — talk to your data' },
-  { label: 'Reports',       to: '/product/reports',           icon: FileText,     desc: 'Reports that write themselves' },
-  { label: 'Automations',   to: '/product/automations',       icon: Zap,          desc: 'IF this, do that' },
-  { label: 'Marketplace',   to: '/product/marketplace-product', icon: Star,       desc: 'Two-sided marketplace' },
+  { label: 'Analytics',     labelKey: 'products.analytics',     to: '/product/analytics',         icon: BarChart3,    desc: 'Cross-platform metrics', descKey: 'products.analytics_desc' },
+  { label: 'Composer',      labelKey: 'products.composer',      to: '/product/composer',          icon: PenSquare,    desc: 'Write once, publish 5x', descKey: 'products.composer_desc' },
+  { label: 'Inbox',         labelKey: 'products.inbox',         to: '/product/inbox',             icon: Inbox,        desc: 'Every conversation, one place', descKey: 'products.inbox_desc' },
+  { label: 'WhatsApp',      labelKey: 'products.whatsapp',      to: '/product/whatsapp',          icon: MessageCircle,desc: 'Campaigns + two-way chat', descKey: 'products.whatsapp_desc' },
+  { label: 'Bot Builder',   labelKey: 'products.bot_builder',   to: '/product/bot-builder',       icon: Bot,          desc: 'Visual CTWA flow editor', descKey: 'products.bot_builder_desc' },
+  { label: 'AI Studio',     labelKey: 'products.ai_studio',     to: '/product/ai',                icon: Sparkles,     desc: 'Bop Social in every corner', descKey: 'products.ai_studio_desc' },
+  { label: 'AI Assistant',  labelKey: 'products.ai_assistant',  to: '/product/ai-assistant',      icon: MessagesSquare, desc: 'Cmd+J — talk to your data', descKey: 'products.ai_assistant_desc' },
+  { label: 'Reports',       labelKey: 'products.reports',       to: '/product/reports',           icon: FileText,     desc: 'Reports that write themselves', descKey: 'products.reports_desc' },
+  { label: 'Automations',   labelKey: 'products.automations',   to: '/product/automations',       icon: Zap,          desc: 'IF this, do that', descKey: 'products.automations_desc' },
+  { label: 'Marketplace',   labelKey: 'products.marketplace',   to: '/product/marketplace-product', icon: Star,       desc: 'Two-sided marketplace', descKey: 'products.marketplace_desc' },
 ];
 
 const SOLUTIONS_BY_ROLE = [
-  { label: 'For Agencies',   to: '/solutions/agencies',   icon: Briefcase, desc: 'Manage 100+ clients' },
-  { label: 'For Businesses', to: '/solutions/businesses', icon: Building2, desc: 'Take back control' },
-  { label: 'For Creators',   to: '/solutions/creators',   icon: Palette,   desc: 'Track your creator economy' },
+  { label: 'For Agencies',   labelKey: 'solutions.agencies',   to: '/solutions/agencies',   icon: Briefcase, desc: 'Manage 100+ clients', descKey: 'solutions.agencies_desc' },
+  { label: 'For Businesses', labelKey: 'solutions.businesses', to: '/solutions/businesses', icon: Building2, desc: 'Take back control', descKey: 'solutions.businesses_desc' },
+  { label: 'For Creators',   labelKey: 'solutions.creators',   to: '/solutions/creators',   icon: Palette,   desc: 'Track your creator economy', descKey: 'solutions.creators_desc' },
 ];
 
 const SOLUTIONS_BY_INDUSTRY = [
-  { label: 'Real Estate', to: '/solutions/real-estate', icon: Building2,        desc: 'Sell more properties' },
-  { label: 'Healthcare',  to: '/solutions/clinics',     icon: Stethoscope,      desc: 'Engage patients' },
-  { label: 'Restaurants', to: '/solutions/restaurants', icon: UtensilsCrossed,  desc: 'Fill more tables' },
-  { label: 'E-commerce',  to: '/solutions/ecommerce',   icon: ShoppingBag,      desc: 'Drive sales from social' },
-  { label: 'Education',   to: '/solutions/education',   icon: GraduationCap,    desc: 'Reach more students' },
+  { label: 'Real Estate', labelKey: 'solutions.real_estate', to: '/solutions/real-estate', icon: Building2,        desc: 'Sell more properties', descKey: 'solutions.real_estate_desc' },
+  { label: 'Healthcare',  labelKey: 'solutions.healthcare',  to: '/solutions/clinics',     icon: Stethoscope,      desc: 'Engage patients', descKey: 'solutions.healthcare_desc' },
+  { label: 'Restaurants', labelKey: 'solutions.restaurants', to: '/solutions/restaurants', icon: UtensilsCrossed,  desc: 'Fill more tables', descKey: 'solutions.restaurants_desc' },
+  { label: 'E-commerce',  labelKey: 'solutions.ecommerce',   to: '/solutions/ecommerce',   icon: ShoppingBag,      desc: 'Drive sales from social', descKey: 'solutions.ecommerce_desc' },
+  { label: 'Education',   labelKey: 'solutions.education',   to: '/solutions/education',   icon: GraduationCap,    desc: 'Reach more students', descKey: 'solutions.education_desc' },
 ];
 
 const SIMPLE_LINKS = [
-  { label: 'Customers',   to: '/customers' },
-  { label: 'Resources',   to: null,
+  { label: 'Customers', labelKey: 'nav.customers', to: '/customers' },
+  { label: 'Resources', labelKey: 'nav.resources', to: null,
     menu: { single: [
-      { label: 'Blog',          to: '/blog',         icon: FileText,       desc: 'Marketing tips + product updates' },
-      { label: 'Help Center',   to: '/help',         icon: Users,          desc: 'Guides + how-tos' },
-      { label: 'Changelog',     to: '/changelog',    icon: Calendar,       desc: 'What shipped this week' },
-      { label: 'Status',        to: '/status',       icon: Zap,            desc: 'System uptime' },
-      { label: 'Integrations',  to: '/integrations', icon: Sparkles,       desc: 'Connect your stack' },
-      { label: 'Contact',       to: '/contact',      icon: MessagesSquare, desc: 'Sales + support' },
+      { label: 'Blog',          labelKey: 'resources.blog',         to: '/blog',         icon: FileText,       desc: 'Marketing tips + product updates', descKey: 'resources.blog_desc' },
+      { label: 'Help Center',   labelKey: 'resources.help_center',   to: '/help',         icon: Users,          desc: 'Guides + how-tos', descKey: 'resources.help_center_desc' },
+      { label: 'Changelog',     labelKey: 'resources.changelog',     to: '/changelog',    icon: Calendar,       desc: 'What shipped this week', descKey: 'resources.changelog_desc' },
+      { label: 'Status',        labelKey: 'resources.status',        to: '/status',       icon: Zap,            desc: 'System uptime', descKey: 'resources.status_desc' },
+      { label: 'Integrations',  labelKey: 'resources.integrations',  to: '/integrations', icon: Sparkles,       desc: 'Connect your stack', descKey: 'resources.integrations_desc' },
+      { label: 'Contact',       labelKey: 'resources.contact',       to: '/contact',      icon: MessagesSquare, desc: 'Sales + support', descKey: 'resources.contact_desc' },
     ]},
   },
-  { label: 'About',       to: '/about' },
+  { label: 'About', labelKey: 'nav.about', to: '/about' },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Nav
 // ─────────────────────────────────────────────────────────────────────────────
 function MarketingNav() {
+  const { t } = useTranslation('navigation');
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [openMenu, setOpenMenu] = useState(null);  // 'product' | 'solutions' | 'resources'
@@ -129,24 +132,32 @@ function MarketingNav() {
   }, []);
 
   useEffect(() => {
-    const onResize = () => setIsMobile(window.innerWidth < 1024);
+    const onResize = () => {
+      const mobile = window.innerWidth < 1024;
+      setIsMobile(mobile);
+      if (!mobile) setMobileOpen(false);
+    };
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, []);
 
-  // Close mobile + mega-menu on navigation
+  // Close mega-menu on navigation
   useEffect(() => {
-    setMobileOpen(false);
     setOpenMenu(null);
+    setMobileOpen(false);
   }, [location.pathname]);
 
-  // Close mega-menu on Escape
+  // Escape key closes open menu
   useEffect(() => {
-    if (!openMenu) return;
-    const onKey = (e) => { if (e.key === 'Escape') setOpenMenu(null); };
+    const onKey = (e) => {
+      if (e.key === 'Escape') {
+        setOpenMenu(null);
+        setMobileOpen(false);
+      }
+    };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [openMenu]);
+  }, []);
 
   // Close mega-menu on outside click
   useEffect(() => {
@@ -160,7 +171,7 @@ function MarketingNav() {
     return () => document.removeEventListener('pointerdown', onClickOutside);
   }, [openMenu]);
 
-  // Lock body scroll when mobile menu open
+  // Lock scroll when mobile drawer is open
   useEffect(() => {
     if (mobileOpen) {
       const prev = document.body.style.overflow;
@@ -211,7 +222,7 @@ function MarketingNav() {
         {/* Desktop nav */}
         {!isMobile && (
           <nav style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <MegaTrigger label="Product"
+            <MegaTrigger label={t('nav.product', 'Product')}
                          active={openMenu === 'product'}
                          darkHero={isDarkHeroNav}
                          onEnter={() => { cancelClose(); setOpenMenu('product'); }}
@@ -219,7 +230,7 @@ function MarketingNav() {
                            cancelClose();
                            setOpenMenu((prev) => (prev === 'product' ? null : 'product'));
                          }} />
-            <MegaTrigger label="Solutions"
+            <MegaTrigger label={t('nav.solutions', 'Solutions')}
                          active={openMenu === 'solutions'}
                          darkHero={isDarkHeroNav}
                          onEnter={() => { cancelClose(); setOpenMenu('solutions'); }}
@@ -232,10 +243,10 @@ function MarketingNav() {
                        active={location.pathname === l.to}
                        darkHero={isDarkHeroNav}
                        onMouseEnter={() => { cancelClose(); setOpenMenu(null); }}>
-                {l.label}
+                {l.labelKey ? t(l.labelKey, l.label) : l.label}
               </NavLink>
             ) : (
-              <MegaTrigger key={l.label} label={l.label}
+              <MegaTrigger key={l.label} label={l.labelKey ? t(l.labelKey, l.label) : l.label}
                            active={openMenu === l.label.toLowerCase()}
                            darkHero={isDarkHeroNav}
                            onEnter={() => { cancelClose(); setOpenMenu(l.label.toLowerCase()); }}
@@ -249,17 +260,18 @@ function MarketingNav() {
         )}
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <LanguageSelector size="sm" darkHero={isDarkHeroNav} />
           <ThemeToggle size="sm" />
           {!isMobile && (
             <>
               <Button as={Link} to="/login" variant="ghost" size="sm"
                       onMouseEnter={() => { cancelClose(); setOpenMenu(null); }}
                       style={{ color: isDarkHeroNav ? '#FFFFFF' : 'var(--text-primary)' }}>
-                Sign in
+                {t('nav.sign_in', 'Sign in')}
               </Button>
               <Button as={Link} to="/signup" size="sm" variant="primary"
                       onMouseEnter={() => { cancelClose(); setOpenMenu(null); }}>
-                Get started
+                {t('nav.get_started', 'Get started')}
               </Button>
             </>
           )}
@@ -299,13 +311,13 @@ function MarketingNav() {
         <MegaPanel onMouseEnter={cancelClose} onMouseLeave={scheduleClose}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32 }}>
             <div>
-              <MegaHeader>By role</MegaHeader>
+              <MegaHeader>{t('sections.by_role', 'By role')}</MegaHeader>
               <MegaGrid columns={1}>
                 {SOLUTIONS_BY_ROLE.map((item) => <MegaItem key={item.to} {...item} />)}
               </MegaGrid>
             </div>
             <div>
-              <MegaHeader>By industry</MegaHeader>
+              <MegaHeader>{t('sections.by_industry', 'By industry')}</MegaHeader>
               <MegaGrid columns={1}>
                 {SOLUTIONS_BY_INDUSTRY.map((item) => <MegaItem key={item.to} {...item} />)}
               </MegaGrid>
@@ -475,7 +487,10 @@ function MegaHeader({ children }) {
   );
 }
 
-function MegaItem({ to, label, desc, icon: Icon }) {
+function MegaItem({ to, label, desc, labelKey, descKey, icon: Icon }) {
+  const { t } = useTranslation('navigation');
+  const displayLabel = labelKey ? t(labelKey, label) : label;
+  const displayDesc = descKey ? t(descKey, desc) : desc;
   return (
     <Link
       to={to}
@@ -508,10 +523,10 @@ function MegaItem({ to, label, desc, icon: Icon }) {
         </span>
       )}
       <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.3 }}>{label}</div>
-        {desc && (
+        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.3 }}>{displayLabel}</div>
+        {displayDesc && (
           <div style={{ marginTop: 2, fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.4 }}>
-            {desc}
+            {displayDesc}
           </div>
         )}
       </div>
@@ -523,6 +538,7 @@ function MegaItem({ to, label, desc, icon: Icon }) {
 // Mobile drawer
 // ─────────────────────────────────────────────────────────────────────────────
 function MobileDrawer({ location, onClose }) {
+  const { t } = useTranslation('navigation');
   const [openSection, setOpenSection] = useState(null);
   const drawerRef = useRef(null);
 
@@ -547,25 +563,36 @@ function MobileDrawer({ location, onClose }) {
         animation: 'mkt-drawer-slide 220ms var(--ease-out)',
       }}
     >
-      <Accordion title="Product"
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '10px 14px 14px', borderBottom: '1px solid var(--border-subtle)',
+        marginBottom: 8,
+      }}>
+        <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>
+          {t('languages.select_language', 'Language')}
+        </span>
+        <LanguageSelector size="sm" />
+      </div>
+
+      <Accordion title={t('nav.product', 'Product')}
                  open={openSection === 'product'}
                  onToggle={() => setOpenSection((s) => s === 'product' ? null : 'product')}>
         {PRODUCT_MENU.map((item) => (
           <DrawerItem key={item.to} {...item} active={location.pathname === item.to} />
         ))}
       </Accordion>
-      <Accordion title="Solutions"
+      <Accordion title={t('nav.solutions', 'Solutions')}
                  open={openSection === 'solutions'}
                  onToggle={() => setOpenSection((s) => s === 'solutions' ? null : 'solutions')}>
         <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em',
                       textTransform: 'uppercase', color: 'var(--text-tertiary)',
-                      padding: '8px 14px 4px' }}>By role</div>
+                      padding: '8px 14px 4px' }}>{t('sections.by_role', 'By role')}</div>
         {SOLUTIONS_BY_ROLE.map((item) => (
           <DrawerItem key={item.to} {...item} active={location.pathname === item.to} />
         ))}
         <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em',
                       textTransform: 'uppercase', color: 'var(--text-tertiary)',
-                      padding: '12px 14px 4px' }}>By industry</div>
+                      padding: '12px 14px 4px' }}>{t('sections.by_industry', 'By industry')}</div>
         {SOLUTIONS_BY_INDUSTRY.map((item) => (
           <DrawerItem key={item.to} {...item} active={location.pathname === item.to} />
         ))}
@@ -583,9 +610,9 @@ function MobileDrawer({ location, onClose }) {
               borderRadius: 'var(--radius-md)',
               background: location.pathname === l.to ? 'var(--surface-hover)' : 'transparent',
             }}
-          >{l.label}</Link>
+          >{l.labelKey ? t(l.labelKey, l.label) : l.label}</Link>
         ) : (
-          <Accordion key={l.label} title={l.label}
+          <Accordion key={l.label} title={l.labelKey ? t(l.labelKey, l.label) : l.label}
                      open={openSection === l.label.toLowerCase()}
                      onToggle={() => setOpenSection((s) => s === l.label.toLowerCase() ? null : l.label.toLowerCase())}>
             {l.menu.single.map((item) => (
@@ -596,8 +623,8 @@ function MobileDrawer({ location, onClose }) {
       )}
       <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--border-subtle)',
                     display: 'grid', gap: 8 }}>
-        <Button as={Link} to="/login" variant="secondary" size="lg" fullWidth>Sign in</Button>
-        <Button as={Link} to="/signup" size="lg" fullWidth>Get started free</Button>
+        <Button as={Link} to="/login" variant="secondary" size="lg" fullWidth>{t('nav.sign_in', 'Sign in')}</Button>
+        <Button as={Link} to="/signup" size="lg" fullWidth>{t('nav.get_started_free', 'Get started free')}</Button>
       </div>
       <style>{`
         @keyframes mkt-drawer-slide {
@@ -640,7 +667,10 @@ function Accordion({ title, open, onToggle, children }) {
   );
 }
 
-function DrawerItem({ to, label, desc, icon: Icon, active }) {
+function DrawerItem({ to, label, desc, labelKey, descKey, icon: Icon, active }) {
+  const { t } = useTranslation('navigation');
+  const displayLabel = labelKey ? t(labelKey, label) : label;
+  const displayDesc = descKey ? t(descKey, desc) : desc;
   return (
     <Link
       to={to}
@@ -664,9 +694,9 @@ function DrawerItem({ to, label, desc, icon: Icon, active }) {
         </span>
       )}
       <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: 14, fontWeight: 500 }}>{label}</div>
-        {desc && (
-          <div style={{ marginTop: 1, fontSize: 12, color: 'var(--text-secondary)' }}>{desc}</div>
+        <div style={{ fontSize: 14, fontWeight: 500 }}>{displayLabel}</div>
+        {displayDesc && (
+          <div style={{ marginTop: 1, fontSize: 12, color: 'var(--text-secondary)' }}>{displayDesc}</div>
         )}
       </div>
     </Link>
@@ -677,11 +707,12 @@ function DrawerItem({ to, label, desc, icon: Icon, active }) {
 // Footer — 6-column grid
 // ─────────────────────────────────────────────────────────────────────────────
 function MarketingFooter() {
+  const { t } = useTranslation('navigation');
   const year = new Date().getFullYear();
 
   const COLUMNS = [
     {
-      title: 'Product',
+      title: t('footer.product', 'Product'),
       links: [
         { label: 'Analytics',     to: '/product/analytics' },
         { label: 'Composer',      to: '/product/composer' },
@@ -695,7 +726,7 @@ function MarketingFooter() {
       ],
     },
     {
-      title: 'Solutions',
+      title: t('footer.solutions', 'Solutions'),
       links: [
         { label: 'For Agencies',   to: '/solutions/agencies' },
         { label: 'For Businesses', to: '/solutions/businesses' },
@@ -707,7 +738,7 @@ function MarketingFooter() {
       ],
     },
     {
-      title: 'Resources',
+      title: t('footer.resources', 'Resources'),
       links: [
         { label: 'Customers',     to: '/customers' },
         { label: 'Blog',          to: '/blog' },
@@ -718,7 +749,7 @@ function MarketingFooter() {
       ],
     },
     {
-      title: 'Company',
+      title: t('footer.company', 'Company'),
       links: [
         { label: 'About',     to: '/about' },
         { label: 'Customers', to: '/customers' },
@@ -728,7 +759,7 @@ function MarketingFooter() {
       ],
     },
     {
-      title: 'Legal',
+      title: t('footer.legal', 'Legal'),
       links: [
         { label: 'Privacy',         to: '/privacy' },
         { label: 'Terms',           to: '/terms' },
@@ -823,7 +854,7 @@ function MarketingFooter() {
           gap: 16, flexWrap: 'wrap',
           fontSize: 12, color: 'var(--text-tertiary)',
         }}>
-          <span>© {year} Bop Social. All rights reserved.</span>
+          <span>© {year} Bop Social. {t('footer.all_rights_reserved', 'All rights reserved.')}</span>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
             <Link to="/status" style={{
               display: 'inline-flex', alignItems: 'center', gap: 6,

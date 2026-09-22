@@ -15,10 +15,11 @@ class UserSerializer(serializers.ModelSerializer):
     role         = serializers.CharField(source='profile.role',         read_only=True)
     client_id    = serializers.IntegerField(source='profile.client_id', read_only=True)
     account_type = serializers.CharField(source='profile.account_type', read_only=True)
+    language     = serializers.CharField(source='profile.language',     read_only=True)
 
     class Meta:
         model  = User
-        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'role', 'client_id', 'account_type']
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'role', 'client_id', 'account_type', 'language']
 
 
 class ClientSerializer(serializers.ModelSerializer):

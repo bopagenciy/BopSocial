@@ -192,6 +192,7 @@ class UserProfile(models.Model):
     terms_accepted_at = models.DateTimeField(null=True, blank=True)
     is_self_registered = models.BooleanField(default=False)
     email_verified     = models.BooleanField(default=True)   # False for email/password signups until verified
+    language           = models.CharField(max_length=10, choices=[('en', 'English'), ('es', 'Spanish')], default='en')
     agency             = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='managed_clients')
 
     # ── Marketplace account type ────────────────────────────────

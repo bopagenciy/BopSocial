@@ -1,0 +1,34 @@
+{
+  "actions": {
+    "save": "Guardar",
+    "save_changes": "Guardar cambios",
+    "saving": "Guardando...",
+    "cancel": "Cancelar",
+    "close": "Cerrar",
+    "edit": "Editar",
+    "delete": "Eliminar",
+    "upload": "Subir",
+    "upload_photo": "Subir foto",
+    "change_photo": "Cambiar foto",
+    "remove_photo": "Eliminar foto",
+    "back": "Atrás",
+    "next": "Siguiente",
+    "retry": "Reintentar",
+    "confirm": "Confirmar"
+  },
+  "status": {
+    "loading": "Cargando...",
+    "success": "Éxito",
+    "error": "Error",
+    "active": "Activo",
+    "inactive": "Inactivo",
+    "pending": "Pendiente"
+  },
+  "languages": {
+    "en": "English",
+    "es": "Español",
+    "select_language": "Seleccionar idioma",
+    "preferred_language": "Idioma preferido",
+    "language_description": "Selecciona el idioma que deseas utilizar en toda la plataforma."
+  }
+}

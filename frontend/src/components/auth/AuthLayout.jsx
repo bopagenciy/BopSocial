@@ -11,8 +11,10 @@ import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles } from 'lucide-react';
 
+import { useTranslation } from 'react-i18next';
 import Logo from '../ui/Logo';
 import ThemeToggle from '../ui/ThemeToggle';
+import LanguageSelector from '../ui/LanguageSelector';
 import SkipLink from '../ui/SkipLink';
 
 /**
@@ -57,6 +59,7 @@ export default function AuthLayout({
   stats = DEFAULT_STATS,
   footer,
 }) {
+  const { t } = useTranslation('auth');
   const [isMobile, setIsMobile] = useState(() =>
     typeof window === 'undefined' ? false : window.innerWidth < 880
   );
@@ -321,7 +324,7 @@ export default function AuthLayout({
           outline: 'none',
         }}
       >
-        {/* Mobile-only top bar with logo + theme toggle */}
+        {/* Mobile-only top bar with logo + language selector + theme toggle */}
         {isMobile && (
           <header
             style={{
@@ -336,13 +339,17 @@ export default function AuthLayout({
             <Link to="/" style={{ display: 'inline-flex' }}>
               <Logo variant="horizontal" height={28} />
             </Link>
-            <ThemeToggle size="sm" />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <LanguageSelector size="sm" />
+              <ThemeToggle size="sm" />
+            </div>
           </header>
         )}
 
-        {/* Desktop-only theme toggle pinned top-right */}
+        {/* Desktop-only controls pinned top-right */}
         {!isMobile && (
-          <div style={{ position: 'absolute', top: 24, right: 32 }}>
+          <div style={{ position: 'absolute', top: 24, right: 32, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <LanguageSelector size="sm" />
             <ThemeToggle size="sm" />
           </div>
         )}
@@ -375,9 +382,9 @@ export default function AuthLayout({
               color: 'var(--text-tertiary)',
             }}
           >
-            <Link to="/privacy" style={legalLinkStyle}>Privacy</Link>
-            <Link to="/terms"   style={legalLinkStyle}>Terms</Link>
-            <a href="mailto:support@socialstats.app" style={legalLinkStyle}>Support</a>
+            <Link to="/privacy" style={legalLinkStyle}>{t('auth_layout.privacy', 'Privacy')}</Link>
+            <Link to="/terms"   style={legalLinkStyle}>{t('auth_layout.terms', 'Terms')}</Link>
+            <a href="mailto:support@socialstats.app" style={legalLinkStyle}>{t('auth_layout.support', 'Support')}</a>
           </div>
         </div>
       </main>

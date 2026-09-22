@@ -10,7 +10,7 @@
 #
 #  Usage:
 #    1. cd frontend && npm run build
-#    2. docker build -f Dockerfile.bopsocial-local -t bopsocial-frontend-local:bs-1.1 .
+#    2. docker build -f Dockerfile.bopsocial-local -t bopsocial-frontend-local:bs-2.0 .
 # ============================================================================
 FROM nginx:1.28-alpine
 

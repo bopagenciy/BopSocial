@@ -246,6 +246,7 @@ def me(request):
         profile = user.profile
         ensure_client_profile(profile)
         data = UserSerializer(user).data
+        data['language'] = getattr(profile, 'language', 'en')
         data['permissions'] = PermissionChecker.get_user_permissions(profile)
         data['onboarding_complete'] = profile.client.onboarding_complete if profile.client else False
         # Feature flags surfaced to the client app.
