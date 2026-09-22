@@ -46,8 +46,7 @@ export default function ProductPage() {
   return (
     <MarketingLayout>
       <Meta
-        noSuffix
-        title={`${data.title} — Social Stats`}
+        title={data.title}
         description={data.description}
       />
       <JsonLd
@@ -113,9 +112,9 @@ function Hero({ data }) {
               display: 'inline-flex', alignItems: 'center', gap: 6,
               padding: '5px 12px',
               fontSize: 11, fontWeight: 700,
-              color: '#00CCF5',
-              background: 'rgba(0,204,245,0.10)',
-              border: '1px solid rgba(0,204,245,0.25)',
+              color: 'var(--brand-primary)',
+              background: 'var(--brand-primary-soft)',
+              border: '1px solid var(--brand-primary-glow)',
               borderRadius: 'var(--radius-pill)',
               letterSpacing: '0.06em', textTransform: 'uppercase',
             }}
@@ -160,10 +159,10 @@ function Hero({ data }) {
           >
             <Button as={Link} to="/signup" size="lg"
                     style={{
-                      background: 'linear-gradient(135deg, #00CCF5, #00A8D8)',
-                      color: '#0a0e14', border: 'none', fontWeight: 600,
+                      background: 'var(--brand-gradient)',
+                      color: '#1E202A', border: 'none', fontWeight: 600,
                     }}>
-              Start free <ArrowRight size={15} />
+              Get started <ArrowRight size={15} />
             </Button>
             <Button as={Link} to="/features" size="lg" variant="ghost"
                     style={{
@@ -187,7 +186,7 @@ function Hero({ data }) {
             borderRadius: 'var(--radius-xl)',
             backdropFilter: 'blur(8px)',
             WebkitBackdropFilter: 'blur(8px)',
-            boxShadow: '0 32px 80px rgba(0,204,245,0.18), 0 8px 32px rgba(0,0,0,0.35)',
+            boxShadow: '0 32px 80px rgba(245,166,35,0.18), 0 8px 32px rgba(0,0,0,0.35)',
           }}
         >
           {Demo ? <Demo /> : null}
@@ -254,7 +253,7 @@ function FeatureStripe({ data, reverse }) {
                       padding: '7px 0',
                       fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.55,
                     }}>
-                      <Check size={14} style={{ color: '#00CCF5', flexShrink: 0, marginTop: 4 }}
+                      <Check size={14} style={{ color: 'var(--brand-primary)', flexShrink: 0, marginTop: 4 }}
                              strokeWidth={2.5} />
                       <span>{b}</span>
                     </li>
@@ -395,7 +394,7 @@ function CustomerQuote({ data }) {
           }}>
             <div style={{
               width: 40, height: 40, borderRadius: '50%',
-              background: data.gradient || 'linear-gradient(135deg, #00CCF5, #8b5cf6)',
+              background: data.gradient || 'var(--brand-gradient)',
             }} />
             <div style={{ textAlign: 'left' }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>{data.author}</div>
@@ -416,11 +415,11 @@ function FinalCTA({ data }) {
   return (
     <section style={{ padding: 'clamp(56px, 9vh, 96px) 24px', background: 'var(--surface-page)' }}>
       <CTASection
-        title={data.ctaTitle || 'Try Social Stats free'}
-        subtitle={data.ctaSubtitle || 'Start in 2 minutes. No credit card. Cancel anytime.'}
-        primary={{ to: '/signup', label: 'Start free' }}
+        title={data.ctaTitle || 'Get started with Bop Social'}
+        subtitle={data.ctaSubtitle || 'Unify your social media operations with enterprise multi-tenant capabilities.'}
+        primary={{ to: '/signup', label: 'Start free trial' }}
         secondary={{ to: '/features', label: 'Explore features' }}
-        microCopy="Free & open source · Self-host · Setup in 2 minutes"
+        microCopy="Enterprise multi-tenant · Built for the Bop Universe"
         variant="cta"
       />
     </section>

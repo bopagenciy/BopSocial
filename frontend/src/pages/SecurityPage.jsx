@@ -81,7 +81,7 @@ export default function SecurityPage() {
             Security by design.
           </h1>
           <p style={{ margin: 0, fontSize: 18, lineHeight: 1.65, color: 'var(--text-secondary)' }}>
-            Social Stats is built on the same security primitives banks and hospitals rely on. We treat your data — and
+            Bop Social is built on the same security primitives banks and hospitals rely on. We treat your data — and
             your customers' data — like it's our own.
           </p>
         </div>
@@ -229,12 +229,12 @@ export default function SecurityPage() {
               Found a vulnerability?
             </h3>
             <p style={{ margin: '8px 0 16px', fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.65 }}>
-              We run a private bug bounty program with payouts up to <strong>₹1,00,000</strong> for critical issues.
-              Email <a href="mailto:security@socialstats.app" style={{ color: 'var(--text-link)' }}>security@socialstats.app</a>{' '}
+              We run a private vulnerability disclosure program with competitive rewards for verified critical issues.
+              Email <a href="mailto:security@bopsocial.com" style={{ color: 'var(--text-link)' }}>security@bopsocial.com</a>{' '}
               with reproduction steps and impact assessment. We acknowledge within 24 hours and triage within 72.
             </p>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <Button as="a" href="mailto:security@socialstats.app" size="md" iconRight={ArrowRight}>
+              <Button as="a" href="mailto:security@bopsocial.com" size="md" iconRight={ArrowRight}>
                 Report a vulnerability
               </Button>
               <Button as={Link} to="/status" variant="secondary" size="md">

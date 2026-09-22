@@ -7,9 +7,9 @@
  *  Released under the MIT License — see LICENSE. Keep this notice.
  * ========================================================================== */
 /**
- * HomePage — Social Stats marketing site front door.
+ * HomePage — Bop Social marketing site front door.
  *
- * 15-section long-scroll structure (from the marketing-website spec):
+ * 15-section long-scroll structure:
  *   1.  Hero (above fold)
  *   2.  Platform strip (channels we cover)
  *   3.  3 pillars — Analyze · Engage · Convert
@@ -564,7 +564,7 @@ function UseCaseTabs() {
     <section style={{ padding: 'clamp(64px, 10vh, 120px) 24px', background: 'var(--surface-page)' }}>
       <div style={{ maxWidth: 1080, margin: '0 auto' }}>
         <ScrollReveal>
-          <SectionHeading eyebrow="Made for every kind of marketer" title="Whoever you are, Social Stats fits" />
+          <SectionHeading eyebrow="Made for every kind of marketer" title="Whoever you are, Bop Social fits" />
         </ScrollReveal>
 
         <ScrollReveal delay={0.1}>
@@ -835,7 +835,7 @@ function MarketplaceTeaser() {
   const steps = [
     { title: 'Browse verified agencies',  body: 'Search by industry, language, budget, and platform.' },
     { title: 'Match by fit',              body: 'See pricing ranges, specialities, and example workflows up front.' },
-    { title: 'Manage from one inbox',     body: 'Approvals, scheduled posts, and reporting flow through Social Stats.' },
+    { title: 'Manage from one inbox',     body: 'Approvals, scheduled posts, and reporting flow through Bop Social.' },
   ];
   return (
     <section style={{ padding: 'clamp(64px, 10vh, 120px) 24px', background: 'var(--surface-page)' }}>

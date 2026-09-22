@@ -57,7 +57,7 @@ export default function LegalPageLayout({
     <MarketingLayout>
       <Meta
         title={title}
-        description={intro || `${title} — Social Stats legal and support documentation.`}
+        description={intro || `${title} — Bop Social legal and support documentation.`}
       />
 
       {/* Hero */}

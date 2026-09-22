@@ -96,4 +96,30 @@ describe('MarketingLayout Navigation & MegaMenu Suite', () => {
     fireEvent.click(resourcesBtn);
     expect(screen.queryByRole('menu')).not.toBeInTheDocument();
   });
+
+  test('renders active NavLink with high-contrast active background pill and font-weight', () => {
+    render(
+      <MemoryRouter initialEntries={['/customers']}>
+        <MarketingLayout><div>Content</div></MarketingLayout>
+      </MemoryRouter>
+    );
+
+    const nav = screen.getByRole('navigation');
+    const customersLink = within(nav).getByRole('link', { name: /^customers$/i });
+    expect(customersLink).toBeInTheDocument();
+    expect(customersLink).toHaveStyle({
+      background: 'var(--surface-hover)',
+      fontWeight: 600,
+    });
+  });
+
+  test('renders Built for the Bop Universe in marketing footer', () => {
+    render(
+      <MemoryRouter>
+        <MarketingLayout><div>Content</div></MarketingLayout>
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText(/Built for the Bop Universe/i)).toBeInTheDocument();
+  });
 });

@@ -190,7 +190,7 @@ export default function FeaturesPage() {
           </h1>
           <p style={{ margin: 0, fontSize: 18, lineHeight: 1.65, color: 'var(--text-secondary)' }}>
             Everything you need to run a modern agency. From the first OAuth connect to the polished
-            client report — Social Stats handles the entire growth loop.
+            client report — Bop Social handles the entire growth loop.
           </p>
         </div>
       </section>

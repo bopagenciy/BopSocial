@@ -68,7 +68,7 @@ export default function ContactPage() {
     <MarketingLayout>
       <Meta
         title="Contact"
-        description="Sales, support, partnerships, press — get in touch with the Social Stats team. We typically reply within one business day."
+        description="Sales, support, partnerships, press — get in touch with the Bop Social team. We typically reply within one business day."
       />
       {/* Hero */}
       <section style={{ padding: '128px 32px 56px', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
@@ -141,7 +141,7 @@ export default function ContactPage() {
                 </h2>
                 <p style={{ margin: '8px auto 20px', maxWidth: 380, fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
                   We usually reply within one business day. If it's urgent, email us at{' '}
-                  <a href="mailto:hello@socialstats.app" style={{ color: 'var(--text-link)', fontWeight: 500 }}>hello@socialstats.app</a>.
+                  <a href="mailto:hello@bopsocial.com" style={{ color: 'var(--text-link)', fontWeight: 500 }}>hello@bopsocial.com</a>.
                 </p>
                 <Button as={Link} to="/" variant="secondary" size="md">Back to home</Button>
               </div>
@@ -224,29 +224,29 @@ export default function ContactPage() {
             <ContactInfoCard
               icon={Mail}
               title="Email"
-              body="hello@socialstats.app"
+              body="hello@bopsocial.com"
               detail="General inquiries, partnerships, press."
-              link="mailto:hello@socialstats.app"
+              link="mailto:hello@bopsocial.com"
             />
             <ContactInfoCard
               icon={MessageSquare}
               title="Sales"
-              body="sales@socialstats.app"
+              body="sales@bopsocial.com"
               detail="Demos, pricing, and enterprise contracts."
-              link="mailto:sales@socialstats.app"
+              link="mailto:sales@bopsocial.com"
             />
             <ContactInfoCard
               icon={Phone}
               title="Phone"
               body="Email-first support"
               detail="Phone callbacks scheduled via support."
-              link="mailto:support@socialstats.app"
+              link="mailto:support@bopsocial.com"
             />
             <ContactInfoCard
               icon={MapPin}
               title="Office"
               body="Bengaluru, India"
-              detail="Postal address shared on request via support@socialstats.app."
+              detail="Postal address shared on request via support@bopsocial.com."
             />
           </div>
         </div>

@@ -57,8 +57,7 @@ export default function AgencyShowcasePage() {
   return (
     <MarketingLayout>
       <Meta
-        noSuffix
-        title={`${name} — Social Stats Partner Agency`}
+        title={`${name} — Partner Agency`}
         description={tagline}
       />
       <JsonLd
@@ -135,9 +134,9 @@ export default function AgencyShowcasePage() {
                     display: 'inline-flex', alignItems: 'center', gap: 4,
                     padding: '4px 10px',
                     fontSize: 11, fontWeight: 600,
-                    color: '#00CCF5',
-                    background: 'rgba(0,204,245,0.10)',
-                    border: '1px solid rgba(0,204,245,0.25)',
+                    color: 'var(--brand-primary)',
+                    background: 'var(--brand-primary-soft)',
+                    border: '1px solid var(--brand-primary-glow)',
                     borderRadius: 'var(--radius-pill)',
                   }}>
                     <BadgeCheck size={11} /> {b}
@@ -553,7 +552,7 @@ export default function AgencyShowcasePage() {
             color: 'rgba(255,255,255,0.75)',
             lineHeight: 1.55,
           }}>
-            All Social Stats partner agencies use the same product you would. You stay in control of your data, permissions, and access.
+            All Bop Social partner agencies use the same product you would. You stay in control of your data, permissions, and access.
           </p>
 
           <div style={{

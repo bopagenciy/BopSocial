@@ -48,13 +48,13 @@ export default function JsonLd({ id, data }) {
 
 // ── shared site identity ──────────────────────────────────────────────
 const SITE = {
-  name: 'Social Stats',
-  url: 'https://socialstats.app',
-  logo: 'https://socialstats.app/logo512.png',
+  name: 'Bop Social',
+  url: typeof window !== 'undefined' && window.location.origin ? window.location.origin : 'https://bopsocial.com',
+  logo: '/LogoBopSocial.png',
   sameAs: [
-    'https://twitter.com/socialstats',
-    'https://www.linkedin.com/company/socialstats',
-    'https://github.com/socialstats',
+    'https://twitter.com/bopsocial',
+    'https://www.linkedin.com/company/bopsocial',
+    'https://github.com/bopagenciy/BopSocial',
   ],
 };
 
@@ -73,18 +73,12 @@ export function buildOrganization() {
   return {
     '@context': 'https://schema.org',
     ...ORG_NODE,
-    foundingDate: '2024',
-    address: {
-      '@type': 'PostalAddress',
-      addressCountry: 'IN',
-      addressLocality: 'Bengaluru',
-      addressRegion: 'Karnataka',
-    },
+    foundingDate: '2026',
     contactPoint: {
       '@type': 'ContactPoint',
       contactType: 'customer support',
-      email: 'support@socialstats.app',
-      availableLanguage: ['en', 'hi'],
+      email: 'support@bopsocial.com',
+      availableLanguage: ['en', 'es'],
     },
   };
 }
@@ -140,16 +134,10 @@ export function buildSoftwareApplication({ name, description, image, ratingValue
   return {
     '@context': 'https://schema.org',
     '@type': 'SoftwareApplication',
-    name: name ? `Social Stats — ${name}` : 'Social Stats',
+    name: name ? `Bop Social — ${name}` : 'Bop Social',
     description,
     applicationCategory: 'BusinessApplication',
     operatingSystem: 'Web, iOS, Android',
-    offers: {
-      '@type': 'Offer',
-      price: '0',
-      priceCurrency: 'INR',
-      url: SITE.url,
-    },
     image: image || SITE.logo,
     publisher: ORG_NODE,
     ...(ratingValue && {

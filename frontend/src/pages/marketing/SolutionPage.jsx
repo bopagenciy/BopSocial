@@ -43,8 +43,7 @@ export default function SolutionPage() {
   return (
     <MarketingLayout>
       <Meta
-        noSuffix
-        title={`${data.title} — Social Stats`}
+        title={data.title}
         description={data.description}
       />
       <Hero data={data} />
@@ -90,8 +89,8 @@ function Hero({ data }) {
               display: 'inline-flex', alignItems: 'center', gap: 6,
               padding: '5px 12px',
               fontSize: 11, fontWeight: 700,
-              color: '#00CCF5', background: 'rgba(0,204,245,0.10)',
-              border: '1px solid rgba(0,204,245,0.25)',
+              color: 'var(--brand-primary)', background: 'var(--brand-primary-soft)',
+              border: '1px solid var(--brand-primary-glow)',
               borderRadius: 'var(--radius-pill)',
               letterSpacing: '0.06em', textTransform: 'uppercase',
             }}
@@ -147,10 +146,10 @@ function Hero({ data }) {
           >
             <Button as={Link} to="/signup" size="lg"
                     style={{
-                      background: 'linear-gradient(135deg, #00CCF5, #00A8D8)',
-                      color: '#0a0e14', border: 'none', fontWeight: 600,
+                      background: 'var(--brand-gradient)',
+                      color: '#1B1D28', border: 'none', fontWeight: 600,
                     }}>
-              {data.ctaPrimary || 'Try free'} <ArrowRight size={15} />
+              {data.ctaPrimary || 'Get started'} <ArrowRight size={15} />
             </Button>
             <Button as={Link} to="/features" size="lg" variant="ghost"
                     style={{
@@ -319,7 +318,7 @@ function FeatureStripe({ data, reverse }) {
                       padding: '7px 0',
                       fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.55,
                     }}>
-                      <Check size={14} style={{ color: '#00CCF5', flexShrink: 0, marginTop: 4 }}
+                      <Check size={14} style={{ color: 'var(--brand-primary)', flexShrink: 0, marginTop: 4 }}
                              strokeWidth={2.5} />
                       <span>{b}</span>
                     </li>
@@ -466,7 +465,7 @@ function CustomerQuote({ data }) {
           }}>
             <div style={{
               width: 40, height: 40, borderRadius: '50%',
-              background: data.gradient || 'linear-gradient(135deg, #00CCF5, #8b5cf6)',
+              background: data.gradient || 'var(--brand-gradient)',
             }} />
             <div style={{ textAlign: 'left' }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>{data.author}</div>
@@ -487,11 +486,11 @@ function FinalCTA({ data }) {
   return (
     <section style={{ padding: 'clamp(56px, 9vh, 96px) 24px', background: 'var(--surface-page)' }}>
       <CTASection
-        title={data.ctaTitle || 'Try Social Stats free'}
-        subtitle={data.ctaSubtitle || 'Start in 2 minutes. No credit card. Cancel anytime.'}
-        primary={{ to: '/signup', label: data.ctaPrimary || 'Start free' }}
+        title={data.ctaTitle || 'Ready to elevate your marketing operations?'}
+        subtitle={data.ctaSubtitle || 'Unified social management, real-time analytics, and native AI workflows.'}
+        primary={{ to: '/signup', label: data.ctaPrimary || 'Get started' }}
         secondary={{ to: '/features', label: 'Explore features' }}
-        microCopy="Free & open source · Self-host · Setup in 2 minutes"
+        microCopy="Enterprise ready · Multi-tenant architecture · Built for the Bop Universe"
         variant="cta"
       />
     </section>

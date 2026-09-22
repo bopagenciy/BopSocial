@@ -13,7 +13,6 @@
  *
  * Schema:
  *   eyebrow, heroTitle, heroSubtitle, heroDemo
- *   heroPriceLine     small line under hero subtitle (e.g. "Starts at ₹999/mo")
  *   ctaPrimary        button label override
  *   painPoints        { title, subtitle, items: [{title, description}] }
  *   stripes[]         { eyebrow, title, description, bullets, demo }
@@ -90,7 +89,7 @@ export const solutionPages = {
     quote: {
       quote: 'We onboarded 23 new clients in 3 months without hiring. Most came via the marketplace.',
       author: 'Rohit Mehta', role: 'CEO, BlueWave Agency',
-      gradient: 'linear-gradient(135deg, #00CCF5, #34d399)',
+      gradient: 'linear-gradient(135deg, #F5A623, #34d399)',
     },
     ctaTitle: 'Triple your client roster.',
     ctaSubtitle: 'Without tripling your headcount.',
@@ -100,26 +99,25 @@ export const solutionPages = {
   // ── 2. BUSINESSES ────────────────────────────────────────────────────────
   'businesses': {
     title: 'For businesses',
-    description: 'Take control of your social media. Free forever for end users — invite an agency to help anytime.',
+    description: 'Take control of your social media. Unified workspace for businesses — collaborate with your team or invite an agency partner anytime.',
     eyebrow: 'For businesses',
     heroTitle: 'Take control of your social media',
     heroSubtitle: 'You don\'t need a 10-person agency to run great social. You need ONE tool that does the work — and an agency option for when you want help.',
     heroDemo: ComposerPreview,
-    ctaPrimary: 'Sign up free',
-    heroPriceLine: 'Free forever — no credit card required.',
+    ctaPrimary: 'Get started',
     painPoints: {
       title: 'You\'re tired of …',
       items: [
-        { title: 'Five different SaaS subscriptions',  description: 'Each ₹2K/mo. None of them talk to each other.' },
+        { title: 'Five different SaaS subscriptions',  description: 'Multiple subscriptions that add up and don\'t communicate.' },
         { title: 'No time to post consistently',         description: 'You meant to post Monday. It\'s Friday.' },
         { title: 'Can\'t prove ROI',                    description: 'Your gut says it\'s working. The numbers stay in 5 different tools.' },
-        { title: 'Agency quotes that scare you',        description: '₹40K/mo for "social media management" without specifics.' },
+        { title: 'Agency quotes that scare you',        description: 'Expensive retainers for "social media management" without specific deliverables.' },
       ],
     },
     stripes: [
-      { eyebrow: 'Free forever',
+      { eyebrow: 'Unified platform',
         title: 'Everything you need on day one',
-        description: 'One workspace, three platforms, 30 posts a month, basic AI. Free. Not a 14-day trial — actually free forever.',
+        description: 'One workspace, multi-platform publishing, AI assistance, and unified analytics from day one.',
         bullets: [
           '1 connected workspace',
           'Up to 3 platforms (FB / IG / GMB)',
@@ -149,12 +147,12 @@ export const solutionPages = {
         demo: AIInsightPreview },
     ],
     quote: {
-      quote: 'I run my whole café\'s social in 30 minutes a week. Best ₹0 I\'ve ever spent.',
+      quote: 'I run my whole café\'s social in 30 minutes a week. The best decision we made for our marketing workflow.',
       author: 'Priya Menon', role: 'Owner, The Garden Café',
-      gradient: 'linear-gradient(135deg, #00CCF5, #f472b6)',
+      gradient: 'var(--brand-gradient)',
     },
     ctaTitle: 'Own your social.',
-    ctaSubtitle: 'Free forever for one workspace. Add an agency only when you want one.',
+    ctaSubtitle: 'Complete social operations for your business. Add agency partners seamlessly whenever you need them.',
   },
 
 
@@ -166,7 +164,6 @@ export const solutionPages = {
     heroTitle: 'Sell more properties on social media',
     heroSubtitle: 'Built for the way Indian real estate actually moves — Click-to-WhatsApp ads → instant lead capture → site-visit reminders → closed deals.',
     heroDemo: BotBuilderPreview,
-    heroPriceLine: 'Starts at ₹999/mo. Industry templates included.',
     painPoints: {
       title: 'You\'re tired of …',
       items: [
@@ -178,7 +175,7 @@ export const solutionPages = {
     stripes: [
       { eyebrow: 'CTWA → CRM',
         title: 'Capture every lead, automatically',
-        description: 'CTWA ad clicks land in a Social Stats bot flow. The bot qualifies (budget, area, when), captures contact, pushes to your CRM with full attribution.',
+        description: 'CTWA ad clicks land in a Bop Social bot flow. The bot qualifies (budget, area, when), captures contact, pushes to your CRM with full attribution.',
         bullets: [
           'Pre-built lead-capture flow (clone in 2 clicks)',
           'AI takeover for off-script questions',
@@ -198,7 +195,7 @@ export const solutionPages = {
         demo: AutomationsPreview },
       { eyebrow: 'Listing posts',
         title: 'AI-written property descriptions',
-        description: 'Paste the listing. Social Stats writes the post in your brand voice — for IG carousel, FB, LinkedIn — auto-formatted per platform.',
+        description: 'Paste the listing. Bop Social writes the post in your brand voice — for IG carousel, FB, LinkedIn — auto-formatted per platform.',
         bullets: [
           'Property listing carousels (10 slides ready)',
           'AI property descriptions (highlights + amenities)',
@@ -211,9 +208,9 @@ export const solutionPages = {
       title: 'Real-estate templates ready to clone',
       items: [
         { title: 'Lead capture (rent)',   description: 'Budget + area + move-in date qualifier.', icon: Building2,
-          gradient: 'linear-gradient(135deg, #00CCF5, #8b5cf6)' },
+          gradient: 'var(--brand-gradient)' },
         { title: 'Lead capture (buy)',    description: '3BHK / 4BHK + budget tier + financing.',   icon: Building2,
-          gradient: 'linear-gradient(135deg, #34d399, #00CCF5)' },
+          gradient: 'linear-gradient(135deg, #F5A623, #34d399)' },
         { title: 'Site-visit confirm',    description: 'Date + time + Google Maps + reminder set.', icon: Calendar,
           gradient: 'linear-gradient(135deg, #f472b6, #a78bfa)' },
       ],
@@ -221,7 +218,7 @@ export const solutionPages = {
     quote: {
       quote: 'Built our first lead-capture flow in 12 minutes. Captured 47 qualified leads the same week.',
       author: 'Priya Sharma', role: 'Marketing Director, Acme Realty',
-      gradient: 'linear-gradient(135deg, #f472b6, #a78bfa)',
+      gradient: 'var(--brand-gradient)',
     },
     ctaTitle: 'Stop losing leads to slow replies.',
   },
@@ -235,7 +232,6 @@ export const solutionPages = {
     heroTitle: 'Engage patients across every platform',
     heroSubtitle: 'Run patient communication, content, and reviews from one place. Privacy-respectful. WhatsApp Business for the clinical-grade reminder flows.',
     heroDemo: InboxPreview,
-    heroPriceLine: 'Starts at ₹2,499/mo. Healthcare DPA available.',
     painPoints: {
       title: 'You\'re tired of …',
       items: [
@@ -281,9 +277,9 @@ export const solutionPages = {
       title: 'Healthcare templates ready to clone',
       items: [
         { title: 'Appointment reminder', description: 'Confirm 24h before + 1h before with map link.', icon: Calendar,
-          gradient: 'linear-gradient(135deg, #34d399, #00CCF5)' },
+          gradient: 'linear-gradient(135deg, #34d399, #F5A623)' },
         { title: 'Lab report ready',     description: 'Notify with secure download link + read-receipt.', icon: ClipboardList,
-          gradient: 'linear-gradient(135deg, #00CCF5, #8b5cf6)' },
+          gradient: 'linear-gradient(135deg, #F5A623, #8b5cf6)' },
         { title: 'Health awareness',     description: '12-month calendar by specialty.', icon: Heart,
           gradient: 'linear-gradient(135deg, #f472b6, #a78bfa)' },
       ],
@@ -291,7 +287,7 @@ export const solutionPages = {
     quote: {
       quote: 'Patient response time dropped from 4 hours to 4 minutes. Game changer.',
       author: 'Dr. Anjali Verma', role: 'Founder, Sunrise Clinics',
-      gradient: 'linear-gradient(135deg, #34d399, #00CCF5)',
+      gradient: 'linear-gradient(135deg, #34d399, #F5A623)',
     },
     ctaTitle: 'Patient experience starts before they walk in.',
   },
@@ -300,18 +296,17 @@ export const solutionPages = {
   // ── 5. RESTAURANTS ───────────────────────────────────────────────────────
   'restaurants': {
     title: 'For restaurants',
-    description: 'Fill more tables. Reservation bots, daily specials posts, review management for Zomato + Google, festival campaigns.',
+    description: 'Fill more tables. Reservation bots, daily specials posts, review management, and seasonal promotional campaigns.',
     eyebrow: 'F&B',
     heroTitle: 'Fill more tables with social',
-    heroSubtitle: 'Reservations via WhatsApp. Daily specials posted automatically. Reviews answered instantly. Festival campaigns ready for Diwali, Eid, Christmas.',
+    heroSubtitle: 'Reservations via WhatsApp. Daily specials posted automatically. Reviews answered instantly. Seasonal campaigns ready for holiday surges.',
     heroDemo: BotBuilderPreview,
-    heroPriceLine: 'Starts at ₹1,499/mo. Festival packs included.',
     painPoints: {
       title: 'You\'re tired of …',
       items: [
         { title: 'Phone-only reservations',  description: 'Patrons WhatsApp; phone goes to voicemail.' },
         { title: 'Inconsistent posting',     description: 'Manager forgets to post the day\'s special.' },
-        { title: 'One-star Zomato reviews',  description: 'Saw it Tuesday. Ate the loss Wednesday.' },
+        { title: 'One-star reviews',         description: 'Saw it Tuesday. Ate the loss Wednesday.' },
       ],
     },
     stripes: [
@@ -330,18 +325,18 @@ export const solutionPages = {
         description: 'Photo of today\'s dish + 1-line description. AI writes IG + FB captions. Posts at lunch + dinner-window time.',
         bullets: [
           'Daily-specials template (snap + 1 line + post)',
-          'Festival campaigns (Diwali, Eid, Christmas, regional)',
+          'Seasonal campaigns (holidays, celebrations, regional)',
           'Influencer outreach + tracking',
           'Auto-tag the dish photographer + chef',
         ],
         demo: ComposerPreview },
       { eyebrow: 'Reviews',
-        title: 'Zomato + Google + Justdial in one place',
+        title: 'Multi-platform reviews in one place',
         description: 'Every review in one feed. AI replies tuned to F&B tone. Negative reviews auto-escalated to the manager.',
         bullets: [
-          'Unified review inbox (GMB + Zomato + Justdial + Swiggy)',
+          'Unified review inbox across customer review channels',
           'AI-suggested replies (F&B tone — warm, accountable)',
-          'Negative-review escalation Slack',
+          'Negative-review escalation alerts',
           'Per-outlet review aggregator (multi-location chains)',
         ],
         demo: AIInsightPreview },
@@ -353,12 +348,12 @@ export const solutionPages = {
           gradient: 'linear-gradient(135deg, #fbbf24, #f472b6)' },
         { title: 'Daily specials post', description: 'Snap + 1-line + auto IG + FB captions.', icon: Megaphone,
           gradient: 'linear-gradient(135deg, #34d399, #fbbf24)' },
-        { title: 'Festival campaigns', description: 'Diwali, Eid, Christmas, regional ready packs.', icon: Star,
-          gradient: 'linear-gradient(135deg, #f472b6, #00CCF5)' },
+        { title: 'Seasonal campaigns', description: 'Holiday and seasonal ready promotional packs.', icon: Star,
+          gradient: 'linear-gradient(135deg, #F5A623, #f472b6)' },
       ],
     },
     quote: {
-      quote: 'Reservations from WhatsApp are 35% of our weekly cover. Social Stats runs the bot end-to-end.',
+      quote: 'Reservations from WhatsApp are 35% of our weekly cover. Bop Social runs the bot end-to-end.',
       author: 'Aisha Khan', role: 'Marketing Manager, Lumen',
       gradient: 'linear-gradient(135deg, #fbbf24, #f472b6)',
     },
@@ -395,7 +390,7 @@ export const solutionPages = {
         demo: AnalyticsPreview },
       { eyebrow: 'Brand deals',
         title: 'Brand-deal tracking + invoicing',
-        description: 'Log every deal (brand, deliverables, payment). Social Stats tracks payment status, generates GST-compliant invoices, nudges late payers.',
+        description: 'Log every deal (brand, deliverables, payment). Bop Social tracks payment status, generates GST-compliant invoices, nudges late payers.',
         bullets: [
           'Brand-deal CRM (status, payment, deliverables)',
           'GST-compliant invoice generation',
@@ -415,7 +410,7 @@ export const solutionPages = {
         demo: ComposerPreview },
     ],
     quote: {
-      quote: 'I post the same thing 3x and Social Stats formats it perfectly for each platform. Saves me 5 hours a week.',
+      quote: 'I post the same thing 3x and Bop Social formats it perfectly for each platform. Saves me 5 hours a week.',
       author: 'Vikram Joshi', role: 'Creator (385K subs)',
       gradient: 'linear-gradient(135deg, #f472b6, #fbbf24)',
     },
@@ -431,20 +426,19 @@ export const solutionPages = {
     heroTitle: 'Drive sales from social',
     heroSubtitle: 'Product catalogs that sync. Shop-tab insights. WhatsApp commerce flows. Cart-abandonment campaigns. Customer support automation.',
     heroDemo: BotBuilderPreview,
-    heroPriceLine: 'Shopify + WooCommerce integrations included.',
     painPoints: {
       title: 'You\'re tired of …',
       items: [
         { title: 'Catalog updates everywhere',     description: 'New SKU. Update Shopify. Update IG Shop. Update FB Catalog. Update WhatsApp catalog.' },
         { title: 'Cart abandonment leaks',          description: '60% of carts abandoned. No follow-up.' },
         { title: 'CS questions in 5 places',        description: '"What size is this?" via DM, comment, WhatsApp, email.' },
-        { title: 'Festival campaigns scrambled',    description: 'Diwali sale planning starts October 5. Goes live October 10. Half the channels miss.' },
+        { title: 'Seasonal campaigns scrambled',    description: 'Campaign planning starts late. Goes live late. Half the channels miss.' },
       ],
     },
     stripes: [
       { eyebrow: 'Catalog sync',
         title: 'Product catalog, sync once',
-        description: 'Connect Shopify or WooCommerce. Social Stats syncs to IG Shop + FB Catalog + WhatsApp catalog automatically.',
+        description: 'Connect Shopify or WooCommerce. Bop Social syncs to IG Shop + FB Catalog + WhatsApp catalog automatically.',
         bullets: [
           'Shopify + WooCommerce integration',
           'Auto-sync to IG Shop + FB Catalog + WA catalog',
@@ -469,7 +463,7 @@ export const solutionPages = {
           'Cart-abandonment WhatsApp campaign',
           'AI customer support (FAQ + catalog-aware)',
           'Order-status proactive updates',
-          'Festival-campaign packs (Diwali, Republic Day)',
+          'Seasonal holiday campaign packs',
         ],
         demo: AutomationsPreview },
     ],
@@ -479,15 +473,15 @@ export const solutionPages = {
         { title: 'Cart abandonment',     description: '30-min + 24h + 72h escalating reminders.', icon: ShoppingCart,
           gradient: 'linear-gradient(135deg, #f472b6, #fbbf24)' },
         { title: 'Order status',          description: 'Confirmed → packed → shipped → delivered.', icon: Package,
-          gradient: 'linear-gradient(135deg, #00CCF5, #34d399)' },
+          gradient: 'linear-gradient(135deg, #F5A623, #34d399)' },
         { title: 'Product inquiry bot',   description: 'Catalog-aware Q&A with handoff to human.', icon: Bot,
           gradient: 'linear-gradient(135deg, #8b5cf6, #f472b6)' },
       ],
     },
     quote: {
-      quote: 'Cart-abandonment recovery via WhatsApp made up 18% of our Diwali revenue last year.',
+      quote: 'Cart-abandonment recovery via WhatsApp made up 18% of our peak seasonal revenue last year.',
       author: 'Karan Bhatia', role: 'COO, BlueWave',
-      gradient: 'linear-gradient(135deg, #f472b6, #00CCF5)',
+      gradient: 'linear-gradient(135deg, #f472b6, #F5A623)',
     },
     ctaTitle: 'Stop letting carts go cold.',
   },

@@ -328,10 +328,10 @@ export default function BlogPostPage() {
             Build your unified marketing OS today.
           </h3>
           <p style={{ margin: '8px auto 18px', maxWidth: 480, fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-            Free plan, no card. Most teams connect 4–6 platforms before they finish their morning coffee.
+            Experience the unified marketing platform built for modern teams.
           </p>
           <div style={{ display: 'flex', justifyContent: 'center', gap: 10, flexWrap: 'wrap' }}>
-            <Button as={Link} to="/signup" size="md" iconRight={ArrowRight}>Try Social Stats free</Button>
+            <Button as={Link} to="/signup" size="md" iconRight={ArrowRight}>Get started with Bop Social</Button>
             <Button as={Link} to="/blog" variant="ghost" size="md" icon={ArrowLeft}>All posts</Button>
           </div>
         </div>

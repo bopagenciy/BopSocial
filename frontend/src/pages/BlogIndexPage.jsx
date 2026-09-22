@@ -55,7 +55,7 @@ export default function BlogIndexPage() {
     <MarketingLayout>
       <Meta
         title="Blog"
-        description="Product updates, agency playbooks, AI experiments, and design decisions from the team building Social Stats."
+        description="Product updates, agency playbooks, AI experiments, and design decisions from the team building Bop Social."
       />
 
       {/* ╭──────────────╮
@@ -80,10 +80,10 @@ export default function BlogIndexPage() {
             fontWeight: 600,
             color: 'var(--text-primary)',
           }}>
-            The Social Stats journal.
+            The Bop Social journal.
           </h1>
           <p style={{ margin: 0, fontSize: 16, lineHeight: 1.6, color: 'var(--text-secondary)' }}>
-            Product updates, agency playbooks, AI experiments, design decisions — written by the team building Social Stats.
+            Product updates, agency playbooks, AI experiments, design decisions — written by the team building Bop Social.
           </p>
 
           {/* Search */}

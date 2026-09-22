@@ -30,8 +30,8 @@ export default function ForBusinessesPage() {
   return (
     <MarketingLayout>
       <Meta
-        title="Social Stats for businesses — take control of your social media"
-        description="Free forever for individuals and small businesses. Connect Instagram, Facebook, YouTube, LinkedIn and Google My Business in 5 minutes. Bring an agency on-board (or don't) — you stay in control."
+        title="For Businesses"
+        description="Built for businesses and brands. Connect Instagram, Facebook, YouTube, LinkedIn and Google My Business in 5 minutes. Bring an agency on-board (or don't) — you stay in control."
       />
       <Hero />
       <ValueProps />
@@ -53,7 +53,7 @@ function Hero() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <Badge variant="brand" icon={Sparkles} size="md">For business owners · free forever</Badge>
+          <Badge variant="brand" icon={Sparkles} size="md">For businesses · unified marketing</Badge>
         </motion.div>
         <motion.h1
           initial={{ opacity: 0, y: 12 }}
@@ -78,7 +78,7 @@ function Hero() {
           style={{ margin: '0 auto', maxWidth: 640, fontSize: 18, lineHeight: 1.6, color: 'var(--text-secondary)' }}
         >
           Real-estate agents, clinics, restaurants, creators — connect your accounts in 5 minutes
-          and start posting, replying, and tracking what's working. Free forever for individuals.
+          and start posting, replying, and tracking what's working with unified clarity.
         </motion.p>
         <motion.div
           initial={{ opacity: 0, y: 12 }}
@@ -87,14 +87,14 @@ function Hero() {
           style={{ marginTop: 28, display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}
         >
           <Button as={Link} to="/auth/end-user/signup" size="xl" iconRight={ArrowRight}>
-            Get started — it's free
+            Get started
           </Button>
           <Button as={Link} to="/agencies" size="xl" variant="secondary" icon={Search}>
             Browse agencies
           </Button>
         </motion.div>
         <p style={{ marginTop: 14, fontSize: 13, color: 'var(--text-tertiary)' }}>
-          No credit card · 5 platforms · ✨ AI-assisted from day one
+          Unified dashboard · 5 platforms · ✨ AI-assisted from day one
         </p>
       </div>
     </section>
@@ -142,10 +142,10 @@ function AgencyOptional() {
         <div>
           <Badge variant="brand" icon={Users2} size="md">Agency-friendly</Badge>
           <h2 style={{ margin: '14px 0 10px', fontSize: 28, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
-            Already work with an agency? They can join you for free.
+            Already work with an agency? Seamless collaboration.
           </h2>
           <p style={{ margin: '0 0 20px', fontSize: 15, color: 'var(--text-secondary)', lineHeight: 1.65 }}>
-            Invite them by email — they get an account on Social Stats at no cost. You set the permissions, mark sensitive actions
+            Invite them by email — they get access to Bop Social with role-based permissions. You set the permissions, mark sensitive actions
             "ask me first", and revoke access in a single click. No more shared logins.
           </p>
           <Button as={Link} to="/agencies" variant="secondary" size="md" icon={Search}>
@@ -205,7 +205,7 @@ function FinalCTA() {
           Ready in 5 minutes.
         </h2>
         <p style={{ margin: '8px 0 22px', fontSize: 15, color: 'var(--text-secondary)' }}>
-          No credit card. No agency required. Bring one when you want.
+          Unified marketing for your growing brand. No agency required — bring one when you want.
         </p>
         <Button as={Link} to="/auth/end-user/signup" size="xl" iconRight={ArrowRight}>
           Create my account

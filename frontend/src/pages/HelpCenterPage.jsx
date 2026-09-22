@@ -18,7 +18,7 @@ import Input from '../components/ui/Input';
 import Meta from '../components/Meta';
 
 const CATEGORIES = [
-  { id: 'getting-started', icon: Rocket,    color: '#00CCF5', title: 'Getting started',     count: 12, body: 'Sign-up, workspace setup, inviting your team.' },
+  { id: 'getting-started', icon: Rocket,    color: '#F5A623', title: 'Getting started',     count: 12, body: 'Sign-up, workspace setup, inviting your team.' },
   { id: 'connections',     icon: Plug,      color: '#10b981', title: 'Connections',         count: 18, body: 'OAuth, manual tokens, troubleshooting reconnects.' },
   { id: 'composer',        icon: PenSquare, color: '#8b5cf6', title: 'Composer',            count: 14, body: 'Composing, scheduling, approvals, media library.' },
   { id: 'inbox',           icon: Inbox,     color: '#f59e0b', title: 'Inbox',               count: 9,  body: 'Unified inbox, AI replies, automation rules.' },
@@ -53,7 +53,7 @@ export default function HelpCenterPage() {
     <MarketingLayout>
       <Meta
         title="Help Center"
-        description="Setup guides, troubleshooting steps, FAQs, and answers to common questions about using Social Stats."
+        description="Setup guides, troubleshooting steps, FAQs, and answers to common questions about using Bop Social."
       />
       {/* Hero with search */}
       <section style={{ padding: '128px 32px 56px', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
@@ -230,7 +230,7 @@ export default function HelpCenterPage() {
               Still need help?
             </div>
             <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.55 }}>
-              Our support team replies within one business day. Faster on Growth + Enterprise plans.
+              Our support team typically replies within one business day.
             </div>
           </div>
           <Button as={Link} to="/contact" size="md" iconRight={ArrowRight}>

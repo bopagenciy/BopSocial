@@ -30,14 +30,14 @@ export default function GDPRPage() {
       title="GDPR Compliance"
       effectiveDate="2026-01-01"
       lastUpdated="2026-04-15"
-      intro="If you're an EU/EEA resident or a customer with EU/EEA users, this page explains how Social Stats honours the General Data Protection Regulation (GDPR)."
+      intro="If you're an EU/EEA resident or a customer with EU/EEA users, this page explains how Bop Social honours the General Data Protection Regulation (GDPR)."
       sections={[
         {
           id: 'role',
           title: '1. Our role',
           body: (
             <>
-              <p>Under GDPR, Social Stats acts as:</p>
+              <p>Under GDPR, Bop Social acts as:</p>
               <ul>
                 <li><strong>Data controller</strong> for your account data (your email, billing info, settings).</li>
                 <li><strong>Data processor</strong> for content you upload or sync (e.g., social-media posts and metrics).</li>
@@ -71,8 +71,8 @@ export default function GDPRPage() {
           title: '3. Data Processing Agreement (DPA)',
           body: (
             <p>
-              Customers who process EU personal data via SocialStats can sign our standard{' '}
-              <a href="mailto:legal@socialstats.app">DPA</a> at no cost. Our DPA includes EU Standard Contractual Clauses
+              Customers who process EU personal data via Bop Social can sign our standard{' '}
+              <a href="mailto:legal@bopsocial.com">DPA</a> at no cost. Our DPA includes EU Standard Contractual Clauses
               (SCCs) for cross-border transfers and is updated annually.
             </p>
           ),
@@ -82,7 +82,7 @@ export default function GDPRPage() {
           title: '4. Sub-processors',
           body: (
             <>
-              <p>We use the following sub-processors to provide Social Stats:</p>
+              <p>We use the following sub-processors to provide Bop Social:</p>
               <ul>
                 <li><strong>AWS (Frankfurt)</strong> — primary infrastructure, EU-region storage.</li>
                 <li><strong>Anthropic</strong> — AI features (zero data retention contractually).</li>
@@ -91,7 +91,7 @@ export default function GDPRPage() {
               </ul>
               <p>
                 We notify customers 30 days before adding new sub-processors. The current list is always available at{' '}
-                <a href="mailto:privacy@socialstats.app">privacy@socialstats.app</a>.
+                <a href="mailto:privacy@bopsocial.com">privacy@bopsocial.com</a>.
               </p>
             </>
           ),
@@ -125,7 +125,7 @@ export default function GDPRPage() {
           title: '7. Contact our DPO',
           body: (
             <p>
-              Our Data Protection Officer can be reached at <a href="mailto:dpo@socialstats.app">dpo@socialstats.app</a>. EU
+              Our Data Protection Officer can be reached at <a href="mailto:dpo@bopsocial.com">dpo@bopsocial.com</a>. EU
               residents may also lodge a complaint with their local supervisory authority.
             </p>
           ),

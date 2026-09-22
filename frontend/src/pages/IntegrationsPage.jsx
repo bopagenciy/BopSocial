@@ -125,9 +125,8 @@ export default function IntegrationsPage() {
   return (
     <MarketingLayout>
       <Meta
-        noSuffix
-        title="Integrations — Social Stats"
-        description="40+ native integrations across social, messaging, analytics, CRM, commerce, AI and more. Plug Social Stats into your existing stack in minutes."
+        title="Integrations"
+        description="40+ native integrations across social, messaging, analytics, CRM, commerce, AI and more. Plug Bop Social into your existing stack in minutes."
       />
 
       {/* ╭──────────────╮
@@ -146,9 +145,9 @@ export default function IntegrationsPage() {
             display: 'inline-flex', alignItems: 'center', gap: 6,
             padding: '6px 14px', marginBottom: 20,
             fontSize: 12, fontWeight: 600,
-            color: '#00CCF5',
-            background: 'rgba(0,204,245,0.10)',
-            border: '1px solid rgba(0,204,245,0.25)',
+            color: 'var(--brand-primary)',
+            background: 'var(--brand-primary-soft)',
+            border: '1px solid rgba(245,166,35,0.25)',
             borderRadius: 'var(--radius-pill)',
           }}>
             <Sparkles size={12} /> Integrations
@@ -162,8 +161,8 @@ export default function IntegrationsPage() {
             color: '#fff',
             lineHeight: 1.05,
           }}>
-            Plug Social Stats into the<br />
-            <span style={{ background: 'linear-gradient(135deg, #00CCF5, #8b5cf6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+            Plug Bop Social into the<br />
+            <span style={{ background: 'var(--brand-gradient)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
               tools you already use
             </span>
           </h1>
@@ -278,8 +277,8 @@ export default function IntegrationsPage() {
                     padding: '8px 14px',
                     fontSize: 13,
                     fontWeight: 600,
-                    color: active ? '#0a0e14' : '#fff',
-                    background: active ? 'linear-gradient(135deg, #00CCF5, #00A8D8)' : 'rgba(255,255,255,0.06)',
+                    color: active ? '#1E202A' : '#fff',
+                    background: active ? 'var(--brand-gradient)' : 'rgba(255,255,255,0.06)',
                     border: active ? '1px solid transparent' : '1px solid rgba(255,255,255,0.12)',
                     borderRadius: 'var(--radius-pill)',
                     cursor: 'pointer',
@@ -384,7 +383,7 @@ export default function IntegrationsPage() {
             lineHeight: 1.1,
           }}>
             Connect your stack<br />
-            <span style={{ background: 'linear-gradient(135deg, #00CCF5, #8b5cf6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+            <span style={{ background: 'var(--brand-gradient)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
               in under 10 minutes
             </span>
           </h2>
@@ -396,7 +395,7 @@ export default function IntegrationsPage() {
             color: 'rgba(255,255,255,0.75)',
             lineHeight: 1.55,
           }}>
-            Most customers connect 4-6 platforms before they finish their morning coffee. Free plan, no card.
+            Most teams connect 4–6 platforms in minutes. Unified management from day one.
           </p>
 
           <div style={{
@@ -406,10 +405,10 @@ export default function IntegrationsPage() {
             <Button as={Link} to="/signup" size="lg"
               onClick={() => track('signup_click', { source: 'integrations_cta' })}
               style={{
-                background: 'linear-gradient(135deg, #00CCF5, #00A8D8)',
-                color: '#0a0e14', border: 'none',
+                background: 'var(--brand-gradient)',
+                color: '#1E202A', fontWeight: 600, border: 'none',
               }}>
-              Start free <ArrowRight size={15} />
+              Get started <ArrowRight size={15} />
             </Button>
             <Button as={Link} to="/contact" size="lg" variant="ghost"
               style={{
@@ -470,7 +469,7 @@ function FeaturedCard({ i }) {
         borderTop: '1px solid rgba(255,255,255,0.08)',
         display: 'flex', alignItems: 'center', gap: 4,
         fontSize: 12, fontWeight: 600,
-        color: '#00CCF5',
+        color: 'var(--brand-primary)',
       }}>
         <CheckCircle2 size={13} /> Live now
       </div>
@@ -581,8 +580,8 @@ function Tile({ icon: Icon, title, body, cta }) {
           width: 40, height: 40,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           borderRadius: 10,
-          background: 'rgba(0,204,245,0.12)',
-          color: '#00CCF5',
+          background: 'var(--brand-primary-soft)',
+          color: 'var(--brand-primary)',
           marginBottom: 14,
         }}>
           <Icon size={20} strokeWidth={1.6} />
@@ -601,7 +600,7 @@ function Tile({ icon: Icon, title, body, cta }) {
         <Link to={cta.to} style={{
           display: 'inline-flex', alignItems: 'center', gap: 4,
           fontSize: 13, fontWeight: 600,
-          color: '#00CCF5',
+          color: 'var(--brand-primary)',
           textDecoration: 'none',
         }}>
           {cta.label} <ArrowRight size={13} />

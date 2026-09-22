@@ -79,7 +79,7 @@ export default function ChangelogPage() {
     <MarketingLayout>
       <Meta
         title="Changelog"
-        description="Every release, every fix. The latest features, improvements, and bug fixes shipped to Social Stats."
+        description="Every release, every fix. The latest features, improvements, and bug fixes shipped to Bop Social."
       />
       {/* Hero */}
       <section style={{ padding: '128px 32px 56px', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
@@ -101,10 +101,10 @@ export default function ChangelogPage() {
             fontWeight: 600,
             color: 'var(--text-primary)',
           }}>
-            What's new in Social Stats.
+            What's new in Bop Social.
           </h1>
           <p style={{ margin: '0 auto', maxWidth: 560, fontSize: 16, lineHeight: 1.65, color: 'var(--text-secondary)' }}>
-            Every release, every fix. Subscribe to <a href="mailto:hello@socialstats.app?subject=Subscribe%20to%20changelog" style={{ color: 'var(--text-link)', fontWeight: 500 }}>get it in your inbox</a> monthly.
+            Every release, every fix. Subscribe to <a href="mailto:hello@bopsocial.com?subject=Subscribe%20to%20changelog" style={{ color: 'var(--text-link)', fontWeight: 500 }}>get it in your inbox</a> monthly.
           </p>
         </div>
       </section>

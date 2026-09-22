@@ -27,11 +27,11 @@ import { useEffect } from 'react';
  *   image:       og:image / twitter:image (absolute URL)
  *   url:         canonical / og:url (defaults to current location.href)
  *   type:        og:type (default 'website'; use 'article' for blog posts)
- *   noSuffix:    bool — drop the " · Social Stats" suffix (use for the home page)
+ *   noSuffix:    bool — drop the " · Bop Social" suffix (use for the home page)
  */
-const SITE_NAME = 'Social Stats';
+const SITE_NAME = 'Bop Social';
 const DEFAULT_DESCRIPTION =
-  'Social Stats — the marketing OS for modern agencies. Manage analytics, messaging, and ads for every client from one beautiful dashboard.';
+  'Bop Social — the AI marketing OS for modern teams. Manage analytics, content, conversations, and ads across multiple platforms in one place.';
 const DEFAULT_IMAGE = '/og-image.png';
 
 export default function Meta({
@@ -45,7 +45,7 @@ export default function Meta({
   useEffect(() => {
     const fullTitle = title
       ? (noSuffix ? title : `${title} · ${SITE_NAME}`)
-      : `${SITE_NAME} — The marketing OS for modern agencies`;
+      : `${SITE_NAME} — The Marketing OS for Modern Teams`;
 
     document.title = fullTitle;
     setMetaName('description', description);
@@ -66,7 +66,7 @@ export default function Meta({
     setMetaName('twitter:title',       fullTitle);
     setMetaName('twitter:description', description);
     setMetaName('twitter:image',       absUrl(image));
-    setMetaName('twitter:site',        '@socialstats');
+    setMetaName('twitter:site',        '@bopsocial');
   }, [title, description, image, url, type, noSuffix]);
 
   return null;

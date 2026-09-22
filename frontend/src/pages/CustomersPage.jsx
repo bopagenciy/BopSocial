@@ -37,7 +37,7 @@ import Meta from '../components/Meta';
  *
  * Sections:
  *   1. Hero — "Customer stories — coming soon" + "Become a launch partner" CTA
- *   2. Example workflows — industry-only descriptions of how Social Stats is
+ *   2. Example workflows — industry-only descriptions of how Bop Social is
  *      designed to be used. Clearly labeled as example workflows, not real
  *      customer stories.
  *   3. CTA to sign up or talk to sales.
@@ -47,7 +47,7 @@ const EXAMPLE_WORKFLOWS = [
   {
     industry: 'Real estate',
     icon: Building2,
-    accent: '#00CCF5',
+    accent: 'var(--brand-primary)',
     headline: 'Capture and qualify property leads via WhatsApp',
     body: 'Run click-to-WhatsApp ads, route enquiries through a bot that asks for budget and locality, then push qualified leads to your CRM. Schedule property reels and Instagram posts from the same Composer.',
     bullets: [
@@ -73,7 +73,7 @@ const EXAMPLE_WORKFLOWS = [
     icon: Users,
     accent: '#f472b6',
     headline: 'Manage many clients without losing the thread',
-    body: 'A small agency can manage many client workspaces from one Social Stats tenant. Approval flows, white-label reports, and per-client brand voice mean the work scales without a proportional headcount increase.',
+    body: 'A small agency can manage many client workspaces from one Bop Social tenant. Approval flows, white-label reports, and per-client brand voice mean the work scales without a proportional headcount increase.',
     bullets: [
       'Per-client workspace + brand voice',
       'Approval flows for posts and replies',
@@ -109,7 +109,7 @@ const EXAMPLE_WORKFLOWS = [
     icon: Sparkles,
     accent: '#a78bfa',
     headline: 'Plan, generate, and ship content across platforms',
-    body: 'Train Social Stats on five posts in your voice. Generate caption variants for Instagram, Facebook, LinkedIn, and YouTube descriptions from one prompt. Schedule once; the Composer formats per platform.',
+    body: 'Train Bop Social on five posts in your voice. Generate caption variants for Instagram, Facebook, LinkedIn, and YouTube descriptions from one prompt. Schedule once; the Composer formats per platform.',
     bullets: [
       'One Composer, five-platform output',
       'Brand-voice training in 3 minutes',
@@ -123,7 +123,7 @@ export default function CustomersPage() {
     <MarketingLayout>
       <Meta
         title="Customer stories"
-        description="Customer stories will appear here as Social Stats launches publicly. In the meantime, here's how the product is built to be used — by industry."
+        description="Customer stories will appear here as Bop Social launches publicly. In the meantime, here's how the product is built to be used — by industry."
       />
 
       {/* ╭───────────╮
@@ -164,7 +164,7 @@ export default function CustomersPage() {
             lineHeight: 1.55,
             color: 'rgba(255,255,255,0.78)',
           }}>
-            We're rolling out Social Stats to a first cohort of launch partners.
+            We're rolling out Bop Social to a first cohort of launch partners.
             Real customer stories, with named teams and real numbers, will
             appear here as those partners go public. Until then, here's how
             the product is built to be used.
@@ -176,9 +176,10 @@ export default function CustomersPage() {
           }}>
             <Button as={Link} to="/signup" size="lg"
                     style={{
-                      background: 'linear-gradient(135deg, #00CCF5, #00A8D8)',
-                      color: '#0a0e14',
+                      background: 'var(--brand-gradient)',
+                      color: '#1E202A',
                       border: 'none',
+                      fontWeight: 600,
                     }}>
               Become a launch partner <ArrowRight size={15} />
             </Button>
@@ -217,7 +218,7 @@ export default function CustomersPage() {
                 margin: 0, fontSize: 'clamp(28px, 4vw, 40px)',
                 fontWeight: 700, letterSpacing: '-0.02em',
                 color: 'var(--text-primary)', lineHeight: 1.15,
-              }}>How Social Stats is built to be used</h2>
+              }}>How Bop Social is built to be used</h2>
               <p style={{
                 margin: '14px auto 0', maxWidth: 620,
                 fontSize: 16, lineHeight: 1.55,

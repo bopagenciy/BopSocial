@@ -15,7 +15,7 @@ export default function TermsOfServicePage() {
       title="Terms of Service"
       effectiveDate="2026-01-01"
       lastUpdated="2026-04-15"
-      intro="These Terms govern your use of Social Stats. They are deliberately written in plain English so you can read them all the way through. By signing up for an account, you agree to these terms."
+      intro="These Terms govern your use of Bop Social. They are deliberately written in plain English so you can read them all the way through. By signing up for an account, you agree to these terms."
       sections={[
         {
           id: 'acceptance',
@@ -23,7 +23,7 @@ export default function TermsOfServicePage() {
           body: (
             <>
               <p>
-                By creating a Social Stats account, accessing the Social Stats web app, mobile apps, APIs, or any related
+                By creating a Bop Social account, accessing the Bop Social web app, mobile apps, APIs, or any related
                 services (collectively, the "<strong>Service</strong>"), you agree to be bound by these Terms of
                 Service ("<strong>Terms</strong>") and our <a href="/privacy">Privacy Policy</a>.
               </p>
@@ -43,7 +43,7 @@ export default function TermsOfServicePage() {
                 <li>You must be at least <strong>18 years old</strong> to create an account.</li>
                 <li>You are responsible for keeping your credentials secure. We strongly recommend enabling 2FA.</li>
                 <li>You are responsible for all activity under your account, including activity by your team members.</li>
-                <li>Notify us immediately at <a href="mailto:security@socialstats.app">security@socialstats.app</a> if you suspect unauthorised access.</li>
+                <li>Notify us immediately at <a href="mailto:security@bopsocial.com">security@bopsocial.com</a> if you suspect unauthorised access.</li>
                 <li>You may not share, sell, or transfer your account to another person or company without our consent.</li>
               </ul>
             </>
@@ -51,15 +51,13 @@ export default function TermsOfServicePage() {
         },
         {
           id: 'plans',
-          title: '3. Pricing',
+          title: '3. Platform terms',
           body: (
             <>
-              <p>Social Stats is <strong>free and open source</strong> (MIT licensed). All features are
-              available at no cost — there are no paid plans, subscriptions, or payment processing.</p>
+              <p>Bop Social provides unified multi-tenant marketing management tooling.</p>
               <ul>
-                <li><strong>No charges</strong> — the software is free to use and self-host.</li>
-                <li><strong>Your own costs</strong> — when self-hosting, you are responsible for your own
-                infrastructure and any third-party API usage (e.g. your Anthropic API key).</li>
+                <li><strong>Service availability</strong> — features and integrations are maintained according to active platform specifications.</li>
+                <li><strong>Your own costs</strong> — you are responsible for your own infrastructure and any third-party API usage (such as AI or WhatsApp provider credentials).</li>
               </ul>
             </>
           ),
@@ -69,12 +67,12 @@ export default function TermsOfServicePage() {
           title: '4. Acceptable use',
           body: (
             <>
-              <p>Social Stats is a powerful tool, and powerful tools require responsible use. You agree NOT to:</p>
+              <p>Bop Social is a powerful tool, and powerful tools require responsible use. You agree NOT to:</p>
               <ul>
                 <li>Send spam, mass unsolicited messages, or violate platform-specific (e.g. WhatsApp, Meta) policy.</li>
                 <li>Post or distribute content that is illegal, defamatory, hateful, harassing, sexually explicit involving minors, or that infringes intellectual property.</li>
                 <li>Reverse-engineer, decompile, or attempt to bypass our security or rate limits.</li>
-                <li>Use Social Stats to impersonate another person, brand, or organization without authority.</li>
+                <li>Use Bop Social to impersonate another person, brand, or organization without authority.</li>
                 <li>Build a competing product by copying our APIs, UI, or proprietary algorithms.</li>
                 <li>Resell access without an Agency / Partner agreement signed with us.</li>
               </ul>
@@ -91,7 +89,7 @@ export default function TermsOfServicePage() {
           body: (
             <>
               <p>
-                You retain all rights to the content (posts, media, captions, audience lists) you upload to Social Stats.
+                You retain all rights to the content (posts, media, captions, audience lists) you upload to Bop Social.
                 You grant us a worldwide, non-exclusive license to host, store, transmit, and process that content
                 solely for the purpose of providing the Service to you.
               </p>
@@ -115,8 +113,8 @@ export default function TermsOfServicePage() {
           body: (
             <>
               <p>
-                Social Stats connects to third-party platforms (Facebook, Instagram, YouTube, Google, LinkedIn, X, WhatsApp).
-                Your use of those platforms via Social Stats is also subject to their terms. We are not responsible for:
+                Bop Social connects to third-party platforms (Facebook, Instagram, YouTube, Google, LinkedIn, X, WhatsApp).
+                Your use of those platforms via Bop Social is also subject to their terms. We are not responsible for:
               </p>
               <ul>
                 <li>Outages, rate limits, or policy changes on third-party platforms.</li>
@@ -134,7 +132,7 @@ export default function TermsOfServicePage() {
           title: '7. Our intellectual property',
           body: (
             <p>
-              The Social Stats name, logo, software, designs, and documentation are our property and protected by
+              The Bop Social name, logo, software, designs, and documentation are our property and protected by
               intellectual-property law. These Terms do not transfer any IP rights to you, except for the limited
               right to use the Service while your account is active.
             </p>
@@ -146,7 +144,7 @@ export default function TermsOfServicePage() {
           body: (
             <>
               <p>
-                We work hard to keep Social Stats running smoothly, but the Service is provided "<strong>as is</strong>" and
+                We work hard to keep Bop Social running smoothly, but the Service is provided "<strong>as is</strong>" and
                 "<strong>as available</strong>", without warranties of any kind, express or implied, including
                 merchantability, fitness for a particular purpose, and non-infringement.
               </p>
@@ -178,7 +176,7 @@ export default function TermsOfServicePage() {
           title: '10. Indemnification',
           body: (
             <p>
-              You agree to indemnify and hold harmless Social Stats, its directors, employees, and affiliates from any claim
+              You agree to indemnify and hold harmless Bop Social, its directors, employees, and affiliates from any claim
               or liability arising out of (a) your content, (b) your violation of these Terms, or (c) your violation of
               any law or third-party right.
             </p>
@@ -227,7 +225,7 @@ export default function TermsOfServicePage() {
           title: '14. Contact',
           body: (
             <p>
-              Questions about these Terms? Email us at <a href="mailto:legal@socialstats.app">legal@socialstats.app</a> or visit
+              Questions about these Terms? Email us at <a href="mailto:legal@bopsocial.com">legal@bopsocial.com</a> or visit
               our <a href="/contact">contact page</a>.
             </p>
           ),

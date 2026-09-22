@@ -31,7 +31,7 @@ const TITLES = {
   '/product/inbox':               { kind: 'product', title: 'Unified Inbox', blurb: 'Every conversation in one place.' },
   '/product/whatsapp':            { kind: 'product', title: 'WhatsApp Business', blurb: 'Campaigns + two-way chat at scale.' },
   '/product/bot-builder':         { kind: 'product', title: 'CTWA Bot Builder', blurb: 'Visual flow editor for ad funnels.' },
-  '/product/ai':                  { kind: 'product', title: 'AI Studio',     blurb: 'Social Stats in every corner.' },
+  '/product/ai':                  { kind: 'product', title: 'AI Studio',     blurb: 'Bop Social in every corner.' },
   '/product/ai-assistant':        { kind: 'product', title: 'AI Assistant',  blurb: 'Cmd+J — talk to your marketing data.' },
   '/product/reports':             { kind: 'product', title: 'Reports',       blurb: 'Reports that write themselves.' },
   '/product/automations':         { kind: 'product', title: 'Automations',   blurb: 'IF this happens, do that.' },
@@ -75,9 +75,9 @@ export default function ComingSoonPage() {
             display: 'inline-flex', alignItems: 'center', gap: 6,
             padding: '6px 14px', marginBottom: 24,
             fontSize: 12, fontWeight: 600,
-            color: '#00CCF5',
-            background: 'rgba(0,204,245,0.10)',
-            border: '1px solid rgba(0,204,245,0.25)',
+            color: 'var(--brand-primary)',
+            background: 'var(--brand-primary-soft)',
+            border: '1px solid rgba(245,166,35,0.25)',
             borderRadius: 'var(--radius-pill)',
           }}>
             <Sparkles size={12} />
@@ -111,7 +111,7 @@ export default function ComingSoonPage() {
             color: 'rgba(255,255,255,0.55)',
             maxWidth: 540, lineHeight: 1.6,
           }}>
-            We're building this page right now. In the meantime, sign up for a free account and explore the live product — every feature on the menu is already shipping.
+            We're building this page right now. In the meantime, create an account and explore the platform — every feature on the menu is already shipping.
           </p>
 
           <div style={{
@@ -121,10 +121,10 @@ export default function ComingSoonPage() {
           }}>
             <Button as={Link} to="/signup" size="lg"
                     style={{
-                      background: 'linear-gradient(135deg, #00CCF5, #00A8D8)',
-                      color: '#0a0e14', border: 'none',
+                      background: 'var(--brand-gradient)',
+                      color: '#1E202A', fontWeight: 600, border: 'none',
                     }}>
-              Start free <ArrowRight size={15} />
+              Get started <ArrowRight size={15} />
             </Button>
             <Button as={Link} to="/" size="lg" variant="ghost"
                     style={{

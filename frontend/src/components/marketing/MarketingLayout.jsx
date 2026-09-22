@@ -169,7 +169,8 @@ function MarketingNav() {
     }
   }, [mobileOpen]);
 
-  const isDarkHeroNav = !scrolled && !openMenu;
+  const isHomePage = location.pathname === '/';
+  const isDarkHeroNav = isHomePage && !scrolled && !openMenu;
 
   return (
     <header
@@ -178,10 +179,10 @@ function MarketingNav() {
         position: 'fixed',
         top: 0, left: 0, right: 0,
         zIndex: 'var(--z-sticky)',
-        background: openMenu ? 'var(--surface-card)' : (scrolled ? 'var(--surface-overlay)' : 'transparent'),
-        backdropFilter: openMenu ? 'none' : (scrolled ? 'blur(14px) saturate(180%)' : 'none'),
-        WebkitBackdropFilter: openMenu ? 'none' : (scrolled ? 'blur(14px) saturate(180%)' : 'none'),
-        borderBottom: openMenu || scrolled ? '1px solid var(--border-subtle)' : '1px solid transparent',
+        background: openMenu ? 'var(--surface-card)' : (isDarkHeroNav ? 'transparent' : 'var(--surface-overlay)'),
+        backdropFilter: openMenu ? 'none' : (isDarkHeroNav ? 'none' : 'blur(14px) saturate(180%)'),
+        WebkitBackdropFilter: openMenu ? 'none' : (isDarkHeroNav ? 'none' : 'blur(14px) saturate(180%)'),
+        borderBottom: openMenu || !isDarkHeroNav ? '1px solid var(--border-subtle)' : '1px solid transparent',
         transition: 'background var(--transition-default), border-color var(--transition-default), backdrop-filter var(--transition-default)',
       }}
       onMouseLeave={scheduleClose}
@@ -337,6 +338,7 @@ function NavLink({ to, active, children, onMouseEnter, darkHero = false }) {
   const normalColor = darkHero ? 'rgba(255, 255, 255, 0.88)' : (active ? 'var(--text-primary)' : 'var(--text-secondary)');
   const hoverBg = darkHero ? 'rgba(255, 255, 255, 0.12)' : 'var(--surface-hover)';
   const hoverColor = darkHero ? '#FFFFFF' : 'var(--text-primary)';
+  const activeBg = darkHero ? 'rgba(255, 255, 255, 0.14)' : 'var(--surface-hover)';
   return (
     <Link
       to={to}
@@ -345,8 +347,10 @@ function NavLink({ to, active, children, onMouseEnter, darkHero = false }) {
       onFocus={() => prefetchRoute(to)}
       style={{
         padding: '8px 12px',
-        fontSize: 14, fontWeight: 500,
+        fontSize: 14,
+        fontWeight: active ? 600 : 500,
         color: active ? (darkHero ? '#FFFFFF' : 'var(--text-primary)') : normalColor,
+        background: active ? activeBg : 'transparent',
         textDecoration: 'none',
         borderRadius: 'var(--radius-md)',
         transition: 'var(--transition-fast)',
@@ -357,7 +361,7 @@ function NavLink({ to, active, children, onMouseEnter, darkHero = false }) {
       }}
       onMouseOut={(e) => {
         e.currentTarget.style.color = active ? (darkHero ? '#FFFFFF' : 'var(--text-primary)') : normalColor;
-        e.currentTarget.style.background = 'transparent';
+        e.currentTarget.style.background = active ? activeBg : 'transparent';
       }}
     >
       {children}
@@ -836,7 +840,7 @@ function MarketingFooter() {
               display: 'inline-flex', alignItems: 'center', gap: 4,
               color: 'var(--text-tertiary)',
             }}>
-              <Sparkles size={11} /> Built with Social Stats
+              <Sparkles size={11} /> Built for the Bop Universe
             </span>
           </div>
         </div>

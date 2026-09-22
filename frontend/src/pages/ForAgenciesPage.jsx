@@ -29,7 +29,7 @@ export default function ForAgenciesPage() {
   return (
     <MarketingLayout>
       <Meta
-        title="Social Stats for agencies — manage 100+ clients from one place"
+        title="For Agencies"
         description="One dashboard for analytics, content, inbox, ads, and WhatsApp campaigns across every client. Marketplace listing brings inbound leads. Trust + permissions built into the foundation."
       />
       <Hero />
@@ -79,14 +79,14 @@ function Hero() {
           style={{ marginTop: 28, display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}
         >
           <Button as={Link} to="/signup" size="xl" iconRight={ArrowRight}>
-            Start free trial
+            Get started
           </Button>
           <Button as={Link} to="/agencies" size="xl" variant="secondary" icon={Building2}>
             See the marketplace
           </Button>
         </motion.div>
         <p style={{ marginTop: 14, fontSize: 13, color: 'var(--text-tertiary)' }}>
-          14-day free trial · No credit card · 5 connected platforms per client
+          Scalable multi-tenant architecture · 5 connected platforms per client
         </p>
       </div>
     </section>
@@ -128,7 +128,7 @@ function MarketplaceExposure() {
             Inbound leads, not cold-emailing.
           </h2>
           <p style={{ margin: '0 0 20px', fontSize: 15, color: 'var(--text-secondary)', lineHeight: 1.65 }}>
-            List your agency in the Social Stats marketplace. Verified businesses search by industry, location, and rating —
+            List your agency in the Bop Social marketplace. Verified businesses search by industry, location, and rating —
             then send you a manage-request directly. Reviews come from clients with real, verified relationships.
           </p>
           <Button as={Link} to="/agencies" variant="secondary" size="md" icon={Building2}>
@@ -199,10 +199,10 @@ function FinalCTA() {
           See how much time you'll get back.
         </h2>
         <p style={{ margin: '8px 0 22px', fontSize: 15, color: 'var(--text-secondary)' }}>
-          Free and open source. Bring your real clients — self-host with no per-seat fees.
+          Open architecture. Bring your real clients — multi-tenant permissions out of the box.
         </p>
         <Button as={Link} to="/signup" size="xl" iconRight={ArrowRight}>
-          Get started free
+          Get started
         </Button>
       </div>
     </section>
