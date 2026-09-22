@@ -64,7 +64,7 @@ export default function AIAuditPage({ clientId: propClientId = null }) {
   return (
     <div className="app-page app-page--lg">
       <PageHeader
-        title="What did Social Stats do for me?"
+        title="What did Bop Social do for me?"
         subtitle="Every AI request on this client account — for transparency + compliance."
         actions={(
           <Button variant="ghost" size="sm" icon={RefreshCw} onClick={load}>Refresh</Button>
@@ -151,7 +151,7 @@ export default function AIAuditPage({ clientId: propClientId = null }) {
             <EmptyState
               icon={Sparkles}
               title="No AI activity yet"
-              description="As you use Social Stats features, every request shows up here."
+              description="As you use Bop Social features, every request shows up here."
             />
           ) : (
             <div style={{ overflowX: 'auto' }}>

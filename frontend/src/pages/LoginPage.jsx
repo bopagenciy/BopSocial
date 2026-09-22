@@ -232,7 +232,7 @@ export default function LoginPage() {
     <AuthLayout
       footer={
         <>
-          New to Social Stats?{' '}
+          New to Bop Social?{' '}
           <Link to="/signup" style={{ color: 'var(--text-link)', fontWeight: 600, textDecoration: 'none' }}>
             Create an account
           </Link>
@@ -261,7 +261,7 @@ export default function LoginPage() {
             Welcome back
           </h1>
           <p style={{ margin: '6px 0 0', fontSize: 14, color: 'var(--text-secondary)' }}>
-            Sign in to your Social Stats workspace.
+            Sign in to your Bop Social workspace.
           </p>
         </header>
 

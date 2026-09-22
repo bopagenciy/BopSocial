@@ -119,7 +119,7 @@ export default function AIInsightsPage({ clientId: propClientId = null }) {
     <div className="app-page app-page--lg">
       <PageHeader
         title="AI Insights"
-        subtitle="Social Stats surfaces what matters from your data — refresh whenever you want fresh signal."
+        subtitle="Bop Social surfaces what matters from your data — refresh whenever you want fresh signal."
         actions={(
           <Button onClick={regenerate} icon={Sparkles} loading={generating}>
             {generating ? 'Generating…' : 'Generate fresh insights'}
@@ -178,7 +178,7 @@ export default function AIInsightsPage({ clientId: propClientId = null }) {
             icon={Sparkles}
             title="No insights yet"
             description={items.length === 0
-              ? 'Click “Generate fresh insights” to have Social Stats scan your last 30 days of data.'
+              ? 'Click “Generate fresh insights” to have Bop Social scan your last 30 days of data.'
               : 'Nothing matches that filter.'}
             action={<Button onClick={regenerate} icon={Sparkles} loading={generating}>Generate now</Button>}
           />

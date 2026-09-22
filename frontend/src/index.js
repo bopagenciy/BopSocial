@@ -40,26 +40,27 @@ style.textContent = `
     --border-light:  #f1f5f9;
 
     /* Text */
-    --text-primary:   #0f172a;
-    --text-secondary: #475569;
-    --text-muted:     #94a3b8;
+    --text-primary:   #1E202A;
+    --text-secondary: #2D3142;
+    --text-muted:     #6b7280;
 
-    /* Brand — Social Stats (Cyan + Black) */
-    --blue:          #00B8DA;
-    --blue-hover:    #009EC0;
-    --blue-light:    #E0F9FF;
-    --blue-glow:     rgba(0, 204, 245, 0.18);
-    --brand-cyan:    #00CCF5;
-    --brand-black:   #0D0D0D;
+    /* Brand — Bop Social (Gold + Charcoal) */
+    --blue:          #F5A623;
+    --blue-hover:    #E09612;
+    --blue-light:    #FFF8EC;
+    --blue-glow:     rgba(245, 166, 35, 0.20);
+    --brand-gold:    #F5A623;
+    --brand-charcoal:#2D3142;
+    --brand-black:   #1E202A;
 
     /* Sidebar (dark) */
-    --sidebar-bg:       #0f172a;
-    --sidebar-surface:  #1e293b;
-    --sidebar-border:   rgba(255,255,255,0.06);
-    --sidebar-text:     #cbd5e1;
-    --sidebar-muted:    #475569;
-    --sidebar-active-bg: rgba(37,99,235,0.18);
-    --sidebar-active-border: #3b82f6;
+    --sidebar-bg:       #1E202A;
+    --sidebar-surface:  #2D3142;
+    --sidebar-border:   rgba(255,255,255,0.08);
+    --sidebar-text:     #E2E8F0;
+    --sidebar-muted:    #94a3b8;
+    --sidebar-active-bg: rgba(245,166,35,0.18);
+    --sidebar-active-border: #F5A623;
 
     /* Radii */
     --radius-sm: 8px;
@@ -511,18 +512,18 @@ style.textContent = `
      should reference the tokens.css names directly.
      ══════════════════════════════════════════════════════════════════════ */
   [data-theme="dark"] {
-    --bg:            #0a0e14;
-    --surface:       #11161e;
-    --surface-2:     #161c26;
-    --border:        rgba(255,255,255,0.10);
-    --border-light:  rgba(255,255,255,0.06);
+    --bg:            #1E202A;
+    --surface:       #252834;
+    --surface-2:     #2D3142;
+    --border:        rgba(255,255,255,0.12);
+    --border-light:  rgba(255,255,255,0.08);
 
-    --text-primary:   #f1f5f9;
-    --text-secondary: #94a3b8;
-    --text-muted:     #64748b;
+    --text-primary:   #FFFFFF;
+    --text-secondary: #E2E8F0;
+    --text-muted:     #94a3b8;
 
-    --blue-light:    rgba(0, 204, 245, 0.12);
-    --blue-glow:     rgba(0, 204, 245, 0.22);
+    --blue-light:    rgba(245, 166, 35, 0.15);
+    --blue-glow:     rgba(245, 166, 35, 0.25);
 
     --shadow-xs: 0 1px 2px rgba(0,0,0,0.45);
     --shadow-sm: 0 1px 4px rgba(0,0,0,0.45), 0 1px 2px rgba(0,0,0,0.30);

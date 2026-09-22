@@ -54,19 +54,19 @@ export default function ModuleRail({ currentModule, basePath, modules, notifCoun
       <button
         type="button"
         onClick={() => navigate(`${basePath}/${currentModule || 'analytics'}`)}
-        aria-label="Social Stats home"
+        aria-label="Bop Social home"
         style={{
-          width: 36, height: 36,
+          width: 38, height: 38,
           borderRadius: 'var(--radius-md)',
           border: 'none',
-          padding: 0,
-          background: 'var(--brand-gradient)',
+          padding: 2,
+          background: 'var(--surface-sunken)',
           boxShadow: 'var(--shadow-sm)',
           cursor: 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}
       >
-        <BrandMark size={22} />
+        <BrandMark size={32} />
       </button>
 
       <Divider />

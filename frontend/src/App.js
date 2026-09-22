@@ -289,7 +289,7 @@ function AgencyLayout() {
 
 function Loader() {
   return (
-    <div className="socialstats-loader" style={{
+    <div className="bopsocial-loader socialstats-loader" style={{
       height: '100vh',
       display: 'flex',
       flexDirection: 'column',
@@ -300,7 +300,7 @@ function Loader() {
       gap: 20,
     }}>
       <div
-        className="socialstats-loader__logo"
+        className="bopsocial-loader__logo socialstats-loader__logo"
         style={{ animation: 'pulse-dot 1.8s ease-in-out infinite' }}
       >
         <BrandLogoStacked height={120} />

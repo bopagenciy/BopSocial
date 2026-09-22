@@ -279,29 +279,29 @@ def _email_html(title, greeting, body_html, cta_url, cta_label, expiry_note, fro
 
       <!-- Card -->
       <table width="520" cellpadding="0" cellspacing="0"
-             style="background:#ffffff;border-radius:24px;border:1px solid rgba(0,215,255,0.18);
-                    box-shadow:0 8px 40px rgba(15,23,42,0.10),0 0 0 1px rgba(0,215,255,0.06);overflow:hidden;">
+             style="background:#ffffff;border-radius:24px;border:1px solid rgba(245,166,35,0.22);
+                    box-shadow:0 8px 40px rgba(30,32,42,0.10),0 0 0 1px rgba(245,166,35,0.08);overflow:hidden;">
 
         <!-- Top accent line -->
         <tr>
-          <td style="background:linear-gradient(90deg,#00d7ff 0%,#0099bb 100%);height:4px;font-size:0;line-height:0;">&nbsp;</td>
+          <td style="background:linear-gradient(90deg,#F5A623 0%,#E09612 100%);height:4px;font-size:0;line-height:0;">&nbsp;</td>
         </tr>
 
         <!-- Header -->
         <tr>
           <td style="padding:32px 40px 24px;text-align:center;background:#ffffff;">
-            <img src="{frontend_url}/favicon.png" alt="Social Stats" width="52" height="52"
+            <img src="{frontend_url}/favicon.png" alt="Bop Social" width="52" height="52"
                  style="border-radius:14px;display:inline-block;
-                        box-shadow:0 4px 16px rgba(0,215,255,0.25);margin-bottom:14px;" /><br>
-            <span style="font-size:22px;font-weight:800;color:#0f172a;letter-spacing:-0.04em;">Social Stats</span>
-            <span style="font-size:22px;font-weight:800;color:#00b8d9;letter-spacing:-0.04em;">.ai</span>
+                        box-shadow:0 4px 16px rgba(245,166,35,0.25);margin-bottom:14px;" /><br>
+            <span style="font-size:22px;font-weight:800;color:#1E202A;letter-spacing:-0.04em;">Bop</span>
+            <span style="font-size:22px;font-weight:800;color:#F5A623;letter-spacing:-0.04em;"> Social</span>
           </td>
         </tr>
 
         <!-- Divider -->
         <tr>
           <td style="padding:0 40px;">
-            <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(0,215,255,0.2),transparent);"></div>
+            <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(245,166,35,0.25),transparent);"></div>
           </td>
         </tr>
 
@@ -310,7 +310,7 @@ def _email_html(title, greeting, body_html, cta_url, cta_label, expiry_note, fro
           <td style="padding:36px 40px 28px;">
 
             <!-- Title -->
-            <h1 style="margin:0 0 8px;font-size:26px;font-weight:700;color:#0f172a;letter-spacing:-0.03em;">{title}</h1>
+            <h1 style="margin:0 0 8px;font-size:26px;font-weight:700;color:#1E202A;letter-spacing:-0.03em;">{title}</h1>
             <p style="margin:0 0 24px;font-size:15px;color:#64748b;line-height:1.7;">{greeting}</p>
 
             {body_html}
@@ -318,16 +318,16 @@ def _email_html(title, greeting, body_html, cta_url, cta_label, expiry_note, fro
             <!-- CTA Button -->
             <div style="text-align:center;margin:32px 0;">
               <a href="{cta_url}"
-                 style="display:inline-block;background:linear-gradient(135deg,#00d7ff 0%,#00b0d0 100%);
-                        color:#021418;font-weight:800;font-size:15px;letter-spacing:0.01em;
+                 style="display:inline-block;background:linear-gradient(135deg,#F5A623 0%,#E09612 100%);
+                        color:#1E202A;font-weight:800;font-size:15px;letter-spacing:0.01em;
                         padding:15px 40px;border-radius:14px;text-decoration:none;
-                        box-shadow:0 8px 24px rgba(0,215,255,0.35);">
+                        box-shadow:0 8px 24px rgba(245,166,35,0.35);">
                 {cta_label}
               </a>
             </div>
 
             <!-- Expiry note -->
-            <div style="background:linear-gradient(135deg,#f0f9ff,#f8faff);border:1px solid rgba(0,215,255,0.15);
+            <div style="background:linear-gradient(135deg,#FFF8EC,#f8faff);border:1px solid rgba(245,166,35,0.20);
                         border-radius:12px;padding:14px 18px;margin-bottom:24px;">
               <p style="margin:0;font-size:13px;color:#64748b;line-height:1.6;">{expiry_note}</p>
             </div>
@@ -335,17 +335,17 @@ def _email_html(title, greeting, body_html, cta_url, cta_label, expiry_note, fro
             <!-- Plain URL fallback -->
             <p style="margin:0;font-size:12px;color:#94a3b8;line-height:1.6;">
               Or copy this link into your browser:<br>
-              <a href="{cta_url}" style="color:#0099bb;word-break:break-all;text-decoration:none;">{cta_url}</a>
+              <a href="{cta_url}" style="color:#D48806;word-break:break-all;text-decoration:none;">{cta_url}</a>
             </p>
           </td>
         </tr>
 
         <!-- Footer -->
         <tr>
-          <td style="background:linear-gradient(135deg,#f8fafc,#f0f9ff);padding:20px 40px;
-                     text-align:center;border-top:1px solid rgba(0,215,255,0.1);">
+          <td style="background:linear-gradient(135deg,#f8fafc,#FFF8EC);padding:20px 40px;
+                     text-align:center;border-top:1px solid rgba(245,166,35,0.15);">
             <p style="margin:0;font-size:12px;color:#94a3b8;">
-              &copy; 2026 <strong style="color:#64748b;">Social Stats.ai</strong> &mdash; Automation Intelligence Platform
+              &copy; 2026 <strong style="color:#64748b;">Bop Social</strong> &mdash; Marketing Platform
             </p>
           </td>
         </tr>
@@ -363,13 +363,13 @@ def _send_client_joined_email(agency_user, client_user):
     client_name  = client_user.get_full_name() or client_user.email
     client_email = client_user.email
 
-    subject = f"{client_name} joined SocialStats — send a dashboard access request"
+    subject = f"{client_name} joined Bop Social — send a dashboard access request"
     html = _email_html(
-        title        = 'Your client joined Social Stats! 🎉',
+        title        = 'Your client joined Bop Social! 🎉',
         greeting     = (
             f'Hi <strong style="color:#0f172a;">{agency_name}</strong>, '
             f'great news! <strong style="color:#0f172a;">{client_name}</strong> '
-            f'({client_email}) has just verified their email and joined Social Stats.'
+            f'({client_email}) has just verified their email and joined Bop Social.'
         ),
         body_html    = (
             f'<div style="background:linear-gradient(135deg,#f0fdf4,#ecfdf5);border:1px solid rgba(22,163,74,0.2);'
@@ -388,7 +388,7 @@ def _send_client_joined_email(agency_user, client_user):
     )
     plain = (
         f"Hi {agency_name},\n\n"
-        f"{client_name} ({client_email}) has joined Social Stats!\n\n"
+        f"{client_name} ({client_email}) has joined Bop Social!\n\n"
         f"You can now send them a dashboard access request from your Clients page:\n"
         f"{FRONTEND_URL}/admin/clients\n"
     )
@@ -402,17 +402,17 @@ def _send_verification_email(user, token):
     verify_url = f"{FRONTEND_URL}/verify-email?token={token}"
     name       = user.first_name or user.email.split('@')[0]
 
-    subject = 'Verify your Social Stats account'
+    subject = 'Verify your Bop Social account'
     html = _email_html(
         title      = 'Verify your email',
-        greeting   = f'Hi <strong style="color:#0f172a;">{name}</strong>, thanks for signing up! Click the button below to verify your email address and activate your Social Stats account.',
+        greeting   = f'Hi <strong style="color:#0f172a;">{name}</strong>, thanks for signing up! Click the button below to verify your email address and activate your Bop Social account.',
         body_html  = '',
         cta_url    = verify_url,
         cta_label  = 'Verify Email Address',
-        expiry_note= '&#128274; This link expires in <strong>24 hours</strong>. If you didn\'t create a Social Stats account, you can safely ignore this email.',
+        expiry_note= '&#128274; This link expires in <strong>24 hours</strong>. If you didn\'t create a Bop Social account, you can safely ignore this email.',
         frontend_url = FRONTEND_URL,
     )
-    plain = f"Hi {name},\n\nVerify your Social Stats account:\n{verify_url}\n\nThis link expires in 24 hours."
+    plain = f"Hi {name},\n\nVerify your Bop Social account:\n{verify_url}\n\nThis link expires in 24 hours."
 
     try:
         send_mail(subject, plain, FROM_EMAIL, [user.email], html_message=html, fail_silently=False)
@@ -424,17 +424,17 @@ def _send_reset_email(user, token):
     reset_url = f"{FRONTEND_URL}/reset-password?token={token}"
     name      = user.first_name or user.email.split('@')[0]
 
-    subject = 'Reset your Social Stats password'
+    subject = 'Reset your Bop Social password'
     html = _email_html(
         title      = 'Reset your password',
-        greeting   = f'Hi <strong style="color:#0f172a;">{name}</strong>, we received a request to reset your Social Stats password. Click the button below to set a new one.',
+        greeting   = f'Hi <strong style="color:#0f172a;">{name}</strong>, we received a request to reset your Bop Social password. Click the button below to set a new one.',
         body_html  = '',
         cta_url    = reset_url,
         cta_label  = 'Reset Password',
         expiry_note= '&#9203; This link expires in <strong>2 hours</strong>. If you didn\'t request a password reset, you can safely ignore this email.',
         frontend_url = FRONTEND_URL,
     )
-    plain = f"Hi {name},\n\nReset your Social Stats password:\n{reset_url}\n\nThis link expires in 2 hours."
+    plain = f"Hi {name},\n\nReset your Bop Social password:\n{reset_url}\n\nThis link expires in 2 hours."
 
     try:
         send_mail(subject, plain, FROM_EMAIL, [user.email], html_message=html, fail_silently=False)

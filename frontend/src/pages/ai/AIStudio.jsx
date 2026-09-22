@@ -50,13 +50,13 @@ const FEATURE_GROUPS = [
     label: 'Understand',
     items: [
       { id: 'insights',     title: 'AI Insights',          icon: BarChart3, body: 'Actionable insights from your data.',         to: '/insights',     accent: 'var(--brand-primary)' },
-      { id: 'brand-voice',  title: 'Brand Voice',          icon: Mic,       body: 'Train Social Stats on your past posts.',            to: '/brand-voice',  accent: '#8b5cf6' },
+      { id: 'brand-voice',  title: 'Brand Voice',          icon: Mic,       body: 'Train Bop Social on your past posts.',            to: '/brand-voice',  accent: '#8b5cf6' },
     ],
   },
   {
     label: 'Chat',
     items: [
-      { id: 'chat-history', title: 'Chat History',         icon: MessageSquare, body: 'Past conversations with Social Stats.',     to: '/chat-history', accent: 'var(--brand-primary-hover)' },
+      { id: 'chat-history', title: 'Chat History',         icon: MessageSquare, body: 'Past conversations with Bop Social.',     to: '/chat-history', accent: 'var(--brand-primary-hover)' },
     ],
   },
 ];
@@ -74,9 +74,9 @@ export default function AIStudio() {
   return (
     <div className="app-page app-page--lg">
       <PageHeader
-        title="Social Stats Studio"
-        subtitle="Every Social Stats surface in one place"
-        eyebrow="✨ Powered by Social Stats"
+        title="Bop Social Studio"
+        subtitle="Every Bop Social surface in one place"
+        eyebrow="✨ Powered by Bop Social"
       />
 
       {FEATURE_GROUPS.map((group) => (
@@ -115,7 +115,7 @@ export default function AIStudio() {
           </span>
           <div style={{ minWidth: 0, flex: 1 }}>
             <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
-              Press <kbd style={kbdStyle}>⌘ J</kbd> from anywhere to chat with Social Stats
+              Press <kbd style={kbdStyle}>⌘ J</kbd> from anywhere to chat with Bop Social
             </div>
             <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.55 }}>
               The chat assistant can pull your metrics, draft posts, search your inbox, and schedule actions —

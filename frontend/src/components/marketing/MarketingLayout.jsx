@@ -57,7 +57,7 @@ const PRODUCT_MENU = [
   { label: 'Inbox',         to: '/product/inbox',             icon: Inbox,        desc: 'Every conversation, one place' },
   { label: 'WhatsApp',      to: '/product/whatsapp',          icon: MessageCircle,desc: 'Campaigns + two-way chat' },
   { label: 'Bot Builder',   to: '/product/bot-builder',       icon: Bot,          desc: 'Visual CTWA flow editor' },
-  { label: 'AI Studio',     to: '/product/ai',                icon: Sparkles,     desc: 'Social Stats in every corner' },
+  { label: 'AI Studio',     to: '/product/ai',                icon: Sparkles,     desc: 'Bop Social in every corner' },
   { label: 'AI Assistant',  to: '/product/ai-assistant',      icon: MessagesSquare, desc: 'Cmd+J — talk to your data' },
   { label: 'Reports',       to: '/product/reports',           icon: FileText,     desc: 'Reports that write themselves' },
   { label: 'Automations',   to: '/product/automations',       icon: Zap,          desc: 'IF this, do that' },
@@ -699,10 +699,10 @@ function MarketingFooter() {
               The AI marketing OS for modern agencies. Analytics, content, conversations, and ads — for every client, in one place.
             </p>
             <div style={{ display: 'flex', gap: 6 }}>
-              <SocialIconLink href="https://github.com/socialstats"            label="GitHub"   icon={Github} />
-              <SocialIconLink href="https://linkedin.com/company/socialstats"  label="LinkedIn" icon={Linkedin} />
-              <SocialIconLink href="https://twitter.com/socialstats"           label="Twitter"  icon={Twitter} />
-              <SocialIconLink href="https://youtube.com/@socialstats"          label="YouTube"  icon={Youtube} />
+              <SocialIconLink href="https://github.com/bopagenciy/BopSocial"   label="GitHub"   icon={Github} />
+              <SocialIconLink href="https://linkedin.com/company/bopsocial"   label="LinkedIn" icon={Linkedin} />
+              <SocialIconLink href="https://twitter.com/bopsocial"            label="Twitter"  icon={Twitter} />
+              <SocialIconLink href="https://youtube.com/@bopsocial"           label="YouTube"  icon={Youtube} />
             </div>
             {/* Geographic framing intentionally omitted from the global footer.
                 Office and contact information lives on /contact and /dpdp. */}
@@ -747,7 +747,7 @@ function MarketingFooter() {
           gap: 16, flexWrap: 'wrap',
           fontSize: 12, color: 'var(--text-tertiary)',
         }}>
-          <span>© {year} SocialStats. All rights reserved.</span>
+          <span>© {year} Bop Social. All rights reserved.</span>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
             <Link to="/status" style={{
               display: 'inline-flex', alignItems: 'center', gap: 6,

@@ -9,22 +9,25 @@
 /* Social Stats Design System — shared constants for inline styles */
 
 export const colors = {
-  primary: '#00B8DA',
-  primaryHover: '#009EC0',
-  primaryLight: '#E0F9FF',
-  primaryGlow: 'rgba(0, 204, 245, 0.18)',
+  primary: '#F5A623',
+  primaryHover: '#E09612',
+  primaryLight: '#FFF8EC',
+  primaryGlow: 'rgba(245, 166, 35, 0.20)',
+  charcoal: '#2D3142',
+  darkCharcoal: '#1E202A',
+  white: '#FFFFFF',
   indigo: '#4F46E5',
   indigoLight: '#EEF2FF',
   surface: '#ffffff',
   bg: '#f0f4f9',
   border: '#e2e8f0',
-  text: '#0f172a',
-  textSecondary: '#475569',
-  textMuted: '#94a3b8',
+  text: '#1E202A',
+  textSecondary: '#2D3142',
+  textMuted: '#6b7280',
   success: '#16a34a',
   warning: '#f59e0b',
   danger: '#dc2626',
-  sidebarBg: '#0f172a',
+  sidebarBg: '#1E202A',
 };
 
 export const radii = {
