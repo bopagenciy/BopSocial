@@ -549,6 +549,78 @@ Phase BS-2.5 delivered complete English and Spanish internationalization for Bop
 - **Source & Resolution**: Preserved backend API contracts in `automation_engine.py`; resolved on the frontend display layer by registering `automations.templates` in `en/engagement.json` and `es/engagement.json`, localized via `getLocalizedTemplate(tpl, t)` in `AutomationsPage.jsx`.
 - **Verification**: 11 / 11 tests passing in `InteractionEngagementTranslation.test.jsx`, 105 / 105 passing across full frontend suite, image updated to `bopsocial-frontend-local:bs-2.5.1`.
 
+---
+
+## 16. Phase BS-2.6A — Social Connections & Provider States Translation
+
+### 16.1 Scope and Objectives
+Phase BS-2.6A delivers the first remediation phase defined in the BS-2.6 audit, providing complete English and Spanish internationalization for Bop Social's Social Account Connections and Provider States management:
+1. **Connected Accounts Dashboard Panel** (`frontend/src/components/ui/ConnectedAccounts.jsx`):
+   - Section heading (`Connected Accounts` / `Cuentas Conectadas`) and descriptive subtitle.
+   - Platform status badges (`Active` / `Activo`, `Expired` / `Vencido`, `Not connected` / `No conectado`).
+   - Shared account notes (`Connected via Facebook` / `Conectado vía Facebook`).
+   - Token expiration date display localized using `formatDate(s.expires_at, { dateStyle: 'medium' }, i18n?.language)` (`Token expires: ...` / `El token vence: ...`).
+   - Connect and disconnect button labels (`Connect {{platform}} →`, `Disconnect`, `Disconnecting…`).
+   - Workspace preparation alert dialog and disconnect confirmation prompt.
+   - Educational help box explaining authentication flow and shared platform logins.
+2. **Meta Permissions Consent Modal** (`frontend/src/components/FacebookConnectModal.jsx`):
+   - Modal title (`Connect Your Facebook & Instagram` / `Conecta tu Facebook e Instagram`), instructions, section headers (`Required Permissions`, `Optional Permissions`, `Optional` badge).
+   - Localized human-readable permission titles and descriptions for Meta scopes:
+     - `pages_show_list`: "Access your Facebook Pages list" / "Acceder a tu lista de Páginas de Facebook".
+     - `pages_read_engagement`: "Read Page engagement data" / "Leer datos de interacción de la Página".
+     - `instagram_manage_insights`: "Read Instagram insights" / "Leer estadísticas de Instagram".
+   - Tooltip explanations, close and cancel button labels, continue button states (`Connecting…`, `Loading Facebook…`, `Continue with Facebook`).
+   - Legal terms and privacy policy disclaimers.
+   - Error messages (Facebook SDK loading failure, denied permissions, login cancellation, profile fetch errors).
+3. **Corporate Branding Correction**:
+   - Replaced legacy `appName="Social Stats"` in `ConnectedAccounts.jsx` and `FacebookConnectModal.jsx` with canonical `appName="Bop Social"`.
+
+### 16.2 Mandatory Invariants & Rules Enforced
+- **Strict Machine Contract Preservation**:
+  - Technical OAuth scope identifiers (`pages_show_list`, `pages_read_engagement`, `instagram_manage_insights`) remain verbatim and untranslated in API contracts and code tags.
+  - Platform identifiers (`facebook`, `instagram`, `youtube`, `google_my_business`, `linkedin`) and machine status codes (`active`, `expired`, `not_connected`) remain strictly invariant.
+- **Brand & Proper Noun Preservation**:
+  - The corporate brand `Bop Social` and platform names (`Facebook`, `Instagram`, `YouTube`, `LinkedIn`, `Google My Business`, `WhatsApp`) are strictly preserved.
+- **Locale-Aware Date Formatting**:
+  - Token expiration dates utilize `formatDate()` with the active language locale instead of host-dependent native JS date calls.
+- **Tenant Isolation**:
+  - Client workspace isolation is preserved; users can only connect or view social accounts tied to their active tenant workspace.
+
+### 16.3 Translation Namespace Architecture
+- Registered **`connections.json`** (`frontend/src/locales/en/connections.json` & `es/connections.json`) in `frontend/src/i18n/config.js` with 100% key parity (50 keys):
+  - `title`, `subtitle`: Section headings.
+  - `status`: Active, expired, not connected, connected via Facebook, token expiration.
+  - `actions`: Connect platform, disconnect, disconnecting, continue with Facebook, cancel, trigger button.
+  - `alerts`, `confirm`: Workspace preparation alert, disconnect confirmation prompt.
+  - `help`: Multi-step educational guide.
+  - `modal`: Permissions consent modal headers, buttons, accessible ARIA labels, legal disclaimer.
+  - `permissions`: Human-readable labels, descriptions, and technical scope tooltips.
+  - `errors`: Facebook SDK and OAuth failure messages.
+
+### 16.4 Automated Testing & Verification
+- **Dedicated Automated Test Suite**:
+  - `frontend/src/components/ui/__tests__/ConnectedAccountsTranslation.test.jsx`: **15 / 15 passing tests** verifying:
+    1. `ConnectedAccounts` English rendering.
+    2. `ConnectedAccounts` Spanish rendering.
+    3. Active status label translation in English and Spanish.
+    4. Expired status label translation in English and Spanish.
+    5. Not connected status label translation in English and Spanish.
+    6. Token expiration date formatting with active locale.
+    7. Human-readable permission descriptions and labels in `FacebookConnectModal`.
+    8. `FacebookConnectModal` English rendering.
+    9. `FacebookConnectModal` Spanish rendering.
+    10. Component state and checkbox selection preservation across language toggling.
+    11. Technical OAuth scopes invariance (`pages_show_list`, `pages_read_engagement`, `instagram_manage_insights`).
+    12. Disconnect confirmation prompt translation and active confirmation gate.
+    13. Complete removal of user-visible `Social Stats` branding and replacement with `Bop Social`.
+    14. 100% key parity between `en/connections.json` and `es/connections.json`.
+    15. Strict mocking of provider API endpoints and verification of scope parameters.
+- **Full Frontend Test Suite**: **19 / 19 test suites passed, 120 / 120 tests passed**.
+- **Backend Test Suite**: **10 / 10 tests passed** in `social_stats.tests.test_language_preferences`.
+- **Production Build**: `npm run build` executed cleanly with exit code 0.
+- **Docker Deployment**: Frontend image updated to `bopsocial-frontend-local:bs-2.6a` in `docker-compose.local.yml`, container recreated and verified live with HTTP 200 health checks on `http://localhost:3010/` and `http://localhost:3010/login`.
+
+
 
 
 

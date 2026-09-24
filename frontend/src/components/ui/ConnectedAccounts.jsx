@@ -7,19 +7,22 @@
  *  Released under the MIT License — see LICENSE. Keep this notice.
  * ========================================================================== */
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { oauthAPI } from '../../services/api';
 import { PLATFORMS } from '../../services/platforms';
+import { formatDate } from '../../utils/formatters';
 import { Lightbulb, Zap } from 'lucide-react';
 import SocialPlatformIcon from './SocialPlatformIcon';
 import FacebookConnectModal from '../FacebookConnectModal';
 
 export default function ConnectedAccounts({ clientId, status, onRefresh }) {
+  const { t, i18n } = useTranslation('connections');
   const [loading, setLoading] = useState({});
   const [fbConsentOpen, setFbConsentOpen] = useState(false);
 
   const handleConnect = (platform) => {
     if (!clientId) {
-      window.alert('Your client workspace is still being prepared. Please refresh the page and try again.');
+      window.alert(t('alerts.workspace_preparing', 'Your client workspace is still being prepared. Please refresh the page and try again.'));
       return;
     }
     // Facebook & Instagram share one OAuth flow. Show the consent modal first
@@ -41,7 +44,11 @@ export default function ConnectedAccounts({ clientId, status, onRefresh }) {
   };
 
   const handleDisconnect = async (platform) => {
-    if (!window.confirm(`Disconnect ${PLATFORMS[platform]?.label}? Sync will stop.`)) return;
+    const confirmMsg = t('confirm.disconnect', {
+      platform: PLATFORMS[platform]?.label,
+      defaultValue: `Disconnect ${PLATFORMS[platform]?.label}? Sync will stop.`,
+    });
+    if (!window.confirm(confirmMsg)) return;
     setLoading(l => ({ ...l, [platform]: true }));
     try {
       await oauthAPI.disconnect(clientId, platform);
@@ -55,9 +62,9 @@ export default function ConnectedAccounts({ clientId, status, onRefresh }) {
 
   return (
     <div>
-      <h2 style={styles.heading}>Connected Accounts</h2>
+      <h2 style={styles.heading}>{t('title', 'Connected Accounts')}</h2>
       <p style={styles.sub}>
-        Connect your social media accounts to start syncing stats automatically.
+        {t('subtitle', 'Connect your social media accounts to start syncing stats automatically.')}
       </p>
 
       <div className="oauth-platform-grid" style={styles.grid}>
@@ -71,7 +78,7 @@ export default function ConnectedAccounts({ clientId, status, onRefresh }) {
           // Instagram is always connected via Facebook; only show note (no separate button)
           const fbConnected  = (status['facebook'] || {}).status === 'active';
           const groupNote = key === 'instagram' && fbConnected && conn
-            ? <span style={styles.groupNoteInner}><Zap size={13} style={{ flexShrink: 0 }} /> Connected via Facebook</span>
+            ? <span style={styles.groupNoteInner}><Zap size={13} style={{ flexShrink: 0 }} /> {t('status.connected_via_facebook', 'Connected via Facebook')}</span>
             : null;
 
           return (
@@ -90,13 +97,16 @@ export default function ConnectedAccounts({ clientId, status, onRefresh }) {
                 </div>
 
                 <div style={styles.statusBadge(active, expired)}>
-                  {active ? '● Active' : expired ? '⚠ Expired' : '○ Not connected'}
+                  {active ? `● ${t('status.active', 'Active')}` : expired ? `⚠ ${t('status.expired', 'Expired')}` : `○ ${t('status.not_connected', 'Not connected')}`}
                 </div>
               </div>
 
               {s.expires_at && (
                 <div style={styles.expiry}>
-                  Token expires: {new Date(s.expires_at).toLocaleDateString()}
+                  {t('status.token_expires', {
+                    date: formatDate(s.expires_at, { dateStyle: 'medium' }, i18n?.language),
+                    defaultValue: `Token expires: ${formatDate(s.expires_at, { dateStyle: 'medium' }, i18n?.language)}`
+                  })}
                 </div>
               )}
 
@@ -109,7 +119,7 @@ export default function ConnectedAccounts({ clientId, status, onRefresh }) {
                   disabled={loading[key]}
                   style={styles.disconnectBtn}
                 >
-                  {loading[key] ? 'Disconnecting…' : 'Disconnect'}
+                  {loading[key] ? t('actions.disconnecting', 'Disconnecting…') : t('actions.disconnect', 'Disconnect')}
                 </button>
               ) : (
                 <button
@@ -117,7 +127,7 @@ export default function ConnectedAccounts({ clientId, status, onRefresh }) {
                   onClick={() => handleConnect(key)}
                   style={{ ...styles.connectBtn, background: p.color }}
                 >
-                  Connect {p.label} →
+                  {t('actions.connect_platform', { platform: p.label, defaultValue: `Connect ${p.label} →` })}
                 </button>
               )}
             </div>
@@ -126,7 +136,7 @@ export default function ConnectedAccounts({ clientId, status, onRefresh }) {
       </div>
 
       <FacebookConnectModal
-        appName="Social Stats"
+        appName="Bop Social"
         open={fbConsentOpen}
         onClose={() => setFbConsentOpen(false)}
         onContinue={handleFbConsentContinue}
@@ -134,12 +144,12 @@ export default function ConnectedAccounts({ clientId, status, onRefresh }) {
 
       {/* Help box */}
       <div style={styles.helpBox}>
-        <strong style={styles.helpTitle}><Lightbulb size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />How it works:</strong>
+        <strong style={styles.helpTitle}><Lightbulb size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />{t('help.title', 'How it works:')}</strong>
         <ul style={{ margin: '8px 0 0', paddingLeft: 20, fontSize: 13, color: 'var(--text-tertiary)' }}>
-          <li>Click a Connect button → you'll be redirected to log in to that platform</li>
-          <li>Approve the permissions requested</li>
-          <li>You'll be brought back here — data starts syncing automatically</li>
-          <li>Facebook & Instagram share one login. YouTube & Google My Business share one login.</li>
+          <li>{t('help.step_1', "Click a Connect button → you'll be redirected to log in to that platform")}</li>
+          <li>{t('help.step_2', "Approve the permissions requested")}</li>
+          <li>{t('help.step_3', "You'll be brought back here — data starts syncing automatically")}</li>
+          <li>{t('help.step_4', "Facebook & Instagram share one login. YouTube & Google My Business share one login.")}</li>
         </ul>
       </div>
     </div>
