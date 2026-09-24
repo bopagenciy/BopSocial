@@ -17,6 +17,25 @@ export function getResolvedLocale(overrideLocale) {
 }
 
 /**
+ * Safely parse date representations avoiding UTC offset shifts on YYYY-MM-DD strings.
+ * @param {Date|string|number} val
+ * @returns {Date|null}
+ */
+export function parseDateSafe(val) {
+  if (!val) return null;
+  if (val instanceof Date) return isNaN(val.getTime()) ? null : val;
+  if (typeof val === 'string') {
+    const trimmed = val.trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+      const [y, m, d] = trimmed.split('-').map(Number);
+      return new Date(y, m - 1, d);
+    }
+  }
+  const d = new Date(val);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+/**
  * Format date in locale-aware format
  * @param {Date|string|number} date
  * @param {Intl.DateTimeFormatOptions} [options]
@@ -24,11 +43,41 @@ export function getResolvedLocale(overrideLocale) {
  * @returns {string}
  */
 export function formatDate(date, options = { dateStyle: 'medium' }, locale) {
-  if (!date) return '';
-  const d = new Date(date);
-  if (isNaN(d.getTime())) return '';
+  const d = parseDateSafe(date);
+  if (!d) return '';
   const resolved = getResolvedLocale(locale);
   return new Intl.DateTimeFormat(resolved, options).format(d);
+}
+
+/**
+ * Format date range in a locale-aware format
+ * @param {Date|string|number} startDate
+ * @param {Date|string|number} endDate
+ * @param {Intl.DateTimeFormatOptions} [options]
+ * @param {string} [locale]
+ * @returns {string}
+ */
+export function formatDateRange(startDate, endDate, options = { dateStyle: 'medium' }, locale) {
+  if (!startDate && !endDate) return '';
+  if (!startDate) return formatDate(endDate, options, locale);
+  if (!endDate) return formatDate(startDate, options, locale);
+
+  const d1 = parseDateSafe(startDate);
+  const d2 = parseDateSafe(endDate);
+  if (!d1 || !d2) return `${startDate} – ${endDate}`;
+
+  const resolved = getResolvedLocale(locale);
+  try {
+    const dtf = new Intl.DateTimeFormat(resolved, options);
+    if (typeof dtf.formatRange === 'function') {
+      return dtf.formatRange(d1, d2);
+    }
+    const sep = resolved.startsWith('es') ? ' al ' : ' to ';
+    return `${dtf.format(d1)}${sep}${dtf.format(d2)}`;
+  } catch (err) {
+    const sep = resolved.startsWith('es') ? ' al ' : ' to ';
+    return `${formatDate(d1, options, locale)}${sep}${formatDate(d2, options, locale)}`;
+  }
 }
 
 /**

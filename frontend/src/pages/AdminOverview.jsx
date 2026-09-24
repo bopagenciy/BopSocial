@@ -11,6 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useOverview, useDateRange, useClients, useGoals, useAlerts, useLookups } from '../hooks/useData';
 import { formatTimeAgo } from '../services/formatters';
+import { formatDate, formatDateRange, formatNumber } from '../utils/formatters';
 import DateRangePicker from '../components/ui/DateRangePicker';
 import StatCard from '../components/ui/StatCard';
 import { PLATFORMS, fmt } from '../services/platforms';
@@ -41,7 +42,7 @@ const PLATFORM_OPTIONS = [
 const now = new Date();
 
 function GoalManager() {
-  const { t } = useTranslation('dashboard');
+  const { t, i18n } = useTranslation('dashboard');
   const { clients }           = useClients();
   const [open, setOpen]       = useState(false);
   const [form, setForm]       = useState({
@@ -100,12 +101,12 @@ function GoalManager() {
       setErrors({});
       refetch();
     } catch (err) {
-      setMsg('❌ ' + (err.response?.data?.non_field_errors?.[0] || err.response?.data?.error || 'Failed to save goal'));
+      setMsg('❌ ' + (err.response?.data?.non_field_errors?.[0] || err.response?.data?.error || t('admin.goal_manager.failed_save', 'Failed to save goal')));
     } finally { setSaving(false); }
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Delete this goal?')) return;
+    if (!window.confirm(t('admin.goal_manager.confirm_delete', 'Delete this goal?'))) return;
     try {
       await goalsAPI.delete(id);
       refetch();
@@ -151,7 +152,7 @@ function GoalManager() {
             <div style={styles.goalField}>
               <label style={styles.goalLabel}>{t('admin.goal_manager.target_value', 'Target Value')} <span style={styles.requiredAsterisk}>*</span></label>
               <input
-                type="number" min="1" placeholder="Enter target"
+                type="number" min="1" placeholder={t('admin.goal_manager.enter_target', 'Enter target')}
                 value={form.target_value}
                 onChange={e => handleFieldChange('target_value', e.target.value)}
                 style={{ ...styles.inp, ...(errors.target_value ? styles.inputError : {}) }}
@@ -162,8 +163,10 @@ function GoalManager() {
             <div style={styles.goalField}>
               <label style={styles.goalLabel}>{t('admin.goal_manager.month', 'Month')}</label>
               <select value={form.month} onChange={e => handleFieldChange('month', e.target.value)} style={styles.sel}>
-                {['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].map((m, i) => (
-                  <option key={i+1} value={i+1}>{m}</option>
+                {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                  <option key={m} value={m}>
+                    {formatDate(new Date(2026, m - 1, 1), { month: 'short' }, i18n?.language)}
+                  </option>
                 ))}
               </select>
             </div>
@@ -202,8 +205,8 @@ function GoalManager() {
                     <td style={styles.td}>{g.client_name}</td>
                     <td style={styles.td}>{PLATFORM_OPTIONS.find(p => p.value === g.platform)?.label || g.platform}</td>
                     <td style={styles.td}>{METRICS.find(m => m.value === g.metric)?.label || g.metric}</td>
-                    <td style={{ ...styles.td, fontWeight: 600 }}>{g.target_value.toLocaleString()}</td>
-                    <td style={styles.td}>{['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][g.month-1]} {g.year}</td>
+                    <td style={{ ...styles.td, fontWeight: 600 }}>{formatNumber(g.target_value, {}, i18n?.language)}</td>
+                    <td style={styles.td}>{formatDate(new Date(g.year, g.month - 1, 1), { month: 'short', year: 'numeric' }, i18n?.language)}</td>
                     <td style={styles.td}>
                       <button onClick={() => handleDelete(g.id)} style={styles.delBtn}>
                         <Trash2 size={13} />
@@ -325,7 +328,7 @@ const alertClientTag = {
 };
 
 function TopPostsPanel() {
-  const { t } = useTranslation('dashboard');
+  const { t, i18n } = useTranslation('dashboard');
   const [posts, setPosts]   = useState([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen]     = useState(true);
@@ -429,7 +432,7 @@ function TopPostsPanel() {
                       )}
                     </td>
                     <td style={styles.td}>
-                      {post?.published_at ? new Date(post.published_at).toLocaleDateString() : '—'}
+                      {post?.published_at ? formatDate(post.published_at, { dateStyle: 'short' }, i18n?.language) : '—'}
                     </td>
                     <td style={styles.td}>
                       {post?.post_url && (
@@ -450,6 +453,7 @@ function TopPostsPanel() {
 }
 
 function SharedLinksPanel() {
+  const { t, i18n } = useTranslation('dashboard');
   const [open,    setOpen]    = useState(false);
   const [links,   setLinks]   = useState([]);
   const [loading, setLoading] = useState(false);
@@ -458,10 +462,15 @@ function SharedLinksPanel() {
   useEffect(() => {
     if (!open) return;
     setLoading(true);
-    sharedReportsAPI.list()
-      .then(res => setLinks(res.data.results || res.data))
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    const req = sharedReportsAPI?.list?.();
+    if (req && typeof req.then === 'function') {
+      req
+        .then(res => setLinks(res.data.results || res.data))
+        .catch(() => {})
+        .finally(() => setLoading(false));
+    } else {
+      setLoading(false);
+    }
   }, [open]);
 
   function copyUrl(url, id) {
@@ -481,7 +490,7 @@ function SharedLinksPanel() {
       <button onClick={() => setOpen(o => !o)} style={panelToggle}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <Link2 size={16} style={{ color: '#00d7ff' }} />
-          <span>Shared Report Links</span>
+          <span>{t('admin.shared_links_panel.title', 'Shared Report Links')}</span>
           {links.length > 0 && !open && (
             <span style={{ ...countBadge, background: '#e6fbff', color: '#00d7ff' }}>{links.length}</span>
           )}
@@ -491,13 +500,20 @@ function SharedLinksPanel() {
 
       {open && (
         <div style={panelBody}>
-          {loading && <p style={emptyMsg}>Loading…</p>}
-          {!loading && links.length === 0 && <p style={emptyMsg}>No shared links yet.</p>}
+          {loading && <p style={emptyMsg}>{t('admin.shared_links_panel.loading', 'Loading…')}</p>}
+          {!loading && links.length === 0 && <p style={emptyMsg}>{t('admin.shared_links_panel.no_shared_links', 'No shared links yet.')}</p>}
           {!loading && links.length > 0 && (
             <table style={styles.table}>
               <thead>
                 <tr>
-                  {['User', 'Period', 'Views', 'Expires', 'Protected', 'Actions'].map(h => (
+                  {[
+                    t('admin.shared_links_panel.user', 'User'),
+                    t('admin.shared_links_panel.period', 'Period'),
+                    t('admin.shared_links_panel.views', 'Views'),
+                    t('admin.shared_links_panel.expires', 'Expires'),
+                    t('admin.shared_links_panel.protected', 'Protected'),
+                    t('admin.shared_links_panel.actions', 'Actions')
+                  ].map(h => (
                     <th key={h} style={styles.th}>{h}</th>
                   ))}
                 </tr>
@@ -506,13 +522,13 @@ function SharedLinksPanel() {
                 {links.map(link => (
                   <tr key={link.id} style={styles.tr}>
                     <td style={styles.td}>{link.client_name || link.client}</td>
-                    <td style={styles.td}>{link.date_from} → {link.date_until}</td>
-                    <td style={styles.td}>{link.view_count}</td>
+                    <td style={styles.td}>{formatDateRange(link.date_from, link.date_until, { dateStyle: 'short' }, i18n?.language)}</td>
+                    <td style={styles.td}>{formatNumber(link.view_count, {}, i18n?.language)}</td>
                     <td style={styles.td}>
                       {link.expires_at
-                        ? new Date(link.expires_at).toLocaleDateString()
-                        : <span style={{ color: 'var(--text-tertiary)' }}>Never</span>}
-                      {link.is_expired && <span style={{ color: '#dc2626', fontWeight: 700, marginLeft: 6 }}>EXPIRED</span>}
+                        ? formatDate(link.expires_at, { dateStyle: 'short' }, i18n?.language)
+                        : <span style={{ color: 'var(--text-tertiary)' }}>{t('admin.shared_links_panel.never', 'Never')}</span>}
+                      {link.is_expired && <span style={{ color: '#dc2626', fontWeight: 700, marginLeft: 6 }}>{t('admin.shared_links_panel.expired', 'EXPIRED')}</span>}
                     </td>
                     <td style={styles.td}>
                       {link.is_password_protected
@@ -520,15 +536,15 @@ function SharedLinksPanel() {
                         : <span style={{ color: 'var(--text-tertiary)' }}>—</span>}
                     </td>
                     <td style={{ ...styles.td, display: 'flex', gap: 8 }}>
-                      <button onClick={() => copyUrl(link.share_url, link.id)} style={iconActionBtn} title="Copy link">
+                      <button onClick={() => copyUrl(link.share_url, link.id)} style={iconActionBtn} title={t('admin.shared_links_panel.copy_link', 'Copy link')}>
                         {copied === link.id
-                          ? <span style={{ fontSize: 11, color: '#16a34a', fontWeight: 700 }}>Copied!</span>
+                          ? <span style={{ fontSize: 11, color: '#16a34a', fontWeight: 700 }}>{t('admin.shared_links_panel.copied', 'Copied!')}</span>
                           : <Copy size={14} />}
                       </button>
-                      <a href={link.share_url} target="_blank" rel="noreferrer" style={iconActionBtn} title="Open">
+                      <a href={link.share_url} target="_blank" rel="noreferrer" style={iconActionBtn} title={t('admin.shared_links_panel.open', 'Open')}>
                         <ExternalLink size={14} />
                       </a>
-                      <button onClick={() => deactivate(link.id)} style={{ ...iconActionBtn, color: '#ef4444' }} title="Deactivate">
+                      <button onClick={() => deactivate(link.id)} style={{ ...iconActionBtn, color: '#ef4444' }} title={t('admin.shared_links_panel.deactivate', 'Deactivate')}>
                         <Trash2 size={14} />
                       </button>
                     </td>
@@ -543,15 +559,15 @@ function SharedLinksPanel() {
   );
 }
 
-function roiStatusLabel(pct) {
-  if (pct > 500)  return { text: 'Excellent', bg: '#D1FAE5', color: '#059669' };
-  if (pct > 200)  return { text: 'Good',      bg: '#DBEAFE', color: '#2563EB' };
-  if (pct >= 0)   return { text: 'Average',   bg: '#FEF3C7', color: '#D97706' };
-  return              { text: 'Review',    bg: '#FEE2E2', color: '#EF4444' };
+function roiStatusLabel(pct, t) {
+  if (pct > 500)  return { text: t ? t('admin.roi_status.excellent', 'Excellent') : 'Excellent', bg: '#D1FAE5', color: '#059669' };
+  if (pct > 200)  return { text: t ? t('admin.roi_status.good', 'Good') : 'Good',           bg: '#DBEAFE', color: '#2563EB' };
+  if (pct >= 0)   return { text: t ? t('admin.roi_status.average', 'Average') : 'Average',     bg: '#FEF3C7', color: '#D97706' };
+  return                 { text: t ? t('admin.roi_status.review', 'Review') : 'Review',       bg: '#FEE2E2', color: '#EF4444' };
 }
 
 function ROIOverviewPanel() {
-  const { t } = useTranslation('dashboard');
+  const { t, i18n } = useTranslation('dashboard');
   const navigate = useNavigate();
   const [open, setOpen]       = useState(true);
   const [reports, setReports] = useState([]);
@@ -563,20 +579,25 @@ function ROIOverviewPanel() {
 
   useEffect(() => {
     setLoading(true);
-    roiAPI.getReports({ month, year })
-      .then(res => setReports(res.data.results || res.data))
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    const req = roiAPI?.getReports?.({ month, year });
+    if (req && typeof req.then === 'function') {
+      req
+        .then(res => setReports(res.data.results || res.data))
+        .catch(() => {})
+        .finally(() => setLoading(false));
+    } else {
+      setLoading(false);
+    }
   }, [month, year]);
 
-  const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const monthName = formatDate(new Date(year, month - 1, 1), { month: 'short' }, i18n?.language);
 
   return (
     <div className="admin-table-wrap" style={styles.tableWrap}>
       <div style={styles.goalHeader} onClick={() => setOpen(o => !o)}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <TrendingUp size={16} style={{ color: '#00d7ff' }} />
-          <h3 style={styles.tableTitle}>{t('admin.roi_panel.title', { defaultValue: `ROI Summary — ${MONTH_NAMES[month - 1]} ${year}`, month: MONTH_NAMES[month - 1], year })}</h3>
+          <h3 style={styles.tableTitle}>{t('admin.roi_panel.title', { defaultValue: `ROI Summary — ${monthName} ${year}`, month: monthName, year })}</h3>
         </div>
         {open ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
       </div>
@@ -600,7 +621,7 @@ function ROIOverviewPanel() {
             <tbody>
               {reports.map(r => {
                 const pct   = parseFloat(r.roi_percentage) || 0;
-                const label = roiStatusLabel(pct);
+                const label = roiStatusLabel(pct, t);
                 const sym   = r.currency_symbol || '$';
                 return (
                   <tr key={r.id || r.client_id} style={styles.tr}>
@@ -609,10 +630,10 @@ function ROIOverviewPanel() {
                       {pct.toFixed(0)}%
                     </td>
                     <td style={styles.td}>
-                      {sym}{(r.estimated_revenue || 0).toLocaleString('en-US', { maximumFractionDigits: 0 })}
+                      {sym}{formatNumber(r.estimated_revenue || 0, { maximumFractionDigits: 0 }, i18n?.language)}
                     </td>
                     <td style={styles.td}>
-                      {sym}{(r.total_investment || 0).toLocaleString('en-US', { maximumFractionDigits: 0 })}
+                      {sym}{formatNumber(r.total_investment || 0, { maximumFractionDigits: 0 }, i18n?.language)}
                     </td>
                     <td style={styles.td}>
                       <span style={{
@@ -659,7 +680,7 @@ function SignalCard({ label, value, detail, accent = '#00d7ff' }) {
 }
 
 export default function AdminOverview() {
-  const { t } = useTranslation('dashboard');
+  const { t, i18n } = useTranslation('dashboard');
   const [range, setRange] = useDateRange(30);
   const { data: overview, loading } = useOverview(range);
   const { lookups } = useLookups();
@@ -670,7 +691,7 @@ export default function AdminOverview() {
   }, {});
 
   const platformOptions = (lookups.platforms && lookups.platforms.length > 0)
-    ? [{ value: 'all', label: 'All Platforms' }, ...lookups.platforms.map((item) => ({ value: item.key, label: item.label }))]
+    ? [{ value: 'all', label: t('admin.goal_manager.platform', 'All Platforms') }, ...lookups.platforms.map((item) => ({ value: item.key, label: item.label }))]
     : PLATFORM_OPTIONS;
 
   const totalImpressions = overview?.by_platform?.reduce((s, p) => s + (p.impressions||0), 0) || 0;
@@ -682,9 +703,10 @@ export default function AdminOverview() {
   const latestSync       = overview?.recent_syncs?.[0];
   const syncSuccessCount = (overview?.recent_syncs || []).filter((sync) => sync.status === 'success').length;
   const ctr = totalImpressions > 0 ? ((totalClicks / totalImpressions) * 100).toFixed(2) : '0.00';
-  const topPlatformLabel = topPlatform ? (platformLabelMap[topPlatform.platform] || PLATFORMS[topPlatform.platform]?.label || topPlatform.platform) : 'No data yet';
+  const topPlatformLabel = topPlatform ? (platformLabelMap[topPlatform.platform] || PLATFORMS[topPlatform.platform]?.label || topPlatform.platform) : t('admin.no_data_yet', 'No data yet');
   const topPlatformColor = topPlatform ? (PLATFORMS[topPlatform.platform]?.color || '#00d7ff') : '#00d7ff';
-  const latestSyncLabel = latestSync ? `${latestSync.client_name} · ${latestSync.status}` : 'No recent syncs';
+  const latestSyncStatus = latestSync?.status ? t(`admin.sync_status.${latestSync.status}`, latestSync.status) : '';
+  const latestSyncLabel = latestSync ? `${latestSync.client_name} · ${latestSyncStatus}` : t('admin.no_recent_syncs', 'No recent syncs');
 
   return (
     <div style={styles.page}>
@@ -708,19 +730,31 @@ export default function AdminOverview() {
           <SignalCard
             label={t('admin.active_users', 'Active Users')}
             value={loading ? '...' : fmt(overview?.total_clients || 0)}
-            detail={loading ? 'Loading agency coverage' : `${activePlatforms} active platforms in this window`}
+            detail={loading
+              ? t('admin.loading_agency_coverage', 'Loading agency coverage')
+              : t('admin.active_platforms_count', { count: activePlatforms, defaultValue: `${activePlatforms} active platforms in this window` })}
             accent="#00d7ff"
           />
           <SignalCard
             label={t('admin.top_platform', 'Top Platform')}
             value={topPlatformLabel}
-            detail={topPlatform ? `${fmt(topPlatform.impressions)} impressions · ${fmt(topPlatform.reach)} reach` : 'Waiting for synced performance data'}
+            detail={topPlatform
+              ? t('admin.platform_impressions_reach', {
+                  impressions: fmt(topPlatform.impressions),
+                  reach: fmt(topPlatform.reach),
+                  defaultValue: `${fmt(topPlatform.impressions)} impressions · ${fmt(topPlatform.reach)} reach`
+                })
+              : t('admin.waiting_for_synced_data', 'Waiting for synced performance data')}
             accent={topPlatformColor}
           />
           <SignalCard
             label={t('admin.click_efficiency', 'Click Efficiency')}
             value={`${ctr}%`}
-            detail={`${fmt(totalClicks)} clicks from ${fmt(totalImpressions)} impressions`}
+            detail={t('admin.clicks_from_impressions', {
+              clicks: fmt(totalClicks),
+              impressions: fmt(totalImpressions),
+              defaultValue: `${fmt(totalClicks)} clicks from ${fmt(totalImpressions)} impressions`
+            })}
             accent="#22c55e"
           />
           <SignalCard
@@ -735,7 +769,11 @@ export default function AdminOverview() {
       <div className="admin-summary-bar" style={styles.summaryBar}>
         <div style={styles.summaryItem}>
           <span style={styles.summaryItemLabel}>{t('admin.date_window', 'Date Window')}</span>
-          <strong style={styles.summaryItemValue}>{overview?.period ? `${overview.period.since} to ${overview.period.until}` : 'Current period'}</strong>
+          <strong style={styles.summaryItemValue}>
+            {overview?.period
+              ? formatDateRange(overview.period.since, overview.period.until, { dateStyle: 'medium' }, i18n?.language)
+              : t('admin.current_period', 'Current period')}
+          </strong>
         </div>
         <div style={styles.summaryItem}>
           <span style={styles.summaryItemLabel}>{t('admin.best_reach', 'Best Reach')}</span>
@@ -822,7 +860,13 @@ export default function AdminOverview() {
               <table style={styles.table}>
                 <thead>
                   <tr>
-                    {['Client','Platform','Status','Daily Rows','Started'].map(h => (
+                    {[
+                      t('admin.sync_table.client', 'Client'),
+                      t('admin.sync_table.platform', 'Platform'),
+                      t('admin.sync_table.status', 'Status'),
+                      t('admin.sync_table.daily_rows', 'Daily Rows'),
+                      t('admin.sync_table.started', 'Started')
+                    ].map(h => (
                       <th key={h} style={styles.th}>{h}</th>
                     ))}
                   </tr>
@@ -838,10 +882,10 @@ export default function AdminOverview() {
                         </span>
                       </td>
                       <td style={styles.td}>
-                        <span style={statusBadge(l.status)}>{l.status}</span>
+                        <span style={statusBadge(l.status)}>{t(`admin.sync_status.${l.status}`, l.status)}</span>
                       </td>
-                      <td style={styles.td}>{l.records_synced ?? 0}</td>
-                      <td style={styles.td}>{new Date(l.started_at).toLocaleString()}</td>
+                      <td style={styles.td}>{formatNumber(l.records_synced ?? 0, {}, i18n?.language)}</td>
+                      <td style={styles.td}>{formatDate(l.started_at, { dateStyle: 'short', timeStyle: 'short' }, i18n?.language)}</td>
                     </tr>
                 ))}
               </tbody>

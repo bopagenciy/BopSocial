@@ -339,5 +339,50 @@ Four dedicated namespaces structure the translation assets:
   - Container recreated and started: `bopsocial-frontend-local:bs-2.2` built and running.
   - Live HTTP health check: `curl.exe --max-time 10 -I http://localhost:3010/` returned **HTTP/1.1 200 OK** from Nginx.
 
+---
+
+## 12. Phase BS-2.2.1 — Dashboard Translation & Locale Formatting Closure
+
+### 12.1 Defect Closure Overview
+During authenticated inspection of `/admin/analytics/dashboard` as local superadministrator, specific dynamic messages, empty states, and date displays were identified as remaining in English when Spanish was selected. Phase BS-2.2.1 closed these gaps without redesigning the dashboard or altering internal database entities or routes:
+
+1. **"No data yet"**:
+   - Replaced hardcoded fallback in `AdminOverview.jsx` with `t('admin.no_data_yet', 'No data yet')` ("Sin datos todavía" in Spanish).
+2. **"Waiting for synced performance data"**:
+   - Replaced hardcoded string in top platform SignalCard with `t('admin.waiting_for_synced_data', 'Waiting for synced performance data')` ("Esperando datos de rendimiento sincronizados" in Spanish).
+3. **"0 active platforms in this window"**:
+   - Wired to `t('admin.active_platforms_count', { count: activePlatforms })` supporting i18next pluralization (`_one` / `_other`). Translates to `"0 plataformas activas en este período"` in Spanish.
+4. **"0 clicks from 0 impressions"**:
+   - Wired to `t('admin.clicks_from_impressions', { clicks: fmt(totalClicks), impressions: fmt(totalImpressions) })` with localized metric interpolation. Translates to `"0 clics de 0 impresiones"` in Spanish.
+5. **"No recent syncs"**:
+   - Replaced hardcoded fallback in `AdminOverview.jsx` and summary bar with `t('admin.no_recent_syncs', 'No recent syncs')` ("Sin sincronizaciones recientes" in Spanish). In addition, sync status tokens (`success`, `failed`, `running`, `queued`) are translated dynamically via `t('admin.sync_status.<status>')`.
+6. **Date Formatting Defect (`2026-08-25 to 2026-09-24`)**:
+   - Replaced `${overview.period.since} to ${overview.period.until}` with `formatDateRange(overview.period.since, overview.period.until, { dateStyle: 'medium' }, i18n?.language)`.
+   - In English: renders `"Aug 25 – Sep 24, 2026"`.
+   - In Spanish: renders `"25 ago – 24 sept 2026"`.
+
+### 12.2 Locale Formatting Infrastructure
+- **`frontend/src/utils/formatters.js`**:
+  - Implemented `parseDateSafe(val)` to safely parse `YYYY-MM-DD` date strings into local date objects, avoiding negative UTC midnight offset date shifting.
+  - Implemented `formatDateRange(startDate, endDate, options, locale)` utilizing native `Intl.DateTimeFormat.prototype.formatRange` with graceful fallback for older runtimes.
+  - Updated `formatDate` to use `parseDateSafe`.
+- **`frontend/src/i18n/formatters.js`**:
+  - Created canonical export mapping forwarding all formatters from `../utils/formatters`.
+
+### 12.3 Verification & Deployment
+- **Dedicated Automated Test Suite**:
+  - `frontend/src/pages/__tests__/AdminOverviewTranslationClosure.test.jsx`: 4/4 passing tests verifying English default rendering of all 6 reported states, full Spanish rendering upon switching language, runtime language switching without reload, and populated overview metrics invariance.
+  - `frontend/src/utils/__tests__/formatters.test.js`: Added date range tests across English and Spanish (7/7 tests passed).
+- **Full Frontend Test Suite**:
+  - **15 / 15 test suites passed, 76 / 76 tests passed**.
+- **Production Build**:
+  - `npm run build` completed cleanly with exit code 0.
+- **Docker Deployment**:
+  - Image tag updated in `docker-compose.local.yml`: `bopsocial-frontend-local:bs-2.2.1`.
+  - Rebuilt and started container: `agencyos-frontend-1` running `bopsocial-frontend-local:bs-2.2.1`.
+  - HTTP health check verified: `curl.exe --max-time 10 -I http://localhost:3010/` returned **HTTP/1.1 200 OK**.
+  - Direct login verification on port 3010 verified: `LOGIN_CHECK: SUCCESS, has_access=True`.
+
+
 
 

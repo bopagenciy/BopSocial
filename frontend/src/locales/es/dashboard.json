@@ -138,8 +138,54 @@
     "total_impressions": "Impresiones totales",
     "total_clicks": "Clics totales",
     "total_followers": "Seguidores totales",
+    "no_data_yet": "Sin datos todavía",
+    "waiting_for_synced_data": "Esperando datos de rendimiento sincronizados",
+    "loading_agency_coverage": "Cargando cobertura de la agencia",
+    "active_platforms_count": "{{count}} plataformas activas en este período",
+    "active_platforms_count_one": "{{count}} plataforma activa en este período",
+    "active_platforms_count_other": "{{count}} plataformas activas en este período",
+    "clicks_from_impressions": "{{clicks}} clics de {{impressions}} impresiones",
+    "platform_impressions_reach": "{{impressions}} impresiones · {{reach}} alcance",
+    "no_recent_syncs": "Sin sincronizaciones recientes",
+    "current_period": "Período actual",
     "platform_performance": "Rendimiento de plataforma",
     "recent_sync_activity": "Actividad reciente de sincronización",
+    "sync_status": {
+      "success": "éxito",
+      "failed": "fallido",
+      "running": "en ejecución",
+      "queued": "en cola"
+    },
+    "sync_table": {
+      "client": "Cliente",
+      "platform": "Plataforma",
+      "status": "Estado",
+      "daily_rows": "Filas diarias",
+      "started": "Iniciado"
+    },
+    "shared_links_panel": {
+      "title": "Enlaces de informes compartidos",
+      "loading": "Cargando…",
+      "no_shared_links": "Aún no hay enlaces compartidos.",
+      "user": "Usuario",
+      "period": "Período",
+      "views": "Vistas",
+      "expires": "Vence",
+      "protected": "Protegido",
+      "actions": "Acciones",
+      "never": "Nunca",
+      "expired": "VENCIDO",
+      "copy_link": "Copiar enlace",
+      "copied": "¡Copiado!",
+      "open": "Abrir",
+      "deactivate": "Desactivar"
+    },
+    "roi_status": {
+      "excellent": "Excelente",
+      "good": "Bueno",
+      "average": "Promedio",
+      "review": "Revisar"
+    },
     "goal_manager": {
       "title": "Establecer metas mensuales",
       "user": "Usuario",
@@ -147,10 +193,13 @@
       "platform": "Plataforma",
       "metric": "Métrica",
       "target_value": "Valor objetivo",
+      "enter_target": "Ingresar objetivo",
       "month": "Mes",
       "year": "Año",
       "save_goal": "Guardar meta",
       "saving": "Guardando…",
+      "confirm_delete": "¿Eliminar esta meta?",
+      "failed_save": "Error al guardar la meta",
       "no_goals": "No hay metas establecidas para este periodo — selecciona un usuario para filtrar."
     },
     "alerts_panel": {

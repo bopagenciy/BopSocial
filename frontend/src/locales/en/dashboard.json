@@ -138,8 +138,54 @@
     "total_impressions": "Total Impressions",
     "total_clicks": "Total Clicks",
     "total_followers": "Total Followers",
+    "no_data_yet": "No data yet",
+    "waiting_for_synced_data": "Waiting for synced performance data",
+    "loading_agency_coverage": "Loading agency coverage",
+    "active_platforms_count": "{{count}} active platforms in this window",
+    "active_platforms_count_one": "{{count}} active platform in this window",
+    "active_platforms_count_other": "{{count}} active platforms in this window",
+    "clicks_from_impressions": "{{clicks}} clicks from {{impressions}} impressions",
+    "platform_impressions_reach": "{{impressions}} impressions · {{reach}} reach",
+    "no_recent_syncs": "No recent syncs",
+    "current_period": "Current period",
     "platform_performance": "Platform Performance",
     "recent_sync_activity": "Recent Sync Activity",
+    "sync_status": {
+      "success": "success",
+      "failed": "failed",
+      "running": "running",
+      "queued": "queued"
+    },
+    "sync_table": {
+      "client": "Client",
+      "platform": "Platform",
+      "status": "Status",
+      "daily_rows": "Daily Rows",
+      "started": "Started"
+    },
+    "shared_links_panel": {
+      "title": "Shared Report Links",
+      "loading": "Loading…",
+      "no_shared_links": "No shared links yet.",
+      "user": "User",
+      "period": "Period",
+      "views": "Views",
+      "expires": "Expires",
+      "protected": "Protected",
+      "actions": "Actions",
+      "never": "Never",
+      "expired": "EXPIRED",
+      "copy_link": "Copy link",
+      "copied": "Copied!",
+      "open": "Open",
+      "deactivate": "Deactivate"
+    },
+    "roi_status": {
+      "excellent": "Excellent",
+      "good": "Good",
+      "average": "Average",
+      "review": "Review"
+    },
     "goal_manager": {
       "title": "Set Monthly Goals",
       "user": "User",
@@ -147,10 +193,13 @@
       "platform": "Platform",
       "metric": "Metric",
       "target_value": "Target value",
+      "enter_target": "Enter target",
       "month": "Month",
       "year": "Year",
       "save_goal": "Save Goal",
       "saving": "Saving…",
+      "confirm_delete": "Delete this goal?",
+      "failed_save": "Failed to save goal",
       "no_goals": "No goals set for this period — select a user to filter."
     },
     "alerts_panel": {

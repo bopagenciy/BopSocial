@@ -1,11 +1,13 @@
 import {
   formatDate,
+  formatDateRange,
   formatTime,
   formatRelativeTime,
   formatNumber,
   formatPercent,
   formatCurrency,
   getResolvedLocale,
+  parseDateSafe,
 } from '../formatters';
 
 describe('Bop Social Locale Formatting Utilities Suite', () => {
@@ -25,6 +27,18 @@ describe('Bop Social Locale Formatting Utilities Suite', () => {
     // English includes Jun / June, Spanish includes jun.
     expect(enDate.toLowerCase()).toMatch(/jun/);
     expect(esDate.toLowerCase()).toMatch(/jun/);
+  });
+
+  test('formats date range in English and Spanish', () => {
+    const start = '2026-08-25';
+    const end = '2026-09-24';
+    const enRange = formatDateRange(start, end, { dateStyle: 'medium' }, 'en');
+    const esRange = formatDateRange(start, end, { dateStyle: 'medium' }, 'es');
+
+    expect(enRange).toContain('2026');
+    expect(esRange).toContain('2026');
+    expect(enRange.toLowerCase()).toMatch(/aug.*sep/);
+    expect(esRange.toLowerCase()).toMatch(/ago.*sep/);
   });
 
   test('formats numbers with locale-specific conventions', () => {
