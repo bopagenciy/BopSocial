@@ -12,6 +12,7 @@ import {
   Loader2, Play, X, Link as LinkIcon, FileVideo, Wand2,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 
 import PageHeader from '../../components/layout/PageHeader';
 import Card from '../../components/ui/Card';
@@ -21,21 +22,22 @@ import EmptyState from '../../components/ui/EmptyState';
 import { videoAPI, composerAPI } from '../../services/api';
 
 const ASPECTS = [
-  { id: '16:9', label: '16:9 · Landscape',  hint: 'YouTube, Facebook, LinkedIn feed' },
-  { id: '9:16', label: '9:16 · Vertical',   hint: 'Reels, Shorts, Stories' },
-  { id: '1:1',  label: '1:1 · Square',      hint: 'Feed posts on Instagram' },
-  { id: '4:5',  label: '4:5 · Portrait',    hint: 'Instagram feed (taller)' },
+  { id: '16:9', labelKey: 'landscape',  hintKey: 'landscape_hint',  label: '16:9 · Landscape',  hint: 'YouTube, Facebook, LinkedIn feed' },
+  { id: '9:16', labelKey: 'vertical',   hintKey: 'vertical_hint',   label: '9:16 · Vertical',   hint: 'Reels, Shorts, Stories' },
+  { id: '1:1',  labelKey: 'square',     hintKey: 'square_hint',     label: '1:1 · Square',      hint: 'Feed posts on Instagram' },
+  { id: '4:5',  labelKey: 'portrait',   hintKey: 'portrait_hint',   label: '4:5 · Portrait',    hint: 'Instagram feed (taller)' },
 ];
 
 const TABS = [
-  { id: 'trim',     label: 'Trim',       icon: Scissors },
-  { id: 'resize',   label: 'Resize',     icon: Crop },
-  { id: 'thumb',    label: 'Thumbnail',  icon: Camera },
-  { id: 'captions', label: 'Captions',   icon: Captions },
-  { id: 'publish',  label: 'Publish',    icon: Youtube },
+  { id: 'trim',     labelKey: 'trim',     label: 'Trim',       icon: Scissors },
+  { id: 'resize',   labelKey: 'resize',   label: 'Resize',     icon: Crop },
+  { id: 'thumb',    labelKey: 'thumb',    label: 'Thumbnail',  icon: Camera },
+  { id: 'captions', labelKey: 'captions', label: 'Captions',   icon: Captions },
+  { id: 'publish',  labelKey: 'publish',  label: 'Publish',    icon: Youtube },
 ];
 
 export default function VideoStudioPage() {
+  const { t } = useTranslation('content');
   const [active, setActive] = useState(null);   // currently-loaded MediaAsset (video)
   const [derived, setDerived] = useState([]);   // list of derived assets (trims/resizes/thumbs)
   const [tab, setTab] = useState('trim');
@@ -43,8 +45,8 @@ export default function VideoStudioPage() {
   return (
     <div style={{ paddingBottom: 32 }}>
       <PageHeader
-        title="Video Studio"
-        subtitle="Trim, resize, capture thumbnails, and publish to YouTube"
+        title={t('video.title', 'Video Studio')}
+        subtitle={t('video.subtitle', 'Trim, resize, capture thumbnails, and publish to YouTube')}
       />
 
       <div className="vs-grid" style={{
@@ -65,7 +67,10 @@ export default function VideoStudioPage() {
 
           {derived.length > 0 && (
             <Card padding="md">
-              <Card.Header title="Derived clips" subtitle="Click any clip to make it the active asset" />
+              <Card.Header
+                title={t('video.derived_clips', 'Derived clips')}
+                subtitle={t('video.derived_subtitle', 'Click any clip to make it the active asset')}
+              />
               <div style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
@@ -89,14 +94,14 @@ export default function VideoStudioPage() {
           <div style={{ display: 'flex', overflowX: 'auto',
                         borderBottom: '1px solid var(--border-subtle)',
                         background: 'var(--surface-sunken)' }}>
-            {TABS.map((t) => {
-              const isActive = t.id === tab;
-              const Icon = t.icon;
+            {TABS.map((tItem) => {
+              const isActive = tItem.id === tab;
+              const Icon = tItem.icon;
               return (
                 <button
-                  key={t.id}
+                  key={tItem.id}
                   type="button"
-                  onClick={() => setTab(t.id)}
+                  onClick={() => setTab(tItem.id)}
                   style={{
                     flex: '0 0 auto',
                     padding: '10px 14px',
@@ -111,7 +116,7 @@ export default function VideoStudioPage() {
                   }}
                 >
                   <Icon size={13} />
-                  {t.label}
+                  {t(`video.tabs.${tItem.labelKey}`, tItem.label)}
                 </button>
               );
             })}
@@ -121,8 +126,8 @@ export default function VideoStudioPage() {
             {!active ? (
               <EmptyState
                 icon={FileVideo}
-                title="Load a video first"
-                description="Upload a file or paste a URL to start editing."
+                title={t('video.load_video_first', 'Load a video first')}
+                description={t('video.load_video_desc', 'Upload a file or paste a URL to start editing.')}
                 compact
               />
             ) : (
@@ -150,6 +155,7 @@ export default function VideoStudioPage() {
 
 /* ── Upload ────────────────────────────────────────────────────────────── */
 function UploadCard({ onUploaded }) {
+  const { t } = useTranslation('content');
   const fileRef = useRef();
   const [url, setUrl] = useState('');
   const [busy, setBusy] = useState(false);
@@ -163,9 +169,9 @@ function UploadCard({ onUploaded }) {
       fd.append('file', file);
       const res = await videoAPI.upload(fd);
       onUploaded(res.data);
-      toast.success('Video uploaded');
+      toast.success(t('video.video_uploaded', 'Video uploaded'));
     } catch (e) {
-      toast.error(e.response?.data?.error || 'Upload failed');
+      toast.error(e.response?.data?.error || t('video.upload_failed', 'Upload failed'));
     } finally { setBusy(false); }
   }
 
@@ -175,10 +181,10 @@ function UploadCard({ onUploaded }) {
     try {
       const res = await videoAPI.importFromUrl({ url: url.trim() });
       onUploaded(res.data);
-      toast.success('Video imported');
+      toast.success(t('video.video_imported', 'Video imported'));
       setUrl('');
     } catch (e) {
-      toast.error(e.response?.data?.error || 'Import failed');
+      toast.error(e.response?.data?.error || t('video.import_failed', 'Import failed'));
     } finally { setBusy(false); }
   }
 
@@ -209,18 +215,18 @@ function UploadCard({ onUploaded }) {
           <FileVideo size={24} />
         </div>
         <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>
-          Drop a video here, or
+          {t('video.drop_video', 'Drop a video here, or')}
         </div>
         <input ref={fileRef} type="file" accept="video/*" hidden
                 onChange={(e) => uploadFile(e.target.files?.[0])} />
         <Button icon={Upload} onClick={() => fileRef.current?.click()} loading={busy}>
-          Choose file
+          {t('video.choose_file', 'Choose file')}
         </Button>
 
         <div style={{ marginTop: 24, paddingTop: 16, borderTop: '1px solid var(--border-subtle)',
                       maxWidth: 460, marginLeft: 'auto', marginRight: 'auto' }}>
           <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 8 }}>
-            …or import from a URL
+            {t('video.or_import_url', '…or import from a URL')}
           </div>
           <div style={{ display: 'flex', gap: 6 }}>
             <div style={{ position: 'relative', flex: 1 }}>
@@ -234,7 +240,7 @@ function UploadCard({ onUploaded }) {
               />
             </div>
             <Button onClick={importUrl} loading={busy} disabled={!url.trim()}>
-              Import
+              {t('video.import', 'Import')}
             </Button>
           </div>
         </div>
@@ -245,6 +251,7 @@ function UploadCard({ onUploaded }) {
 
 /* ── Player ────────────────────────────────────────────────────────────── */
 function PlayerCard({ asset, onClear }) {
+  const { t } = useTranslation('content');
   return (
     <Card padding="none" style={{ overflow: 'hidden' }}>
       <div style={{
@@ -282,7 +289,7 @@ function PlayerCard({ asset, onClear }) {
             style={{ width: '100%', maxHeight: 480, objectFit: 'contain', display: 'block' }}
           />
         ) : (
-          <div style={{ color: 'var(--text-tertiary)', padding: 32 }}>No preview URL</div>
+          <div style={{ color: 'var(--text-tertiary)', padding: 32 }}>{t('video.no_preview_url', 'No preview URL')}</div>
         )}
       </div>
     </Card>
@@ -291,51 +298,53 @@ function PlayerCard({ asset, onClear }) {
 
 /* ── Tools ─────────────────────────────────────────────────────────────── */
 function TrimTool({ asset, onResult }) {
+  const { t } = useTranslation('content');
   const max = Math.max(0.1, asset.duration_seconds || 60);
   const [start, setStart] = useState(0);
   const [end, setEnd] = useState(Math.min(10, max));
   const [busy, setBusy] = useState(false);
 
   async function run() {
-    if (end <= start) { toast.error('End must be after start'); return; }
+    if (end <= start) { toast.error(t('video.trim.validation', 'End must be after start')); return; }
     setBusy(true);
     try {
       const res = await videoAPI.trim({
         asset_id: asset.id, start_seconds: start, end_seconds: end,
       });
       onResult(res.data);
-      toast.success('Trim complete');
+      toast.success(t('video.trim.complete', 'Trim complete'));
     } catch (e) {
-      toast.error(e.response?.data?.error || 'Trim failed');
+      toast.error(e.response?.data?.error || t('video.trim.failed', 'Trim failed'));
     } finally { setBusy(false); }
   }
 
   return (
     <>
-      <ToolHeader title="Trim" desc="Cut a section from this video" />
-      <Field label={`Start (${fmtDuration(start)})`}>
+      <ToolHeader title={t('video.trim.title', 'Trim')} desc={t('video.trim.desc', 'Cut a section from this video')} />
+      <Field label={t('video.trim.start', { time: fmtDuration(start), defaultValue: `Start (${fmtDuration(start)})` })}>
         <input type="range" min={0} max={max} step={0.1}
                 value={start}
                 onChange={(e) => setStart(Math.min(parseFloat(e.target.value), end - 0.1))}
                 style={rangeStyle} />
       </Field>
-      <Field label={`End (${fmtDuration(end)})`}>
+      <Field label={t('video.trim.end', { time: fmtDuration(end), defaultValue: `End (${fmtDuration(end)})` })}>
         <input type="range" min={0} max={max} step={0.1}
                 value={end}
                 onChange={(e) => setEnd(Math.max(parseFloat(e.target.value), start + 0.1))}
                 style={rangeStyle} />
       </Field>
       <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 12 }}>
-        New duration: <strong>{fmtDuration(end - start)}</strong>
+        {t('video.trim.new_duration', { duration: fmtDuration(end - start), defaultValue: `New duration: ${fmtDuration(end - start)}` })}
       </div>
       <Button onClick={run} loading={busy} icon={Scissors} fullWidth>
-        Trim & save as new clip
+        {t('video.trim.submit', 'Trim & save as new clip')}
       </Button>
     </>
   );
 }
 
 function ResizeTool({ asset, onResult }) {
+  const { t } = useTranslation('content');
   const [aspect, setAspect] = useState('9:16');
   const [busy, setBusy] = useState(false);
 
@@ -344,15 +353,15 @@ function ResizeTool({ asset, onResult }) {
     try {
       const res = await videoAPI.resize({ asset_id: asset.id, target_aspect: aspect });
       onResult(res.data);
-      toast.success(`Resized to ${aspect}`);
+      toast.success(t('video.resize.success', { aspect, defaultValue: `Resized to ${aspect}` }));
     } catch (e) {
-      toast.error(e.response?.data?.error || 'Resize failed');
+      toast.error(e.response?.data?.error || t('video.resize.failed', 'Resize failed'));
     } finally { setBusy(false); }
   }
 
   return (
     <>
-      <ToolHeader title="Resize" desc="Center-crop into a different aspect ratio" />
+      <ToolHeader title={t('video.resize.title', 'Resize')} desc={t('video.resize.desc', 'Center-crop into a different aspect ratio')} />
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
         {ASPECTS.map((a) => {
           const on = aspect === a.id;
@@ -370,51 +379,57 @@ function ResizeTool({ asset, onResult }) {
                 transition: 'var(--transition-fast)',
               }}
             >
-              <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-primary)' }}>{a.label}</div>
-              <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>{a.hint}</div>
+              <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-primary)' }}>
+                {t(`video.resize.aspects.${a.labelKey}`, a.label)}
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>
+                {t(`video.resize.aspects.${a.hintKey}`, a.hint)}
+              </div>
             </button>
           );
         })}
       </div>
       <Button onClick={run} loading={busy} icon={Crop} fullWidth>
-        Resize to {aspect}
+        {t('video.resize.submit', { aspect, defaultValue: `Resize to ${aspect}` })}
       </Button>
     </>
   );
 }
 
 function ThumbnailTool({ asset, onResult }) {
+  const { t } = useTranslation('content');
   const max = Math.max(0.5, (asset.duration_seconds || 1) - 0.1);
-  const [t, setT] = useState(Math.min(2, max));
+  const [timeVal, setTimeVal] = useState(Math.min(2, max));
   const [busy, setBusy] = useState(false);
 
   async function run() {
     setBusy(true);
     try {
-      const res = await videoAPI.extractThumbnail({ asset_id: asset.id, time_seconds: t });
+      const res = await videoAPI.extractThumbnail({ asset_id: asset.id, time_seconds: timeVal });
       onResult(res.data);
-      toast.success('Thumbnail saved');
+      toast.success(t('video.thumb.saved', 'Thumbnail saved'));
     } catch (e) {
-      toast.error(e.response?.data?.error || 'Thumbnail failed');
+      toast.error(e.response?.data?.error || t('video.thumb.failed', 'Thumbnail failed'));
     } finally { setBusy(false); }
   }
 
   return (
     <>
-      <ToolHeader title="Extract thumbnail" desc="Capture a still frame as an image asset" />
-      <Field label={`Time: ${fmtDuration(t)}`}>
+      <ToolHeader title={t('video.thumb.title', 'Extract thumbnail')} desc={t('video.thumb.desc', 'Capture a still frame as an image asset')} />
+      <Field label={t('video.thumb.time', { time: fmtDuration(timeVal), defaultValue: `Time: ${fmtDuration(timeVal)}` })}>
         <input type="range" min={0} max={max} step={0.1}
-                value={t} onChange={(e) => setT(parseFloat(e.target.value))}
+                value={timeVal} onChange={(e) => setTimeVal(parseFloat(e.target.value))}
                 style={rangeStyle} />
       </Field>
       <Button onClick={run} loading={busy} icon={Camera} fullWidth>
-        Capture frame
+        {t('video.thumb.submit', 'Capture frame')}
       </Button>
     </>
   );
 }
 
 function CaptionsTool({ asset }) {
+  const { t } = useTranslation('content');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
 
@@ -422,17 +437,17 @@ function CaptionsTool({ asset }) {
     setBusy(true); setError(null);
     try {
       await videoAPI.addCaptions({ asset_id: asset.id });
-      toast.success('Captions queued');
+      toast.success(t('video.captions.queued', 'Captions queued'));
     } catch (e) {
       const detail = e.response?.data?.detail || e.response?.data?.error;
-      if (e.response?.status === 501) setError(detail || 'Captions service not configured.');
-      else toast.error('Captions failed');
+      if (e.response?.status === 501) setError(detail || t('video.captions.service_not_configured', 'Captions service not configured.'));
+      else toast.error(t('video.captions.failed', 'Captions failed'));
     } finally { setBusy(false); }
   }
 
   return (
     <>
-      <ToolHeader title="Auto captions" desc="Transcribe the audio and burn captions in" />
+      <ToolHeader title={t('video.captions.title', 'Auto captions')} desc={t('video.captions.desc', 'Transcribe the audio and burn captions in')} />
       {error && (
         <div style={{
           padding: '10px 12px', marginBottom: 12,
@@ -441,20 +456,21 @@ function CaptionsTool({ asset }) {
           borderRadius: 'var(--radius-md)',
           fontSize: 12, lineHeight: 1.5,
         }}>
-          <strong>Not configured.</strong> {error}
+          <strong>{t('video.captions.not_configured', 'Not configured.')}</strong> {error}
         </div>
       )}
       <Button onClick={run} loading={busy} icon={Captions} fullWidth>
-        Generate captions
+        {t('video.captions.submit', 'Generate captions')}
       </Button>
       <div style={{ marginTop: 8, fontSize: 11, color: 'var(--text-tertiary)' }}>
-        Requires <code style={code}>WHISPER_API_KEY</code> on the server.
+        {t('video.captions.requires_key', 'Requires WHISPER_API_KEY on the server.')}
       </div>
     </>
   );
 }
 
 function PublishTool({ asset }) {
+  const { t } = useTranslation('content');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [privacy, setPrivacy] = useState('unlisted');
@@ -462,42 +478,42 @@ function PublishTool({ asset }) {
   const [result, setResult] = useState(null);
 
   async function run() {
-    if (!title.trim()) { toast.error('Title is required'); return; }
+    if (!title.trim()) { toast.error(t('video.publish.title_required', 'Title is required')); return; }
     setBusy(true); setResult(null);
     try {
       const res = await videoAPI.youtubeUpload({
         asset_id: asset.id, title, description, privacy,
       });
       setResult(res.data);
-      toast.success('Uploaded to YouTube');
+      toast.success(t('video.publish.uploaded', 'Uploaded to YouTube'));
     } catch (e) {
       const code = e.response?.data?.code;
-      if (code === 'token_expired') toast.error('YouTube token expired — please reconnect.');
-      else toast.error(e.response?.data?.error || 'Upload failed');
+      if (code === 'token_expired') toast.error(t('video.publish.token_expired', 'YouTube token expired — please reconnect.'));
+      else toast.error(e.response?.data?.error || t('video.publish.failed', 'Upload failed'));
     } finally { setBusy(false); }
   }
 
   return (
     <>
-      <ToolHeader title="Publish to YouTube" desc="Direct upload via the connected channel" />
-      <Field label="Title">
+      <ToolHeader title={t('video.publish.title', 'Publish to YouTube')} desc={t('video.publish.desc', 'Direct upload via the connected channel')} />
+      <Field label={t('video.publish.field_title', 'Title')}>
         <input value={title} onChange={(e) => setTitle(e.target.value)}
-                placeholder="My new video" style={inputStyle} />
+                placeholder={t('video.publish.title_placeholder', 'My new video')} style={inputStyle} />
       </Field>
-      <Field label="Description">
+      <Field label={t('video.publish.field_description', 'Description')}>
         <textarea value={description} onChange={(e) => setDescription(e.target.value)}
-                   rows={4} placeholder="Tell viewers what it's about…"
+                   rows={4} placeholder={t('video.publish.description_placeholder', "Tell viewers what it's about…")}
                    style={{ ...inputStyle, height: 'auto', resize: 'vertical' }} />
       </Field>
-      <Field label="Privacy">
+      <Field label={t('video.publish.field_privacy', 'Privacy')}>
         <select value={privacy} onChange={(e) => setPrivacy(e.target.value)} style={inputStyle}>
-          <option value="public">Public</option>
-          <option value="unlisted">Unlisted</option>
-          <option value="private">Private</option>
+          <option value="public">{t('video.publish.privacy_public', 'Public')}</option>
+          <option value="unlisted">{t('video.publish.privacy_unlisted', 'Unlisted')}</option>
+          <option value="private">{t('video.publish.privacy_private', 'Private')}</option>
         </select>
       </Field>
       <Button onClick={run} loading={busy} icon={Youtube} fullWidth>
-        Upload to YouTube
+        {t('video.publish.submit', 'Upload to YouTube')}
       </Button>
       {result?.platform_url && (
         <a href={result.platform_url} target="_blank" rel="noreferrer"
@@ -505,7 +521,7 @@ function PublishTool({ asset }) {
              display: 'block', marginTop: 10, fontSize: 12, fontWeight: 600,
              color: 'var(--brand-primary-hover)', textDecoration: 'none',
            }}>
-          View on YouTube ↗
+          {t('video.publish.view_link', 'View on YouTube ↗')}
         </a>
       )}
     </>

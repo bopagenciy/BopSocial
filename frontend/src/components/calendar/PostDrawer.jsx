@@ -7,9 +7,11 @@
  *  Released under the MIT License — see LICENSE. Keep this notice.
  * ========================================================================== */
 import { useState } from 'react';
-import { format, parseISO } from 'date-fns';
+import { parseISO } from 'date-fns';
 import { X, ExternalLink, Edit2, Trash2, Calendar, RefreshCw } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { PLATFORMS } from '../../services/platforms';
+import { formatDate } from '../../utils/formatters';
 import SocialPlatformIcon from '../ui/SocialPlatformIcon';
 
 function fmt(n) {
@@ -27,6 +29,7 @@ const STATUS_BADGE = {
 };
 
 export default function PostDrawer({ post, isOpen, onClose, onEdit, onDelete, onReschedule }) {
+  const { t } = useTranslation('content');
   const [deleteConfirm, setDeleteConfirm]     = useState(false);
   const [rescheduleMode, setRescheduleMode]   = useState(false);
   const [newDatetime,    setNewDatetime]       = useState('');
@@ -36,10 +39,11 @@ export default function PostDrawer({ post, isOpen, onClose, onEdit, onDelete, on
 
   const platform = PLATFORMS[post.platform] || { color: '#64748B', label: post.platform };
   const badge    = STATUS_BADGE[post.status] || STATUS_BADGE.draft;
+  const badgeLabel = t(`status.${post.status}`, badge.label);
 
   const bestTime = post.scheduled_at || post.published_at;
   const dateDisplay = bestTime
-    ? format(parseISO(bestTime), 'EEEE, MMMM d, yyyy · h:mm a')
+    ? formatDate(parseISO(bestTime), { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' })
     : '—';
 
   const performanceScore = post.performance_score || 0;
@@ -98,7 +102,7 @@ export default function PostDrawer({ post, isOpen, onClose, onEdit, onDelete, on
               padding: '1px 8px', borderRadius: 20, fontSize: 11, fontWeight: 700,
               background: badge.bg, color: badge.color, marginTop: 2,
             }}>
-              {badge.label}
+              {badgeLabel}
             </div>
           </div>
           <button onClick={onClose} style={{
@@ -157,17 +161,17 @@ export default function PostDrawer({ post, isOpen, onClose, onEdit, onDelete, on
           {post.status === 'published' && (
             <div style={{ marginBottom: 14 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: '#64748B', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '.06em' }}>
-                Performance
+                {t('calendar.drawer.metrics')}
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
                 {[
-                  { icon: '👁',  label: 'Impressions', value: post.impressions },
-                  { icon: '📡',  label: 'Reach',       value: post.reach      },
-                  { icon: '❤️',  label: 'Likes',       value: post.likes      },
-                  { icon: '💬',  label: 'Comments',    value: post.comments   },
-                  { icon: '📤',  label: 'Shares',      value: post.shares     },
-                  { icon: '🔖',  label: 'Saves',       value: post.saves      },
-                  { icon: '▶️',  label: 'Views',       value: post.video_views},
+                  { icon: '👁',  label: t('calendar.drawer.impressions'), value: post.impressions },
+                  { icon: '📡',  label: t('calendar.drawer.reach'),       value: post.reach      },
+                  { icon: '❤️',  label: t('calendar.drawer.likes'),       value: post.likes      },
+                  { icon: '💬',  label: t('calendar.drawer.comments'),    value: post.comments   },
+                  { icon: '📤',  label: t('calendar.drawer.shares'),      value: post.shares     },
+                  { icon: '🔖',  label: t('calendar.drawer.saves'),       value: post.saves      },
+                  { icon: '▶️',  label: t('calendar.drawer.views'),       value: post.video_views},
                 ].filter(m => m.value > 0).map(m => (
                   <div key={m.label} style={{
                     background: '#F8FAFC', borderRadius: 8, padding: '8px',
@@ -184,7 +188,7 @@ export default function PostDrawer({ post, isOpen, onClose, onEdit, onDelete, on
               {performanceScore > 0 && (
                 <div style={{ marginTop: 12 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#64748B', marginBottom: 4 }}>
-                    <span>Performance Score</span>
+                    <span>{t('calendar.drawer.performance_score')}</span>
                     <span>{Math.min(performanceScore, scoreMax).toLocaleString()} pts</span>
                   </div>
                   <div style={{ height: 6, background: '#E2E8F0', borderRadius: 3, overflow: 'hidden' }}>
@@ -214,7 +218,7 @@ export default function PostDrawer({ post, isOpen, onClose, onEdit, onDelete, on
               }}
             >
               <ExternalLink size={14} />
-              View on {platform.label}
+              {t('calendar.drawer.view_on_platform', { platform: platform.label })}
             </a>
           )}
 
@@ -225,7 +229,7 @@ export default function PostDrawer({ post, isOpen, onClose, onEdit, onDelete, on
               borderRadius: 8, padding: '10px 14px',
               fontSize: 12, color: '#92400E', marginBottom: 14,
             }}>
-              <strong>Agency note:</strong> {post.notes}
+              <strong>{t('calendar.drawer.agency_note')}</strong> {post.notes}
             </div>
           )}
 
@@ -243,12 +247,12 @@ export default function PostDrawer({ post, isOpen, onClose, onEdit, onDelete, on
                     cursor: 'pointer', width: '100%', justifyContent: 'center',
                   }}
                 >
-                  <RefreshCw size={14} /> Reschedule
+                  <RefreshCw size={14} /> {t('calendar.drawer.reschedule')}
                 </button>
               ) : (
                 <div style={{ background: '#F8FAFC', borderRadius: 8, padding: 14 }}>
                   <div style={{ fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 8 }}>
-                    New scheduled time:
+                    {t('calendar.drawer.new_scheduled_time')}
                   </div>
                   <input
                     type="datetime-local"
@@ -271,7 +275,7 @@ export default function PostDrawer({ post, isOpen, onClose, onEdit, onDelete, on
                         opacity: (!newDatetime || rescheduling) ? 0.6 : 1,
                       }}
                     >
-                      {rescheduling ? 'Saving…' : 'Confirm'}
+                      {rescheduling ? t('calendar.drawer.rescheduling') : t('calendar.drawer.confirm')}
                     </button>
                     <button
                       onClick={() => { setRescheduleMode(false); setNewDatetime(''); }}
@@ -281,7 +285,7 @@ export default function PostDrawer({ post, isOpen, onClose, onEdit, onDelete, on
                         cursor: 'pointer', fontSize: 13, color: '#64748B',
                       }}
                     >
-                      Cancel
+                      {t('calendar.drawer.cancel')}
                     </button>
                   </div>
                 </div>
@@ -306,7 +310,7 @@ export default function PostDrawer({ post, isOpen, onClose, onEdit, onDelete, on
                 color: '#374151', cursor: 'pointer', fontSize: 13, fontWeight: 600,
               }}
             >
-              <Edit2 size={14} /> Edit
+              <Edit2 size={14} /> {t('calendar.drawer.edit')}
             </button>
             {!deleteConfirm ? (
               <button
@@ -318,7 +322,7 @@ export default function PostDrawer({ post, isOpen, onClose, onEdit, onDelete, on
                   color: '#EF4444', cursor: 'pointer', fontSize: 13, fontWeight: 600,
                 }}
               >
-                <Trash2 size={14} /> Delete
+                <Trash2 size={14} /> {t('calendar.drawer.delete')}
               </button>
             ) : (
               <div style={{ display: 'flex', gap: 6 }}>
@@ -330,7 +334,7 @@ export default function PostDrawer({ post, isOpen, onClose, onEdit, onDelete, on
                     border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600,
                   }}
                 >
-                  Confirm Delete
+                  {t('calendar.drawer.confirm_delete')}
                 </button>
                 <button
                   onClick={() => setDeleteConfirm(false)}
@@ -340,7 +344,7 @@ export default function PostDrawer({ post, isOpen, onClose, onEdit, onDelete, on
                     cursor: 'pointer', fontSize: 13, color: '#64748B',
                   }}
                 >
-                  Cancel
+                  {t('calendar.drawer.cancel')}
                 </button>
               </div>
             )}

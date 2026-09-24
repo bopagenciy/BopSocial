@@ -440,6 +440,52 @@ Two new dedicated translation namespaces were introduced, modularizing Analytics
   - Rebuilt and started container: `agencyos-frontend-1` running `bopsocial-frontend-local:bs-2.3`.
   - HTTP health check verified: `curl.exe --max-time 10 -I http://localhost:3010/` returned **HTTP/1.1 200 OK**.
 
+---
+
+## 14. Phase BS-2.4 — Content & Publishing Internationalization
+
+### 14.1 Scope and Objectives
+Phase BS-2.4 delivered complete English and Spanish internationalization for Bop Social's authenticated Content & Publishing modules:
+1. **Content Composer** (`/composer`, `/composer/:id`, `frontend/src/pages/composer/ComposerPage.jsx`):
+   - Multi-platform post composition header, action controls, platform toggles, media type selectors, scheduling strip, validation warnings, preflight checks, toast alerts, and platform previews.
+2. **Media Library** (`/composer/media`, `frontend/src/pages/composer/MediaLibraryPage.jsx`):
+   - Header action buttons, drag-and-drop file upload zone, media type dropdowns, search input, folder navigation, bulk deletion confirmations, and empty states.
+3. **Publishing Queues** (`/composer/queues`, `frontend/src/pages/composer/QueueManagerPage.jsx`):
+   - Auto-post queue manager, cron slot badges, execution status badges, queue pause/resume controls, create queue modal, and add item modal.
+4. **Editorial Calendar & Drawers** (`/calendar`, `frontend/src/pages/CalendarPage.jsx`, `CalendarGrid.jsx`, `PostDrawer.jsx`, `PostFormDrawer.jsx`):
+   - Calendar grid with localized weekday headers and month/year navigation, view toggles (`Month`, `List`, `Stats`), upcoming scheduled strip, post detail inspection drawer, performance metric tiles, and scheduling form drawer with date/time pickers and suggested best times.
+5. **My Posts** (`/posts`, `frontend/src/pages/MyPostsPage.jsx`):
+   - Performance review grid, date range filters, platform tabs, empty state, localized date representations, and pagination controls.
+6. **Video Studio** (`/video-studio`, `frontend/src/pages/video/VideoStudioPage.jsx`):
+   - Video upload and URL import card, video player, derived clips tray, tool navigation tabs (`Trim`, `Resize`, `Thumbnail`, `Captions`, `Publish`), trim sliders, aspect ratio selectors, frame extractor, automatic transcription/captioning, and YouTube direct publisher.
+
+### 14.2 Mandatory Invariants & Rules Enforced
+- **Customer Content Integrity**: Customer post titles, captions, hashtags, user mentions, media URLs, queue names, and comments are never translated or mutated.
+- **Machine-readable Status Values**: Backend status codes (`draft`, `scheduled`, `publishing`, `published`, `failed`, `queued`, `cancelled`) and provider IDs (`facebook`, `instagram`, `youtube`, `linkedin`, `google_my_business`) remain invariant in API contracts. User-facing labels are mapped dynamically via `t('status.<key>')` and `t('content:...')`.
+- **Brand & Proper Noun Preservation**: The brand name `Bop Social` remains invariant across all files. Social network proper nouns (`Facebook`, `Instagram`, `YouTube`, `LinkedIn`, `Google My Business`) remain as authored.
+- **Locale-Aware Date & Number Formatting**: All dates, times, and numeric values utilize `formatDate()`, `formatTime()`, and Intl formatters, decoupling language selection from currency and date parsing integrity.
+
+### 14.3 Translation Namespace Architecture
+- Registered **`content.json`** (`frontend/src/locales/en/content.json` & `es/content.json`) into `frontend/src/i18n/config.js` (`resources` and `ns` array):
+  - `composer`: Actions, media types, character counters, preflight checks, validation alerts, toast notifications, platform preview badges.
+  - `calendar`: Navigation, weekday headers (`Mon`..`Sun` / `Lun`..`Dom`), view toggles, post count interpolations, drawer actions, performance metrics, form fields, and suggested posting time guidance.
+  - `queues`: Headers, empty states, creation modal, item insertion modal, execution strategies (`FIFO`, `LIFO`, `Round-robin`), slot badges, and pause/resume statuses.
+  - `media`: Upload buttons, drag-and-drop triggers, file type filters, search placeholders, deletion confirmations, and upload success/failure toasts.
+  - `video`: Dropzone, URL importer, player preview, tool tabs, trim controls, aspect ratios with feed placement hints, thumbnail frame capture, auto-captions configuration alerts, and YouTube upload metadata fields.
+  - `posts`: Summary metrics, view links, and load more pagination.
+  - `status`: Machine-readable post lifecycle and queue status mappings (`published`, `scheduled`, `draft`, `failed`, `publishing`, `queued`, `cancelled`, `pending`, `active`, `paused`).
+
+### 14.4 Automated Testing & Verification
+- **Test Suite**: `frontend/src/pages/__tests__/ContentPublishingTranslation.test.jsx` (11 passing unit tests):
+  - English and Spanish rendering across Composer, Calendar, Drawers, Queues, Media Library, My Posts, and Video Studio.
+  - Verification of Customer Content Integrity (untranslated customer captions and titles preserved verbatim across language switches).
+  - Verification of Machine-Readable Status Translations (`draft` -> `Draft`/`Borrador`, `scheduled` -> `Scheduled`/`Programado`, `published` -> `Published`/`Publicado`).
+  - Strict preservation of proper nouns and brand name `Bop Social`.
+- **Full Frontend Test Suite**: 17 / 17 test suites passing, 94 / 94 tests passing.
+- **Production Build**: `npm run build` executed cleanly.
+- **Deployment**: Image tag `bopsocial-frontend-local:bs-2.4` in `docker-compose.local.yml`, rebuilt frontend container, verified HTTP 200 health check.
+
+
 
 
 

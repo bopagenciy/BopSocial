@@ -102,7 +102,12 @@ export default function PageHeader({ title, subtitle, action, actions, backHref,
                   fontSize: 12, color: 'var(--text-tertiary)',
                   display: 'inline-flex', alignItems: 'center', gap: 6,
                 }}>
-                  {m}
+                  {typeof m === 'object' && m !== null && 'label' in m ? (
+                    <>
+                      <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>{m.label}:</span>
+                      <span>{m.value}</span>
+                    </>
+                  ) : m}
                 </span>
               ))}
             </div>

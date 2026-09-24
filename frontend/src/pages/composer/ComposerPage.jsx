@@ -20,6 +20,8 @@ import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
 import AIWriteButton from '../../components/ai/AIWriteButton';
 import { composerAPI, captionAPI, hashtagAPI } from '../../services/api';
+import { useTranslation } from 'react-i18next';
+import { formatDate } from '../../utils/formatters';
 import { useAuth } from '../../hooks/useAuth';
 import { useComposerPost } from '../../hooks/useComposer';
 
@@ -45,6 +47,7 @@ export default function ComposerPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { t } = useTranslation('content');
 
   const isEditing = !!id;
   const { data: existing, loading: loadingExisting, refetch } = useComposerPost(id);
@@ -113,9 +116,9 @@ export default function ComposerPage() {
       } else if (mediaAssets.length === 1) {
         setMediaType('carousel');
       }
-      toast.success('Uploaded');
+      toast.success(t('composer.uploaded'));
     } catch (e) {
-      toast.error(e.response?.data?.detail || 'Upload failed');
+      toast.error(e.response?.data?.detail || t('composer.upload_failed'));
     }
   }
 
@@ -152,9 +155,9 @@ export default function ComposerPage() {
     setSaving(true);
     try {
       await ensurePost();
-      toast.success('Draft saved');
+      toast.success(t('composer.draft_saved'));
     } catch (e) {
-      toast.error(e.response?.data?.detail || 'Save failed');
+      toast.error(e.response?.data?.detail || t('composer.save_failed'));
     } finally {
       setSaving(false);
     }
@@ -168,23 +171,23 @@ export default function ComposerPage() {
         media_assets: mediaAssets.map((a) => a.id),
       });
       setPreflight(res.data);
-      if (res.data.ok) toast.success('Preflight passed — ready to publish');
-      else toast.error('Preflight found issues — see details below');
+      if (res.data.ok) toast.success(t('composer.preflight_passed_toast'));
+      else toast.error(t('composer.preflight_issues_toast'));
     } catch (e) {
-      toast.error(e.response?.data?.detail || 'Preflight failed');
+      toast.error(e.response?.data?.detail || t('composer.preflight_failed_toast'));
     }
   }
 
   async function onSchedule() {
     if (!validate()) return;
-    if (!scheduledAt) { toast.error('Pick a future date/time first'); return; }
+    if (!scheduledAt) { toast.error(t('composer.pick_future_date')); return; }
     setSaving(true);
     try {
       const post = await ensurePost();
       await composerAPI.posts.schedule(post.id, new Date(scheduledAt).toISOString());
-      toast.success(`Scheduled for ${new Date(scheduledAt).toLocaleString()}`);
+      toast.success(t('composer.scheduled_success', { time: formatDate(scheduledAt, { dateStyle: 'short', timeStyle: 'short' }) }));
     } catch (e) {
-      toast.error(e.response?.data?.detail || 'Schedule failed');
+      toast.error(e.response?.data?.detail || t('composer.schedule_failed'));
     } finally {
       setSaving(false);
     }
@@ -198,12 +201,12 @@ export default function ComposerPage() {
       const res = await composerAPI.posts.publishNow(post.id);
       const status = res.data?.status;
       if (status === 'pending_approval') {
-        toast.success('Sent for approval');
+        toast.success(t('composer.sent_for_approval'));
       } else {
-        toast.success('Publishing — check status in a few seconds');
+        toast.success(t('composer.publishing_status'));
       }
     } catch (e) {
-      const msg = e.response?.data?.detail || 'Publish failed';
+      const msg = e.response?.data?.detail || t('composer.publish_failed');
       toast.error(msg);
     } finally {
       setSaving(false);
@@ -212,13 +215,13 @@ export default function ComposerPage() {
 
   function validate() {
     if (mediaType === 'text' && !content.trim()) {
-      toast.error('Add some text first'); return false;
+      toast.error(t('composer.validation_text_required')); return false;
     }
     if (mediaType !== 'text' && mediaAssets.length === 0) {
-      toast.error('Upload at least one media file'); return false;
+      toast.error(t('composer.validation_media_required')); return false;
     }
     if (targetPlatforms.length === 0) {
-      toast.error('Pick at least one platform'); return false;
+      toast.error(t('composer.validation_platform_required')); return false;
     }
     return true;
   }
@@ -239,9 +242,9 @@ export default function ComposerPage() {
       const captions = res.data?.captions || res.data?.generated_captions || {};
       const first = targetPlatforms.find((p) => captions[p]) || Object.keys(captions)[0];
       if (first && captions[first]) setContent(captions[first]);
-      else toast.error('AI did not return a caption');
+      else toast.error(t('composer.ai_no_caption'));
     } catch (e) {
-      toast.error('AI compose failed');
+      toast.error(t('composer.ai_compose_failed'));
     } finally {
       setAiBusy(false);
     }
@@ -259,9 +262,9 @@ export default function ComposerPage() {
         .map((t) => (t.startsWith('#') ? t : `#${t}`))
         .join(' ');
       if (tags) setContent((c) => `${c}${c && !c.endsWith('\n') ? '\n\n' : ''}${tags}`);
-      else toast.error('No hashtags returned');
+      else toast.error(t('composer.ai_no_hashtags'));
     } catch (e) {
-      toast.error('AI hashtags failed');
+      toast.error(t('composer.ai_hashtags_failed'));
     } finally {
       setAiBusy(false);
     }
@@ -280,23 +283,23 @@ export default function ComposerPage() {
   return (
     <div style={{ paddingBottom: 40 }}>
       <PageHeader
-        title={isEditing ? 'Edit Post' : 'New Post'}
-        subtitle="Compose once. Publish everywhere."
+        title={isEditing ? t('composer.title_edit') : t('composer.title_new')}
+        subtitle={t('composer.subtitle')}
         action={
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <Button variant="secondary" icon={Save} onClick={onSaveDraft} loading={saving}>
-              Save Draft
+              {t('composer.save_draft')}
             </Button>
             <Button variant="secondary" icon={Eye} onClick={onPreflight}>
-              Preflight
+              {t('composer.preflight')}
             </Button>
             {scheduleMode === 'schedule' ? (
               <Button variant="primary" icon={Calendar} onClick={onSchedule} loading={saving}>
-                Schedule
+                {t('composer.schedule')}
               </Button>
             ) : (
               <Button variant="primary" icon={Send} onClick={onPublishNow} loading={saving}>
-                Publish Now
+                {t('composer.publish_now')}
               </Button>
             )}
           </div>
@@ -314,8 +317,8 @@ export default function ComposerPage() {
           {/* Platform toggles */}
           <Card padding="md">
             <Card.Header
-              title="Publish to"
-              subtitle="Pick where this post should go live"
+              title={t('composer.publish_to')}
+              subtitle={t('composer.publish_to_sub')}
             />
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
               {PLATFORMS.map((p) => {
@@ -351,7 +354,7 @@ export default function ComposerPage() {
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Internal title (optional)"
+              placeholder={t('composer.internal_title_placeholder')}
               style={{
                 width: '100%',
                 padding: '8px 0',
@@ -377,7 +380,7 @@ export default function ComposerPage() {
             <textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              placeholder="What do you want to say?"
+              placeholder={t('composer.content_placeholder')}
               rows={10}
               style={{
                 width: '100%',
@@ -418,8 +421,8 @@ export default function ComposerPage() {
           {/* Media + Type */}
           <Card padding="md">
             <Card.Header
-              title="Media"
-              subtitle="Images, videos, carousels"
+              title={t('composer.media')}
+              subtitle={t('composer.media_sub')}
               action={<MediaUploadButton onUpload={uploadFile} />}
             />
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '8px 0 12px' }}>
@@ -431,7 +434,7 @@ export default function ComposerPage() {
                   style={typePillStyle(mediaType === m.id)}
                 >
                   {m.icon ? <m.icon size={12} strokeWidth={2.4} /> : null}
-                  {m.label}
+                  {t(`composer.media_types.${m.id}`, m.label)}
                 </button>
               ))}
             </div>
@@ -440,12 +443,12 @@ export default function ComposerPage() {
 
           {/* Scheduling */}
           <Card padding="md">
-            <Card.Header title="When to post" />
+            <Card.Header title={t('composer.when_to_post')} />
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
               {[
-                { id: 'now',      label: 'Now',         icon: Send },
-                { id: 'schedule', label: 'Schedule',    icon: Calendar },
-                { id: 'queue',    label: 'Add to Queue', icon: Layers },
+                { id: 'now',      label: t('composer.mode_now'),      icon: Send },
+                { id: 'schedule', label: t('composer.mode_schedule'), icon: Calendar },
+                { id: 'queue',    label: t('composer.mode_queue'),    icon: Layers },
               ].map((m) => (
                 <button
                   key={m.id}
@@ -466,14 +469,13 @@ export default function ComposerPage() {
                   style={inputStyle}
                 />
                 <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4 }}>
-                  In your local time. The scheduler runs every minute.
+                  {t('composer.local_time_note')}
                 </div>
               </div>
             )}
             {scheduleMode === 'queue' && (
               <div style={{ marginTop: 12, fontSize: 13, color: 'var(--text-secondary)' }}>
-                Manage queues from the <strong>Queues</strong> page. Save this as a draft and add it
-                to a queue from there, or use "Add to Queue" after saving.
+                {t('composer.queue_note_prefix')} <strong>{t('composer.queue_page_link')}</strong> {t('composer.queue_note_suffix')}
               </div>
             )}
           </Card>
@@ -486,19 +488,19 @@ export default function ComposerPage() {
                 color: 'var(--text-tertiary)',
                 textTransform: 'uppercase', letterSpacing: 0.4,
               }}>
-                AI assist
+                {t('composer.ai_assist')}
               </span>
               <Button variant="secondary" size="sm" icon={Wand2}
                       onClick={aiCompose} loading={aiBusy} disabled={targetPlatforms.length === 0}>
-                Compose
+                {t('composer.ai_compose')}
               </Button>
               <Button variant="secondary" size="sm" icon={Hash}
                       onClick={aiHashtags} loading={aiBusy}>
-                Add hashtags
+                {t('composer.ai_hashtags')}
               </Button>
               <Button variant="ghost" size="sm" icon={Clock} disabled
-                      title="Best time to post — coming with audience analytics">
-                Best time
+                      title={t('composer.best_time_tooltip')}>
+                {t('composer.best_time')}
               </Button>
             </div>
           </Card>
@@ -567,6 +569,7 @@ export default function ComposerPage() {
 
 /* ── Sub-components ────────────────────────────────────────────────── */
 function MediaUploadButton({ onUpload }) {
+  const { t } = useTranslation('content');
   const ref = useRef();
   return (
     <>
@@ -582,13 +585,14 @@ function MediaUploadButton({ onUpload }) {
       />
       <Button variant="secondary" size="sm" icon={Upload}
               onClick={() => ref.current?.click()}>
-        Upload
+        {t('composer.upload')}
       </Button>
     </>
   );
 }
 
 function MediaGrid({ assets, onRemove }) {
+  const { t } = useTranslation('content');
   if (!assets.length) {
     return (
       <div style={{
@@ -597,7 +601,7 @@ function MediaGrid({ assets, onRemove }) {
         padding: 24, textAlign: 'center',
         fontSize: 13, color: 'var(--text-tertiary)',
       }}>
-        No media yet — click Upload to add images or videos.
+        {t('composer.no_media_empty')}
       </div>
     );
   }
@@ -627,7 +631,7 @@ function MediaGrid({ assets, onRemove }) {
           <button
             type="button"
             onClick={() => onRemove(idx)}
-            aria-label="Remove"
+            aria-label={t('composer.remove_asset')}
             style={{
               position: 'absolute', top: 4, right: 4,
               width: 22, height: 22, borderRadius: 999,
@@ -646,6 +650,7 @@ function MediaGrid({ assets, onRemove }) {
 }
 
 function PlatformPreview({ platform, content, mediaAssets, mediaType, user }) {
+  const { t } = useTranslation('content');
   const meta = PLATFORMS.find((p) => p.id === platform) || PLATFORMS[0];
   const handle = user?.first_name || user?.email?.split('@')[0] || 'You';
 
@@ -672,7 +677,7 @@ function PlatformPreview({ platform, content, mediaAssets, mediaType, user }) {
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 13, fontWeight: 700 }}>{handle}</div>
           <div style={{ fontSize: 11, color: '#667781' }}>
-            {meta.label} · just now
+            {meta.label} · {t('composer.preview_just_now')}
           </div>
         </div>
       </div>
@@ -701,9 +706,9 @@ function PlatformPreview({ platform, content, mediaAssets, mediaType, user }) {
         display: 'flex', gap: 16, padding: '8px 14px 14px',
         borderTop: '1px solid var(--surface-sunken)', fontSize: 12, color: '#667781',
       }}>
-        <span>♡ Like</span>
-        <span>💬 Comment</span>
-        <span>↗ Share</span>
+        <span>♡ {t('composer.preview_like')}</span>
+        <span>💬 {t('composer.preview_comment')}</span>
+        <span>↗ {t('composer.preview_share')}</span>
       </div>
     </div>
   );
@@ -773,6 +778,7 @@ function PreviewMedia({ assets, mediaType, platform }) {
 }
 
 function PreflightPanel({ result, onClose }) {
+  const { t } = useTranslation('content');
   return (
     <Card padding="md">
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
@@ -781,7 +787,7 @@ function PreflightPanel({ result, onClose }) {
             ? <CheckCircle2 size={18} color="var(--success)" />
             : <AlertCircle size={18} color="var(--danger)" />}
           <strong style={{ fontSize: 14 }}>
-            {result.ok ? 'Preflight passed' : 'Preflight found issues'}
+            {result.ok ? t('composer.preflight_passed') : t('composer.preflight_issues')}
           </strong>
         </div>
         <button onClick={onClose} aria-label="Dismiss"

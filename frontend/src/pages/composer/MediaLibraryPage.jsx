@@ -8,6 +8,7 @@
  * ========================================================================== */
 import { useRef, useState, useCallback } from 'react';
 import { Image as ImageIcon, Video, Trash2, Upload, Search, Loader2, Folder } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 
 import PageHeader from '../../components/layout/PageHeader';
@@ -18,6 +19,7 @@ import { useMediaAssets } from '../../hooks/useComposer';
 import { composerAPI } from '../../services/api';
 
 export default function MediaLibraryPage() {
+  const { t } = useTranslation('content');
   const [search, setSearch] = useState('');
   const [folder, setFolder] = useState('');
   const [mime, setMime] = useState('');
@@ -51,11 +53,11 @@ export default function MediaLibraryPage() {
       const res = await composerAPI.media.bulkUpload(fd);
       const created = res.data?.created || [];
       const errors = res.data?.errors || [];
-      if (created.length) toast.success(`Uploaded ${created.length} file${created.length === 1 ? '' : 's'}`);
-      if (errors.length)  toast.error(`${errors.length} file${errors.length === 1 ? '' : 's'} failed`);
+      if (created.length) toast.success(created.length === 1 ? t('media.upload_success', { count: 1 }) : t('media.upload_success_plural', { count: created.length }));
+      if (errors.length)  toast.error(errors.length === 1 ? t('media.upload_error', { count: 1 }) : t('media.upload_error_plural', { count: errors.length }));
       refetch();
     } catch (e) {
-      toast.error(e.response?.data?.detail || 'Upload failed');
+      toast.error(e.response?.data?.detail || t('media.upload_failed'));
     } finally {
       setUploading(false);
     }
@@ -77,27 +79,30 @@ export default function MediaLibraryPage() {
 
   async function bulkDelete() {
     if (!selected.size) return;
-    if (!window.confirm(`Delete ${selected.size} item${selected.size === 1 ? '' : 's'}?`)) return;
+    const confirmMsg = selected.size === 1
+      ? t('media.delete_confirm', { count: 1 })
+      : t('media.delete_confirm_plural', { count: selected.size });
+    if (!window.confirm(confirmMsg)) return;
     try {
       await Promise.all([...selected].map((id) => composerAPI.media.delete(id)));
       setSelected(new Set());
       refetch();
-      toast.success('Deleted');
+      toast.success(t('media.deleted'));
     } catch (e) {
-      toast.error('Delete failed');
+      toast.error(t('media.delete_failed'));
     }
   }
 
   return (
     <div style={{ paddingBottom: 32 }}>
       <PageHeader
-        title="Media Library"
-        subtitle="Reusable photos, videos, and graphics"
+        title={t('media.title')}
+        subtitle={t('media.subtitle')}
         action={
           <div style={{ display: 'flex', gap: 8 }}>
             {selected.size > 0 && (
               <Button variant="secondary" icon={Trash2} onClick={bulkDelete}>
-                Delete ({selected.size})
+                {t('media.delete_count', { count: selected.size })}
               </Button>
             )}
             <input
@@ -109,7 +114,7 @@ export default function MediaLibraryPage() {
               onChange={(e) => { uploadFiles(Array.from(e.target.files || [])); e.target.value = ''; }}
             />
             <Button variant="primary" icon={Upload} onClick={() => fileRef.current?.click()} loading={uploading}>
-              Upload
+              {t('media.upload')}
             </Button>
           </div>
         }
@@ -125,19 +130,19 @@ export default function MediaLibraryPage() {
             <Search size={14} color="var(--text-tertiary)"
                     style={{ position: 'absolute', top: 11, left: 10 }} />
             <input
-              placeholder="Search alt text or tags…"
+              placeholder={t('media.search_placeholder')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               style={{ ...inputStyle, paddingLeft: 30 }}
             />
           </div>
           <select value={mime} onChange={(e) => setMime(e.target.value)} style={inputStyle}>
-            <option value="">All types</option>
-            <option value="image">Images</option>
-            <option value="video">Videos</option>
+            <option value="">{t('media.all_types')}</option>
+            <option value="image">{t('media.types_image')}</option>
+            <option value="video">{t('media.types_video')}</option>
           </select>
           <select value={folder} onChange={(e) => setFolder(e.target.value)} style={inputStyle}>
-            <option value="">All folders</option>
+            <option value="">{t('media.all_folders')}</option>
             {folders.map((f) => <option key={f} value={f}>{f}</option>)}
           </select>
         </Card>
@@ -165,9 +170,9 @@ export default function MediaLibraryPage() {
             <Card padding="none" style={{ overflow: 'hidden' }}>
               <EmptyState
                 icon={ImageIcon}
-                title="No media yet"
-                description="Drag-and-drop files anywhere on this page, or click Upload."
-                action={<Button icon={Upload} onClick={() => fileRef.current?.click()}>Upload</Button>}
+                title={t('media.empty_title')}
+                description={t('media.empty_desc')}
+                action={<Button icon={Upload} onClick={() => fileRef.current?.click()}>{t('media.upload')}</Button>}
               />
             </Card>
           )}

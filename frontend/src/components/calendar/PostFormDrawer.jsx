@@ -7,10 +7,12 @@
  *  Released under the MIT License — see LICENSE. Keep this notice.
  * ========================================================================== */
 import { useState, useEffect } from 'react';
-import { format, isBefore } from 'date-fns';
+import { isBefore } from 'date-fns';
 import { X, AlertCircle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { PLATFORMS, PLATFORM_LIST } from '../../services/platforms';
 import { useSuggestedTimes } from '../../hooks/useCalendar';
+import { formatDate } from '../../utils/formatters';
 import SocialPlatformIcon from '../ui/SocialPlatformIcon';
 
 const CHAR_LIMITS = {
@@ -32,7 +34,7 @@ const POST_TYPES = [
   { value: 'short',    label: 'Short'    },
 ];
 
-const DAY_NAMES = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const DAY_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 
 function getMinScheduleValue() {
   const now = new Date();
@@ -52,6 +54,7 @@ function CharCounter({ text, limit }) {
 }
 
 function SuggestRow({ clientId, platform }) {
+  const { t } = useTranslation('content');
   const { suggestions, source } = useSuggestedTimes(clientId, platform);
   if (!suggestions.length) return null;
   return (
@@ -59,16 +62,17 @@ function SuggestRow({ clientId, platform }) {
       background: '#EFF6FF', border: '1px solid #BFDBFE',
       borderRadius: 8, padding: '8px 12px', marginTop: 6, fontSize: 12,
     }}>
-      <span style={{ color: '#2563EB', fontWeight: 600 }}>💡 Best times for {PLATFORMS[platform]?.label || platform}: </span>
+      <span style={{ color: '#2563EB', fontWeight: 600 }}>💡 {t('calendar.form.best_times_for', { platform: PLATFORMS[platform]?.label || platform })} </span>
       <span style={{ color: '#1e40af' }}>
-        {suggestions.slice(0, 4).map(s => s.note || `${DAY_NAMES[s.day_of_week]} ${s.hour}:${String(s.minute||0).padStart(2,'0')}`).join(', ')}
+        {suggestions.slice(0, 4).map(s => s.note || `${t(`calendar.weekdays.${DAY_KEYS[s.day_of_week]}`)} ${s.hour}:${String(s.minute||0).padStart(2,'0')}`).join(', ')}
       </span>
-      {source === 'industry' && <span style={{ color: '#64748B' }}> (industry)</span>}
+      {source === 'industry' && <span style={{ color: '#64748B' }}> ({t('calendar.form.industry', 'industry')})</span>}
     </div>
   );
 }
 
 export default function PostFormDrawer({ date, post, isOpen, onClose, onSave, clientId, readOnly }) {
+  const { t } = useTranslation('content');
   const isEdit = !!post;
 
   const [platform,    setPlatform]    = useState(post?.platform    || 'instagram');
@@ -146,16 +150,16 @@ export default function PostFormDrawer({ date, post, isOpen, onClose, onSave, cl
   const validateForm = (finalStatus) => {
     const nextErrors = {};
     if (!platform) {
-      nextErrors.platform = 'Please select a platform.';
+      nextErrors.platform = t('calendar.form.validation.platform_required', 'Please select a platform.');
     }
     if (!caption.trim() && !title.trim()) {
-      nextErrors.caption = 'Caption is required. Add a caption or at least an internal title.';
+      nextErrors.caption = t('calendar.form.validation.caption_required', 'Caption is required. Add a caption or at least an internal title.');
     }
     if (finalStatus === 'scheduled' && !scheduledAt) {
-      nextErrors.scheduledAt = 'Please pick a date and time to schedule this post.';
+      nextErrors.scheduledAt = t('calendar.form.validation.datetime_required', 'Please pick a date and time to schedule this post.');
     }
     if (finalStatus === 'scheduled' && scheduledAt && isBefore(new Date(scheduledAt), new Date())) {
-      nextErrors.scheduledAt = 'The scheduled time must be in the future.';
+      nextErrors.scheduledAt = t('calendar.form.validation.future_datetime', 'The scheduled time must be in the future.');
     }
     setErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
@@ -173,16 +177,20 @@ export default function PostFormDrawer({ date, post, isOpen, onClose, onSave, cl
     if (!validateForm(finalStatus)) {
       // Build a specific summary of what's missing
       const missing = [];
-      if (!platform) missing.push('Platform');
-      if (!caption.trim() && !title.trim()) missing.push('Caption');
-      if (finalStatus === 'scheduled' && !scheduledAt) missing.push('Scheduled Date & Time');
+      if (!platform) missing.push(t('calendar.form.platform', 'Platform'));
+      if (!caption.trim() && !title.trim()) missing.push(t('calendar.form.caption', 'Caption'));
+      if (finalStatus === 'scheduled' && !scheduledAt) missing.push(t('calendar.form.schedule_datetime', 'Scheduled Date & Time'));
       if (finalStatus === 'scheduled' && scheduledAt && isBefore(new Date(scheduledAt), new Date())) {
-        missing.push('Scheduled Date & Time (must be in the future)');
+        missing.push(`${t('calendar.form.schedule_datetime', 'Scheduled Date & Time')} (${t('calendar.form.validation.future_datetime', 'must be in the future')})`);
       }
       setError(
         missing.length > 0
-          ? `Required field${missing.length > 1 ? 's' : ''} missing: ${missing.join(', ')}.`
-          : 'Please fix the highlighted fields before saving.'
+          ? t('calendar.form.validation.missing_fields', {
+              plural: missing.length > 1 ? 's' : '',
+              fields: missing.join(', '),
+              defaultValue: `Required field(s) missing: ${missing.join(', ')}.`
+            })
+          : t('calendar.form.validation.fix_highlighted', 'Please fix the highlighted fields before saving.')
       );
       return;
     }
@@ -205,7 +213,7 @@ export default function PostFormDrawer({ date, post, isOpen, onClose, onSave, cl
     const result = await onSave(payload, post?.id);
     setSaving(false);
     if (result?.success === false) {
-      setError(result.error || 'Save failed.');
+      setError(result.error || t('calendar.form.validation.save_failed', 'Save failed.'));
     }
   }
 
@@ -244,11 +252,11 @@ export default function PostFormDrawer({ date, post, isOpen, onClose, onSave, cl
           position: 'sticky', top: 0, background: '#fff', zIndex: 1,
         }}>
           <div style={{ fontWeight: 700, fontSize: 16, color: '#0f172a' }}>
-            {isEdit ? 'Edit Post' : 'Schedule Post'}
+            {isEdit ? t('calendar.form.edit_post', 'Edit Post') : t('calendar.form.schedule_button', 'Schedule Post')}
           </div>
           {date && !isEdit && (
             <div style={{ fontSize: 12, color: '#64748B' }}>
-              {format(date instanceof Date ? date : new Date(date), 'EEEE, MMMM d')}
+              {formatDate(date instanceof Date ? date : new Date(date), { weekday: 'long', month: 'long', day: 'numeric' })}
             </div>
           )}
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748B' }}>
@@ -260,7 +268,7 @@ export default function PostFormDrawer({ date, post, isOpen, onClose, onSave, cl
         <div style={{ padding: '20px', flex: 1 }}>
           {/* Platform selector */}
           <div style={{ marginBottom: 16 }}>
-            <label style={labelStyle}>Platform <span style={requiredAsteriskStyle}>*</span></label>
+            <label style={labelStyle}>{t('calendar.form.platform', 'Platform')} <span style={requiredAsteriskStyle}>*</span></label>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {PLATFORM_LIST.map(key => {
                 const p = PLATFORMS[key];
@@ -294,21 +302,23 @@ export default function PostFormDrawer({ date, post, isOpen, onClose, onSave, cl
 
           {/* Post Type */}
           <div style={{ marginBottom: 16 }}>
-            <label style={labelStyle}>Post Type</label>
+            <label style={labelStyle}>{t('calendar.form.post_type', 'Post Type')}</label>
             <select
               value={postType}
               onChange={e => setPostType(e.target.value)}
               style={inputStyle}
             >
-              {POST_TYPES.map(t => (
-                <option key={t.value} value={t.value}>{t.label}</option>
+              {POST_TYPES.map(typeItem => (
+                <option key={typeItem.value} value={typeItem.value}>
+                  {t(`calendar.form.post_types.${typeItem.value}`, typeItem.label)}
+                </option>
               ))}
             </select>
           </div>
 
           {/* Title */}
           <div style={{ marginBottom: 16 }}>
-            <label style={labelStyle}>Internal Title</label>
+            <label style={labelStyle}>{t('calendar.form.title', 'Internal Title')}</label>
             <input
               type="text"
               value={title}
@@ -316,21 +326,21 @@ export default function PostFormDrawer({ date, post, isOpen, onClose, onSave, cl
                 setTitle(e.target.value);
                 clearFieldError('caption');
               }}
-              placeholder="Agency reference label"
+              placeholder={t('calendar.form.title_placeholder', 'Agency reference label')}
               style={inputStyle}
             />
           </div>
 
           {/* Caption */}
           <div style={{ marginBottom: 16 }}>
-            <label style={labelStyle}>Caption <span style={requiredAsteriskStyle}>*</span></label>
+            <label style={labelStyle}>{t('calendar.form.caption', 'Caption')} <span style={requiredAsteriskStyle}>*</span></label>
             <textarea
               value={caption}
               onChange={e => {
                 setCaption(e.target.value);
                 clearFieldError('caption');
               }}
-              placeholder={`Write your ${plat.label} caption…`}
+              placeholder={t('calendar.form.caption_placeholder', { platform: plat.label, defaultValue: `Write your ${plat.label} caption…` })}
               rows={5}
               style={{ ...inputStyle, ...(errors.caption ? inputErrorStyle : {}), resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 }}
             />
@@ -341,10 +351,10 @@ export default function PostFormDrawer({ date, post, isOpen, onClose, onSave, cl
           {/* Hashtags */}
           <div style={{ marginBottom: 16 }}>
             <label style={labelStyle}>
-              Hashtags
+              {t('calendar.form.hashtags', 'Hashtags')}
               {hashCount > 0 && (
                 <span style={{ marginLeft: 8, fontWeight: 400, color: '#64748B' }}>
-                  {hashCount} hashtag{hashCount !== 1 ? 's' : ''}
+                  {t('calendar.hashtags_count', { count: hashCount, defaultValue: `${hashCount} hashtags` })}
                 </span>
               )}
             </label>
@@ -352,14 +362,14 @@ export default function PostFormDrawer({ date, post, isOpen, onClose, onSave, cl
               type="text"
               value={hashtags}
               onChange={e => setHashtags(e.target.value)}
-              placeholder="#socialmedia #marketing"
+              placeholder={t('calendar.form.hashtags_placeholder', '#socialmedia #marketing')}
               style={inputStyle}
             />
           </div>
 
           {/* Media URL */}
           <div style={{ marginBottom: 16 }}>
-            <label style={labelStyle}>Media URL (optional)</label>
+            <label style={labelStyle}>{t('calendar.form.media_url', 'Media URL (optional)')}</label>
             <input
               type="url"
               value={mediaUrl}
@@ -371,7 +381,7 @@ export default function PostFormDrawer({ date, post, isOpen, onClose, onSave, cl
 
           {/* Post URL */}
           <div style={{ marginBottom: 16 }}>
-            <label style={labelStyle}>Post URL (optional)</label>
+            <label style={labelStyle}>{t('calendar.form.post_url', 'Post URL (optional)')}</label>
             <input
               type="url"
               value={postUrl}
@@ -383,7 +393,7 @@ export default function PostFormDrawer({ date, post, isOpen, onClose, onSave, cl
 
           {/* Status */}
           <div style={{ marginBottom: 16 }}>
-            <label style={labelStyle}>Status</label>
+            <label style={labelStyle}>{t('calendar.form.status', 'Status')}</label>
             <div style={{ display: 'flex', gap: 8 }}>
               {['draft', 'scheduled'].map(s => (
                 <button
@@ -395,10 +405,9 @@ export default function PostFormDrawer({ date, post, isOpen, onClose, onSave, cl
                     color:      status === s ? (s === 'scheduled' ? '#fff'   : '#374151') : '#94A3B8',
                     border:     status === s ? `1px solid ${s === 'scheduled' ? '#2563EB' : '#CBD5E1'}` : '1px solid #E2E8F0',
                     cursor: 'pointer', fontSize: 13, fontWeight: 600,
-                    textTransform: 'capitalize',
                   }}
                 >
-                  {s}
+                  {t(`status.${s}`, s)}
                 </button>
               ))}
             </div>
@@ -407,7 +416,7 @@ export default function PostFormDrawer({ date, post, isOpen, onClose, onSave, cl
           {/* DateTime picker */}
           {status === 'scheduled' && (
             <div style={{ marginBottom: 16 }}>
-              <label style={labelStyle}>Scheduled Date & Time <span style={requiredAsteriskStyle}>*</span></label>
+              <label style={labelStyle}>{t('calendar.form.schedule_datetime', 'Scheduled Date & Time')} <span style={requiredAsteriskStyle}>*</span></label>
               <input
                 type="datetime-local"
                 value={scheduledAt}
@@ -427,11 +436,11 @@ export default function PostFormDrawer({ date, post, isOpen, onClose, onSave, cl
 
           {/* Agency notes */}
           <div style={{ marginBottom: 16 }}>
-            <label style={labelStyle}>Internal Notes (not shown to user)</label>
+            <label style={labelStyle}>{t('calendar.form.notes', 'Internal Notes (not shown to user)')}</label>
             <textarea
               value={notes}
               onChange={e => setNotes(e.target.value)}
-              placeholder="e.g. Waiting on final image from designer"
+              placeholder={t('calendar.form.notes_placeholder', 'e.g. Waiting on final image from designer')}
               rows={2}
               style={{ ...inputStyle, resize: 'vertical', fontFamily: 'inherit' }}
             />
@@ -468,7 +477,7 @@ export default function PostFormDrawer({ date, post, isOpen, onClose, onSave, cl
                 opacity: saving ? 0.6 : 1,
               }}
             >
-              Save as Draft
+              {t('calendar.form.save_as_draft', 'Save as Draft')}
             </button>
             <button
               onClick={() => handleSave('scheduled')}
@@ -481,7 +490,7 @@ export default function PostFormDrawer({ date, post, isOpen, onClose, onSave, cl
                 opacity: saving ? 0.6 : 1,
               }}
             >
-              {saving ? 'Saving…' : 'Schedule Post'}
+              {saving ? t('calendar.form.saving', 'Saving…') : (isEdit ? t('calendar.form.update_button', 'Update Post') : t('calendar.form.schedule_button', 'Schedule Post'))}
             </button>
           </div>
         )}
