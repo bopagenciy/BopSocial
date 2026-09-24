@@ -383,6 +383,64 @@ During authenticated inspection of `/admin/analytics/dashboard` as local superad
   - HTTP health check verified: `curl.exe --max-time 10 -I http://localhost:3010/` returned **HTTP/1.1 200 OK**.
   - Direct login verification on port 3010 verified: `LOGIN_CHECK: SUCCESS, has_access=True`.
 
+---
+
+## 13. Phase BS-2.3 — Analytics & Reporting Internationalization
+
+### 13.1 Scope and Objective
+Phase BS-2.3 delivered complete English and Spanish internationalization for Bop Social's authenticated Analytics (`/admin/analytics/analytics`, `/dashboard/analytics`) and Reporting (`/admin/analytics/reports`, `/dashboard/reports`) modules. Every dynamic label, metric card, section title, empty/loading state, table header, chart legend/tooltip, and modal control was brought under translation catalogs while preserving calculations, chart structures, routes, API contracts, brand invariants (`Bop Social`), and platform proper nouns (`Facebook`, `Instagram`, `YouTube`, `LinkedIn`, `Google My Business`).
+
+### 13.2 Architecture & Namespace Organization
+Two new dedicated translation namespaces were introduced, modularizing Analytics and Reporting cleanly alongside `dashboard`, `app`, `auth`, `marketing`, and `settings`:
+- **`analytics.json`** (`frontend/src/locales/en/analytics.json` & `es/analytics.json`):
+  - Metric labels (`Impressions` / `Impresiones`, `Reach` / `Alcance`, `Clicks` / `Clics`, `Video Views` / `Visualizaciones de video`, `Followers` / `Seguidores`, `Likes` / `Me gusta`, `CTR`).
+  - Section titles and subtitles (`Performance Over Time — {{client}}`, `Performance by Platform`, `Platform Distribution`, `Platform Metrics Comparison`, `All Metrics Over Time`, `Platform Balance Radar`, `Platform Breakdown`, `User Overview`).
+  - Dropdown options (`All Users` / `Todos los usuarios`, `All Platforms` / `Todas las plataformas`).
+  - Dynamic comparison suffixes (`vs prev period` / `vs período anterior`).
+  - Chart empty & loading states (`Loading chart…`, `No data for this period. Try syncing the user first.`, `No data yet. Sync your users to see platform analytics.`, `No platform data yet.`, `No timeseries data.`, `No platform data. Sync clients to populate analytics.`, `No clients yet. Add a client to get started.`).
+  - Table headers, statuses, and action controls (`Client`, `Platform`, `Status`, `Created`, `Website`, `Active`, `Inactive`, `View Analytics →`).
+- **`reports.json`** (`frontend/src/locales/en/reports.json` & `es/reports.json`):
+  - Page header title, subtitle, and filter dropdown options (`Reports` / `Informes`, `All clients` / `Todos los clientes`).
+  - Segmented tabs (`Shared Links` / `Enlaces compartidos`, `ROI Reports` / `Informes de ROI`).
+  - Shared Links panel: header, refresh action, loading/empty states, expired tags, view counts, creation/expiration relative dates, and action button tooltips (`Copy link`, `Open report`, `Deactivate`).
+  - ROI Reports panel: header, month selector options (`Jan`..`Dec` / `Ene`..`Dic`), loading/empty states, table headers (`User`, `Month`, `ROI %`, `Investment`, `Revenue`, `Leads`, `Status`, `View →`), and rating badges (`Excellent`, `Good`, `Average`, `Review`).
+  - Share Report modal (`ShareReportModal.jsx`): title, date range picker, platform selectors, expiry options (`Never`, `24 hours`, `7 days`, `30 days`), password protection controls, link generation button, copied feedback, and existing client links list.
+  - Public shared report view (`PublicReportPage.jsx`): password verification gate, section titles, headers, and localized date range representations.
+
+### 13.3 Localization Implementation Highlights
+- **`AnalyticsPage.jsx`**:
+  - Replaced hardcoded strings with `t()` calls using `useTranslation('analytics')`.
+  - Date ranges formatted with `formatDateRange(range.since, range.until, { dateStyle: 'medium' }, i18n?.language)`.
+  - Recharts radar axes, area charts, line charts, and bar charts dynamically localized via `METRIC_META` mapping.
+  - Subtitle updates dynamically based on client selection (`Viendo <Cliente> — <fecha>` vs `Resumen de todos los clientes — <fecha>`).
+- **`ReportsPage.jsx`**:
+  - Wired all tab panels, cards, and tables to `reports` namespace using `useTranslation('reports')`.
+  - ROI currency and numbers formatted with locale-sensitive separators via `formatNumber()`.
+  - Relative creation times formatted via `formatRelativeTime(link.created_at, i18n?.language)`.
+- **`ShareReportModal.jsx`**:
+  - Translated all expiry options, validation alerts, password toggles, and copy states.
+- **`PublicReportPage.jsx`**:
+  - Localized password gate form, public header, PDF download trigger, and table columns.
+
+### 13.4 Verification & Deployment
+- **Dedicated Automated Test Suite**:
+  - `frontend/src/pages/__tests__/AnalyticsReportingTranslation.test.jsx`: 7/7 passing tests verifying:
+    - English default rendering for all 12 reported defects and components.
+    - Spanish rendering upon switching platform language.
+    - Client-specific drill-down view translation and dynamic title generation.
+    - Empty and loading states across both modules in Spanish.
+    - ReportsPage tabs, ROI reports table, localized badges, and month names.
+    - ShareReportModal form controls and expiry options in Spanish.
+- **Full Frontend Test Suite**:
+  - **16 / 16 test suites passed, 83 / 83 tests passed**.
+- **Production Build**:
+  - `npm run build` completed cleanly with exit code 0.
+- **Docker Deployment**:
+  - Image tag updated in `docker-compose.local.yml`: `bopsocial-frontend-local:bs-2.3`.
+  - Rebuilt and started container: `agencyos-frontend-1` running `bopsocial-frontend-local:bs-2.3`.
+  - HTTP health check verified: `curl.exe --max-time 10 -I http://localhost:3010/` returned **HTTP/1.1 200 OK**.
+
+
 
 
 

@@ -6,21 +6,16 @@
  *  Copyright (c) 2026 Chandrabhan Shekhawat / Gigai Kripa Services.
  *  Released under the MIT License — see LICENSE. Keep this notice.
  * ========================================================================== */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { QRCodeSVG } from 'qrcode.react';
 import { Link2, Copy, Check, X, Lock, Calendar, Layers, Clock, Share2, Trash2, Eye } from 'lucide-react';
 import { sharedReportsAPI } from '../../services/api';
 import { PLATFORMS } from '../../services/platforms';
 import SocialPlatformIcon from './SocialPlatformIcon';
+import { formatDate, formatDateRange } from '../../utils/formatters';
 
 const ALL_PLATFORMS = Object.keys(PLATFORMS);
-
-const EXPIRY_OPTIONS = [
-  { label: 'Never',   value: '' },
-  { label: '24 hours', value: '24h' },
-  { label: '7 days',   value: '7d' },
-  { label: '30 days',  value: '30d' },
-];
 
 function buildShareUrl(report) {
   if (!report) return '';
@@ -55,6 +50,7 @@ function expiryToDatetime(val) {
 }
 
 export default function ShareReportModal({ clientId, onClose }) {
+  const { t, i18n } = useTranslation('reports');
   const today      = new Date().toISOString().slice(0, 10);
   const monthStart = today.slice(0, 8) + '01';
 
@@ -68,6 +64,13 @@ export default function ShareReportModal({ clientId, onClose }) {
   const [error,       setError]       = useState('');
   const [shareUrl,    setShareUrl]    = useState('');
   const [copied,      setCopied]      = useState(false);
+
+  const expiryOptions = useMemo(() => [
+    { label: t('modal.expiry_never'), value: '' },
+    { label: t('modal.expiry_24h'),   value: '24h' },
+    { label: t('modal.expiry_7d'),    value: '7d' },
+    { label: t('modal.expiry_30d'),   value: '30d' },
+  ], [t]);
 
   // Existing links for this client
   const [links,      setLinks]      = useState([]);
@@ -88,9 +91,9 @@ export default function ShareReportModal({ clientId, onClose }) {
   }
 
   async function handleCreate() {
-    if (!dateFrom || !dateUntil) { setError('Please set a date range.'); return; }
-    if (platforms.length === 0)  { setError('Select at least one platform.'); return; }
-    if (usePassword && !password.trim()) { setError('Please enter a password or disable password protection.'); return; }
+    if (!dateFrom || !dateUntil) { setError(t('modal.errors.date_range')); return; }
+    if (platforms.length === 0)  { setError(t('modal.errors.platforms')); return; }
+    if (usePassword && !password.trim()) { setError(t('modal.errors.password')); return; }
     setError('');
     setCreating(true);
     try {
@@ -108,7 +111,7 @@ export default function ShareReportModal({ clientId, onClose }) {
       setShareUrl(nextUrl);
       setLinks(prev => [created, ...prev]);
     } catch (e) {
-      setError(getApiError(e, 'Failed to create link.'));
+      setError(getApiError(e, t('modal.errors.create_failed')));
     } finally {
       setCreating(false);
     }
@@ -137,7 +140,7 @@ export default function ShareReportModal({ clientId, onClose }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <Share2 size={18} style={{ color: '#6366f1' }} />
             <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>
-              Share Report
+              {t('modal.title')}
             </h2>
           </div>
           <button onClick={onClose} style={closeBtn}><X size={18} /></button>
@@ -146,7 +149,7 @@ export default function ShareReportModal({ clientId, onClose }) {
         <div style={body}>
           {/* ── Create New Link ─────────────────────────── */}
           <section style={section}>
-            <h3 style={sectionTitle}><Calendar size={14} /> Date Range</h3>
+            <h3 style={sectionTitle}><Calendar size={14} /> {t('modal.date_range')}</h3>
             <div style={{ display: 'flex', gap: 10 }}>
               <input type="date" value={dateFrom}  onChange={e => setDateFrom(e.target.value)}  style={inputStyle} />
               <span style={{ alignSelf: 'center', color: 'var(--text-tertiary)' }}>→</span>
@@ -155,7 +158,7 @@ export default function ShareReportModal({ clientId, onClose }) {
           </section>
 
           <section style={section}>
-            <h3 style={sectionTitle}><Layers size={14} /> Platforms</h3>
+            <h3 style={sectionTitle}><Layers size={14} /> {t('modal.platforms')}</h3>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {ALL_PLATFORMS.map(p => {
                 const pl  = PLATFORMS[p];
@@ -182,9 +185,9 @@ export default function ShareReportModal({ clientId, onClose }) {
           </section>
 
           <section style={section}>
-            <h3 style={sectionTitle}><Clock size={14} /> Expiry</h3>
+            <h3 style={sectionTitle}><Clock size={14} /> {t('modal.expiry')}</h3>
             <div style={{ display: 'flex', gap: 8 }}>
-              {EXPIRY_OPTIONS.map(opt => (
+              {expiryOptions.map(opt => (
                 <button
                   key={opt.value}
                   onClick={() => setExpiry(opt.value)}
@@ -202,7 +205,7 @@ export default function ShareReportModal({ clientId, onClose }) {
           </section>
 
           <section style={section}>
-            <h3 style={sectionTitle}><Lock size={14} /> Password Protection</h3>
+            <h3 style={sectionTitle}><Lock size={14} /> {t('modal.password_protection')}</h3>
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13 }}>
               <input
                 type="checkbox"
@@ -210,14 +213,14 @@ export default function ShareReportModal({ clientId, onClose }) {
                 onChange={e => setUsePassword(e.target.checked)}
                 style={{ accentColor: '#6366f1' }}
               />
-              Protect with password
+              {t('modal.protect_with_password')}
             </label>
             {usePassword && (
               <input
                 type="password"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
-                placeholder="Enter password…"
+                placeholder={t('modal.enter_password')}
                 style={{ ...inputStyle, marginTop: 8 }}
               />
             )}
@@ -227,24 +230,24 @@ export default function ShareReportModal({ clientId, onClose }) {
 
           <button onClick={handleCreate} disabled={creating} style={createBtn}>
             <Link2 size={15} />
-            {creating ? 'Creating…' : 'Generate Link'}
+            {creating ? t('modal.creating') : t('modal.generate_link')}
           </button>
 
           {/* ── Generated URL + QR ──────────────────────── */}
           {shareUrl && (
             <div style={urlBox}>
               <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 10 }}>
-                This link opens the public HTML report page you can share with the client.
+                {t('modal.url_hint')}
               </div>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 14 }}>
                 <input readOnly value={shareUrl} style={{ ...inputStyle, flex: 1, fontSize: 12 }} />
                 <button onClick={() => copyUrl(shareUrl)} style={copyBtn}>
                   {copied ? <Check size={15} style={{ color: '#16a34a' }} /> : <Copy size={15} />}
-                  {copied ? 'Copied!' : 'Copy'}
+                  {copied ? t('modal.copied') : t('modal.copy')}
                 </button>
                 <a href={shareUrl} target="_blank" rel="noreferrer" style={openBtn}>
                   <Eye size={15} />
-                  Open
+                  {t('modal.open')}
                 </a>
               </div>
               <div style={{ display: 'flex', justifyContent: 'center' }}>
@@ -258,33 +261,36 @@ export default function ShareReportModal({ clientId, onClose }) {
         {!linksLoading && links.length > 0 && (
           <div style={existingSection}>
             <h3 style={{ ...sectionTitle, marginBottom: 10 }}>
-              <Link2 size={14} /> Existing Links
+              <Link2 size={14} /> {t('modal.existing_links')}
             </h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {links.map(link => (
                 <div key={link.id} style={linkRow}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 2 }}>
-                      {link.date_from} → {link.date_until}
+                      {formatDateRange(link.date_from, link.date_until, { dateStyle: 'medium' }, i18n?.language)}
                       {link.is_password_protected && (
                         <Lock size={10} style={{ marginLeft: 6, color: 'var(--text-tertiary)', verticalAlign: 'middle' }} />
                       )}
                       {link.is_expired && (
-                        <span style={{ marginLeft: 6, fontSize: 10, color: '#dc2626', fontWeight: 700 }}>EXPIRED</span>
+                        <span style={{ marginLeft: 6, fontSize: 10, color: '#dc2626', fontWeight: 700 }}>{t('shared_links.expired')}</span>
                       )}
                     </div>
                     <div style={{ fontSize: 11, color: 'var(--text-tertiary)', display: 'flex', gap: 10 }}>
-                      <span><Eye size={10} style={{ verticalAlign: 'middle' }} /> {link.view_count} views</span>
-                      {link.expires_at && <span>Expires {new Date(link.expires_at).toLocaleDateString()}</span>}
+                      <span>
+                        <Eye size={10} style={{ verticalAlign: 'middle' }} />{' '}
+                        {t(link.view_count === 1 ? 'shared_links.views_count_one' : 'shared_links.views_count_other', { count: link.view_count })}
+                      </span>
+                      {link.expires_at && <span>{t('shared_links.expires_at', { date: formatDate(link.expires_at, { dateStyle: 'medium' }, i18n?.language) })}</span>}
                     </div>
                   </div>
-                  <a href={buildShareUrl(link)} target="_blank" rel="noreferrer" style={iconBtn} title="Open report">
+                  <a href={buildShareUrl(link)} target="_blank" rel="noreferrer" style={iconBtn} title={t('shared_links.open_report')}>
                     <Eye size={14} />
                   </a>
-                  <button onClick={() => copyUrl(buildShareUrl(link))} style={iconBtn} title="Copy link">
+                  <button onClick={() => copyUrl(buildShareUrl(link))} style={iconBtn} title={t('shared_links.copy_link')}>
                     <Copy size={14} />
                   </button>
-                  <button onClick={() => deleteLink(link.id)} style={{ ...iconBtn, color: '#ef4444' }} title="Deactivate">
+                  <button onClick={() => deleteLink(link.id)} style={{ ...iconBtn, color: '#ef4444' }} title={t('shared_links.deactivate')}>
                     <Trash2 size={14} />
                   </button>
                 </div>

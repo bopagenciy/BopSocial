@@ -20,6 +20,10 @@ import enDashboard from '../locales/en/dashboard.json';
 import esDashboard from '../locales/es/dashboard.json';
 import enSettings from '../locales/en/settings.json';
 import esSettings from '../locales/es/settings.json';
+import enAnalytics from '../locales/en/analytics.json';
+import esAnalytics from '../locales/es/analytics.json';
+import enReports from '../locales/en/reports.json';
+import esReports from '../locales/es/reports.json';
 
 export const LANGUAGE_STORAGE_KEY = 'bop_social_language';
 export const SUPPORTED_LANGUAGES = [
@@ -62,6 +66,8 @@ const resources = {
     app: enApp,
     dashboard: enDashboard,
     settings: enSettings,
+    analytics: enAnalytics,
+    reports: enReports,
   },
   es: {
     common: esCommon,
@@ -71,6 +77,8 @@ const resources = {
     app: esApp,
     dashboard: esDashboard,
     settings: esSettings,
+    analytics: esAnalytics,
+    reports: esReports,
   },
 };
 
@@ -81,7 +89,7 @@ i18n
     lng: getInitialLanguage(),
     fallbackLng: 'en',
     supportedLngs: ['en', 'es'],
-    ns: ['common', 'navigation', 'auth', 'marketing', 'app', 'dashboard', 'settings'],
+    ns: ['common', 'navigation', 'auth', 'marketing', 'app', 'dashboard', 'settings', 'analytics', 'reports'],
     defaultNS: 'common',
     interpolation: {
       escapeValue: false, // React already escapes values safely

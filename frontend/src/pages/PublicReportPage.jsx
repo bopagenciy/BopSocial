@@ -8,6 +8,7 @@
  * ========================================================================== */
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis,
   Tooltip, ResponsiveContainer, CartesianGrid, Legend,
@@ -17,6 +18,7 @@ import { publicReportAPI } from '../services/api';
 import { useLookups } from '../hooks/useData';
 import { fmt } from '../services/platforms';
 import SocialPlatformIcon from '../components/ui/SocialPlatformIcon';
+import { formatDateRange } from '../utils/formatters';
 
 // ── Inject styles once ────────────────────────────────────────────────────────
 if (typeof document !== 'undefined' && !document.getElementById('pub-report-styles')) {
@@ -85,6 +87,7 @@ function KpiCard({ label, value, icon: Icon, color }) {
 }
 
 function PasswordGate({ token, clientName, period, onUnlock }) {
+  const { t, i18n } = useTranslation('reports');
   const [pw, setPw]   = useState('');
   const [fieldError, setFieldError] = useState('');
   const [err, setErr] = useState('');
@@ -93,7 +96,7 @@ function PasswordGate({ token, clientName, period, onUnlock }) {
   async function submit(e) {
     e.preventDefault();
     if (!pw.trim()) {
-      setFieldError('Password is required.');
+      setFieldError(t('public.password_required_err'));
       return;
     }
     setBusy(true);
@@ -103,11 +106,13 @@ function PasswordGate({ token, clientName, period, onUnlock }) {
       const res = await publicReportAPI.verify(token, pw);
       onUnlock(res.data);
     } catch {
-      setErr('Incorrect password. Please try again.');
+      setErr(t('public.password_incorrect_err'));
     } finally {
       setBusy(false);
     }
   }
+
+  const formattedPeriod = formatDateRange(period?.from, period?.until, { dateStyle: 'medium' }, i18n?.language);
 
   return (
     <div style={gateWrap}>
@@ -118,14 +123,14 @@ function PasswordGate({ token, clientName, period, onUnlock }) {
             {clientName}
           </h2>
           <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>
-            {period?.from} → {period?.until}
+            {formattedPeriod}
           </p>
         </div>
         <p style={{ fontSize: 14, color: 'var(--text-secondary)', textAlign: 'center', marginBottom: 20 }}>
-          This report is password protected.
+          {t('public.password_protected_notice')}
         </p>
         <form onSubmit={submit}>
-          <label style={pwLabel}>Password <span style={requiredAsterisk}>*</span></label>
+          <label style={pwLabel}>{t('public.password_label')} <span style={requiredAsterisk}>*</span></label>
           <input
             type="password"
             value={pw}
@@ -133,14 +138,14 @@ function PasswordGate({ token, clientName, period, onUnlock }) {
               setPw(e.target.value);
               if (fieldError) setFieldError('');
             }}
-            placeholder="Enter password…"
+            placeholder={t('modal.enter_password')}
             style={{ ...pwInput, ...(fieldError ? pwInputError : {}) }}
             autoFocus
           />
           {fieldError && <p style={pwErrorText}>{fieldError}</p>}
           {err && <p style={{ color: '#dc2626', fontSize: 13, margin: '8px 0 0' }}>{err}</p>}
           <button type="submit" disabled={busy} style={pwBtn}>
-            {busy ? 'Verifying…' : 'View Report'}
+            {busy ? t('public.verifying') : t('public.view_report')}
           </button>
         </form>
       </div>
@@ -149,6 +154,7 @@ function PasswordGate({ token, clientName, period, onUnlock }) {
 }
 
 export default function PublicReportPage() {
+  const { t, i18n } = useTranslation(['reports', 'analytics']);
   const { token } = useParams();
   const { lookups } = useLookups();
   const [data,    setData]    = useState(null);
@@ -167,12 +173,12 @@ export default function PublicReportPage() {
       })
       .catch(err => {
         const msg = err.response?.data?.error;
-        setError(msg || 'This report could not be loaded.');
+        setError(msg || t('public.load_error'));
       })
       .finally(() => setLoading(false));
-  }, [token]);
+  }, [token, t]);
 
-  if (loading) return <div style={centeredMsg}>Loading report…</div>;
+  if (loading) return <div style={centeredMsg}>{t('public.loading')}</div>;
   if (error)   return <div style={{ ...centeredMsg, color: '#dc2626' }}>{error}</div>;
 
   if (meta?.requires_password) {
@@ -195,6 +201,7 @@ export default function PublicReportPage() {
 
   const kpiDefs = (lookups.kpi_defs || KPI_DEFS.map(item => ({ key: item.key, label: item.label }))).map(def => ({
     ...def,
+    label: t(`analytics:metrics.${def.key}`, def.label),
     icon: KPI_ICON_MAP[def.key] || Eye,
     color: KPI_COLOR_MAP[def.key] || '#00d7ff',
   }));
@@ -212,6 +219,8 @@ export default function PublicReportPage() {
   // Platforms present in by_platform
   const activePlatforms = [...new Set((by_platform || []).map(r => r.platform))];
 
+  const formattedPeriod = formatDateRange(period?.from, period?.until, { dateStyle: 'medium' }, i18n?.language);
+
   return (
     <div style={pageWrap}>
       {/* ── Header ─────────────────────────────────────── */}
@@ -220,7 +229,7 @@ export default function PublicReportPage() {
           <div>
             <h1 style={companyName}>{client?.name}</h1>
             <p style={periodLabel}>
-              Social Media Report · {period?.from} → {period?.until}
+              {t('public.header_subtitle', { dateRange: formattedPeriod })}
             </p>
           </div>
           <button
@@ -228,7 +237,7 @@ export default function PublicReportPage() {
             onClick={() => window.print()}
             style={printBtn}
           >
-            Download PDF
+            {t('public.download_pdf')}
           </button>
         </div>
       </div>
@@ -236,7 +245,7 @@ export default function PublicReportPage() {
       <div style={content}>
         {/* ── KPI Cards ──────────────────────────────────── */}
         <section style={sectionWrap}>
-          <h2 style={sectionTitle}>Overview</h2>
+          <h2 style={sectionTitle}>{t('public.overview')}</h2>
           <div style={kpiGrid}>
             {kpiDefs.map(k => (
               <KpiCard key={k.key} label={k.label} value={totals?.[k.key]} icon={k.icon} color={k.color} />
@@ -247,12 +256,20 @@ export default function PublicReportPage() {
         {/* ── Platform Breakdown ─────────────────────────── */}
         {by_platform?.length > 0 && (
           <section style={sectionWrap}>
-            <h2 style={sectionTitle}>By Platform</h2>
+            <h2 style={sectionTitle}>{t('public.by_platform')}</h2>
             <div style={{ overflowX: 'auto' }}>
               <table style={tableStyle}>
                 <thead>
                   <tr>
-                    {['Platform', 'Impressions', 'Reach', 'Clicks', 'Likes', 'Followers', 'Video Views'].map(h => (
+                    {[
+                      t('analytics:table.platform', 'Platform'),
+                      t('analytics:table.impressions', 'Impressions'),
+                      t('analytics:table.reach', 'Reach'),
+                      t('analytics:table.clicks', 'Clicks'),
+                      t('analytics:metrics.likes', 'Likes'),
+                      t('analytics:table.followers', 'Followers'),
+                      t('analytics:table.video_views', 'Video Views')
+                    ].map(h => (
                       <th key={h} style={thStyle}>{h}</th>
                     ))}
                   </tr>
@@ -283,7 +300,7 @@ export default function PublicReportPage() {
         {/* ── Platform Bar Chart ─────────────────────────── */}
         {by_platform?.length > 0 && (
           <section style={sectionWrap}>
-            <h2 style={sectionTitle}>Impressions by Platform</h2>
+            <h2 style={sectionTitle}>{t('public.impressions_by_platform')}</h2>
             <ResponsiveContainer width="100%" height={240}>
               <BarChart data={by_platform} margin={{ top: 0, right: 20, bottom: 0, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--surface-sunken)" />
@@ -291,7 +308,7 @@ export default function PublicReportPage() {
                   tickFormatter={p => platformLabels[p] || p} />
                 <YAxis tick={{ fontSize: 12 }} tickFormatter={v => fmt(v)} />
                 <Tooltip formatter={(v, n) => [fmt(v), platformLabels[n] || n]} />
-                <Bar dataKey="impressions" fill="#00d7ff" radius={[4, 4, 0, 0]} name="Impressions" />
+                <Bar dataKey="impressions" fill="#00d7ff" radius={[4, 4, 0, 0]} name={t('analytics:metrics.impressions', 'Impressions')} />
               </BarChart>
             </ResponsiveContainer>
           </section>
@@ -300,7 +317,7 @@ export default function PublicReportPage() {
         {/* ── Timeseries Line Chart ──────────────────────── */}
         {tsData.length > 1 && (
           <section style={sectionWrap}>
-            <h2 style={sectionTitle}>Impressions Over Time</h2>
+            <h2 style={sectionTitle}>{t('public.impressions_over_time')}</h2>
             <ResponsiveContainer width="100%" height={260}>
               <LineChart data={tsData} margin={{ top: 0, right: 20, bottom: 0, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--surface-sunken)" />
@@ -328,7 +345,7 @@ export default function PublicReportPage() {
         {/* ── Top Posts ──────────────────────────────────── */}
         {top_posts?.length > 0 && (
           <section style={sectionWrap}>
-            <h2 style={sectionTitle}>Top Posts</h2>
+            <h2 style={sectionTitle}>{t('public.top_posts')}</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {top_posts.map((post, i) => {
                 const pl = {

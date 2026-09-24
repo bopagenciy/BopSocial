@@ -6,7 +6,8 @@
  *  Copyright (c) 2026 Chandrabhan Shekhawat / Gigai Kripa Services.
  *  Released under the MIT License — see LICENSE. Keep this notice.
  * ========================================================================== */
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -18,6 +19,7 @@ import { TrendingUp, TrendingDown, Minus, RefreshCw, Users, Eye, MousePointer, P
 import DateRangePicker from '../components/ui/DateRangePicker';
 import SocialPlatformIcon from '../components/ui/SocialPlatformIcon';
 import PageHeader from '../components/layout/PageHeader';
+import { formatDateRange, formatDate } from '../utils/formatters';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const PLATFORM_META = {
@@ -28,12 +30,12 @@ const PLATFORM_META = {
   google_my_business: { label: 'Google My Business', color: '#34A853', lightBg: '#F0FFF4' },
 };
 
-const METRIC_META = {
-  impressions:  { label: 'Impressions',  icon: Eye,         color: '#00d7ff' },
-  reach:        { label: 'Reach',        icon: Users,       color: '#00d7ff' },
-  clicks:       { label: 'Clicks',       icon: MousePointer,color: '#0891b2' },
-  video_views:  { label: 'Video Views',  icon: Play,        color: '#00d7ff' },
-  followers:    { label: 'Followers',    icon: UserPlus,    color: '#059669' },
+const BASE_METRIC_CONFIG = {
+  impressions:  { key: 'impressions',  icon: Eye,          color: '#00d7ff' },
+  reach:        { key: 'reach',        icon: Users,        color: '#00d7ff' },
+  clicks:       { key: 'clicks',       icon: MousePointer, color: '#0891b2' },
+  video_views:  { key: 'video_views',  icon: Play,         color: '#00d7ff' },
+  followers:    { key: 'followers',    icon: UserPlus,     color: '#059669' },
 };
 
 function fmt(n) {
@@ -49,7 +51,7 @@ function pctChange(curr, prev) {
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
-function KPICard({ label, value, prev, icon: Icon, color, loading }) {
+function KPICard({ label, value, prev, icon: Icon, color, loading, vsText }) {
   const change = prev != null ? pctChange(value, prev) : null;
   return (
     <div style={{
@@ -80,7 +82,7 @@ function KPICard({ label, value, prev, icon: Icon, color, loading }) {
             <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 6, fontSize: 12, fontWeight: 700,
               color: change > 0 ? '#059669' : change < 0 ? '#dc2626' : 'var(--text-secondary)' }}>
               {change > 0 ? <TrendingUp size={12} /> : change < 0 ? <TrendingDown size={12} /> : <Minus size={12} />}
-              {change > 0 ? '+' : ''}{change.toFixed(1)}% vs prev period
+              {change > 0 ? '+' : ''}{change.toFixed(1)}% {vsText || 'vs prev period'}
             </div>
           )}
         </>
@@ -128,11 +130,20 @@ const CustomTooltip = ({ active, payload, label }) => {
 
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function AnalyticsPage() {
+  const { t, i18n } = useTranslation('analytics');
   const { clients } = useClients();
   const [selectedClientId, setSelectedClientId] = useState('all');
   const [selectedPlatform, setSelectedPlatform] = useState('all');
   const [range, setRange]               = useDateRange(30);
   const [activeMetric, setActiveMetric] = useState('impressions');
+
+  const METRIC_META = useMemo(() => ({
+    impressions:  { label: t('metrics.impressions'),  icon: BASE_METRIC_CONFIG.impressions.icon,  color: BASE_METRIC_CONFIG.impressions.color },
+    reach:        { label: t('metrics.reach'),        icon: BASE_METRIC_CONFIG.reach.icon,        color: BASE_METRIC_CONFIG.reach.color },
+    clicks:       { label: t('metrics.clicks'),       icon: BASE_METRIC_CONFIG.clicks.icon,       color: BASE_METRIC_CONFIG.clicks.color },
+    video_views:  { label: t('metrics.video_views'),  icon: BASE_METRIC_CONFIG.video_views.icon,  color: BASE_METRIC_CONFIG.video_views.color },
+    followers:    { label: t('metrics.followers'),    icon: BASE_METRIC_CONFIG.followers.icon,    color: BASE_METRIC_CONFIG.followers.color },
+  }), [t]);
 
   // Overview data (all clients, all platforms, date range)
   const [overview, setOverview]           = useState(null);
@@ -249,13 +260,17 @@ export default function AnalyticsPage() {
   const isClientSelected = selectedClientId && selectedClientId !== 'all';
   const selectedClientName = clients.find(c => String(c.id) === String(selectedClientId))?.company;
 
+  const formattedRange = useMemo(() => {
+    return formatDateRange(range.since, range.until, { dateStyle: 'medium' }, i18n?.language);
+  }, [range.since, range.until, i18n?.language]);
+
   return (
     <div style={{ padding: '32px 36px', background: 'var(--surface-page)', minHeight: '100vh' }}>
       <PageHeader
-        title="Analytics"
+        title={t('title')}
         subtitle={isClientSelected
-          ? `Viewing ${selectedClientName} — ${range.since} to ${range.until}`
-          : `All clients overview — ${range.since} to ${range.until}`}
+          ? t('subtitle_client', { client: selectedClientName, dateRange: formattedRange })
+          : t('subtitle_all', { dateRange: formattedRange })}
         actions={(
           <div className="analytics-controls" style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
             <DateRangePicker range={range} onChange={setRange} />
@@ -264,7 +279,7 @@ export default function AnalyticsPage() {
               onChange={e => setSelectedClientId(e.target.value)}
               style={selectStyle}
             >
-              <option value="all">All Users</option>
+              <option value="all">{t('all_users')}</option>
               {clients.map(c => <option key={c.id} value={c.id}>{c.company}</option>)}
             </select>
             {isClientSelected && (
@@ -273,7 +288,7 @@ export default function AnalyticsPage() {
                 onChange={e => setSelectedPlatform(e.target.value)}
                 style={selectStyle}
               >
-                <option value="all">All Platforms</option>
+                <option value="all">{t('all_platforms')}</option>
                 {Object.entries(PLATFORM_META).map(([k, v]) => (
                   <option key={k} value={k}>{v.label}</option>
                 ))}
@@ -282,7 +297,7 @@ export default function AnalyticsPage() {
             <button
               onClick={fetchOverview}
               style={{ ...btnSecondary, padding: '8px 12px' }}
-              title="Refresh"
+              title={t('refresh')}
             >
               <RefreshCw size={14} />
             </button>
@@ -301,6 +316,7 @@ export default function AnalyticsPage() {
             icon={meta.icon}
             color={meta.color}
             loading={isClientSelected ? summaryLoading : overviewLoading}
+            vsText={t('vs_prev_period')}
           />
         ))}
       </div>
@@ -308,8 +324,8 @@ export default function AnalyticsPage() {
       {/* ── Row 1: Timeseries (client) or Platform Bars (all) ─────────────── */}
       {isClientSelected ? (
         <SectionCard
-          title={`Performance Over Time — ${selectedClientName}`}
-          subtitle="Daily metrics for the selected period and platform"
+          title={t('sections.performance_over_time', { client: selectedClientName })}
+          subtitle={t('sections.performance_over_time_sub')}
           style={{ marginBottom: 24 }}
         >
           {/* Metric selector */}
@@ -333,10 +349,10 @@ export default function AnalyticsPage() {
 
           {timeseriesLoading ? (
             <div style={{ height: 280, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)' }}>
-              Loading chart…
+              {t('loading_chart')}
             </div>
           ) : chartData.length === 0 ? (
-            <EmptyChart message="No data for this period. Try syncing the user first." />
+            <EmptyChart message={t('empty.no_data_period')} />
           ) : (
             <ResponsiveContainer width="100%" height={280}>
               <AreaChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
@@ -366,16 +382,16 @@ export default function AnalyticsPage() {
         </SectionCard>
       ) : (
         <SectionCard
-          title="Performance by Platform"
-          subtitle={`Aggregated across all clients — ${range.since} to ${range.until}`}
+          title={t('sections.performance_by_platform')}
+          subtitle={t('sections.performance_by_platform_sub', { dateRange: formattedRange })}
           style={{ marginBottom: 24 }}
         >
           {overviewLoading ? (
             <div style={{ height: 280, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)' }}>
-              Loading chart…
+              {t('loading_chart')}
             </div>
           ) : platformData.length === 0 ? (
-            <EmptyChart message="No data yet. Sync your users to see platform analytics." />
+            <EmptyChart message={t('empty.no_data_sync_users')} />
           ) : (
             <ResponsiveContainer width="100%" height={280}>
               <BarChart data={platformData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
@@ -384,7 +400,7 @@ export default function AnalyticsPage() {
                 <YAxis tickFormatter={v => fmt(v)} tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} width={52} />
                 <Tooltip content={<CustomTooltip />} />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
-                <Bar dataKey="impressions" name="Impressions" radius={[4,4,0,0]}>
+                <Bar dataKey="impressions" name={t('metrics.impressions')} radius={[4,4,0,0]}>
                   {platformData.map((p, i) => <Cell key={i} fill={p.color} />)}
                 </Bar>
               </BarChart>
@@ -398,8 +414,8 @@ export default function AnalyticsPage() {
 
         {/* Platform distribution pie */}
         <SectionCard
-          title="Platform Distribution"
-          subtitle={`Share of ${METRIC_META[activeMetric]?.label || 'impressions'}`}
+          title={t('sections.platform_distribution')}
+          subtitle={t('sections.platform_distribution_sub', { metric: METRIC_META[activeMetric]?.label || t('metrics.impressions') })}
         >
           {/* Metric pills */}
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
@@ -421,7 +437,7 @@ export default function AnalyticsPage() {
           </div>
 
           {overviewLoading || pieData.length === 0 ? (
-            <EmptyChart height={200} message={overviewLoading ? 'Loading…' : 'No platform data yet.'} />
+            <EmptyChart height={200} message={overviewLoading ? t('loading') : t('empty.no_platform_data')} />
           ) : (
             <ResponsiveContainer width="100%" height={200}>
               <PieChart>
@@ -451,11 +467,11 @@ export default function AnalyticsPage() {
 
         {/* Multi-metric bar comparison */}
         <SectionCard
-          title="Platform Metrics Comparison"
-          subtitle="Side-by-side reach vs clicks vs video views"
+          title={t('sections.platform_metrics_comparison')}
+          subtitle={t('sections.platform_metrics_comparison_sub')}
         >
           {overviewLoading || platformData.length === 0 ? (
-            <EmptyChart height={240} message={overviewLoading ? 'Loading…' : 'No data yet.'} />
+            <EmptyChart height={240} message={overviewLoading ? t('loading') : t('empty.no_data_yet')} />
           ) : (
             <ResponsiveContainer width="100%" height={240}>
               <BarChart data={platformData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }} barGap={2}>
@@ -464,9 +480,9 @@ export default function AnalyticsPage() {
                 <YAxis tickFormatter={v => fmt(v)} tick={{ fontSize: 10, fill: 'var(--text-tertiary)' }} width={48} />
                 <Tooltip content={<CustomTooltip />} />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Bar dataKey="reach"       name="Reach"       fill="#00d7ff" radius={[3,3,0,0]} />
-                <Bar dataKey="clicks"      name="Clicks"      fill="#0891b2" radius={[3,3,0,0]} />
-                <Bar dataKey="video_views" name="Video Views" fill="#00d7ff" radius={[3,3,0,0]} />
+                <Bar dataKey="reach"       name={t('metrics.reach')}       fill="#00d7ff" radius={[3,3,0,0]} />
+                <Bar dataKey="clicks"      name={t('metrics.clicks')}      fill="#0891b2" radius={[3,3,0,0]} />
+                <Bar dataKey="video_views" name={t('metrics.video_views')} fill="#00d7ff" radius={[3,3,0,0]} />
               </BarChart>
             </ResponsiveContainer>
           )}
@@ -476,12 +492,12 @@ export default function AnalyticsPage() {
       {/* ── Row 3: Multi-metric timeseries (client) or Radar (all) ────────── */}
       {isClientSelected ? (
         <SectionCard
-          title="All Metrics Over Time"
-          subtitle="Impressions, reach, clicks, and video views together"
+          title={t('sections.all_metrics_over_time')}
+          subtitle={t('sections.all_metrics_over_time_sub')}
           style={{ marginBottom: 24 }}
         >
           {timeseriesLoading || chartData.length === 0 ? (
-            <EmptyChart height={260} message={timeseriesLoading ? 'Loading…' : 'No timeseries data.'} />
+            <EmptyChart height={260} message={timeseriesLoading ? t('loading') : t('empty.no_timeseries_data')} />
           ) : (
             <ResponsiveContainer width="100%" height={260}>
               <LineChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
@@ -490,22 +506,22 @@ export default function AnalyticsPage() {
                 <YAxis tickFormatter={v => fmt(v)} tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} width={52} />
                 <Tooltip content={<CustomTooltip />} />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
-                <Line type="monotone" dataKey="impressions"  name="Impressions"  stroke="#00d7ff" strokeWidth={2} dot={false} />
-                <Line type="monotone" dataKey="reach"        name="Reach"        stroke="#00d7ff" strokeWidth={2} dot={false} />
-                <Line type="monotone" dataKey="clicks"       name="Clicks"       stroke="#0891b2" strokeWidth={2} dot={false} />
-                <Line type="monotone" dataKey="video_views"  name="Video Views"  stroke="#00d7ff" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="impressions"  name={t('metrics.impressions')}  stroke="#00d7ff" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="reach"        name={t('metrics.reach')}        stroke="#00d7ff" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="clicks"       name={t('metrics.clicks')}       stroke="#0891b2" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="video_views"  name={t('metrics.video_views')}  stroke="#00d7ff" strokeWidth={2} dot={false} />
               </LineChart>
             </ResponsiveContainer>
           )}
         </SectionCard>
       ) : (
         <SectionCard
-          title="Platform Balance Radar"
-          subtitle="Relative strength across all metrics per platform"
+          title={t('sections.platform_balance_radar')}
+          subtitle={t('sections.platform_balance_radar_sub')}
           style={{ marginBottom: 24 }}
         >
           {overviewLoading || platformData.length === 0 ? (
-            <EmptyChart height={260} message={overviewLoading ? 'Loading…' : 'No data yet.'} />
+            <EmptyChart height={260} message={overviewLoading ? t('loading') : t('empty.no_data_yet')} />
           ) : (
             <ResponsiveContainer width="100%" height={260}>
               <RadarChart cx="50%" cy="50%" outerRadius={90} data={radarData}>
@@ -532,22 +548,30 @@ export default function AnalyticsPage() {
 
       {/* ── Row 4: Platform breakdown table ───────────────────────────────── */}
       <SectionCard
-        title="Platform Breakdown"
-        subtitle="Detailed metrics per platform"
+        title={t('sections.platform_breakdown')}
+        subtitle={t('sections.platform_breakdown_sub')}
         style={{ marginBottom: 24 }}
       >
         {overviewLoading ? (
-          <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--text-tertiary)' }}>Loading…</div>
+          <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--text-tertiary)' }}>{t('loading')}</div>
         ) : platformData.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--text-tertiary)' }}>
-            No platform data. Sync clients to populate analytics.
+            {t('empty.no_platform_data_table')}
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
                 <tr style={{ background: 'var(--surface-page)' }}>
-                  {['Platform', 'Impressions', 'Reach', 'Clicks', 'Video Views', 'Followers', 'CTR'].map(h => (
+                  {[
+                    t('table.platform'),
+                    t('table.impressions'),
+                    t('table.reach'),
+                    t('table.clicks'),
+                    t('table.video_views'),
+                    t('table.followers'),
+                    t('table.ctr')
+                  ].map(h => (
                     <th key={h} style={{
                       padding: '10px 16px', textAlign: 'left', fontWeight: 700,
                       color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-default)', whiteSpace: 'nowrap',
@@ -605,19 +629,25 @@ export default function AnalyticsPage() {
       {/* ── Row 5: Users overview table (only when "All Users") ───────── */}
       {!isClientSelected && (
         <SectionCard
-          title="User Overview"
-          subtitle="All active users — click a user for detailed analytics"
+          title={t('sections.user_overview')}
+          subtitle={t('sections.user_overview_sub')}
         >
           {clients.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--text-tertiary)' }}>
-              No clients yet. Add a client to get started.
+              {t('empty.no_clients')}
             </div>
           ) : (
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
                   <tr style={{ background: 'var(--surface-page)' }}>
-                    {['Client', 'Status', 'Created', 'Website', ''].map(h => (
+                    {[
+                      t('table.client'),
+                      t('table.status'),
+                      t('table.created'),
+                      t('table.website'),
+                      ''
+                    ].map(h => (
                       <th key={h} style={{
                         padding: '10px 16px', textAlign: 'left', fontWeight: 700,
                         color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-default)',
@@ -650,11 +680,11 @@ export default function AnalyticsPage() {
                           background: c.is_active ? '#d1fae5' : '#fee2e2',
                           color:      c.is_active ? '#059669' : '#dc2626',
                         }}>
-                          {c.is_active ? 'Active' : 'Inactive'}
+                          {c.is_active ? t('table.active') : t('table.inactive')}
                         </span>
                       </td>
                       <td style={{ padding: '13px 16px', color: 'var(--text-secondary)' }}>
-                        {c.created_at ? new Date(c.created_at).toLocaleDateString() : '—'}
+                        {c.created_at ? formatDate(c.created_at, { dateStyle: 'medium' }, i18n?.language) : '—'}
                       </td>
                       <td style={{ padding: '13px 16px' }}>
                         {c.website ? (
@@ -673,7 +703,7 @@ export default function AnalyticsPage() {
                             cursor: 'pointer',
                           }}
                         >
-                          View Analytics →
+                          {t('table.view_analytics')}
                         </button>
                       </td>
                     </tr>

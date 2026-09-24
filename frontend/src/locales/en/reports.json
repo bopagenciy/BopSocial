@@ -1,0 +1,106 @@
+{
+  "title": "Reports",
+  "subtitle": "Manage shared client report links and monthly ROI summaries",
+  "all_clients": "All clients",
+  "tabs": {
+    "shared": "Shared Links",
+    "roi": "ROI Reports"
+  },
+  "shared_links": {
+    "title": "Shared Report Links",
+    "refresh": "Refresh",
+    "loading": "Loading links…",
+    "empty_title": "No shared links yet",
+    "empty_body": "Open a client and click \"Share Report\" to generate a public link.",
+    "user_prefix": "User #{{id}}",
+    "expired": "EXPIRED",
+    "all_platforms": "All platforms",
+    "views_count_one": "{{count}} view",
+    "views_count_other": "{{count}} views",
+    "created_at": "Created {{time}}",
+    "expires_at": "Expires {{date}}",
+    "copy_link": "Copy link",
+    "copied": "Copied!",
+    "open_report": "Open report",
+    "deactivate": "Deactivate"
+  },
+  "roi_reports": {
+    "title": "ROI Reports",
+    "loading": "Loading ROI reports…",
+    "empty_title": "No ROI reports for this period",
+    "empty_body": "Reports are generated automatically on the 2nd of each month.",
+    "table": {
+      "user": "User",
+      "month": "Month",
+      "roi_pct": "ROI %",
+      "investment": "Investment",
+      "revenue": "Revenue",
+      "leads": "Leads",
+      "status": "Status",
+      "view": "View →"
+    },
+    "badges": {
+      "excellent": "Excellent",
+      "good": "Good",
+      "average": "Average",
+      "review": "Review"
+    },
+    "months": {
+      "1": "Jan",
+      "2": "Feb",
+      "3": "Mar",
+      "4": "Apr",
+      "5": "May",
+      "6": "Jun",
+      "7": "Jul",
+      "8": "Aug",
+      "9": "Sep",
+      "10": "Oct",
+      "11": "Nov",
+      "12": "Dec"
+    }
+  },
+  "modal": {
+    "title": "Share Report",
+    "date_range": "Date Range",
+    "platforms": "Platforms",
+    "expiry": "Expiry",
+    "expiry_never": "Never",
+    "expiry_24h": "24 hours",
+    "expiry_7d": "7 days",
+    "expiry_30d": "30 days",
+    "password_protection": "Password Protection",
+    "protect_with_password": "Protect with password",
+    "enter_password": "Enter password…",
+    "generate_link": "Generate Link",
+    "creating": "Creating…",
+    "copy": "Copy",
+    "copied": "Copied!",
+    "open": "Open",
+    "url_hint": "This link opens the public HTML report page you can share with the client.",
+    "existing_links": "Existing Links",
+    "errors": {
+      "date_range": "Please set a date range.",
+      "platforms": "Select at least one platform.",
+      "password": "Please enter a password or disable password protection.",
+      "create_failed": "Failed to create link."
+    }
+  },
+  "public": {
+    "loading": "Loading report…",
+    "load_error": "This report could not be loaded.",
+    "password_required_err": "Password is required.",
+    "password_incorrect_err": "Incorrect password. Please try again.",
+    "password_protected_notice": "This report is password protected.",
+    "password_label": "Password",
+    "view_report": "View Report",
+    "verifying": "Verifying…",
+    "header_subtitle": "Social Media Report · {{dateRange}}",
+    "download_pdf": "Download PDF",
+    "overview": "Overview",
+    "by_platform": "By Platform",
+    "impressions_by_platform": "Impressions by Platform",
+    "impressions_over_time": "Impressions Over Time",
+    "top_posts": "Top Posts"
+  }
+}
