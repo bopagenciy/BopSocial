@@ -134,6 +134,11 @@ export default function UserSettingsPage() {
           {tab === 'more'          && <CrossLinksSection user={user} />}
         </div>
       </div>
+      <style>{`
+        @media (max-width: 640px) {
+          .settings-body { flex-direction: column !important; }
+        }
+      `}</style>
     </div>
   );
 }
@@ -319,16 +324,25 @@ function ProfileTab({ user, logout, navigate }) {
 
 // ── Delete Account Section (client only) ──────────────────────────────────────
 
-const DELETE_REASONS = [
-  'I no longer need this account',
-  'Privacy concerns',
-  'Switching to another platform',
-  'Too many emails / notifications',
-  'Technical issues',
-  'Other',
+const DELETE_REASON_KEYS = [
+  { key: 'no_longer_need', fallback: 'I no longer need this account' },
+  { key: 'privacy_concerns', fallback: 'Privacy concerns' },
+  { key: 'switching_platform', fallback: 'Switching to another platform' },
+  { key: 'too_many_notifications', fallback: 'Too many emails / notifications' },
+  { key: 'technical_issues', fallback: 'Technical issues' },
+  { key: 'other', fallback: 'Other' },
+];
+
+const WARNING_KEYS = [
+  { key: 'analytics', fallback: 'All your analytics data and reports' },
+  { key: 'social_accounts', fallback: 'All connected social media accounts' },
+  { key: 'calendar_posts', fallback: 'All calendar posts and schedules' },
+  { key: 'agency_connection', fallback: 'Your agency connection and history' },
+  { key: 'profile_credentials', fallback: 'Your profile and account credentials' },
 ];
 
 function DeleteAccountSection({ logout, navigate }) {
+  const { t } = useTranslation('settings');
   const [step,     setStep]     = useState(0); // 0=hidden 1=reason 2=confirm
   const [reason,   setReason]   = useState('');
   const [typed,    setTyped]    = useState('');
@@ -343,7 +357,7 @@ function DeleteAccountSection({ logout, navigate }) {
       logout();
       navigate('/', { replace: true });
     } catch (err) {
-      setError(err?.response?.data?.error || 'Failed to delete account. Please try again.');
+      setError(err?.response?.data?.error || t('danger_zone.error', 'Failed to delete account. Please try again.'));
       setDeleting(false);
     }
   };
@@ -352,17 +366,17 @@ function DeleteAccountSection({ logout, navigate }) {
     <div style={ds.zone}>
       <div style={ds.zoneHeader}>
         <Trash2 size={16} color="#dc2626" />
-        <span style={ds.zoneTitle}>Danger Zone</span>
+        <span style={ds.zoneTitle}>{t('danger_zone.title', 'Danger Zone')}</span>
       </div>
 
       <div style={ds.zoneBody}>
         <div>
-          <p style={ds.zoneLabel}>Delete Account</p>
-          <p style={ds.zoneDesc}>Permanently delete your account and all associated data. This action cannot be undone.</p>
+          <p style={ds.zoneLabel}>{t('danger_zone.delete_account', 'Delete Account')}</p>
+          <p style={ds.zoneDesc}>{t('danger_zone.description', 'Permanently delete your account and all associated data. This action cannot be undone.')}</p>
         </div>
         {step === 0 && (
           <button onClick={() => setStep(1)} style={ds.deleteBtn}>
-            <Trash2 size={14} /> Delete Account
+            <Trash2 size={14} /> {t('danger_zone.delete_btn', 'Delete Account')}
           </button>
         )}
       </div>
@@ -372,22 +386,25 @@ function DeleteAccountSection({ logout, navigate }) {
         <div style={ds.confirmBox}>
           <AlertTriangle size={20} color="#dc2626" style={{ flexShrink: 0, marginTop: 2 }} />
           <div style={{ flex: 1 }}>
-            <p style={ds.confirmTitle}>Why are you deleting your account?</p>
-            <p style={ds.confirmDesc}>Please select a reason. This helps us improve Social Stats.</p>
+            <p style={ds.confirmTitle}>{t('danger_zone.reason_title', 'Why are you deleting your account?')}</p>
+            <p style={ds.confirmDesc}>{t('danger_zone.reason_desc', 'Please select a reason. This helps us improve Bop Social.')}</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 18 }}>
-              {DELETE_REASONS.map(r => (
-                <label key={r} style={ds.radioRow}>
-                  <input
-                    type="radio"
-                    name="delete_reason"
-                    value={r}
-                    checked={reason === r}
-                    onChange={() => setReason(r)}
-                    style={{ accentColor: '#dc2626', flexShrink: 0 }}
-                  />
-                  <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{r}</span>
-                </label>
-              ))}
+              {DELETE_REASON_KEYS.map((r) => {
+                const label = t(`danger_zone.reasons.${r.key}`, r.fallback);
+                return (
+                  <label key={r.key} style={ds.radioRow}>
+                    <input
+                      type="radio"
+                      name="delete_reason"
+                      value={r.key}
+                      checked={reason === r.key}
+                      onChange={() => setReason(r.key)}
+                      style={{ accentColor: '#dc2626', flexShrink: 0 }}
+                    />
+                    <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{label}</span>
+                  </label>
+                );
+              })}
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
               <button
@@ -395,10 +412,10 @@ function DeleteAccountSection({ logout, navigate }) {
                 disabled={!reason}
                 style={{ ...ds.nextBtn, opacity: reason ? 1 : 0.45 }}
               >
-                Continue
+                {t('danger_zone.continue', 'Continue')}
               </button>
               <button onClick={() => { setStep(0); setReason(''); }} style={ds.cancelBtn}>
-                Cancel
+                {t('danger_zone.cancel', 'Cancel')}
               </button>
             </div>
           </div>
@@ -410,28 +427,22 @@ function DeleteAccountSection({ logout, navigate }) {
         <div style={{ ...ds.confirmBox, borderColor: '#fca5a5', background: '#fff5f5' }}>
           <AlertTriangle size={20} color="#dc2626" style={{ flexShrink: 0, marginTop: 2 }} />
           <div style={{ flex: 1 }}>
-            <p style={ds.confirmTitle}>This will permanently delete everything</p>
+            <p style={ds.confirmTitle}>{t('danger_zone.confirm_title', 'This will permanently delete everything')}</p>
             <div style={ds.warningList}>
-              {[
-                'All your analytics data and reports',
-                'All connected social media accounts',
-                'All calendar posts and schedules',
-                'Your agency connection and history',
-                'Your profile and account credentials',
-              ].map(item => (
-                <div key={item} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+              {WARNING_KEYS.map((item) => (
+                <div key={item.key} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                   <X size={13} color="#dc2626" style={{ flexShrink: 0 }} />
-                  <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{item}</span>
+                  <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{t(`danger_zone.warnings.${item.key}`, item.fallback)}</span>
                 </div>
               ))}
             </div>
             <p style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 600, margin: '16px 0 6px' }}>
-              Type <strong>DELETE</strong> to confirm:
+              {t('danger_zone.type_delete_prompt', 'Type DELETE to confirm:')}
             </p>
             <input
               value={typed}
               onChange={e => setTyped(e.target.value)}
-              placeholder="DELETE"
+              placeholder={t('danger_zone.type_delete_placeholder', 'DELETE')}
               style={{ ...s.input, borderColor: typed === 'DELETE' ? '#fca5a5' : undefined, marginBottom: 14 }}
             />
             {error && <Alert type="error" msg={error} />}
@@ -442,11 +453,11 @@ function DeleteAccountSection({ logout, navigate }) {
                 style={{ ...ds.confirmDeleteBtn, opacity: typed !== 'DELETE' ? 0.45 : 1 }}
               >
                 {deleting
-                  ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> Deleting...</>
-                  : <><Trash2 size={14} /> Permanently Delete Account</>}
+                  ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> {t('danger_zone.deleting', 'Deleting...')}</>
+                  : <><Trash2 size={14} /> {t('danger_zone.permanently_delete', 'Permanently Delete Account')}</>}
               </button>
               <button onClick={() => { setStep(0); setReason(''); setTyped(''); setError(''); }} style={ds.cancelBtn}>
-                Cancel
+                {t('danger_zone.cancel', 'Cancel')}
               </button>
             </div>
           </div>
@@ -515,6 +526,7 @@ const ds = {
 // ── Security Tab ──────────────────────────────────────────────────────────────
 
 function SecurityTab({ user }) {
+  const { t } = useTranslation('settings');
   const [current,  setCurrent]  = useState('');
   const [newPwd,   setNewPwd]   = useState('');
   const [confirm,  setConfirm]  = useState('');
@@ -534,16 +546,16 @@ function SecurityTab({ user }) {
   const handleSave = async (e) => {
     e.preventDefault();
     setError(''); setSuccess('');
-    if (!current || !newPwd || !confirm) { setError('All fields are required.'); return; }
-    if (newPwd !== confirm) { setError('New passwords do not match.'); return; }
-    if (newPwd.length < 8)  { setError('Password must be at least 8 characters.'); return; }
+    if (!current || !newPwd || !confirm) { setError(t('security.errors.required', 'All fields are required.')); return; }
+    if (newPwd !== confirm) { setError(t('security.errors.mismatch', 'New passwords do not match.')); return; }
+    if (newPwd.length < 8)  { setError(t('security.errors.too_short', 'Password must be at least 8 characters.')); return; }
     setSaving(true);
     try {
       await profileAPI.changePassword({ current_password: current, new_password: newPwd, confirm_password: confirm });
-      setSuccess('Password changed successfully.');
+      setSuccess(t('security.success', 'Password changed successfully.'));
       setCurrent(''); setNewPwd(''); setConfirm('');
     } catch (err) {
-      setError(err?.response?.data?.error || 'Failed to change password.');
+      setError(err?.response?.data?.error || t('security.errors.failed', 'Failed to change password.'));
     } finally { setSaving(false); }
   };
 
@@ -551,20 +563,20 @@ function SecurityTab({ user }) {
 
   return (
     <div style={s.tabContent}>
-      <h3 style={s.sectionTitle}>Security</h3>
-      <p style={s.sectionSub}>Manage your account password and security settings.</p>
+      <h3 style={s.sectionTitle}>{t('security.title', 'Security')}</h3>
+      <p style={s.sectionSub}>{t('security.subtitle', 'Manage your account password and security settings.')}</p>
 
       {/* Account type badge */}
       <div style={s.infoCard}>
         <Shield size={18} color={CYAN} />
         <div>
           <p style={{ margin: '0 0 2px', fontWeight: 700, fontSize: 14, color: 'var(--text-primary)' }}>
-            {isSocial ? 'Social Login Account' : 'Email & Password Account'}
+            {isSocial ? t('security.social_login_account', 'Social Login Account') : t('security.email_password_account', 'Email & Password Account')}
           </p>
           <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)' }}>
             {isSocial
-              ? 'Your account is linked to Google. Password login is not available.'
-              : 'You can change your password below.'
+              ? t('security.social_login_desc', 'Your account is linked to Google. Password login is not available.')
+              : t('security.password_login_desc', 'You can change your password below.')
             }
           </p>
         </div>
@@ -574,26 +586,26 @@ function SecurityTab({ user }) {
         <div style={{ ...s.infoCard, background: 'linear-gradient(135deg,#f0f9ff,#f8faff)', border: '1px solid rgba(0,215,255,0.15)', marginTop: 20 }}>
           <CheckCircle size={18} color={CYAN} />
           <p style={{ margin: 0, fontSize: 14, color: 'var(--text-secondary)' }}>
-            Password management is handled by Google. To change your password, visit your Google account settings.
+            {t('security.google_managed_notice', 'Password management is handled by Google. To change your password, visit your Google account settings.')}
           </p>
         </div>
       ) : (
         <form onSubmit={handleSave} style={{ marginTop: 24 }}>
-          <Field label="Current Password" required>
-            <PwdInput value={current} onChange={setCurrent} show={showC} onToggle={() => setShowC(v => !v)} placeholder="Enter current password" />
+          <Field label={t('security.current_password', 'Current Password')} required>
+            <PwdInput value={current} onChange={setCurrent} show={showC} onToggle={() => setShowC(v => !v)} placeholder={t('security.current_password_placeholder', 'Enter current password')} />
           </Field>
-          <Field label="New Password" required>
-            <PwdInput value={newPwd} onChange={setNewPwd} show={showN} onToggle={() => setShowN(v => !v)} placeholder="At least 8 characters" />
+          <Field label={t('security.new_password', 'New Password')} required>
+            <PwdInput value={newPwd} onChange={setNewPwd} show={showN} onToggle={() => setShowN(v => !v)} placeholder={t('security.new_password_placeholder', 'At least 8 characters')} />
           </Field>
-          <Field label="Confirm New Password" required>
-            <PwdInput value={confirm} onChange={setConfirm} show={showConf} onToggle={() => setShowConf(v => !v)} placeholder="Re-enter new password" />
+          <Field label={t('security.confirm_new_password', 'Confirm New Password')} required>
+            <PwdInput value={confirm} onChange={setConfirm} show={showConf} onToggle={() => setShowConf(v => !v)} placeholder={t('security.confirm_new_password_placeholder', 'Re-enter new password')} />
           </Field>
 
           {error   && <Alert type="error"   msg={error} />}
           {success && <Alert type="success" msg={success} />}
 
           <button type="submit" disabled={saving} style={s.saveBtn}>
-            {saving ? <><Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> Saving...</> : <><Lock size={15} /> Change Password</>}
+            {saving ? <><Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> {t('security.saving', 'Saving...')}</> : <><Lock size={15} /> {t('security.change_password', 'Change Password')}</>}
           </button>
         </form>
       )}
@@ -602,13 +614,13 @@ function SecurityTab({ user }) {
         <div style={{ marginTop: 28, display: 'flex', flexDirection: 'column', gap: 16 }}>
           <h4 style={{ margin: 0, fontSize: 14, fontWeight: 700, letterSpacing: '0.04em',
                        textTransform: 'uppercase', color: 'var(--text-tertiary)' }}>
-            Two-factor authentication
+            {t('security.two_factor_auth', 'Two-factor authentication')}
           </h4>
           <MFAManager />
 
           <h4 style={{ margin: '8px 0 0', fontSize: 14, fontWeight: 700, letterSpacing: '0.04em',
                        textTransform: 'uppercase', color: 'var(--text-tertiary)' }}>
-            Active sessions
+            {t('security.active_sessions', 'Active sessions')}
           </h4>
           <ActiveSessionsList />
         </div>
@@ -619,7 +631,15 @@ function SecurityTab({ user }) {
 
 // ── Agency Tab ────────────────────────────────────────────────────────────────
 
+const AGENCY_PERM_KEYS = [
+  { key: 'analytics', fallback: 'View your analytics and reports' },
+  { key: 'social_accounts', fallback: 'Manage your connected social accounts' },
+  { key: 'posts', fallback: 'Create and schedule posts on your behalf' },
+  { key: 'ai_insights', fallback: 'Generate AI insights for your account' },
+];
+
 function AgencyTab({ user, refreshAuth, navigate }) {
+  const { t, i18n } = useTranslation('settings');
   const [info,         setInfo]         = useState(null);
   const [loading,      setLoading]      = useState(true);
   const [disconnecting, setDisconnecting] = useState(false);
@@ -646,7 +666,7 @@ function AgencyTab({ user, refreshAuth, navigate }) {
         navigate('/pending', { replace: true });
       }
     } catch (err) {
-      setError(err?.response?.data?.error || 'Failed to disconnect. Please try again.');
+      setError(err?.response?.data?.error || t('agency.error', 'Failed to disconnect. Please try again.'));
       setDisconnecting(false);
     }
     setConfirm(false);
@@ -654,17 +674,21 @@ function AgencyTab({ user, refreshAuth, navigate }) {
 
   if (loading) return <Spinner />;
 
+  const formattedDate = info?.agency_since
+    ? new Date(info.agency_since).toLocaleDateString(i18n.language?.startsWith('es') ? 'es-ES' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+    : '';
+
   return (
     <div style={s.tabContent}>
-      <h3 style={s.sectionTitle}>Agency Connection</h3>
-      <p style={s.sectionSub}>Manage your connection to your agency on Social Stats.</p>
+      <h3 style={s.sectionTitle}>{t('agency.title', 'Agency Connection')}</h3>
+      <p style={s.sectionSub}>{t('agency.subtitle', 'Manage your connection to your agency on Bop Social.')}</p>
 
       {!info?.connected ? (
         <div style={{ ...s.infoCard, background: 'linear-gradient(135deg,var(--surface-sunken),#f0f9ff)', border: '1px solid rgba(0,215,255,0.15)', marginTop: 8 }}>
           <Building2 size={18} color="var(--text-tertiary)" />
           <div>
-            <p style={{ margin: '0 0 2px', fontWeight: 700, fontSize: 14, color: 'var(--text-primary)' }}>No Agency Connected</p>
-            <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)' }}>You are not currently connected to any agency.</p>
+            <p style={{ margin: '0 0 2px', fontWeight: 700, fontSize: 14, color: 'var(--text-primary)' }}>{t('agency.no_agency_connected', 'No Agency Connected')}</p>
+            <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)' }}>{t('agency.no_agency_desc', 'You are not currently connected to any agency.')}</p>
           </div>
         </div>
       ) : (
@@ -679,23 +703,23 @@ function AgencyTab({ user, refreshAuth, navigate }) {
               <p style={{ margin: '0 0 6px', fontSize: 13, color: 'var(--text-secondary)' }}>{info.agency_email}</p>
               {info.agency_since && (
                 <p style={{ margin: 0, fontSize: 12, color: 'var(--text-tertiary)' }}>
-                  Connected since {new Date(info.agency_since).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+                  {t('agency.connected_since', { date: formattedDate, defaultValue: `Connected since ${formattedDate}` })}
                 </p>
               )}
             </div>
             <div style={s.connectedBadge}>
               <span style={s.connectedDot} />
-              Connected
+              {t('agency.connected_badge', 'Connected')}
             </div>
           </div>
 
           {/* What agency can do */}
           <div style={s.permsList}>
-            <p style={{ margin: '0 0 10px', fontWeight: 600, fontSize: 13, color: 'var(--text-secondary)' }}>Your agency can:</p>
-            {['View your analytics and reports', 'Manage your connected social accounts', 'Create and schedule posts on your behalf', 'Generate AI insights for your account'].map(p => (
-              <div key={p} style={s.permItem}>
+            <p style={{ margin: '0 0 10px', fontWeight: 600, fontSize: 13, color: 'var(--text-secondary)' }}>{t('agency.can_title', 'Your agency can:')}</p>
+            {AGENCY_PERM_KEYS.map(p => (
+              <div key={p.key} style={s.permItem}>
                 <CheckCircle size={14} color="#16a34a" style={{ flexShrink: 0 }} />
-                <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{p}</span>
+                <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{t(`agency.perms.${p.key}`, p.fallback)}</span>
               </div>
             ))}
           </div>
@@ -706,22 +730,22 @@ function AgencyTab({ user, refreshAuth, navigate }) {
           {!confirm ? (
             <button onClick={() => setConfirm(true)} style={s.disconnectBtn}>
               <LogOut size={15} />
-              Disconnect from Agency
+              {t('agency.disconnect_btn', 'Disconnect from Agency')}
             </button>
           ) : (
             <div style={s.confirmBox}>
               <AlertTriangle size={20} color="#d97706" />
               <div style={{ flex: 1 }}>
-                <p style={{ margin: '0 0 4px', fontWeight: 700, fontSize: 14, color: 'var(--text-primary)' }}>Confirm Disconnect</p>
+                <p style={{ margin: '0 0 4px', fontWeight: 700, fontSize: 14, color: 'var(--text-primary)' }}>{t('agency.confirm_title', 'Confirm Disconnect')}</p>
                 <p style={{ margin: '0 0 14px', fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                  Are you sure you want to disconnect from <strong>{info.agency_name}</strong>? They will lose access to your account and be notified by email.
+                  {t('agency.confirm_desc', { name: info.agency_name, defaultValue: `Are you sure you want to disconnect from ${info.agency_name}? They will lose access to your account and be notified by email.` })}
                 </p>
                 <div style={{ display: 'flex', gap: 10 }}>
                   <button onClick={handleDisconnect} disabled={disconnecting} style={s.confirmYes}>
                     {disconnecting ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <LogOut size={14} />}
-                    {disconnecting ? 'Disconnecting...' : 'Yes, Disconnect'}
+                    {disconnecting ? t('agency.disconnecting', 'Disconnecting...') : t('agency.confirm_yes', 'Yes, Disconnect')}
                   </button>
-                  <button onClick={() => setConfirm(false)} style={s.confirmNo}>Cancel</button>
+                  <button onClick={() => setConfirm(false)} style={s.confirmNo}>{t('agency.cancel', 'Cancel')}</button>
                 </div>
               </div>
             </div>
@@ -794,7 +818,6 @@ const s = {
   body: {
     display: 'flex', gap: 24, padding: '24px 28px',
     maxWidth: 960, margin: '0 auto',
-    '@media(max-width:640px)': { flexDirection: 'column' },
   },
   sidebar: {
     width: 220, flexShrink: 0,

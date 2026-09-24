@@ -620,6 +620,62 @@ Phase BS-2.6A delivers the first remediation phase defined in the BS-2.6 audit, 
 - **Production Build**: `npm run build` executed cleanly with exit code 0.
 - **Docker Deployment**: Frontend image updated to `bopsocial-frontend-local:bs-2.6a` in `docker-compose.local.yml`, container recreated and verified live with HTTP 200 health checks on `http://localhost:3010/` and `http://localhost:3010/login`.
 
+---
+
+## 17. Phase BS-2.6B.1 — User Settings & Security Internationalization
+
+### 17.1 Mission & Scope
+Phase BS-2.6B.1 internationalized the authenticated User Settings, Account Security, Notifications, Appearance, Keyboard Shortcuts, Developer Integrations (API Keys and Webhooks), Data & Privacy, and Danger Zone interfaces.
+
+- **Files Internationalized**:
+  - `frontend/src/locales/en/auth.json` & `frontend/src/locales/es/auth.json` (Auth namespace parity resolution).
+  - `frontend/src/locales/en/settings.json` & `frontend/src/locales/es/settings.json` (Expanded to 296 keys with 100% key parity).
+  - `frontend/src/pages/UserSettingsPage.jsx`: Navigation tabs, `DeleteAccountSection`, `SecurityTab`, `AgencyTab`.
+  - `frontend/src/pages/settings/SecuritySections.jsx`: `MFAManager` (2FA TOTP setup wizard, backup codes, disable modal) and `ActiveSessionsList` (session list, revoked status, revoke prompt, sign-out-all).
+  - `frontend/src/pages/settings/SettingsSections.jsx`: `NotificationsSection`, `AppearanceSection` (Theme + Density), `KeyboardShortcutsSection`, `APIKeysSection`, `DataPrivacySection`, `WebhooksSection`, `CrossLinksSection`.
+  - `docker-compose.local.yml`: Updated local frontend image to `bopsocial-frontend-local:bs-2.6b.1`.
+
+### 17.2 Architecture & Invariants Preservation
+- **Authentication & Security Non-Regression**:
+  - No authentication contracts, session management mechanisms, password hashing algorithms, TOTP generation algorithms, or JWT handling logic were modified.
+- **Auth Catalog Parity Closure**:
+  - Resolved the 7 missing keys in `frontend/src/locales/en/auth.json` (`step_about`, `step_account`, `step_confirm`, `subtitle_step_2`, `subtitle_step_3`, `title_step_2`, `title_step_3` under `end_user_signup`), achieving 100% parity across all 173 keys with `frontend/src/locales/es/auth.json`.
+- **Machine-Readable Invariants Preserved**:
+  - Webhook and telemetry event identifiers (`composer.post_published`, `composer.post_failed`, `inbox.new_message`, `credential.token_expired`, `goal.milestone_hit`) remain untranslated.
+  - API scopes (`read:posts`, `write:leads`, etc.) and key prefix structures remain verbatim.
+  - Internal storage keys (`socialstats_notif_prefs`, `socialstats_density`, `socialstats_webhook_endpoints`) were preserved for backward compatibility.
+  - Danger Zone confirmation keyword `DELETE` preserved as universal invariant token while localizing prompts and explanations.
+- **Residual Branding Eradication**:
+  - Completely removed residual `Social Stats` text from user-facing surfaces (`DeleteAccountSection` reason prompt, `AgencyTab` description, `AppearanceSection` subtitle, and `APIKeysSection` empty state) replacing them with `Bop Social`.
+- **Locale-Aware Formatting**:
+  - Formatted dates in `AgencyTab`, `MFAManager`, `ActiveSessionsList`, `APIKeysSection`, and `DataPrivacySection` using locale-sensitive formatting based on active i18n language (`es-ES` / `en-US`).
+
+### 17.3 Automated Testing & Verification
+- **Dedicated Automated Test Suite**:
+  - `frontend/src/pages/__tests__/UserSettingsSecurityTranslation.test.jsx`: **18 / 18 passing tests** covering:
+    1. 100% key parity and symmetry in `settings.json` (296 keys in EN and ES).
+    2. 100% key parity in `auth.json` (173 keys in EN and ES) confirming resolution of the 7 missing keys.
+    3. Absence of residual "Social Stats" branding in settings catalogs.
+    4. English navigation tab and category rendering in `UserSettingsPage`.
+    5. Spanish navigation tab and category rendering after language switch.
+    6. Password change form labels and placeholders in English and Spanish.
+    7. Form validation and localized error messages.
+    8. Disabled MFA state rendering in English and Spanish.
+    9. Enabled MFA state, badge, and backup codes count rendering in English and Spanish.
+    10. Active sessions list, revoked badge, and device/OS descriptions in English and Spanish.
+    11. Notifications channel and event matrix in English and Spanish.
+    12. Appearance theme and density controls in English and Spanish.
+    13. Keyboard shortcuts categories and action labels in English and Spanish.
+    14. API Keys form, key list, scopes invariant preservation in English and Spanish.
+    15. Webhooks form, empty state, and events invariant preservation in English and Spanish.
+    16. Data & Privacy export, consents, and pause processing in English and Spanish.
+    17. Danger Zone deletion multi-step flow with invariant `DELETE` confirmation keyword in English and Spanish.
+    18. Agency connection card, permissions checklist, and disconnect dialog in English and Spanish.
+- **Full Frontend Test Suite**: **20 / 20 test suites passed, 138 / 138 tests passed**.
+- **Production Build**: `npm run build` executed cleanly with exit code 0.
+- **Docker Deployment**: Frontend image updated to `bopsocial-frontend-local:bs-2.6b.1` in `docker-compose.local.yml`, container recreated and verified live with HTTP 200 health checks on `http://localhost:3010/` and `http://localhost:3010/account-settings`.
+
+
 
 
 

@@ -33,5 +33,338 @@
     "saving": "Saving...",
     "success": "Profile updated successfully.",
     "required_first_name": "First name is required."
+  },
+  "security": {
+    "title": "Security",
+    "subtitle": "Manage your account password and security settings.",
+    "social_login_account": "Social Login Account",
+    "email_password_account": "Email & Password Account",
+    "social_login_desc": "Your account is linked to Google. Password login is not available.",
+    "password_login_desc": "You can change your password below.",
+    "google_managed_notice": "Password management is handled by Google. To change your password, visit your Google account settings.",
+    "current_password": "Current Password",
+    "current_password_placeholder": "Enter current password",
+    "new_password": "New Password",
+    "new_password_placeholder": "At least 8 characters",
+    "confirm_new_password": "Confirm New Password",
+    "confirm_new_password_placeholder": "Re-enter new password",
+    "change_password": "Change Password",
+    "saving": "Saving...",
+    "success": "Password changed successfully.",
+    "two_factor_auth": "Two-factor authentication",
+    "active_sessions": "Active sessions",
+    "errors": {
+      "required": "All fields are required.",
+      "mismatch": "New passwords do not match.",
+      "too_short": "Password must be at least 8 characters.",
+      "failed": "Failed to change password."
+    }
+  },
+  "mfa": {
+    "loading": "Loading…",
+    "title": "Two-factor auth (TOTP)",
+    "description": "Add a second factor — a 6-digit code from your authenticator app — on top of your password. Strongly recommended for admin accounts.",
+    "starting": "Starting…",
+    "setup_btn": "Set up MFA",
+    "enrol_title": "Enrol MFA — step 1 of 2",
+    "enrol_desc": "Scan the QR code with Google Authenticator, 1Password, or any TOTP app.",
+    "enter_manually": "Or enter manually:",
+    "code_placeholder": "123456",
+    "verify": "Verify",
+    "verifying": "Verifying…",
+    "cancel": "Cancel",
+    "backup_title": "Save these backup codes — shown once",
+    "backup_desc": "Each code can be used ONCE if you lose your authenticator. Store them in a password manager.",
+    "copy_all": "Copy all",
+    "saved_them": "I've saved them",
+    "enabled_title": "Two-factor auth is on",
+    "enabled_badge": "Enabled",
+    "backup_remaining_one": "1 backup code remaining",
+    "backup_remaining_other": "{{count}} backup codes remaining",
+    "last_used": "last used {{date}}",
+    "never_used": "never used yet",
+    "regenerate_btn": "Regenerate backup codes",
+    "disable_btn": "Disable MFA",
+    "prompt_regenerate": "Enter your current 6-digit code to regenerate backup codes:",
+    "err_load": "Could not load MFA status",
+    "err_enter_code": "Enter the 6-digit code",
+    "err_verify_failed": "Verification failed",
+    "err_regen_failed": "Could not regenerate codes",
+    "success_disabled": "MFA disabled",
+    "err_disable_failed": "Could not disable MFA",
+    "copied": "Backup codes copied",
+    "err_copy": "Could not copy",
+    "disable_modal_title": "Disable MFA",
+    "disable_modal_desc": "We require your password AND a current 6-digit code so a hijacker can't disable MFA from a stolen session.",
+    "password_placeholder": "Password",
+    "disabling": "Disabling…",
+    "disable_confirm_btn": "Disable MFA"
+  },
+  "sessions": {
+    "loading": "Loading sessions…",
+    "title": "Active sessions",
+    "active_revoked_summary": "{{active}} active · {{revoked}} revoked (last 90 days)",
+    "sign_out_everywhere": "Sign out everywhere",
+    "empty_title": "No sessions yet",
+    "empty_desc": "Your active sessions will appear here.",
+    "unknown_browser": "Unknown browser",
+    "unknown_os": "unknown OS",
+    "device": "device",
+    "revoked_badge": "Revoked",
+    "unknown_ip": "unknown IP",
+    "ip_last_used": "{{ip}} · last used {{date}}",
+    "revoke_label": "Revoke session",
+    "confirm_revoke": "Revoke this session? The device will be signed out immediately.",
+    "confirm_sign_out_all": "Sign out of every other device? This cannot be undone.",
+    "err_load": "Could not load sessions",
+    "success_revoked": "Session revoked",
+    "err_revoke": "Could not revoke",
+    "success_all_revoked": "{{count}} session(s) revoked",
+    "err_sign_out_all": "Could not sign out everywhere"
+  },
+  "agency": {
+    "title": "Agency Connection",
+    "subtitle": "Manage your connection to your agency on Bop Social.",
+    "no_agency_connected": "No Agency Connected",
+    "no_agency_desc": "You are not currently connected to any agency.",
+    "connected_since": "Connected since {{date}}",
+    "connected_badge": "Connected",
+    "can_title": "Your agency can:",
+    "perms": {
+      "analytics": "View your analytics and reports",
+      "social_accounts": "Manage your connected social accounts",
+      "posts": "Create and schedule posts on your behalf",
+      "ai_insights": "Generate AI insights for your account"
+    },
+    "disconnect_btn": "Disconnect from Agency",
+    "confirm_title": "Confirm Disconnect",
+    "confirm_desc": "Are you sure you want to disconnect from {{name}}? They will lose access to your account and be notified by email.",
+    "confirm_yes": "Yes, Disconnect",
+    "disconnecting": "Disconnecting...",
+    "cancel": "Cancel",
+    "error": "Failed to disconnect. Please try again."
+  },
+  "notifications": {
+    "title": "Notifications",
+    "subtitle": "Choose which events you'd like to be notified about, and where.",
+    "save_btn": "Save preferences",
+    "event_col": "Event",
+    "channels": {
+      "in_app": "In-app",
+      "email": "Email",
+      "browser": "Browser"
+    },
+    "events": {
+      "mentions": {
+        "label": "Mentions",
+        "description": "Someone mentioned a tracked account."
+      },
+      "alerts": {
+        "label": "Performance alerts",
+        "description": "Engagement drops or viral posts."
+      },
+      "reports": {
+        "label": "Scheduled reports",
+        "description": "Weekly + monthly report emails."
+      },
+      "team": {
+        "label": "Team activity",
+        "description": "New members, role changes, invitations."
+      },
+      "token_expiry": {
+        "label": "Token expiry",
+        "description": "OAuth tokens about to expire."
+      }
+    },
+    "switch_aria": "{{channel}} notifications for {{event}}",
+    "saved": "Notification preferences saved",
+    "err_save": "Could not save preferences"
+  },
+  "appearance": {
+    "title": "Appearance",
+    "subtitle": "Customise how Bop Social looks and feels.",
+    "theme_title": "Theme",
+    "theme_desc": "Choose a light or dark theme. \"System\" matches your OS preference.",
+    "themes": {
+      "light": "Light",
+      "dark": "Dark",
+      "system": "System"
+    },
+    "density_title": "Density",
+    "density_desc": "Show more or less content per screen. \"Compact\" reduces row heights and padding.",
+    "density": {
+      "comfortable": "Comfortable",
+      "compact": "Compact"
+    },
+    "density_set": "Density set to {{value}}"
+  },
+  "shortcuts": {
+    "title": "Keyboard Shortcuts",
+    "subtitle": "Speed up your workflow with these keyboard shortcuts.",
+    "categories": {
+      "global": "Global",
+      "navigation": "Navigation",
+      "composer": "Composer",
+      "inbox": "Inbox"
+    },
+    "items": {
+      "cmd_k": "Open command palette",
+      "cmd_slash": "Show shortcuts",
+      "esc": "Close modal / palette",
+      "cmd_j": "Open AI assistant",
+      "g_d": "Go to dashboard",
+      "g_a": "Go to analytics",
+      "g_r": "Go to reports",
+      "g_i": "Go to inbox",
+      "cmd_enter": "Submit composer / form",
+      "cmd_s": "Save draft",
+      "cmd_shift_p": "Publish now",
+      "r": "Reply",
+      "a": "Archive conversation",
+      "shift_u": "Toggle unread"
+    },
+    "hint": "Custom keybindings coming soon. Press {{key}} from anywhere to view this list."
+  },
+  "api_keys": {
+    "title": "API Keys",
+    "subtitle": "Programmatic access for your scripts and integrations. Keys are stored as SHA-256 hashes — we never see the plaintext after creation.",
+    "generate_title": "Generate a new key",
+    "name_placeholder": "e.g. \"Production deploy\"",
+    "scopes_placeholder": "Scopes (comma-separated, e.g. read:posts, write:leads)",
+    "creating": "Creating…",
+    "generate_btn": "Generate",
+    "hint": "Keys are shown once at generation — copy and store them securely.",
+    "warning_title": "Save this key now — it will not be shown again",
+    "copy": "Copy",
+    "saved_it": "I've saved it",
+    "loading": "Loading…",
+    "empty_title": "No API keys yet",
+    "empty_desc": "Generate your first key above to start integrating Bop Social with your other tools.",
+    "expired": "Expired",
+    "revoked": "Revoked",
+    "created_at": "Created {{date}}",
+    "last_used_at": "Last used {{date}}",
+    "never_used": "Never used",
+    "calls_count_one": "1 call",
+    "calls_count_other": "{{count}} calls",
+    "scopes_label": "Scopes: {{scopes}}",
+    "revoke_aria": "Revoke key",
+    "err_name_required": "Give the key a name first",
+    "created_success": "API key created",
+    "err_create": "Could not create key",
+    "confirm_revoke": "Revoke this key? Any application using it will stop working.",
+    "revoked_success": "Key revoked",
+    "err_revoke": "Could not revoke",
+    "copied": "Copied to clipboard",
+    "err_copy": "Could not copy"
+  },
+  "data_privacy": {
+    "title": "Data & Privacy",
+    "subtitle": "Your data, your rights. Export everything, manage consents, pause processing, or delete your account.",
+    "loading": "Loading…",
+    "export_title": "Export your data",
+    "export_desc": "Download a ZIP with your profile, owned workspaces, consent log, and request history. Delivered via email link (expires in 7 days).",
+    "queueing": "Queueing…",
+    "request_export": "Request export",
+    "download": "Download",
+    "consents_title": "Your consents",
+    "consents_desc": "Toggle communication and tracking preferences. Withdrawals take effect immediately.",
+    "consent_labels": {
+      "marketing_emails": "Marketing emails",
+      "product_emails": "Product update emails",
+      "cookies_analytics": "Analytics cookies",
+      "cookies_marketing": "Marketing cookies",
+      "ai_processing_optout": "AI processing — opt out",
+      "whatsapp_marketing": "WhatsApp marketing messages",
+      "data_processing": "Core service data processing"
+    },
+    "pause_title": "Pause data processing",
+    "pause_desc": "When paused, sync tasks skip your workspaces, AI features are disabled, and the composer goes read-only. You can still log in to view existing data.",
+    "delete_account_title": "Delete account",
+    "delete_account_desc": "Permanently delete your account, sessions, MFA, API keys, and personal data after a 30-day grace period. Audit logs are anonymised but retained for compliance.",
+    "deletion_scheduled": "Deletion scheduled — completes on {{date}}",
+    "cancel_deletion": "Cancel",
+    "delete_my_account": "Delete my account",
+    "export_queued": "Export queued — we will email you when it is ready",
+    "err_export": "Could not queue export",
+    "err_consent": "Could not save consent",
+    "processing_paused": "Processing paused",
+    "processing_resumed": "Processing resumed",
+    "err_update": "Could not update",
+    "prompt_delete_reason": "Tell us why (optional). Your account will be permanently deleted in 30 days unless canceled.",
+    "deletion_scheduled_toast": "Deletion scheduled — you have 30 days to cancel",
+    "err_schedule_deletion": "Could not schedule deletion",
+    "deletion_canceled_toast": "Deletion canceled",
+    "err_cancel_deletion": "Could not cancel"
+  },
+  "webhooks": {
+    "title": "Webhooks",
+    "subtitle": "Receive HTTP POST notifications when events happen in your workspace.",
+    "add_title": "Add an endpoint",
+    "placeholder": "https://your-server.com/webhooks/bopsocial",
+    "add_btn": "Add",
+    "empty_title": "No webhook endpoints",
+    "empty_desc": "Add an HTTPS endpoint above to start receiving events.",
+    "events_subscribed_one": "1 event subscribed",
+    "events_subscribed_other": "{{count}} events subscribed",
+    "status_active": "Active",
+    "status_paused": "Paused",
+    "remove_aria": "Remove",
+    "err_https": "Endpoint must use HTTPS",
+    "endpoint_added": "Endpoint added",
+    "endpoint_removed": "Endpoint removed"
+  },
+  "more": {
+    "title": "More settings",
+    "subtitle": "Some areas live as their own pages. Jump to them here.",
+    "links": {
+      "team": {
+        "label": "Team & permissions",
+        "desc": "Invite teammates, assign roles, override permissions."
+      },
+      "workspaces": {
+        "label": "Workspaces (clients)",
+        "desc": "Manage every client account in your agency."
+      },
+      "audit_log": {
+        "label": "Audit log",
+        "desc": "Search every action across your account."
+      },
+      "help_center": {
+        "label": "Help center",
+        "desc": "Setup guides, troubleshooting, FAQs."
+      }
+    }
+  },
+  "danger_zone": {
+    "title": "Danger Zone",
+    "delete_account": "Delete Account",
+    "description": "Permanently delete your account and all associated data. This action cannot be undone.",
+    "delete_btn": "Delete Account",
+    "reason_title": "Why are you deleting your account?",
+    "reason_desc": "Please select a reason. This helps us improve Bop Social.",
+    "reasons": {
+      "no_longer_need": "I no longer need this account",
+      "privacy_concerns": "Privacy concerns",
+      "switching_platform": "Switching to another platform",
+      "too_many_notifications": "Too many emails / notifications",
+      "technical_issues": "Technical issues",
+      "other": "Other"
+    },
+    "continue": "Continue",
+    "cancel": "Cancel",
+    "confirm_title": "This will permanently delete everything",
+    "warnings": {
+      "analytics": "All your analytics data and reports",
+      "social_accounts": "All connected social media accounts",
+      "calendar_posts": "All calendar posts and schedules",
+      "agency_connection": "Your agency connection and history",
+      "profile_credentials": "Your profile and account credentials"
+    },
+    "type_delete_prompt": "Type DELETE to confirm:",
+    "type_delete_placeholder": "DELETE",
+    "deleting": "Deleting...",
+    "permanently_delete": "Permanently Delete Account",
+    "error": "Failed to delete account. Please try again."
   }
 }

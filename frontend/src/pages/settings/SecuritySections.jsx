@@ -1,5 +1,5 @@
 /* ============================================================================
- *  Social Stats — Social Media Management & Marketing Platform
+ *  Bop Social — Social Media Management & Marketing Platform
  *  Author    : Chandrabhan Shekhawat
  *  Company   : Gigai Kripa Services
  *  Website   : https://gigaikripaservices.com/
@@ -16,9 +16,10 @@
 
 import { useEffect, useState } from 'react';
 import {
-  Shield, ShieldCheck, ShieldOff, Smartphone, Key, RefreshCw, AlertTriangle,
+  Shield, ShieldCheck, ShieldOff, Smartphone, Key, AlertTriangle,
   X, Copy, LogOut, Monitor, Wand2,
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 import { mfaAPI, sessionsAPI } from '../../services/api';
 import toast from '../../components/ui/toast';
@@ -32,6 +33,7 @@ import EmptyState from '../../components/ui/EmptyState';
 // MFA Manager
 // ─────────────────────────────────────────────────────────────────────────
 export function MFAManager() {
+  const { t, i18n } = useTranslation('settings');
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -50,7 +52,7 @@ export function MFAManager() {
     setLoading(true);
     mfaAPI.status()
       .then((r) => setStatus(r.data))
-      .catch(() => toast.error('Could not load MFA status'))
+      .catch(() => toast.error(t('mfa.err_load', 'Could not load MFA status')))
       .finally(() => setLoading(false));
   }
   useEffect(() => { load(); }, []);
@@ -61,12 +63,12 @@ export function MFAManager() {
       const r = await mfaAPI.setup();
       setSetupData(r.data);
     } catch (e) {
-      toast.error(e?.response?.data?.error || 'Could not start MFA setup');
+      toast.error(e?.response?.data?.error || t('mfa.err_load', 'Could not start MFA setup'));
     } finally { setBusy(false); }
   }
 
   async function confirmSetup() {
-    if (!verifyCode.trim()) { toast.error('Enter the 6-digit code'); return; }
+    if (!verifyCode.trim()) { toast.error(t('mfa.err_enter_code', 'Enter the 6-digit code')); return; }
     setBusy(true);
     try {
       const r = await mfaAPI.verifySetup(verifyCode.trim());
@@ -75,19 +77,19 @@ export function MFAManager() {
       setVerifyCode('');
       load();
     } catch (e) {
-      toast.error(e?.response?.data?.error || 'Verification failed');
+      toast.error(e?.response?.data?.error || t('mfa.err_verify_failed', 'Verification failed'));
     } finally { setBusy(false); }
   }
 
   async function regenerateBackupCodes() {
-    const code = window.prompt('Enter your current 6-digit code to regenerate backup codes:');
+    const code = window.prompt(t('mfa.prompt_regenerate', 'Enter your current 6-digit code to regenerate backup codes:'));
     if (!code) return;
     try {
       const r = await mfaAPI.regenerateBackupCodes(code.trim());
       setBackupCodes(r.data.backup_codes || []);
       load();
     } catch (e) {
-      toast.error(e?.response?.data?.error || 'Could not regenerate codes');
+      toast.error(e?.response?.data?.error || t('mfa.err_regen_failed', 'Could not regenerate codes'));
     }
   }
 
@@ -95,22 +97,22 @@ export function MFAManager() {
     setBusy(true);
     try {
       await mfaAPI.disable({ password, code });
-      toast.success('MFA disabled');
+      toast.success(t('mfa.success_disabled', 'MFA disabled'));
       setDisableOpen(false);
       load();
     } catch (e) {
-      toast.error(e?.response?.data?.error || 'Could not disable MFA');
+      toast.error(e?.response?.data?.error || t('mfa.err_disable_failed', 'Could not disable MFA'));
     } finally { setBusy(false); }
   }
 
   function copyAll(codes) {
     try {
       navigator.clipboard.writeText(codes.join('\n'));
-      toast.success('Backup codes copied');
-    } catch { toast.error('Could not copy'); }
+      toast.success(t('mfa.copied', 'Backup codes copied'));
+    } catch { toast.error(t('mfa.err_copy', 'Could not copy')); }
   }
 
-  if (loading) return <Card padding="md"><div style={{ color: 'var(--text-tertiary)' }}>Loading…</div></Card>;
+  if (loading) return <Card padding="md"><div style={{ color: 'var(--text-tertiary)' }}>{t('mfa.loading', 'Loading…')}</div></Card>;
 
   // — Enrolment wizard step 1 (QR shown) —
   if (setupData) {
@@ -118,10 +120,10 @@ export function MFAManager() {
       <Card padding="md">
         <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>
           <Shield size={16} style={{ verticalAlign: '-3px', marginRight: 6 }} />
-          Enrol MFA — step 1 of 2
+          {t('mfa.enrol_title', 'Enrol MFA — step 1 of 2')}
         </div>
         <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--text-secondary)' }}>
-          Scan the QR code with Google Authenticator, 1Password, or any TOTP app.
+          {t('mfa.enrol_desc', 'Scan the QR code with Google Authenticator, 1Password, or any TOTP app.')}
         </p>
         <div style={{
           display: 'inline-block', padding: 12,
@@ -131,12 +133,12 @@ export function MFAManager() {
           <img src={setupData.qr_data_uri} alt="MFA QR" style={{ width: 180, height: 180, display: 'block' }} />
         </div>
         <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 10 }}>
-          Or enter manually: <code style={{ userSelect: 'all' }}>{setupData.secret}</code>
+          {t('mfa.enter_manually', 'Or enter manually:')} <code style={{ userSelect: 'all' }}>{setupData.secret}</code>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', maxWidth: 360 }}>
           <input
             value={verifyCode} onChange={(e) => setVerifyCode(e.target.value)}
-            placeholder="123456" inputMode="numeric" maxLength={6}
+            placeholder={t('mfa.code_placeholder', '123456')} inputMode="numeric" maxLength={6}
             style={{
               flex: 1, padding: '8px 12px', fontSize: 14,
               fontFamily: 'var(--font-mono)', textAlign: 'center', letterSpacing: '0.2em',
@@ -145,10 +147,10 @@ export function MFAManager() {
             }}
           />
           <Button onClick={confirmSetup} disabled={busy} icon={ShieldCheck} size="sm">
-            {busy ? 'Verifying…' : 'Verify'}
+            {busy ? t('mfa.verifying', 'Verifying…') : t('mfa.verify', 'Verify')}
           </Button>
           <Button variant="ghost" size="sm" iconOnly icon={X}
-                  aria-label="Cancel"
+                  aria-label={t('mfa.cancel', 'Cancel')}
                   onClick={() => { setSetupData(null); setVerifyCode(''); }} />
         </div>
       </Card>
@@ -161,10 +163,10 @@ export function MFAManager() {
       <Card padding="md" style={{ borderColor: 'var(--warning)', background: 'var(--warning-bg)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700,
                       color: 'var(--warning)', marginBottom: 6 }}>
-          <AlertTriangle size={14} /> Save these backup codes — shown once
+          <AlertTriangle size={14} /> {t('mfa.backup_title', 'Save these backup codes — shown once')}
         </div>
         <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--text-secondary)' }}>
-          Each code can be used ONCE if you lose your authenticator. Store them in a password manager.
+          {t('mfa.backup_desc', 'Each code can be used ONCE if you lose your authenticator. Store them in a password manager.')}
         </p>
         <div style={{
           display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6,
@@ -175,8 +177,8 @@ export function MFAManager() {
           {backupCodes.map((c) => <span key={c}>{c}</span>)}
         </div>
         <div style={{ marginTop: 10, display: 'flex', gap: 8 }}>
-          <Button size="sm" icon={Copy} onClick={() => copyAll(backupCodes)}>Copy all</Button>
-          <Button size="sm" variant="ghost" onClick={() => setBackupCodes(null)}>I've saved them</Button>
+          <Button size="sm" icon={Copy} onClick={() => copyAll(backupCodes)}>{t('mfa.copy_all', 'Copy all')}</Button>
+          <Button size="sm" variant="ghost" onClick={() => setBackupCodes(null)}>{t('mfa.saved_them', 'I\'ve saved them')}</Button>
         </div>
       </Card>
     );
@@ -194,13 +196,12 @@ export function MFAManager() {
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
           }}><ShieldOff size={18} /></span>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 15, fontWeight: 600 }}>Two-factor auth (TOTP)</div>
+            <div style={{ fontSize: 15, fontWeight: 600 }}>{t('mfa.title', 'Two-factor auth (TOTP)')}</div>
             <p style={{ margin: '4px 0 12px', fontSize: 13, color: 'var(--text-secondary)' }}>
-              Add a second factor — a 6-digit code from your authenticator app — on top of your password.
-              Strongly recommended for admin accounts.
+              {t('mfa.description', 'Add a second factor — a 6-digit code from your authenticator app — on top of your password. Strongly recommended for admin accounts.')}
             </p>
             <Button size="sm" icon={Wand2} disabled={busy} onClick={startSetup}>
-              {busy ? 'Starting…' : 'Set up MFA'}
+              {busy ? t('mfa.starting', 'Starting…') : t('mfa.setup_btn', 'Set up MFA')}
             </Button>
           </div>
         </div>
@@ -209,6 +210,20 @@ export function MFAManager() {
   }
 
   // — Enabled MFA panel —
+  const formattedLastUsed = status.last_used_at
+    ? t('mfa.last_used', {
+        date: new Date(status.last_used_at).toLocaleDateString(i18n.language?.startsWith('es') ? 'es-ES' : 'en-US'),
+        defaultValue: `last used ${new Date(status.last_used_at).toLocaleDateString()}`,
+      })
+    : t('mfa.never_used', 'never used yet');
+
+  const backupCountText = status.backup_codes_remaining === 1
+    ? t('mfa.backup_remaining_one', '1 backup code remaining')
+    : t('mfa.backup_remaining_other', {
+        count: status.backup_codes_remaining,
+        defaultValue: `${status.backup_codes_remaining} backup codes remaining`,
+      });
+
   return (
     <Card padding="md">
       <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
@@ -220,21 +235,18 @@ export function MFAManager() {
         }}><ShieldCheck size={18} /></span>
         <div style={{ flex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <div style={{ fontSize: 15, fontWeight: 600 }}>Two-factor auth is on</div>
-            <Badge variant="success">Enabled</Badge>
+            <div style={{ fontSize: 15, fontWeight: 600 }}>{t('mfa.enabled_title', 'Two-factor auth is on')}</div>
+            <Badge variant="success">{t('mfa.enabled_badge', 'Enabled')}</Badge>
           </div>
           <p style={{ margin: '4px 0 12px', fontSize: 13, color: 'var(--text-secondary)' }}>
-            {status.backup_codes_remaining} backup code{status.backup_codes_remaining === 1 ? '' : 's'} remaining ·{' '}
-            {status.last_used_at
-              ? `last used ${new Date(status.last_used_at).toLocaleDateString()}`
-              : 'never used yet'}
+            {backupCountText} · {formattedLastUsed}
           </p>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <Button size="sm" icon={Key} variant="secondary" onClick={regenerateBackupCodes}>
-              Regenerate backup codes
+              {t('mfa.regenerate_btn', 'Regenerate backup codes')}
             </Button>
             <Button size="sm" icon={ShieldOff} variant="danger" onClick={() => setDisableOpen(true)}>
-              Disable MFA
+              {t('mfa.disable_btn', 'Disable MFA')}
             </Button>
           </div>
         </div>
@@ -247,6 +259,7 @@ export function MFAManager() {
 
 
 function DisableMfaModal({ busy, onClose, onConfirm }) {
+  const { t } = useTranslation('settings');
   const [password, setPassword] = useState('');
   const [code, setCode] = useState('');
   return (
@@ -262,21 +275,21 @@ function DisableMfaModal({ busy, onClose, onConfirm }) {
         borderRadius: 'var(--radius-lg)', padding: 18,
       }}>
         <h2 style={{ margin: '0 0 6px', fontSize: 16, fontWeight: 700, color: 'var(--danger)' }}>
-          Disable MFA
+          {t('mfa.disable_modal_title', 'Disable MFA')}
         </h2>
         <p style={{ margin: '0 0 12px', fontSize: 12, color: 'var(--text-secondary)' }}>
-          We require your password AND a current 6-digit code so a hijacker can't disable MFA from a stolen session.
+          {t('mfa.disable_modal_desc', 'We require your password AND a current 6-digit code so a hijacker can\'t disable MFA from a stolen session.')}
         </p>
         <input type="password" value={password} onChange={(e) => setPassword(e.target.value)}
-               placeholder="Password" style={modalInput} />
+               placeholder={t('mfa.password_placeholder', 'Password')} style={modalInput} />
         <input value={code} onChange={(e) => setCode(e.target.value)}
-               placeholder="6-digit code" inputMode="numeric" maxLength={6}
+               placeholder={t('mfa.code_placeholder', '6-digit code')} inputMode="numeric" maxLength={6}
                style={{ ...modalInput, marginTop: 8, fontFamily: 'var(--font-mono)', textAlign: 'center' }} />
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 14 }}>
-          <Button size="sm" variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button size="sm" variant="ghost" onClick={onClose}>{t('mfa.cancel', 'Cancel')}</Button>
           <Button size="sm" variant="danger" disabled={busy}
                   onClick={() => onConfirm(password, code.trim())}>
-            {busy ? 'Disabling…' : 'Disable MFA'}
+            {busy ? t('mfa.disabling', 'Disabling…') : t('mfa.disable_confirm_btn', 'Disable MFA')}
           </Button>
         </div>
       </div>
@@ -289,6 +302,7 @@ function DisableMfaModal({ busy, onClose, onConfirm }) {
 // Active sessions
 // ─────────────────────────────────────────────────────────────────────────
 export function ActiveSessionsList() {
+  const { t, i18n } = useTranslation('settings');
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -296,30 +310,30 @@ export function ActiveSessionsList() {
     setLoading(true);
     sessionsAPI.list()
       .then((r) => setSessions(r.data?.sessions || []))
-      .catch(() => toast.error('Could not load sessions'))
+      .catch(() => toast.error(t('sessions.err_load', 'Could not load sessions')))
       .finally(() => setLoading(false));
   }
   useEffect(() => { load(); }, []);
 
   async function revoke(id) {
-    if (!window.confirm('Revoke this session? The device will be signed out immediately.')) return;
+    if (!window.confirm(t('sessions.confirm_revoke', 'Revoke this session? The device will be signed out immediately.'))) return;
     try {
       await sessionsAPI.revoke(id);
-      toast.success('Session revoked');
+      toast.success(t('sessions.success_revoked', 'Session revoked'));
       load();
-    } catch { toast.error('Could not revoke'); }
+    } catch { toast.error(t('sessions.err_revoke', 'Could not revoke')); }
   }
 
   async function revokeAll() {
-    if (!window.confirm('Sign out of every other device? This cannot be undone.')) return;
+    if (!window.confirm(t('sessions.confirm_sign_out_all', 'Sign out of every other device? This cannot be undone.'))) return;
     try {
       const r = await sessionsAPI.revokeAll();
-      toast.success(`${r.data.revoked} session(s) revoked`);
+      toast.success(t('sessions.success_all_revoked', { count: r.data.revoked, defaultValue: `${r.data.revoked} session(s) revoked` }));
       load();
-    } catch { toast.error('Could not sign out everywhere'); }
+    } catch { toast.error(t('sessions.err_sign_out_all', 'Could not sign out everywhere')); }
   }
 
-  if (loading) return <Card padding="md"><div style={{ color: 'var(--text-tertiary)' }}>Loading sessions…</div></Card>;
+  if (loading) return <Card padding="md"><div style={{ color: 'var(--text-tertiary)' }}>{t('sessions.loading', 'Loading sessions…')}</div></Card>;
 
   const active = sessions.filter((s) => s.is_active);
 
@@ -331,46 +345,58 @@ export function ActiveSessionsList() {
       }}>
         <Monitor size={16} />
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 14, fontWeight: 700 }}>Active sessions</div>
+          <div style={{ fontSize: 14, fontWeight: 700 }}>{t('sessions.title', 'Active sessions')}</div>
           <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
-            {active.length} active · {sessions.length - active.length} revoked (last 90 days)
+            {t('sessions.active_revoked_summary', {
+              active: active.length,
+              revoked: sessions.length - active.length,
+              defaultValue: `${active.length} active · ${sessions.length - active.length} revoked (last 90 days)`,
+            })}
           </div>
         </div>
         {active.length > 1 && (
           <Button size="sm" variant="ghost" icon={LogOut} onClick={revokeAll}>
-            Sign out everywhere
+            {t('sessions.sign_out_everywhere', 'Sign out everywhere')}
           </Button>
         )}
       </div>
 
       {sessions.length === 0 ? (
-        <EmptyState icon={Smartphone} title="No sessions yet"
-                    description="Your active sessions will appear here." compact />
+        <EmptyState icon={Smartphone} title={t('sessions.empty_title', 'No sessions yet')}
+                    description={t('sessions.empty_desc', 'Your active sessions will appear here.')} compact />
       ) : (
-        sessions.map((s, i) => (
-          <div key={s.id} style={{
-            display: 'grid', gridTemplateColumns: '1fr auto', gap: 12,
-            padding: '12px 18px',
-            borderTop: i > 0 ? '1px solid var(--border-subtle)' : 'none',
-            opacity: s.is_active ? 1 : 0.55,
-            alignItems: 'center',
-          }}>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 600 }}>
-                {s.browser || 'Unknown browser'} on {s.os || 'unknown OS'}
-                {' '}<span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>· {s.device || 'device'}</span>
-                {!s.is_active && <Badge style={{ marginLeft: 6 }}>Revoked</Badge>}
+        sessions.map((s, i) => {
+          const browserText = s.browser || t('sessions.unknown_browser', 'Unknown browser');
+          const osText = s.os || t('sessions.unknown_os', 'unknown OS');
+          const deviceText = s.device || t('sessions.device', 'device');
+          const dateStr = new Date(s.last_used_at).toLocaleString(i18n.language?.startsWith('es') ? 'es-ES' : 'en-US');
+          const ipText = s.ip || t('sessions.unknown_ip', 'unknown IP');
+
+          return (
+            <div key={s.id} style={{
+              display: 'grid', gridTemplateColumns: '1fr auto', gap: 12,
+              padding: '12px 18px',
+              borderTop: i > 0 ? '1px solid var(--border-subtle)' : 'none',
+              opacity: s.is_active ? 1 : 0.55,
+              alignItems: 'center',
+            }}>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600 }}>
+                  {browserText} on {osText}
+                  {' '}<span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>· {deviceText}</span>
+                  {!s.is_active && <Badge style={{ marginLeft: 6 }}>{t('sessions.revoked_badge', 'Revoked')}</Badge>}
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>
+                  {t('sessions.ip_last_used', { ip: ipText, date: dateStr, defaultValue: `${ipText} · last used ${dateStr}` })}
+                </div>
               </div>
-              <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>
-                {s.ip || 'unknown IP'} · last used {new Date(s.last_used_at).toLocaleString()}
-              </div>
+              {s.is_active && (
+                <Button size="sm" variant="ghost" iconOnly icon={X}
+                        aria-label={t('sessions.revoke_label', 'Revoke session')} onClick={() => revoke(s.id)} />
+              )}
             </div>
-            {s.is_active && (
-              <Button size="sm" variant="ghost" iconOnly icon={X}
-                      aria-label="Revoke session" onClick={() => revoke(s.id)} />
-            )}
-          </div>
-        ))
+          );
+        })
       )}
     </Card>
   );
