@@ -1,0 +1,175 @@
+{
+  "rail": {
+    "soon": "Soon",
+    "notifications": "Notifications",
+    "settings": "Settings",
+    "brand_home": "Bop Social home",
+    "account_menu": "Account menu",
+    "manage_agency": "Manage agency",
+    "marketplace_profile": "Marketplace profile",
+    "my_agency": "My agency",
+    "account_settings": "Account settings",
+    "sign_out": "Sign out"
+  },
+  "topbar": {
+    "search_placeholder": "Search anything…",
+    "search_aria": "Open command palette (Cmd+K)",
+    "search": "Search",
+    "open_menu": "Open menu",
+    "new": "New",
+    "whats_new": "What's new",
+    "breadcrumb_home": "Home"
+  },
+  "mobile_nav": {
+    "home": "Home",
+    "calendar": "Calendar",
+    "reports": "Reports",
+    "alerts": "Alerts",
+    "inbox": "Inbox",
+    "campaigns": "Campaigns",
+    "templates": "Templates",
+    "contacts": "Contacts",
+    "soon": "Soon"
+  },
+  "drawer": {
+    "navigation": "Navigation",
+    "close_menu": "Close menu"
+  },
+  "toasts": {
+    "post_published": "Published: {{title}}",
+    "post_partial": "Published partially ({{success}}/{{total}})",
+    "post_failed": "Publish failed: {{title}}",
+    "new_message": "💬 {{sender}}: {{preview}}",
+    "new_review": "⭐ New {{rating}}-star review{{from}}",
+    "from_reviewer": " from {{name}}",
+    "token_expired": "{{platform}} token expired — please reconnect.",
+    "default_post": "post",
+    "default_new_message": "New message",
+    "default_platform": "Platform"
+  },
+  "modules": {
+    "analytics": {
+      "label": "Analytics",
+      "subtitle": "Social performance"
+    },
+    "messaging": {
+      "label": "Messaging",
+      "subtitle": "WhatsApp & SMS"
+    },
+    "ads": {
+      "label": "Ads",
+      "subtitle": "Coming soon",
+      "empty": "Ads management is coming soon. We're building it next."
+    }
+  },
+  "sidebar": {
+    "sections": {
+      "publish": "Publish",
+      "engage": "Engage",
+      "overview": "Overview",
+      "content": "Content",
+      "performance": "Performance",
+      "grow": "Grow",
+      "setup": "Setup",
+      "inbox": "Inbox",
+      "outreach": "Outreach",
+      "conversational_ai": "Conversational AI"
+    },
+    "items": {
+      "composer": "Composer",
+      "calendar": "Calendar",
+      "queues": "Queues",
+      "media_library": "Media Library",
+      "video_studio": "Video Studio",
+      "inbox": "Inbox",
+      "reviews": "Reviews",
+      "automations": "Automations",
+      "dashboard": "Dashboard",
+      "analytics": "Analytics",
+      "reports": "Reports",
+      "posts": "Posts",
+      "caption_writer": "Caption Writer",
+      "post_ideas": "Post Ideas",
+      "hashtags": "Hashtags",
+      "ai_studio": "AI Studio",
+      "brand_voice": "Brand Voice",
+      "ai_insights": "AI Insights",
+      "ai_audit": "AI Audit",
+      "roi_calculator": "ROI Calculator",
+      "alerts": "Alerts",
+      "sync_logs": "Sync Logs",
+      "audience": "Audience",
+      "competitors": "Competitors",
+      "approvals": "Approvals",
+      "notifications": "Notifications",
+      "audit_log": "Audit Log",
+      "all_conversations": "All conversations",
+      "campaigns": "Campaigns",
+      "templates": "Templates",
+      "contacts": "Contacts",
+      "lists": "Lists",
+      "bot_flows": "Bot Flows",
+      "conversations": "Conversations",
+      "handoff_queue": "Handoff Queue",
+      "leads": "Leads",
+      "ctwa_campaigns": "CTWA Campaigns",
+      "bot_safety": "Bot Safety",
+      "account": "Account",
+      "webhooks": "Webhooks"
+    }
+  },
+  "client_switcher": {
+    "all_clients": "All clients",
+    "search_placeholder": "Search clients…"
+  },
+  "command_palette": {
+    "placeholder": "Search pages, posts, leads, conversations…",
+    "searching": "Searching…",
+    "no_results": "No results found.",
+    "recent": "Recent",
+    "pages": "Pages",
+    "quick_actions": "Quick actions",
+    "clients": "Clients",
+    "help_resources": "Help & resources",
+    "posts": "Posts",
+    "leads": "Leads",
+    "conversations": "Conversations",
+    "contacts": "Contacts",
+    "nav_hint": "↑↓ to navigate · ↵ to select",
+    "close_hint": "esc to close",
+    "switch_to_client": "Switch to client",
+    "actions": {
+      "send_message": "Send a message",
+      "send_message_hint": "Open inbox to compose",
+      "create_campaign": "Create a campaign",
+      "create_campaign_hint": "New broadcast",
+      "upload_contacts": "Upload contacts",
+      "upload_contacts_hint": "Import a CSV",
+      "new_template": "Create a template",
+      "new_template_hint": "WhatsApp template"
+    },
+    "links": {
+      "changelog": "What's new",
+      "changelog_hint": "Recent product updates",
+      "help": "Help center",
+      "help_hint": "Guides + troubleshooting",
+      "status": "System status",
+      "status_hint": "Live uptime + incidents",
+      "security": "Security & compliance",
+      "security_hint": "GDPR, DPDP, certifications",
+      "contact": "Contact support",
+      "contact_hint": "Send us a message"
+    }
+  },
+  "notifications": {
+    "title": "Notifications",
+    "tab_alerts": "Alerts",
+    "tab_notifications": "Notifications",
+    "mark_all_read": "Mark all read",
+    "no_alerts": "No alerts yet.",
+    "no_notifications": "No notifications yet.",
+    "accept": "Accept",
+    "reject": "Reject",
+    "just_now": "just now"
+  }
+}

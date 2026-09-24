@@ -7,6 +7,7 @@
  *  Released under the MIT License — see LICENSE. Keep this notice.
  * ========================================================================== */
 import { NavLink, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   LayoutDashboard, LineChart, FileText, CalendarDays, TrendingUp, AlertCircle,
   Inbox, Send, Users2, FileType,
@@ -21,13 +22,14 @@ import {
  *   basePath: '/admin' | '/dashboard'
  */
 export default function MobileNav({ module, basePath }) {
+  const { t } = useTranslation('app');
   const location = useLocation();
   const tabs = MOBILE_TABS[module] || MOBILE_TABS.analytics;
 
   return (
     <nav
       className="mobile-bottom-nav ds-mobile-nav"
-      aria-label={`${module} bottom tabs`}
+      aria-label={`${t(`modules.${module}.label`, module)} bottom tabs`}
       style={{
         position: 'fixed',
         bottom: 0, left: 0, right: 0,
@@ -42,16 +44,18 @@ export default function MobileNav({ module, basePath }) {
         alignItems: 'stretch',
       }}
     >
-      {tabs.map((t) => {
-        const to = `${basePath}/${module}${t.path}`;
-        const active = t.end ? location.pathname === to : location.pathname.startsWith(to);
-        const Icon = t.icon;
+      {tabs.map((tabItem) => {
+        const to = `${basePath}/${module}${tabItem.path}`;
+        const active = tabItem.end ? location.pathname === to : location.pathname.startsWith(to);
+        const Icon = tabItem.icon;
+        const key = tabItem.label.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+        const label = t(`mobile_nav.${key}`, tabItem.label);
         return (
           <NavLink
-            key={t.path}
+            key={tabItem.path}
             to={to}
-            end={t.end}
-            aria-label={t.label}
+            end={tabItem.end}
+            aria-label={label}
             style={{
               flex: 1,
               display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
@@ -74,7 +78,7 @@ export default function MobileNav({ module, basePath }) {
             }}>
               <Icon size={18} strokeWidth={active ? 2.4 : 2} />
             </span>
-            <span>{t.label}</span>
+            <span>{label}</span>
           </NavLink>
         );
       })}

@@ -21,7 +21,9 @@
     "get_started": "Comenzar",
     "sign_in": "Iniciar sesión",
     "sign_up": "Registrarse",
-    "submit": "Enviar"
+    "submit": "Enviar",
+    "accept": "Aceptar",
+    "reject": "Rechazar"
   },
   "status": {
     "loading": "Cargando...",
@@ -62,6 +64,9 @@
     "popular": "Popular",
     "new": "Nuevo",
     "verified": "Verificado",
-    "sample_preview": "Vista previa de muestra"
+    "sample_preview": "Vista previa de muestra",
+    "from": "Desde",
+    "to": "Hasta",
+    "soon": "Próximamente"
   }
 }

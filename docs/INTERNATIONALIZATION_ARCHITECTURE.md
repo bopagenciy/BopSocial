@@ -277,4 +277,67 @@ The backend preference hierarchy (`User Preference` -> `Tenant Default` -> `Plat
   - Tagged local images `bopsocial-frontend-local:bs-2.1.1` and `bopsocial-backend-local:bs-2.1.1` in `docker-compose.local.yml`.
   - Executed `docker compose up -d --build frontend backend` and verified healthy containers running live on `http://localhost:3010/`.
 
+---
+
+## 11. Phase BS-2.2 — Bop Social Dashboard & Application Shell Translation
+
+### 11.1 Architectural Scope and Namespace Strategy
+Phase BS-2.2 extended the English/Spanish internationalization architecture into the authenticated Bop Social application shell, core navigation, main client dashboard, agency admin overview, and user settings.
+English remains the canonical fallback, and Spanish is fully functional across the defined shell and dashboard scope.
+Internal slugs, permissions, database keys, routes, and brand invariants (`Bop Social`) remain strictly intact.
+
+Four dedicated namespaces structure the translation assets:
+1. `app.json`: Shell navigation, module rail, feature sidebar sections and items, top bar, mobile drawer & navigation, command palette, notification bell, client switcher, and realtime notifications.
+2. `dashboard.json`: Client dashboard (greeting, highlights, quick links, KPI metrics for YouTube, Facebook, Instagram, Google My Business, and general platforms, platform breakdown table, upcoming posts, and brand profile strip) and agency overview (hero command center, signals, summary bar, performance snapshot, operational detail, monthly goal manager, smart alerts, top posts panel, and ROI summary panel).
+3. `settings.json`: User settings page header, tab group titles (Account, Workspace, Developer, Privacy), tab labels, and profile tab fields, hints, and feedback messages.
+4. `common.json`: Reusable UI elements (`accept`, `reject`, `from`, `to`, `soon`).
+
+### 11.2 Shell and Navigation Integration
+- **`ModuleRail.jsx`**:
+  - Localized brand home aria-label, module button labels and tooltips (with localized `Soon` pill), bottom action buttons (`Notifications`, `Settings`), and `UserMenu` actions.
+  - Safe default array handling for `modules = []` to prevent runtime regressions during asynchronous module loading.
+- **`FeatureSidebar.jsx`**:
+  - Dynamic module header and section title translation via `t('sidebar.sections.<key>')` and `t('sidebar.items.<key>')`.
+  - Localized client switcher toggle and search inputs.
+- **`TopBar.jsx` & `AppShell.jsx`**:
+  - Integrated `<LanguageSelector size="sm" />` beside `ThemeToggle` in both desktop `TopBar` and `MobileTopBar`.
+  - Localized dynamic breadcrumb generator (`buildBreadcrumbs`) mapping route segments through `app` catalog keys with graceful fallback.
+  - Localized command palette search trigger, what's new pill, mobile drawer title, and realtime toasts.
+- **`MobileNav.jsx`**:
+  - Localized primary mobile navigation bar (`Home`, `Calendar`, `Reports`, `Alerts`, etc.).
+- **`CommandPalette.jsx`**:
+  - Localized input placeholders, search loading states, empty results, category group headers (`Recent`, `Pages`, `Quick actions`, `Clients`, `Help & resources`, `Posts`, `Leads`, `Conversations`, `Contacts`), keyboard navigation hints, and quick action labels.
+- **`NotificationBell.jsx`**:
+  - Localized dropdown title, unread badges, mark-all-read action, tab switchers (`Alerts`, `Notifications`), empty states, and invitation actions (`Accept`, `Reject`).
+- **`DateRangePicker.jsx`**:
+  - Localized date bounds labels (`From`, `To`) using `common` namespace.
+
+### 11.3 Dashboard & Settings Localization
+- **`ClientDashboard.jsx`**:
+  - Localized page header, greeting, highlight cards, quick action links, control bar quick stats (`Connected`, `Posts`, `Data`) with dynamic status badges (`Live`, `Waiting`).
+  - Standardized KPI cards across all platform views (YouTube, Facebook, Instagram, Google My Business, Default) referencing localized metric labels from `dashboard.json`.
+  - Platform breakdown table headers dynamically mapped via `dashboard:breakdown.headers.*`.
+  - Collapsible brand profile strip translated (`Brand Profile ▼`, `Hide ▲`, `About`, `USP`, `Target Audience`, `Subcategories`).
+  - Upcoming posts widget and empty state notices translated.
+- **`AdminOverview.jsx`**:
+  - Agency command center hero panel copy, signal cards (`Active Users`, `Top Platform`, `Click Efficiency`, `Sync Health`), and summary bar items.
+  - Performance snapshot stat cards and operational tables (`Platform Performance`, `Recent Sync Activity`).
+  - Embedded panels: `GoalManager`, `AlertsPanel`, `TopPostsPanel`, and `ROIOverviewPanel` completely wired to `dashboard:admin.*` keys with localized table headers and actions.
+- **`UserSettingsPage.jsx`**:
+  - Localized page header, sidebar tab groups (`Account`, `Workspace`, `Developer`, `Privacy`) and tab items.
+  - Complete `ProfileTab` localization: photo upload hints, name and email labels, email immutability disclaimer, language selection radio controls, validation messages, and save button states.
+
+### 11.4 Verification and Deployment
+- **Automated Regression Test Suites**:
+  - `frontend/src/components/shell/__tests__/AppShellTranslation.test.jsx`: 4/4 passing tests verifying English default rendering, dynamic switching to Spanish, `LanguageSelector` integration in `TopBar`, and localized module items in `FeatureSidebar`.
+  - `frontend/src/pages/__tests__/DashboardTranslation.test.jsx`: 3/3 passing tests verifying key resolution across `app`, `dashboard`, and `settings` namespaces in English and Spanish, and `UserSettingsPage` Spanish rendering.
+  - Frontend test suite execution: **14/14 test suites passed, 71/71 tests passed**.
+  - Backend test suite execution: **10/10 tests passed** in `social_stats.tests.test_language_preferences`.
+  - Production build: `npm run build` completed cleanly with exit code 0.
+- **Container Deployment**:
+  - Image tag updated in `docker-compose.local.yml`: `bopsocial-frontend-local:bs-2.2`.
+  - Container recreated and started: `bopsocial-frontend-local:bs-2.2` built and running.
+  - Live HTTP health check: `curl.exe --max-time 10 -I http://localhost:3010/` returned **HTTP/1.1 200 OK** from Nginx.
+
+
 

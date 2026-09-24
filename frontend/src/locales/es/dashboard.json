@@ -1,0 +1,187 @@
+{
+  "subtitle": "Analítica de redes sociales",
+  "sync_now": "Sincronizar ahora",
+  "syncing": "Sincronizando…",
+  "share": "Compartir",
+  "export_pdf": "Exportar PDF",
+  "tabs": {
+    "overview": "Resumen",
+    "analytics": "Analítica",
+    "posts": "Publicaciones",
+    "calendar": "Calendario",
+    "roi": "ROI"
+  },
+  "greeting": {
+    "title": "Buenos días 👋",
+    "subtitle": "Aquí tienes un resumen de tu actividad más reciente"
+  },
+  "empty_connections": {
+    "title": "Aún no hay cuentas conectadas",
+    "body": "Conecta Facebook, Instagram, LinkedIn, YouTube o Google My Business para comenzar a sincronizar tus datos.",
+    "action": "Conectar cuentas"
+  },
+  "empty_analytics": {
+    "title": "Aún no hay métricas",
+    "body": "Tus cuentas están conectadas pero aún no se han recopilado métricas. Haz clic en Sincronizar ahora para comenzar."
+  },
+  "empty_posts": {
+    "title": "No hay publicaciones en este rango",
+    "body": "Prueba ampliando el rango de fechas o ejecuta una sincronización para obtener las publicaciones más recientes de tus cuentas conectadas."
+  },
+  "highlights": {
+    "engagement_rate": "Tasa de interacción",
+    "total_saves": "Guardados totales",
+    "total_comments": "Comentarios totales",
+    "total_shares": "Compartidos totales"
+  },
+  "quick_links": {
+    "title": "Acceso rápido",
+    "full_analytics": "Analítica completa",
+    "all_posts": "Todas las publicaciones",
+    "calendar": "Calendario",
+    "roi": "ROI"
+  },
+  "platforms_box": {
+    "title": "Plataformas",
+    "impr": "impr",
+    "reach": "alcance",
+    "likes": "me gusta",
+    "new": "nuevos"
+  },
+  "stats": {
+    "connected": "Conectadas",
+    "posts": "Publicaciones",
+    "data": "Datos",
+    "live": "En vivo",
+    "waiting": "En espera"
+  },
+  "metrics": {
+    "impressions": "Impresiones",
+    "reach": "Alcance",
+    "clicks": "Clics",
+    "likes": "Me gusta",
+    "comments": "Comentarios",
+    "shares": "Compartidos",
+    "video_views": "Vistas de video",
+    "followers": "Seguidores",
+    "unfollows": "Dejados de seguir",
+    "page_views": "Vistas de página",
+    "engagements": "Interacciones",
+    "profile_views": "Vistas de perfil",
+    "website_clicks": "Clics al sitio web",
+    "saves": "Guardados",
+    "phone_calls": "Llamadas telefónicas",
+    "direction_requests": "Solicitudes de dirección",
+    "search_impressions": "Impresiones de búsqueda",
+    "maps_impressions": "Impresiones de Maps",
+    "photo_views": "Vistas de fotos",
+    "watch_time": "Tiempo de reproducción (min)",
+    "avg_view": "Duración media (seg)",
+    "subscribers": "Suscriptores",
+    "unsubs": "Bajas de suscriptores",
+    "interactions": "Interacciones",
+    "accounts_engaged": "Cuentas con interacción",
+    "email_clicks": "Clics en correo",
+    "phone_clicks": "Clics en teléfono",
+    "direction_clicks": "Clics de cómo llegar"
+  },
+  "loading_charts": "Cargando gráficos…",
+  "empty_charts": {
+    "title": "Aún no hay datos",
+    "body": "Conecta tus cuentas y haz clic en Sincronizar ahora para recopilar datos."
+  },
+  "breakdown": {
+    "title": "Desglose por plataforma",
+    "headers": {
+      "platform": "Plataforma",
+      "reach": "Alcance",
+      "impressions": "Impresiones",
+      "likes": "Me gusta",
+      "comments": "Comentarios",
+      "shares": "Compartidos",
+      "video_views": "Vistas de video",
+      "followers": "Seguidores"
+    }
+  },
+  "posts": {
+    "title": "Todas las publicaciones"
+  },
+  "profile": {
+    "hide": "Ocultar ▲",
+    "brand_profile": "Perfil de marca ▼",
+    "about": "Acerca de",
+    "usp": "Propuesta de valor",
+    "target_audience": "Público objetivo",
+    "subcategories": "Subcategorías"
+  },
+  "upcoming": {
+    "title": "Próximas publicaciones",
+    "view_all": "Ver todas →"
+  },
+  "admin": {
+    "hero_eyebrow": "Centro de control de agencia",
+    "hero_title": "Convierte los datos en acciones concretas.",
+    "hero_subtitle": "Supervisa el avance de clientes, estado de sincronizaciones, tracción de campañas y rendimiento multiplataforma desde un centro de mando refinado.",
+    "active_users": "Usuarios activos",
+    "top_platform": "Plataforma principal",
+    "click_efficiency": "Eficiencia de clics",
+    "sync_health": "Salud de sincronización",
+    "date_window": "Ventana de fechas",
+    "best_reach": "Mayor alcance",
+    "total_reach": "Alcance total",
+    "latest_sync": "Última sincronización",
+    "performance_snapshot": "Resumen de rendimiento",
+    "core_metrics_subtitle": "Métricas clave de la agencia de un vistazo",
+    "operational_detail": "Detalle operativo",
+    "operational_subtitle": "Tablas de rendimiento, alertas, metas y sincronizaciones recientes",
+    "total_users": "Usuarios totales",
+    "total_impressions": "Impresiones totales",
+    "total_clicks": "Clics totales",
+    "total_followers": "Seguidores totales",
+    "platform_performance": "Rendimiento de plataforma",
+    "recent_sync_activity": "Actividad reciente de sincronización",
+    "goal_manager": {
+      "title": "Establecer metas mensuales",
+      "user": "Usuario",
+      "select_user": "Seleccionar usuario",
+      "platform": "Plataforma",
+      "metric": "Métrica",
+      "target_value": "Valor objetivo",
+      "month": "Mes",
+      "year": "Año",
+      "save_goal": "Guardar meta",
+      "saving": "Guardando…",
+      "no_goals": "No hay metas establecidas para este periodo — selecciona un usuario para filtrar."
+    },
+    "alerts_panel": {
+      "title": "Alertas inteligentes",
+      "unread": "no leídas",
+      "mark_all_read": "Marcar todo como leído",
+      "no_alerts": "Aún no hay alertas."
+    },
+    "top_posts_panel": {
+      "title": "Mejor publicación de la semana — Todos los usuarios",
+      "rescore_now": "Recalcular ahora",
+      "loading": "Cargando…",
+      "no_top_posts": "Aún no hay publicaciones destacadas — las publicaciones se evalúan cada lunes a las 8 am, o haz clic en \"Recalcular ahora\".",
+      "user": "Usuario",
+      "platform": "Plataforma",
+      "post": "Publicación",
+      "score": "Puntaje",
+      "vs_avg": "vs promedio",
+      "date": "Fecha",
+      "view": "Ver"
+    },
+    "roi_panel": {
+      "title": "Resumen de ROI — {{month}} {{year}}",
+      "loading": "Cargando…",
+      "no_reports": "Aún no hay informes de ROI guardados para este mes.",
+      "user": "Usuario",
+      "roi_pct": "% ROI",
+      "est_revenue": "Ingresos estimados",
+      "investment": "Inversión",
+      "status": "Estado",
+      "view": "Ver"
+    }
+  }
+}

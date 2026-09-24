@@ -1,0 +1,175 @@
+{
+  "rail": {
+    "soon": "Próximamente",
+    "notifications": "Notificaciones",
+    "settings": "Configuración",
+    "brand_home": "Inicio de Bop Social",
+    "account_menu": "Menú de cuenta",
+    "manage_agency": "Gestionar agencia",
+    "marketplace_profile": "Perfil de marketplace",
+    "my_agency": "Mi agencia",
+    "account_settings": "Configuración de cuenta",
+    "sign_out": "Cerrar sesión"
+  },
+  "topbar": {
+    "search_placeholder": "Buscar lo que sea…",
+    "search_aria": "Abrir paleta de comandos (Cmd+K)",
+    "search": "Buscar",
+    "open_menu": "Abrir menú",
+    "new": "Nuevo",
+    "whats_new": "Novedades",
+    "breadcrumb_home": "Inicio"
+  },
+  "mobile_nav": {
+    "home": "Inicio",
+    "calendar": "Calendario",
+    "reports": "Informes",
+    "alerts": "Alertas",
+    "inbox": "Bandeja de entrada",
+    "campaigns": "Campañas",
+    "templates": "Plantillas",
+    "contacts": "Contactos",
+    "soon": "Próximamente"
+  },
+  "drawer": {
+    "navigation": "Navegación",
+    "close_menu": "Cerrar menú"
+  },
+  "toasts": {
+    "post_published": "Publicado: {{title}}",
+    "post_partial": "Publicado parcialmente ({{success}}/{{total}})",
+    "post_failed": "Error al publicar: {{title}}",
+    "new_message": "💬 {{sender}}: {{preview}}",
+    "new_review": "⭐ Nueva reseña de {{rating}} estrellas{{from}}",
+    "from_reviewer": " de {{name}}",
+    "token_expired": "Token de {{platform}} expirado — conéctate de nuevo.",
+    "default_post": "publicación",
+    "default_new_message": "Nuevo mensaje",
+    "default_platform": "Plataforma"
+  },
+  "modules": {
+    "analytics": {
+      "label": "Analítica",
+      "subtitle": "Rendimiento social"
+    },
+    "messaging": {
+      "label": "Mensajería",
+      "subtitle": "WhatsApp y SMS"
+    },
+    "ads": {
+      "label": "Anuncios",
+      "subtitle": "Próximamente",
+      "empty": "La gestión de anuncios llegará pronto. La estamos construyendo."
+    }
+  },
+  "sidebar": {
+    "sections": {
+      "publish": "Publicar",
+      "engage": "Interacción",
+      "overview": "Resumen",
+      "content": "Contenido",
+      "performance": "Rendimiento",
+      "grow": "Crecimiento",
+      "setup": "Configuración",
+      "inbox": "Bandeja de entrada",
+      "outreach": "Difusión",
+      "conversational_ai": "IA conversacional"
+    },
+    "items": {
+      "composer": "Compositor",
+      "calendar": "Calendario",
+      "queues": "Colas",
+      "media_library": "Biblioteca de medios",
+      "video_studio": "Estudio de video",
+      "inbox": "Bandeja de entrada",
+      "reviews": "Reseñas",
+      "automations": "Automatizaciones",
+      "dashboard": "Panel principal",
+      "analytics": "Analítica",
+      "reports": "Informes",
+      "posts": "Publicaciones",
+      "caption_writer": "Redactor de copys",
+      "post_ideas": "Ideas de contenido",
+      "hashtags": "Hashtags",
+      "ai_studio": "Estudio de IA",
+      "brand_voice": "Voz de marca",
+      "ai_insights": "Hallazgos de IA",
+      "ai_audit": "Auditoría de IA",
+      "roi_calculator": "Calculadora de ROI",
+      "alerts": "Alertas",
+      "sync_logs": "Registros de sincronización",
+      "audience": "Audiencia",
+      "competitors": "Competidores",
+      "approvals": "Aprobaciones",
+      "notifications": "Notificaciones",
+      "audit_log": "Registro de auditoría",
+      "all_conversations": "Todas las conversaciones",
+      "campaigns": "Campañas",
+      "templates": "Plantillas",
+      "contacts": "Contactos",
+      "lists": "Listas",
+      "bot_flows": "Flujos de bots",
+      "conversations": "Conversaciones",
+      "handoff_queue": "Cola de transferencia",
+      "leads": "Prospectos",
+      "ctwa_campaigns": "Campañas CTWA",
+      "bot_safety": "Seguridad del bot",
+      "account": "Cuenta",
+      "webhooks": "Webhooks"
+    }
+  },
+  "client_switcher": {
+    "all_clients": "Todos los clientes",
+    "search_placeholder": "Buscar clientes…"
+  },
+  "command_palette": {
+    "placeholder": "Buscar páginas, publicaciones, prospectos, conversaciones…",
+    "searching": "Buscando…",
+    "no_results": "No se encontraron resultados.",
+    "recent": "Recientes",
+    "pages": "Páginas",
+    "quick_actions": "Acciones rápidas",
+    "clients": "Clientes",
+    "help_resources": "Ayuda y recursos",
+    "posts": "Publicaciones",
+    "leads": "Prospectos",
+    "conversations": "Conversaciones",
+    "contacts": "Contactos",
+    "nav_hint": "↑↓ para navegar · ↵ para seleccionar",
+    "close_hint": "esc para cerrar",
+    "switch_to_client": "Cambiar a cliente",
+    "actions": {
+      "send_message": "Enviar un mensaje",
+      "send_message_hint": "Abrir bandeja de entrada para redactar",
+      "create_campaign": "Crear una campaña",
+      "create_campaign_hint": "Nueva difusión",
+      "upload_contacts": "Subir contactos",
+      "upload_contacts_hint": "Importar un CSV",
+      "new_template": "Crear una plantilla",
+      "new_template_hint": "Plantilla de WhatsApp"
+    },
+    "links": {
+      "changelog": "Novedades",
+      "changelog_hint": "Actualizaciones recientes del producto",
+      "help": "Centro de ayuda",
+      "help_hint": "Guías y solución de problemas",
+      "status": "Estado del sistema",
+      "status_hint": "Disponibilidad en vivo e incidentes",
+      "security": "Seguridad y cumplimiento",
+      "security_hint": "GDPR, DPDP, certificaciones",
+      "contact": "Contactar soporte",
+      "contact_hint": "Envíanos un mensaje"
+    }
+  },
+  "notifications": {
+    "title": "Notificaciones",
+    "tab_alerts": "Alertas",
+    "tab_notifications": "Notificaciones",
+    "mark_all_read": "Marcar todo como leído",
+    "no_alerts": "Aún no hay alertas.",
+    "no_notifications": "Aún no hay notificaciones.",
+    "accept": "Aceptar",
+    "reject": "Rechazar",
+    "just_now": "hace un momento"
+  }
+}

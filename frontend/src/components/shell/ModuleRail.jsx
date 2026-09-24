@@ -8,6 +8,7 @@
  * ========================================================================== */
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   BarChart3, MessageCircle, Target,
   Bell, Settings, LogOut, ChevronUp,
@@ -27,7 +28,8 @@ import { useAuth } from '../../hooks/useAuth';
  *   modules:       ordered list of { id, label, icon, enabled, comingSoon, badge }
  *   notifCount:    number for the bell dot
  */
-export default function ModuleRail({ currentModule, basePath, modules, notifCount = 0 }) {
+export default function ModuleRail({ currentModule, basePath, modules = [], notifCount = 0 }) {
+  const { t } = useTranslation('app');
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -35,7 +37,7 @@ export default function ModuleRail({ currentModule, basePath, modules, notifCoun
   return (
     <aside
       className="ds-module-rail"
-      aria-label="Module switcher"
+      aria-label={t('rail.brand_home', 'Module switcher')}
       style={{
         position: 'fixed',
         top: 0, left: 0, bottom: 0,
@@ -54,7 +56,7 @@ export default function ModuleRail({ currentModule, basePath, modules, notifCoun
       <button
         type="button"
         onClick={() => navigate(`${basePath}/${currentModule || 'analytics'}`)}
-        aria-label="Bop Social home"
+        aria-label={t('rail.brand_home', 'Bop Social home')}
         style={{
           width: 38, height: 38,
           borderRadius: 'var(--radius-md)',
@@ -90,13 +92,13 @@ export default function ModuleRail({ currentModule, basePath, modules, notifCoun
       <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
         <RailIconBtn
           icon={Bell}
-          label="Notifications"
+          label={t('rail.notifications', 'Notifications')}
           onClick={() => navigate(`${basePath}/analytics/alerts`)}
           dot={notifCount > 0}
         />
         <RailIconBtn
           icon={Settings}
-          label="Settings"
+          label={t('rail.settings', 'Settings')}
           onClick={() => navigate(`${basePath}/account-settings`)}
         />
 
@@ -112,10 +114,12 @@ export default function ModuleRail({ currentModule, basePath, modules, notifCoun
 }
 
 function ModuleButton({ module: m, active, onClick }) {
+  const { t } = useTranslation('app');
   const Icon = m.icon;
   const disabled = !m.enabled || m.comingSoon;
 
-  const tooltip = m.comingSoon ? `${m.label} — Soon` : m.label;
+  const label = t(`modules.${m.id}.label`, m.label);
+  const tooltip = m.comingSoon ? `${label} — ${t('rail.soon', 'Soon')}` : label;
 
   return (
     <div className="ds-rail-tip" data-tip={tooltip} style={{ position: 'relative' }}>
@@ -221,6 +225,7 @@ function RailIconBtn({ icon: Icon, label, onClick, dot }) {
 }
 
 function UserMenu({ user, open, onOpenChange, onLogout }) {
+  const { t } = useTranslation('app');
   const navigate = useNavigate();
   const isAgency = user?.account_type === 'agency_member';
   const isEndUser = user?.account_type === 'end_user';
@@ -248,7 +253,7 @@ function UserMenu({ user, open, onOpenChange, onLogout }) {
       <button
         type="button"
         onClick={() => onOpenChange(!open)}
-        aria-label="Account menu"
+        aria-label={t('rail.account_menu', 'Account menu')}
         aria-haspopup="menu"
         aria-expanded={open}
         style={{
@@ -290,24 +295,24 @@ function UserMenu({ user, open, onOpenChange, onLogout }) {
           </div>
           {isAgency && (
             <>
-              <MenuRow icon={Briefcase} label="Manage agency" onClick={() => {
+              <MenuRow icon={Briefcase} label={t('rail.manage_agency', 'Manage agency')} onClick={() => {
                 onOpenChange(false); navigate('/agency');
               }} />
-              <MenuRow icon={Store} label="Marketplace profile" onClick={() => {
+              <MenuRow icon={Store} label={t('rail.marketplace_profile', 'Marketplace profile')} onClick={() => {
                 onOpenChange(false); navigate('/agency/marketplace-profile');
               }} />
             </>
           )}
           {isEndUser && (
-            <MenuRow icon={Briefcase} label="My agency" onClick={() => {
+            <MenuRow icon={Briefcase} label={t('rail.my_agency', 'My agency')} onClick={() => {
               onOpenChange(false); navigate('/u/agency');
             }} />
           )}
-          <MenuRow icon={Settings} label="Account settings" onClick={() => {
+          <MenuRow icon={Settings} label={t('rail.account_settings', 'Account settings')} onClick={() => {
             onOpenChange(false);
             navigate(user?.role === 'client' ? '/dashboard/account-settings' : '/admin/account-settings');
           }} />
-          <MenuRow icon={LogOut} label="Sign out" danger onClick={onLogout} />
+          <MenuRow icon={LogOut} label={t('rail.sign_out', 'Sign out')} danger onClick={onLogout} />
         </div>
       )}
     </div>

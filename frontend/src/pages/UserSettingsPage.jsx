@@ -40,6 +40,7 @@ const CYAN_SOFT = 'rgba(0,215,255,0.1)';
 
 const TAB_GROUPS = [
   {
+    id: 'account',
     label: 'Account',
     items: [
       { id: 'profile',         label: 'Profile',          icon: User },
@@ -48,6 +49,7 @@ const TAB_GROUPS = [
     ],
   },
   {
+    id: 'workspace',
     label: 'Workspace',
     items: [
       { id: 'notifications',   label: 'Notifications',    icon: Bell },
@@ -56,6 +58,7 @@ const TAB_GROUPS = [
     ],
   },
   {
+    id: 'developer',
     label: 'Developer',
     items: [
       { id: 'api',             label: 'API Keys',         icon: Key },
@@ -63,6 +66,7 @@ const TAB_GROUPS = [
     ],
   },
   {
+    id: 'privacy',
     label: 'Privacy',
     items: [
       { id: 'data',            label: 'Data & Privacy',   icon: Database },
@@ -75,36 +79,37 @@ const TAB_GROUPS = [
 const TABS = TAB_GROUPS.flatMap((g) => g.items);
 
 export default function UserSettingsPage() {
+  const { t } = useTranslation('settings');
   const { user, refreshAuth, logout } = useAuth();
   const navigate = useNavigate();
   const [tab, setTab] = useState('profile');
 
   return (
     <div style={s.page}>
-      <PageHeader title="Settings" subtitle="Manage your account, workspace, and integrations" />
+      <PageHeader title={t('title', 'Settings')} subtitle={t('subtitle', 'Manage your account, workspace, and integrations')} />
 
       <div className="settings-body" style={s.body}>
         {/* Sidebar tabs */}
         <div className="settings-sidebar" style={s.sidebar}>
           {TAB_GROUPS.map((group) => {
-            const visible = group.items.filter((t) => !t.clientOnly || user?.role === 'client');
+            const visible = group.items.filter((tItem) => !tItem.clientOnly || user?.role === 'client');
             if (visible.length === 0) return null;
             return (
-              <div key={group.label} style={{ marginBottom: 6 }}>
-                <div style={s.sidebarHeading}>{group.label}</div>
-                {visible.map((t) => {
-                  const Icon = t.icon;
-                  const active = tab === t.id;
+              <div key={group.id || group.label} style={{ marginBottom: 6 }}>
+                <div style={s.sidebarHeading}>{t(`groups.${group.id}`, group.label)}</div>
+                {visible.map((tItem) => {
+                  const Icon = tItem.icon;
+                  const active = tab === tItem.id;
                   return (
                     <button
-                      key={t.id}
+                      key={tItem.id}
                       type="button"
-                      onClick={() => setTab(t.id)}
+                      onClick={() => setTab(tItem.id)}
                       aria-current={active ? 'page' : undefined}
                       style={{ ...s.tabBtn, ...(active ? s.tabActive : {}) }}
                     >
                       <Icon size={14} strokeWidth={2} />
-                      {t.label}
+                      {t(`tabs.${tItem.id}`, tItem.label)}
                     </button>
                   );
                 })}
@@ -136,7 +141,7 @@ export default function UserSettingsPage() {
 // ── Profile Tab ───────────────────────────────────────────────────────────────
 
 function ProfileTab({ user, logout, navigate }) {
-  const { t, i18n } = useTranslation('common');
+  const { t, i18n } = useTranslation(['settings', 'common']);
   const [firstName, setFirstName] = useState('');
   const [lastName,  setLastName]  = useState('');
   const [language,  setLanguage]  = useState(i18n.language ? i18n.language.substring(0, 2) : 'en');
@@ -181,7 +186,7 @@ function ProfileTab({ user, logout, navigate }) {
   const handleSave = async (e) => {
     e.preventDefault();
     setError(''); setSuccess('');
-    if (!firstName.trim()) { setError('First name is required.'); return; }
+    if (!firstName.trim()) { setError(t('profile.required_first_name', 'First name is required.')); return; }
     setSaving(true);
     try {
       const fd = new FormData();
@@ -191,7 +196,7 @@ function ProfileTab({ user, logout, navigate }) {
       if (avatar) fd.append('avatar', avatar);
       await profileAPI.update(fd);
       await changePlatformLanguage(language);
-      setSuccess('Profile updated successfully.');
+      setSuccess(t('profile.success', 'Profile updated successfully.'));
       setAvatar(null);
     } catch (err) {
       setError(err?.response?.data?.error || 'Failed to save. Please try again.');
@@ -204,8 +209,8 @@ function ProfileTab({ user, logout, navigate }) {
 
   return (
     <div style={s.tabContent}>
-      <h3 style={s.sectionTitle}>Profile Information</h3>
-      <p style={s.sectionSub}>Update your name and profile photo.</p>
+      <h3 style={s.sectionTitle}>{t('profile.title', 'Profile Information')}</h3>
+      <p style={s.sectionSub}>{t('profile.subtitle', 'Update your name and profile photo.')}</p>
 
       <form onSubmit={handleSave}>
         {/* Avatar */}
@@ -225,33 +230,33 @@ function ProfileTab({ user, logout, navigate }) {
             )}
           </div>
           <div>
-            <p style={{ margin: '0 0 4px', fontWeight: 600, fontSize: 14, color: 'var(--text-primary)' }}>Profile Photo</p>
-            <p style={{ margin: 0, fontSize: 13, color: 'var(--text-tertiary)' }}>JPG, PNG or GIF · Max 5MB</p>
+            <p style={{ margin: '0 0 4px', fontWeight: 600, fontSize: 14, color: 'var(--text-primary)' }}>{t('profile.photo', 'Profile Photo')}</p>
+            <p style={{ margin: 0, fontSize: 13, color: 'var(--text-tertiary)' }}>{t('profile.photo_hint', 'JPG, PNG or GIF · Max 5MB')}</p>
             <button type="button" onClick={() => fileRef.current.click()} style={s.uploadBtn}>
-              Upload Photo
+              {t('profile.upload_photo', 'Upload Photo')}
             </button>
           </div>
           <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAvatarChange} />
         </div>
 
         <div className="settings-field-grid" style={s.fieldGrid}>
-          <Field label="First Name" required>
+          <Field label={t('profile.first_name', 'First Name')} required>
             <input value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="Jane" style={s.input} />
           </Field>
-          <Field label="Last Name">
+          <Field label={t('profile.last_name', 'Last Name')}>
             <input value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Smith" style={s.input} />
           </Field>
         </div>
 
-        <Field label="Email Address">
+        <Field label={t('profile.email', 'Email Address')}>
           <div style={{ ...s.input, background: 'var(--surface-sunken)', color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: 8 }}>
             <Mail size={14} color="var(--text-tertiary)" />
             {user?.email || '—'}
           </div>
-          <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--text-tertiary)' }}>Email cannot be changed here.</p>
+          <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--text-tertiary)' }}>{t('profile.email_locked', 'Email cannot be changed here.')}</p>
         </Field>
 
-        <Field label={t('languages.preferred_language', 'Preferred Language')}>
+        <Field label={t('common:languages.preferred_language', 'Preferred Language')}>
           <div style={{ display: 'flex', gap: 12, marginTop: 4 }}>
             <label style={{
               display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px',
@@ -293,7 +298,7 @@ function ProfileTab({ user, logout, navigate }) {
             </label>
           </div>
           <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--text-tertiary)' }}>
-            {t('languages.language_description', 'Select the language you want to use across the platform.')}
+            {t('common:languages.language_description', 'Select the language you want to use across the platform.')}
           </p>
         </Field>
 
@@ -301,7 +306,7 @@ function ProfileTab({ user, logout, navigate }) {
         {success && <Alert type="success" msg={success} />}
 
         <button type="submit" disabled={saving} style={s.saveBtn}>
-          {saving ? <><Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> Saving...</> : <><Save size={15} /> Save Changes</>}
+          {saving ? <><Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> {t('profile.saving', 'Saving...')}</> : <><Save size={15} /> {t('profile.save_changes', 'Save Changes')}</>}
         </button>
       </form>
 

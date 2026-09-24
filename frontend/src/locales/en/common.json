@@ -21,7 +21,9 @@
     "get_started": "Get started",
     "sign_in": "Sign in",
     "sign_up": "Sign up",
-    "submit": "Submit"
+    "submit": "Submit",
+    "accept": "Accept",
+    "reject": "Reject"
   },
   "status": {
     "loading": "Loading...",
@@ -62,6 +64,9 @@
     "popular": "Popular",
     "new": "New",
     "verified": "Verified",
-    "sample_preview": "Sample preview"
+    "sample_preview": "Sample preview",
+    "from": "From",
+    "to": "To",
+    "soon": "Soon"
   }
 }

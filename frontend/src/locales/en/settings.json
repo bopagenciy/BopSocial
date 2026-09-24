@@ -1,0 +1,37 @@
+{
+  "title": "Settings",
+  "subtitle": "Manage your account, workspace, and integrations",
+  "groups": {
+    "account": "Account",
+    "workspace": "Workspace",
+    "developer": "Developer",
+    "privacy": "Privacy"
+  },
+  "tabs": {
+    "profile": "Profile",
+    "security": "Account & Security",
+    "agency": "Agency",
+    "notifications": "Notifications",
+    "appearance": "Appearance",
+    "shortcuts": "Keyboard",
+    "api": "API Keys",
+    "webhooks": "Webhooks",
+    "data": "Data & Privacy",
+    "more": "More settings"
+  },
+  "profile": {
+    "title": "Profile Information",
+    "subtitle": "Update your name and profile photo.",
+    "photo": "Profile Photo",
+    "photo_hint": "JPG, PNG or GIF · Max 5MB",
+    "upload_photo": "Upload Photo",
+    "first_name": "First Name",
+    "last_name": "Last Name",
+    "email": "Email Address",
+    "email_locked": "Email cannot be changed here.",
+    "save_changes": "Save Changes",
+    "saving": "Saving...",
+    "success": "Profile updated successfully.",
+    "required_first_name": "First name is required."
+  }
+}

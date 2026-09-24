@@ -1,0 +1,37 @@
+{
+  "title": "Configuración",
+  "subtitle": "Gestiona tu cuenta, espacio de trabajo e integraciones",
+  "groups": {
+    "account": "Cuenta",
+    "workspace": "Espacio de trabajo",
+    "developer": "Desarrollador",
+    "privacy": "Privacidad"
+  },
+  "tabs": {
+    "profile": "Perfil",
+    "security": "Cuenta y seguridad",
+    "agency": "Agencia",
+    "notifications": "Notificaciones",
+    "appearance": "Apariencia",
+    "shortcuts": "Atajos de teclado",
+    "api": "Claves de API",
+    "webhooks": "Webhooks",
+    "data": "Datos y privacidad",
+    "more": "Más configuraciones"
+  },
+  "profile": {
+    "title": "Información del perfil",
+    "subtitle": "Actualiza tu nombre y foto de perfil.",
+    "photo": "Foto de perfil",
+    "photo_hint": "JPG, PNG o GIF · Máx. 5 MB",
+    "upload_photo": "Subir foto",
+    "first_name": "Nombre",
+    "last_name": "Apellido",
+    "email": "Dirección de correo",
+    "email_locked": "El correo no se puede cambiar aquí.",
+    "save_changes": "Guardar cambios",
+    "saving": "Guardando...",
+    "success": "Perfil actualizado correctamente.",
+    "required_first_name": "El nombre es obligatorio."
+  }
+}

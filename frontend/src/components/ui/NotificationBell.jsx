@@ -14,6 +14,7 @@
  */
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   Bell, CheckCheck, X,
   AlertCircle, TrendingDown, Zap, Target, Users,
@@ -57,6 +58,7 @@ function timeAgo(dateStr) {
 }
 
 export default function NotificationBell({ clientId }) {
+  const { t } = useTranslation('app');
   const { refreshAuth } = useAuth();
   const navigate        = useNavigate();
   const dropRef         = useRef(null);
@@ -163,7 +165,7 @@ export default function NotificationBell({ clientId }) {
 
   return (
     <div ref={dropRef} style={s.wrap}>
-      <button ref={btnRef} onClick={handleToggle} style={s.btn} title="Notifications & Alerts">
+      <button ref={btnRef} onClick={handleToggle} style={s.btn} title={t('notifications.title', 'Notifications & Alerts')}>
         <Bell size={20} />
         {totalUnread > 0 && (
           <span style={s.badge}>{totalUnread > 99 ? '99+' : totalUnread}</span>
@@ -174,15 +176,15 @@ export default function NotificationBell({ clientId }) {
         <div className="notif-dropdown" style={{ ...s.dropdown, position: 'fixed', top: dropPos.top, left: dropPos.left, width: dropPos.width }}>
           {/* Header */}
           <div style={s.dropHead}>
-            <span style={s.dropTitle}>Notifications</span>
+            <span style={s.dropTitle}>{t('notifications.title', 'Notifications')}</span>
             <div style={{ display: 'flex', gap: 4 }}>
               {tab === 'alerts' && alertUnread > 0 && (
-                <button onClick={markAllAlerts} style={s.iconBtn} title="Mark all read">
+                <button onClick={markAllAlerts} style={s.iconBtn} title={t('notifications.mark_all_read', 'Mark all read')}>
                   <CheckCheck size={15} />
                 </button>
               )}
               {tab === 'notifs' && notifUnread > 0 && (
-                <button onClick={markAllNotifs} style={s.iconBtn} title="Mark all read">
+                <button onClick={markAllNotifs} style={s.iconBtn} title={t('notifications.mark_all_read', 'Mark all read')}>
                   <CheckCheck size={15} />
                 </button>
               )}
@@ -198,14 +200,14 @@ export default function NotificationBell({ clientId }) {
               style={{ ...s.tabBtn, ...(tab === 'alerts' ? s.tabActive : {}) }}
               onClick={() => setTab('alerts')}
             >
-              Alerts
+              {t('notifications.tab_alerts', 'Alerts')}
               {alertUnread > 0 && <span style={s.tabBadge}>{alertUnread}</span>}
             </button>
             <button
               style={{ ...s.tabBtn, ...(tab === 'notifs' ? s.tabActive : {}) }}
               onClick={() => setTab('notifs')}
             >
-              Notifications
+              {t('notifications.tab_notifications', 'Notifications')}
               {notifUnread > 0 && <span style={s.tabBadge}>{notifUnread}</span>}
             </button>
           </div>
@@ -214,7 +216,7 @@ export default function NotificationBell({ clientId }) {
           <div style={s.list}>
             {tab === 'alerts' && (
               recentAlerts.length === 0
-                ? <div style={s.empty}>No alerts yet.</div>
+                ? <div style={s.empty}>{t('notifications.no_alerts', 'No alerts yet.')}</div>
                 : recentAlerts.map(alert => {
                     const cfg  = ALERT_ICONS[alert.alert_type] || ALERT_ICONS.sync_failed;
                     const Icon = cfg.icon;
@@ -244,7 +246,7 @@ export default function NotificationBell({ clientId }) {
 
             {tab === 'notifs' && (
               recentNotifs.length === 0
-                ? <div style={s.empty}>No notifications yet.</div>
+                ? <div style={s.empty}>{t('notifications.no_notifications', 'No notifications yet.')}</div>
                 : recentNotifs.map(n => {
                     const cfg  = NOTIF_ICONS[n.notif_type] || NOTIF_ICONS.system;
                     const Icon = cfg.icon;
@@ -275,7 +277,7 @@ export default function NotificationBell({ clientId }) {
                                   ? <Loader2 size={11} style={{ animation: 'spin .8s linear infinite' }} />
                                   : <CheckCircle size={11} />
                                 }
-                                Accept
+                                {t('notifications.accept', 'Accept')}
                               </button>
                               <button
                                 style={s.rejectBtn}
@@ -286,7 +288,7 @@ export default function NotificationBell({ clientId }) {
                                   ? <Loader2 size={11} style={{ animation: 'spin .8s linear infinite' }} />
                                   : <XCircle size={11} />
                                 }
-                                Reject
+                                {t('notifications.reject', 'Reject')}
                               </button>
                             </div>
                           )}

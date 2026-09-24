@@ -8,6 +8,7 @@
  * ========================================================================== */
 import { useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   LayoutDashboard, LineChart, FileText, FileType, CalendarDays, Wand2, Lightbulb, Hash,
   TrendingUp, AlertCircle, FolderSync,
@@ -42,14 +43,25 @@ export default function FeatureSidebar({
   selectedClient,
   onSelectClient,
 }) {
+  const { t } = useTranslation('app');
   const location = useLocation();
 
   const navSet = NAV_SETS[module] || NAV_SETS.analytics;
 
+  const getSectionTitle = (title) => {
+    const key = title.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+    return t(`sidebar.sections.${key}`, title);
+  };
+
+  const getItemLabel = (item) => {
+    const key = item.label.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+    return t(`sidebar.items.${key}`, item.label);
+  };
+
   return (
     <aside
       className="ds-feature-sidebar"
-      aria-label={`${module} navigation`}
+      aria-label={`${t(`modules.${module}.label`, navSet.label)} navigation`}
       style={{
         position: 'fixed',
         top: 0, bottom: 0,
@@ -82,11 +94,11 @@ export default function FeatureSidebar({
         </div>
         <div>
           <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>
-            {navSet.label}
+            {t(`modules.${module}.label`, navSet.label)}
           </div>
           {navSet.subtitle && (
             <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
-              {navSet.subtitle}
+              {t(`modules.${module}.subtitle`, navSet.subtitle)}
             </div>
           )}
         </div>
@@ -99,16 +111,16 @@ export default function FeatureSidebar({
         padding: '12px 10px',
       }}>
         {navSet.empty ? (
-          <EmptyModule message={navSet.empty} />
+          <EmptyModule message={t(`modules.${module}.empty`, navSet.empty)} />
         ) : (
           navSet.sections.map((section) => (
-            <Section key={section.title} title={section.title}>
+            <Section key={section.title} title={getSectionTitle(section.title)}>
               {section.items.map((item) => (
                 <PermissionGate key={item.path} code={item.permission}>
                   <NavItem
                     to={item.path.startsWith('/admin/') ? item.path : `${basePath}/${module}${item.path}`}
                     icon={item.icon}
-                    label={item.label}
+                    label={getItemLabel(item)}
                     end={item.end}
                     badge={item.badge}
                     badgeKey={item.badgeKey}
@@ -220,6 +232,7 @@ function EmptyModule({ message }) {
 }
 
 function ClientSwitcher({ selected, onSelect }) {
+  const { t } = useTranslation('app');
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const navigate = useNavigate();
@@ -254,7 +267,7 @@ function ClientSwitcher({ selected, onSelect }) {
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
           fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', textAlign: 'left',
         }}>
-          {selected?.company || 'All clients'}
+          {selected?.company || t('client_switcher.all_clients', 'All clients')}
         </span>
         <ChevronDown size={14} color="var(--text-tertiary)" />
       </button>
@@ -286,7 +299,7 @@ function ClientSwitcher({ selected, onSelect }) {
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search clients…"
+                placeholder={t('client_switcher.search_placeholder', 'Search clients…')}
                 style={{
                   width: '100%', padding: '6px 10px 6px 26px',
                   background: 'var(--surface-sunken)',
@@ -301,7 +314,7 @@ function ClientSwitcher({ selected, onSelect }) {
           </div>
           <div style={{ padding: 4 }}>
             <SwitcherRow
-              label="All clients"
+              label={t('client_switcher.all_clients', 'All clients')}
               active={!selected}
               onClick={() => { onSelect?.(null); setOpen(false); }}
             />
