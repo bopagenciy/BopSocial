@@ -110,6 +110,43 @@
       "btn_save_changes": "Guardar cambios",
       "btn_create_rule": "Crear regla"
     },
+    "templates": {
+      "auto_thank_5_star": {
+        "name": "Agradecimiento automático por reseñas de 5 estrellas",
+        "description": "Publica una respuesta amistosa de agradecimiento en cada nueva reseña de 5★ de Google.",
+        "action_config": {
+          "template": "¡Muchas gracias por tus amables palabras, {reviewer_name}! 🙏"
+        }
+      },
+      "alert_negative_sentiment": {
+        "name": "Avisarme ante sentimiento negativo",
+        "description": "Envía una notificación en la aplicación cada vez que un comentario o mensaje directo se clasifique como negativo.",
+        "action_config": {
+          "title": "Aviso: se detectó un sentimiento negativo",
+          "body": "{author_name} en {platform}: \"{content}\""
+        }
+      },
+      "ai_smart_reply": {
+        "name": "Respuesta inteligente con IA a comentarios",
+        "description": "Redacta automáticamente una respuesta acorde a la marca para cada nuevo comentario mediante Claude."
+      },
+      "tag_urgent_keywords": {
+        "name": "Etiquetar palabras clave urgentes",
+        "description": "Etiqueta conversaciones cuyo contenido mencione \"urgente\", \"asap\" o \"roto\"."
+      },
+      "webhook_new_dm": {
+        "name": "Webhook ante nuevo mensaje directo",
+        "description": "Envía una carga JSON a la URL de tu webhook cada vez que llega un nuevo mensaje directo."
+      },
+      "assign_low_rating": {
+        "name": "Asignar reseñas de 1-2★ al líder de soporte",
+        "description": "Dirige reseñas de baja calificación a un usuario específico (configura user_id).",
+        "action_config": {
+          "title": "Reseña de 1-2★ requiere atención",
+          "body": "{reviewer_name}: \"{content}\""
+        }
+      }
+    },
     "triggers": {
       "new_comment": {
         "label": "Nuevo comentario",

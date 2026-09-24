@@ -536,6 +536,20 @@ Phase BS-2.5 delivered complete English and Spanish internationalization for Bop
   - Rebuilt and started container: `agencyos-frontend-1` running `bopsocial-frontend-local:bs-2.5`.
   - HTTP health check verified: `curl.exe --max-time 10 -I http://localhost:3010/` and `http://localhost:3010/login` returned **HTTP/1.1 200 OK**.
 
+### 15.5 Phase BS-2.5.1 — Automations Template Translation Closure
+- **Visual Residual Defect**: During browser verification of `/admin/analytics/automations`, the Templates sidebar displayed English system-controlled titles and descriptions served by `/api/automations/templates/` (`automation_engine.RULE_TEMPLATES`).
+- **Closed Strings**:
+  - `"Auto-thank for 5-star reviews"` / `"Agradecimiento automático por reseñas de 5 estrellas"`
+  - `"Alert me on negative sentiment"` / `"Avisarme ante sentimiento negativo"`
+  - `"AI smart-reply to comments"` / `"Respuesta inteligente con IA a comentarios"`
+  - `"Tag urgent keywords"` / `"Etiquetar palabras clave urgentes"`
+  - `"Webhook on new DM"` / `"Webhook ante nuevo mensaje directo"`
+  - `"Assign 1-2★ reviews to support lead"` / `"Asignar reseñas de 1-2★ al líder de soporte"`
+  - Associated descriptions, prefilled rule names, and action templates.
+- **Source & Resolution**: Preserved backend API contracts in `automation_engine.py`; resolved on the frontend display layer by registering `automations.templates` in `en/engagement.json` and `es/engagement.json`, localized via `getLocalizedTemplate(tpl, t)` in `AutomationsPage.jsx`.
+- **Verification**: 11 / 11 tests passing in `InteractionEngagementTranslation.test.jsx`, 105 / 105 passing across full frontend suite, image updated to `bopsocial-frontend-local:bs-2.5.1`.
+
+
 
 
 

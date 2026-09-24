@@ -51,6 +51,50 @@ const ACTION_OPTIONS = [
     desc: 'POSTs the event payload to your URL' },
 ];
 
+const TEMPLATE_KEY_MAP = {
+  'Auto-thank for 5-star reviews': 'auto_thank_5_star',
+  'Alert me on negative sentiment': 'alert_negative_sentiment',
+  'AI smart-reply to comments': 'ai_smart_reply',
+  'Tag urgent keywords': 'tag_urgent_keywords',
+  'Webhook on new DM': 'webhook_new_dm',
+  'Assign 1-2★ reviews to support lead': 'assign_low_rating',
+};
+
+const PLATFORM_LABELS = {
+  facebook: 'Facebook',
+  instagram: 'Instagram',
+  youtube: 'YouTube',
+  linkedin: 'LinkedIn',
+  google_my_business: 'Google My Business',
+};
+
+export function getLocalizedTemplate(tpl, t) {
+  if (!tpl) return tpl;
+  const key = TEMPLATE_KEY_MAP[tpl.name];
+  if (!key) return tpl;
+
+  const name = t(`automations.templates.${key}.name`, tpl.name);
+  const description = t(`automations.templates.${key}.description`, tpl.description);
+
+  let action_config = tpl.action_config ? { ...tpl.action_config } : {};
+  if (tpl.action_config?.template) {
+    action_config.template = t(`automations.templates.${key}.action_config.template`, tpl.action_config.template);
+  }
+  if (tpl.action_config?.title) {
+    action_config.title = t(`automations.templates.${key}.action_config.title`, tpl.action_config.title);
+  }
+  if (tpl.action_config?.body) {
+    action_config.body = t(`automations.templates.${key}.action_config.body`, tpl.action_config.body);
+  }
+
+  return {
+    ...tpl,
+    name,
+    description,
+    action_config,
+  };
+}
+
 export default function AutomationsPage() {
   const { t } = useTranslation('engagement');
   const [rules, setRules] = useState([]);
@@ -238,29 +282,32 @@ function TemplatesSidebar({ onPick }) {
       </div>
       <div style={{ maxHeight: 'calc(100vh - 280px)', overflowY: 'auto' }}>
         {loading && <div style={{ padding: 16, color: 'var(--text-tertiary)', fontSize: 12 }}>{t('automations.loading', 'Loading…')}</div>}
-        {templates.map((tItem, i) => (
-          <button
-            key={i} type="button"
-            onClick={() => onPick(tItem)}
-            style={{
-              display: 'block', width: '100%', textAlign: 'left',
-              padding: '12px 16px',
-              background: 'transparent',
-              border: 'none', borderBottom: '1px solid var(--border-subtle)',
-              cursor: 'pointer', minHeight: 'unset', minWidth: 'unset',
-              transition: 'var(--transition-fast)',
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--surface-hover)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-          >
-            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>
-              {tItem.name}
-            </div>
-            <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.4 }}>
-              {tItem.description}
-            </div>
-          </button>
-        ))}
+        {templates.map((tItem, i) => {
+          const item = getLocalizedTemplate(tItem, t);
+          return (
+            <button
+              key={i} type="button"
+              onClick={() => onPick(item)}
+              style={{
+                display: 'block', width: '100%', textAlign: 'left',
+                padding: '12px 16px',
+                background: 'transparent',
+                border: 'none', borderBottom: '1px solid var(--border-subtle)',
+                cursor: 'pointer', minHeight: 'unset', minWidth: 'unset',
+                transition: 'var(--transition-fast)',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--surface-hover)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+            >
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>
+                {item.name}
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                {item.description}
+              </div>
+            </button>
+          );
+        })}
       </div>
     </Card>
   );
@@ -316,7 +363,9 @@ function RuleBuilder({ initial, onClose, onSaved }) {
             </strong>
             {initial && !isExisting && (
               <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>
-                {t('automations.modal.prefilled_from', 'Pre-filled from "{{name}}" template', { name: initial.name })}
+                {t('automations.modal.prefilled_from', 'Pre-filled from "{{name}}" template', {
+                  name: getLocalizedTemplate(initial, t)?.name || initial.name,
+                })}
               </div>
             )}
           </div>
@@ -437,7 +486,7 @@ function TriggerFilters({ type, value, onChange }) {
               onClick={() => set('platforms', on ? selected.filter((x) => x !== p) : [...selected, p])}
               style={pillStyle(on)}
             >
-              {p}
+              {PLATFORM_LABELS[p] || p}
             </button>
           );
         })}

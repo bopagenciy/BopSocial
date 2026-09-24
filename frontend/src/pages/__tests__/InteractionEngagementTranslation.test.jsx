@@ -188,10 +188,52 @@ describe('Phase BS-2.5: Interaction & Engagement Translation', () => {
       data: {
         templates: [
           {
-            name: 'Welcome auto-reply',
-            description: 'Send a welcoming reply to all new DMs',
-            trigger_type: 'new_dm',
+            name: 'Auto-thank for 5-star reviews',
+            description: 'Posts a friendly thank-you reply on every new 5★ Google review.',
+            trigger_type: 'new_review',
+            trigger_filters: { min_rating: 5, max_rating: 5 },
             action_type: 'auto_reply',
+            action_config: { template: 'Thank you so much for the kind words, {reviewer_name}! 🙏' },
+          },
+          {
+            name: 'Alert me on negative sentiment',
+            description: 'Sends an in-app notification whenever a comment or DM is flagged negative.',
+            trigger_type: 'negative_sentiment',
+            trigger_filters: {},
+            action_type: 'notify',
+            action_config: { title: 'Heads up — negative sentiment detected', body: '{author_name} on {platform}: "{content}"' },
+          },
+          {
+            name: 'AI smart-reply to comments',
+            description: 'Automatically writes an on-brand reply to every new comment using Claude.',
+            trigger_type: 'new_comment',
+            trigger_filters: {},
+            action_type: 'ai_smart_reply',
+            action_config: {},
+          },
+          {
+            name: 'Tag urgent keywords',
+            description: 'Tags conversations whose content mentions "urgent", "asap", or "broken".',
+            trigger_type: 'keyword_mention',
+            trigger_filters: { keywords: ['urgent', 'asap', 'broken'] },
+            action_type: 'add_tag',
+            action_config: { tag: 'priority' },
+          },
+          {
+            name: 'Webhook on new DM',
+            description: 'POSTs a JSON payload to your webhook URL whenever a new direct message arrives.',
+            trigger_type: 'new_dm',
+            trigger_filters: {},
+            action_type: 'webhook',
+            action_config: { url: 'https://your-webhook.example/incoming' },
+          },
+          {
+            name: 'Assign 1-2★ reviews to support lead',
+            description: 'Routes low-rating reviews to a specific user (configure user_id).',
+            trigger_type: 'new_review',
+            trigger_filters: { min_rating: 1, max_rating: 2 },
+            action_type: 'notify',
+            action_config: { title: '1-2★ review needs attention', body: '{reviewer_name}: "{content}"' },
           },
         ],
       },
@@ -386,9 +428,18 @@ describe('Phase BS-2.5: Interaction & Engagement Translation', () => {
       expect(screen.getByText('fired 14×')).toBeInTheDocument();
       expect(screen.getByText('Edit')).toBeInTheDocument();
       expect(screen.getByText('Templates')).toBeInTheDocument();
+
+      // System-controlled templates in English
+      expect(screen.getByText('Auto-thank for 5-star reviews')).toBeInTheDocument();
+      expect(screen.getByText('Posts a friendly thank-you reply on every new 5★ Google review.')).toBeInTheDocument();
+      expect(screen.getByText('Alert me on negative sentiment')).toBeInTheDocument();
+      expect(screen.getByText('AI smart-reply to comments')).toBeInTheDocument();
+      expect(screen.getByText('Tag urgent keywords')).toBeInTheDocument();
+      expect(screen.getByText('Webhook on new DM')).toBeInTheDocument();
+      expect(screen.getByText('Assign 1-2★ reviews to support lead')).toBeInTheDocument();
     });
 
-    test('renders automations list and controls in Spanish', async () => {
+    test('renders automations list and controls in Spanish with localized templates', async () => {
       await act(async () => {
         await changePlatformLanguage('es');
       });
@@ -409,6 +460,40 @@ describe('Phase BS-2.5: Interaction & Engagement Translation', () => {
       expect(screen.getByText('ejecutada 14×')).toBeInTheDocument();
       expect(screen.getByText('Editar')).toBeInTheDocument();
       expect(screen.getByText('Plantillas')).toBeInTheDocument();
+
+      // System-controlled templates in Spanish (BS-2.5.1 closure)
+      expect(screen.getByText('Agradecimiento automático por reseñas de 5 estrellas')).toBeInTheDocument();
+      expect(screen.getByText('Publica una respuesta amistosa de agradecimiento en cada nueva reseña de 5★ de Google.')).toBeInTheDocument();
+      expect(screen.getByText('Avisarme ante sentimiento negativo')).toBeInTheDocument();
+      expect(screen.getByText('Respuesta inteligente con IA a comentarios')).toBeInTheDocument();
+      expect(screen.getByText('Etiquetar palabras clave urgentes')).toBeInTheDocument();
+      expect(screen.getByText('Webhook ante nuevo mensaje directo')).toBeInTheDocument();
+      expect(screen.getByText('Asignar reseñas de 1-2★ al líder de soporte')).toBeInTheDocument();
+    });
+
+    test('clicking a template in Spanish opens modal prefilled in Spanish', async () => {
+      await act(async () => {
+        await changePlatformLanguage('es');
+      });
+
+      await act(async () => {
+        render(
+          <MemoryRouter>
+            <AutomationsPage />
+          </MemoryRouter>
+        );
+      });
+
+      // Click on the 5-star review template
+      const tplButton = screen.getByText('Agradecimiento automático por reseñas de 5 estrellas');
+      await act(async () => {
+        tplButton.click();
+      });
+
+      expect(screen.getByText('Personalizar plantilla')).toBeInTheDocument();
+      expect(screen.getByText('Rellenado a partir de la plantilla "Agradecimiento automático por reseñas de 5 estrellas"')).toBeInTheDocument();
+      expect(screen.getByDisplayValue('Agradecimiento automático por reseñas de 5 estrellas')).toBeInTheDocument();
+      expect(screen.getByDisplayValue('¡Muchas gracias por tus amables palabras, {reviewer_name}! 🙏')).toBeInTheDocument();
     });
   });
 

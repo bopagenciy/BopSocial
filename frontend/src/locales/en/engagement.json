@@ -110,6 +110,43 @@
       "btn_save_changes": "Save changes",
       "btn_create_rule": "Create rule"
     },
+    "templates": {
+      "auto_thank_5_star": {
+        "name": "Auto-thank for 5-star reviews",
+        "description": "Posts a friendly thank-you reply on every new 5★ Google review.",
+        "action_config": {
+          "template": "Thank you so much for the kind words, {reviewer_name}! 🙏"
+        }
+      },
+      "alert_negative_sentiment": {
+        "name": "Alert me on negative sentiment",
+        "description": "Sends an in-app notification whenever a comment or DM is flagged negative.",
+        "action_config": {
+          "title": "Heads up — negative sentiment detected",
+          "body": "{author_name} on {platform}: \"{content}\""
+        }
+      },
+      "ai_smart_reply": {
+        "name": "AI smart-reply to comments",
+        "description": "Automatically writes an on-brand reply to every new comment using Claude."
+      },
+      "tag_urgent_keywords": {
+        "name": "Tag urgent keywords",
+        "description": "Tags conversations whose content mentions \"urgent\", \"asap\", or \"broken\"."
+      },
+      "webhook_new_dm": {
+        "name": "Webhook on new DM",
+        "description": "POSTs a JSON payload to your webhook URL whenever a new direct message arrives."
+      },
+      "assign_low_rating": {
+        "name": "Assign 1-2★ reviews to support lead",
+        "description": "Routes low-rating reviews to a specific user (configure user_id).",
+        "action_config": {
+          "title": "1-2★ review needs attention",
+          "body": "{reviewer_name}: \"{content}\""
+        }
+      }
+    },
     "triggers": {
       "new_comment": {
         "label": "New comment",
