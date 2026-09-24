@@ -2,11 +2,13 @@
 #  Bop Social — Internationalization & Preference Precedence Tests
 # ============================================================================
 import uuid
+from django.core import mail
 from django.contrib.auth.models import User
 from django.test import TestCase
 from rest_framework.test import APIClient
 
 from social_stats.models import Client, UserProfile
+from social_stats.auth_views import _send_verification_email, _send_reset_email
 
 
 def _client_factory(name='Client Org', default_lang=None):
@@ -161,3 +163,77 @@ class LanguagePreferencePrecedenceTests(TestCase):
 
         self.api.force_authenticate(user=user3)
         self.assertIsNone(self.api.get('/api/auth/me/').data.get('language'))
+
+    def test_existing_users_without_language_behave_as_unset(self):
+        """Pre-existing users without language field (null/blank) correctly inherit tenant default or None."""
+        tenant = _client_factory('Legacy Migrated Org', default_lang='es')
+        # Simulate pre-existing user without language specified
+        user, profile = _user_factory(client=tenant, explicit_language=None)
+        profile.refresh_from_db()
+        self.assertIsNone(profile.language)
+
+        self.api.force_authenticate(user=user)
+        res = self.api.get('/api/auth/me/')
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data.get('language'), 'es')
+        self.assertEqual(res.data.get('tenant_language'), 'es')
+        self.assertIsNone(res.data.get('user_language'))
+
+    def test_switching_between_authorized_tenants(self):
+        """When user switches client workspace, tenant default changes while keeping explicit preference intact."""
+        tenant_es = _client_factory('Tenant ES', default_lang='es')
+        tenant_en = _client_factory('Tenant EN', default_lang='en')
+
+        # 1. Unset user moves from ES to EN
+        user, profile = _user_factory(client=tenant_es, explicit_language=None)
+        self.api.force_authenticate(user=user)
+        self.assertEqual(self.api.get('/api/auth/me/').data.get('language'), 'es')
+
+        profile.client = tenant_en
+        profile.save(update_fields=['client'])
+        self.assertEqual(self.api.get('/api/auth/me/').data.get('language'), 'en')
+
+        # 2. Explicit Spanish user moves from ES to EN — still retains 'es'
+        profile.language = 'es'
+        profile.save(update_fields=['language'])
+        self.assertEqual(self.api.get('/api/auth/me/').data.get('language'), 'es')
+        self.assertEqual(self.api.get('/api/auth/me/').data.get('tenant_language'), 'en')
+
+    def test_transactional_email_locale_resolution(self):
+        """Transactional verification and reset emails resolve recipient language correctly."""
+        tenant_es = _client_factory('Tenant Spanish', default_lang='es')
+        tenant_en = _client_factory('Tenant English', default_lang='en')
+
+        user_es_tenant, _ = _user_factory(client=tenant_es, explicit_language=None)
+        user_explicit_en, _ = _user_factory(client=tenant_es, explicit_language='en')
+        user_en_tenant, _ = _user_factory(client=tenant_en, explicit_language=None)
+
+        # 1. Spanish verification email
+        mail.outbox = []
+        _send_verification_email(user_es_tenant, 'token-123')
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn('Verifica tu cuenta', mail.outbox[0].subject)
+        self.assertIn('Verifica tu cuenta de Bop Social', mail.outbox[0].body)
+        self.assertIn('Verifica tu correo', mail.outbox[0].alternatives[0][0])
+
+        # 2. English override verification email
+        mail.outbox = []
+        _send_verification_email(user_explicit_en, 'token-456')
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn('Verify your Bop Social account', mail.outbox[0].subject)
+        self.assertIn('Verify your Bop Social account', mail.outbox[0].body)
+
+        # 3. Spanish reset email
+        mail.outbox = []
+        _send_reset_email(user_es_tenant, 'reset-123')
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn('Restablece tu contraseña', mail.outbox[0].subject)
+        self.assertIn('Restablece tu contraseña', mail.outbox[0].body)
+
+        # 4. English reset email
+        mail.outbox = []
+        _send_reset_email(user_en_tenant, 'reset-456')
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn('Reset your Bop Social password', mail.outbox[0].subject)
+        self.assertIn('Reset your Bop Social password', mail.outbox[0].body)
+

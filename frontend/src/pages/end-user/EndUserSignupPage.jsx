@@ -139,7 +139,9 @@ export default function EndUserSignupPage() {
               <select value={form.industry} onChange={set('industry')} style={selectStyle}>
                 <option value="">{t('end_user_signup.industry_placeholder', 'Choose one…')}</option>
                 {INDUSTRY_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  <option key={opt.value} value={opt.value}>
+                    {t(`end_user_signup.industries.${opt.value}`, opt.label)}
+                  </option>
                 ))}
               </select>
             </div>
@@ -150,7 +152,7 @@ export default function EndUserSignupPage() {
 
         {step === 3 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <Summary form={form} />
+            <Summary form={form} t={t} />
             <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
               <input
                 type="checkbox"
@@ -236,13 +238,17 @@ function Label({ children }) {
   );
 }
 
-function Summary({ form }) {
+function Summary({ form, t }) {
+  const selectedIndustry = INDUSTRY_OPTIONS.find((i) => i.value === form.industry);
+  const industryLabel = selectedIndustry
+    ? t(`end_user_signup.industries.${selectedIndustry.value}`, selectedIndustry.label)
+    : form.industry;
   const rows = [
-    ['Name',     form.full_name],
-    ['Email',    form.email],
-    ['Industry', INDUSTRY_OPTIONS.find((i) => i.value === form.industry)?.label || form.industry],
-    ['Business', form.company_name || form.full_name],
-    ['Phone',    form.phone || '—'],
+    [t('end_user_signup.summary_name', 'Name'),         form.full_name],
+    [t('end_user_signup.summary_email', 'Email'),       form.email],
+    [t('end_user_signup.summary_industry', 'Industry'), industryLabel],
+    [t('end_user_signup.summary_business', 'Business'), form.company_name || form.full_name],
+    [t('end_user_signup.summary_phone', 'Phone'),       form.phone || '—'],
   ];
   return (
     <div style={{

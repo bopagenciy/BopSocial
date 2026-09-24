@@ -239,69 +239,75 @@ function Hero() {
 
 // ── Floating-card contents ──────────────────────────────────────────────────
 function NotificationCard() {
+  const { t } = useTranslation('marketing');
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
         <span style={floatIconStyle('rgba(245,166,35,0.15)', '#F5A623')}>
           <Inbox size={11} />
         </span>
-        <span style={floatLabel}>NEW MESSAGE · IG</span>
+        <span style={floatLabel}>{t('home.hero_float_new_msg', 'NEW MESSAGE · IG')}</span>
       </div>
-      <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>Priya Sharma</div>
+      <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>
+        {t('home.hero_float_msg_sender', 'Priya Sharma')}
+      </div>
       <div style={{ marginTop: 2, fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.4 }}>
-        Is the 3BHK still available? Can I visit on Saturday?
+        {t('home.hero_float_msg_text', 'Is the 3BHK still available? Can I visit on Saturday?')}
       </div>
     </div>
   );
 }
 
 function CampaignMetricCard() {
+  const { t } = useTranslation('marketing');
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
         <span style={floatIconStyle('rgba(139,92,246,0.15)', '#a78bfa')}>
           <BarChart3 size={11} />
         </span>
-        <span style={floatLabel}>WEEKLY REACH</span>
+        <span style={floatLabel}>{t('home.hero_float_reach', 'WEEKLY REACH')}</span>
       </div>
       <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
         248,392
       </div>
       <div style={{ marginTop: 2, fontSize: 11, color: 'var(--success)', display: 'inline-flex', alignItems: 'center', gap: 3 }}>
-        <TrendingUp size={11} /> +23% vs last week
+        <TrendingUp size={11} /> {t('home.hero_float_vs_last_week', '+23% vs last week')}
       </div>
     </div>
   );
 }
 
 function LeadCapturedCard() {
+  const { t } = useTranslation('marketing');
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
         <span style={floatIconStyle('rgba(16,185,129,0.15)', '#34d399')}>
           <Check size={12} strokeWidth={3} />
         </span>
-        <span style={floatLabel}>LEAD CAPTURED</span>
+        <span style={floatLabel}>{t('home.hero_float_lead', 'LEAD CAPTURED')}</span>
       </div>
       <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>Rahul Verma</div>
       <div style={{ marginTop: 2, fontSize: 11, color: 'var(--text-secondary)' }}>
-        Source: <strong style={{ color: '#34d399' }}>CTWA · Diwali campaign</strong>
+        {t('home.hero_float_source_label', 'Source: ')}<strong style={{ color: '#34d399' }}>{t('home.hero_float_source_val', 'CTWA · Diwali campaign')}</strong>
       </div>
     </div>
   );
 }
 
 function AIPopupCard() {
+  const { t } = useTranslation('marketing');
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
         <span style={floatIconStyle('rgba(236,72,153,0.15)', '#f472b6')}>
           <Sparkles size={11} />
         </span>
-        <span style={floatLabel}>AI SUGGESTION</span>
+        <span style={floatLabel}>{t('home.hero_float_ai', 'AI SUGGESTION')}</span>
       </div>
       <div style={{ fontSize: 12, color: 'var(--text-primary)', lineHeight: 1.5 }}>
-        Try posting Reels on Tue 7pm — your audience is 2.4× more active.
+        {t('home.hero_float_ai_text', 'Try posting Reels on Tue 7pm — your audience is 2.4× more active.')}
       </div>
     </div>
   );

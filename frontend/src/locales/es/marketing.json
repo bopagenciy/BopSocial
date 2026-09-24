@@ -152,7 +152,17 @@
     "mkt_step_2_title": "Encuentra la ideal",
     "mkt_step_2_body": "Consulta rangos de precios, especialidades y flujos de trabajo de antemano.",
     "mkt_step_3_title": "Gestiona desde una sola bandeja",
-    "mkt_step_3_body": "Aprobaciones, publicaciones programadas e informes a través de Bop Social."
+    "mkt_step_3_body": "Aprobaciones, publicaciones programadas e informes a través de Bop Social.",
+    "hero_float_new_msg": "NUEVO MENSAJE · IG",
+    "hero_float_msg_sender": "Priya Sharma",
+    "hero_float_msg_text": "¿Sigue disponible el apartamento? ¿Puedo visitarlo el sábado?",
+    "hero_float_reach": "ALCANCE SEMANAL",
+    "hero_float_vs_last_week": "+23% vs la semana pasada",
+    "hero_float_lead": "CLIENTE POTENCIAL CAPTADO",
+    "hero_float_source_label": "Origen: ",
+    "hero_float_source_val": "CTWA · Campaña de Diwali",
+    "hero_float_ai": "SUGERENCIA DE IA",
+    "hero_float_ai_text": "Publica Reels los martes a las 19:00 — tu audiencia está 2.4× más activa."
   },
   "features": {
     "badge": "Funcionalidades",
@@ -741,5 +751,30 @@
     "bottom_cta_sub": "Descubre la plataforma de marketing unificada diseñada para equipos modernos.",
     "not_found_title": "Artículo no encontrado",
     "not_found_sub": "El artículo que buscas no existe o ha sido trasladado."
+  },
+  "bento_preview": {
+    "ai_user": "Redacta 3 publicaciones para el lanzamiento de nuestra nueva propiedad",
+    "ai_response": "Aquí tienes tres borradores adaptados a la voz de tu marca",
+    "composer_text": "Nuevo lanzamiento — 3 ambientes de lujo en Acme Heights. Piscina en la terraza, domótica, listo para entrar a vivir. Visitas abiertas este fin de semana 🌅",
+    "composer_meta": "Autoajustado para IG · 220 caracteres",
+    "inbox_msg_1": "¿Sigue disponible?",
+    "inbox_msg_2": "¿Podemos visitarlo el sábado?",
+    "inbox_msg_3": "¿Cuál es el rango de precios?",
+    "bot_start": "Inicio",
+    "bot_ask": "Preguntar",
+    "bot_capture": "Captar",
+    "bot_reply": "Responder",
+    "insight_badge": "Sugerencia de IA · hace un momento",
+    "insight_title": "La interacción cayó un 30% los martes",
+    "insight_body": "Prueba mover tu publicación del martes a las 19:00 — tu audiencia está más activa entonces.",
+    "auto_if": "El comentario coincide con la palabra clave \"precio\"",
+    "auto_then": "Responder con plantilla \"Precios\"",
+    "auto_and": "Etiquetar contacto como cliente potencial prioritario",
+    "analytics_reach": "Alcance · 30d",
+    "report_title": "Acme Inmobiliaria · Abril",
+    "report_stat_reach": "Alcance",
+    "report_stat_posts": "Publicaciones",
+    "report_stat_leads": "Clientes",
+    "report_summary": "Resumen IA: Tu alcance creció un 23% intermensual, impulsado por Reels…"
   }
 }

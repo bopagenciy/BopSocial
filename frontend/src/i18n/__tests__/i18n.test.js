@@ -17,6 +17,11 @@ describe('Bop Social i18n Foundation Suite', () => {
     expect(i18n.t('nav.product', { ns: 'navigation' })).toBe('Product');
     expect(i18n.t('nav.sign_in', { ns: 'navigation' })).toBe('Sign in');
     expect(i18n.t('login.title', { ns: 'auth' })).toBe('Welcome back');
+    expect(i18n.t('login.or_continue_with', { ns: 'auth' })).toBe('or continue with');
+    expect(i18n.t('login.demo_local_notice', { ns: 'auth' })).toBe('local only');
+    expect(i18n.t('password_strength.label', { ns: 'auth' })).toBe('Password strength:');
+    expect(i18n.t('home.hero_title_highlight', { ns: 'marketing' })).toBe('Marketing OS');
+    expect(i18n.t('bento_preview.bot_start', { ns: 'marketing' })).toBe('Start');
   });
 
   test('switches dynamically to Spanish and translates all namespaces correctly', async () => {
@@ -28,6 +33,20 @@ describe('Bop Social i18n Foundation Suite', () => {
     expect(i18n.t('nav.product', { ns: 'navigation' })).toBe('Producto');
     expect(i18n.t('nav.sign_in', { ns: 'navigation' })).toBe('Iniciar sesión');
     expect(i18n.t('login.title', { ns: 'auth' })).toBe('Bienvenido de nuevo');
+    expect(i18n.t('login.or_continue_with', { ns: 'auth' })).toBe('o continuar con');
+    expect(i18n.t('login.demo_local_notice', { ns: 'auth' })).toBe('solo local');
+    expect(i18n.t('login.demo_password_label', { ns: 'auth' })).toBe('contraseña');
+    expect(i18n.t('login.demo_role_superadmin', { ns: 'auth' })).toBe('Superadministrador');
+    expect(i18n.t('login.demo_role_agency', { ns: 'auth' })).toBe('Agencia');
+    expect(i18n.t('login.demo_role_enduser', { ns: 'auth' })).toBe('Usuario final');
+    expect(i18n.t('auth_layout.eyebrow', { ns: 'auth' })).toBe('Sistema Operativo de Marketing');
+    expect(i18n.t('password_strength.label', { ns: 'auth' })).toBe('Seguridad de la contraseña:');
+    expect(i18n.t('password_strength.strong', { ns: 'auth' })).toBe('Fuerte');
+    expect(i18n.t('end_user_signup.summary_industry', { ns: 'auth' })).toBe('Industria');
+    expect(i18n.t('end_user_signup.industries.real_estate', { ns: 'auth' })).toBe('Bienes raíces');
+    expect(i18n.t('home.hero_title_highlight', { ns: 'marketing' })).toBe('Sistema Operativo de Marketing');
+    expect(i18n.t('home.hero_float_new_msg', { ns: 'marketing' })).toBe('NUEVO MENSAJE · IG');
+    expect(i18n.t('bento_preview.bot_start', { ns: 'marketing' })).toBe('Inicio');
     expect(document.documentElement.lang).toBe('es');
   });
 

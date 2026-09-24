@@ -25,9 +25,9 @@ const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
 // account. Safe to remove this block (and the panel below) once the demo
 // command is dropped — nothing else depends on it.
 const DEMO_LOGINS = [
-  { email: 'admin@demo.local',   label: 'Superadmin', icon: Shield,    landing: '/admin'     },
-  { email: 'agency@demo.local',  label: 'Agency',     icon: Briefcase, landing: '/dashboard' },
-  { email: 'enduser@demo.local', label: 'End user',   icon: UserIcon,  landing: '/u'         },
+  { email: 'admin@demo.local',   labelKey: 'login.demo_role_superadmin', label: 'Superadmin', icon: Shield,    landing: '/admin'     },
+  { email: 'agency@demo.local',  labelKey: 'login.demo_role_agency',     label: 'Agency',     icon: Briefcase, landing: '/dashboard' },
+  { email: 'enduser@demo.local', labelKey: 'login.demo_role_enduser',    label: 'End user',   icon: UserIcon,  landing: '/u'         },
 ];
 const DEMO_PASSWORD = 'demo';
 
@@ -363,7 +363,7 @@ export default function LoginPage() {
         >
           <span style={{ flex: 1, height: 1, background: 'var(--border-subtle)' }} />
           <span style={{ fontSize: 11, fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-            or continue with
+            {t('login.or_continue_with', 'or continue with')}
           </span>
           <span style={{ flex: 1, height: 1, background: 'var(--border-subtle)' }} />
         </div>
@@ -412,7 +412,7 @@ export default function LoginPage() {
               {t('login.demo_accounts', 'Quick Demo Logins')}
             </span>
             <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
-              local only · password <code style={{ fontFamily: 'var(--font-mono)' }}>demo</code>
+              {t('login.demo_local_notice', 'local only')} · {t('login.demo_password_label', 'password')} <code style={{ fontFamily: 'var(--font-mono)' }}>demo</code>
             </span>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
@@ -440,7 +440,7 @@ export default function LoginPage() {
                   onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-default)'; }}
                 >
                   <Icon size={14} color="var(--brand-primary-hover)" />
-                  <span style={{ fontSize: 12, fontWeight: 600 }}>{d.label}</span>
+                  <span style={{ fontSize: 12, fontWeight: 600 }}>{t(d.labelKey, d.label)}</span>
                   <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{d.email}</span>
                 </button>
               );

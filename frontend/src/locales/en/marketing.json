@@ -152,7 +152,17 @@
     "mkt_step_2_title": "Match by fit",
     "mkt_step_2_body": "See pricing ranges, specialities, and example workflows up front.",
     "mkt_step_3_title": "Manage from one inbox",
-    "mkt_step_3_body": "Approvals, scheduled posts, and reporting flow through Bop Social."
+    "mkt_step_3_body": "Approvals, scheduled posts, and reporting flow through Bop Social.",
+    "hero_float_new_msg": "NEW MESSAGE · IG",
+    "hero_float_msg_sender": "Priya Sharma",
+    "hero_float_msg_text": "Is the 3BHK still available? Can I visit on Saturday?",
+    "hero_float_reach": "WEEKLY REACH",
+    "hero_float_vs_last_week": "+23% vs last week",
+    "hero_float_lead": "LEAD CAPTURED",
+    "hero_float_source_label": "Source: ",
+    "hero_float_source_val": "CTWA · Diwali campaign",
+    "hero_float_ai": "AI SUGGESTION",
+    "hero_float_ai_text": "Try posting Reels on Tue 7pm — your audience is 2.4× more active."
   },
   "features": {
     "badge": "Features",
@@ -741,5 +751,30 @@
     "bottom_cta_sub": "Experience the unified marketing platform built for modern teams.",
     "not_found_title": "Article not found",
     "not_found_sub": "The article you are looking for does not exist or has been moved."
+  },
+  "bento_preview": {
+    "ai_user": "Write 3 posts for our new property launch",
+    "ai_response": "Here are three drafts tuned to your brand voice",
+    "composer_text": "New launch — luxury 3BHK at Acme Heights. Rooftop pool, smart home, ready to move in. Site visits open this weekend 🌅",
+    "composer_meta": "Auto-resized for IG · 220 chars",
+    "inbox_msg_1": "Is this still available?",
+    "inbox_msg_2": "Can we visit on Saturday?",
+    "inbox_msg_3": "What is the price range?",
+    "bot_start": "Start",
+    "bot_ask": "Ask",
+    "bot_capture": "Capture",
+    "bot_reply": "Reply",
+    "insight_badge": "AI insight · just now",
+    "insight_title": "Engagement dropped 30% on Tuesdays",
+    "insight_body": "Try moving your Tuesday post to 7pm — your audience is most active then.",
+    "auto_if": "Comment matches keyword \"price\"",
+    "auto_then": "Reply with template \"Pricing\"",
+    "auto_and": "Tag contact as hot lead",
+    "analytics_reach": "Reach · 30d",
+    "report_title": "Acme Realty · April",
+    "report_stat_reach": "Reach",
+    "report_stat_posts": "Posts",
+    "report_stat_leads": "Leads",
+    "report_summary": "AI summary: Your reach grew 23% MoM, driven by Reels…"
   }
 }

@@ -220,3 +220,61 @@ For content-heavy and structured marketing modules (products, solutions, case st
 - **Transactional Email Localization**:
   `auth_views._send_verification_email` and `auth_views._send_reset_email` resolve the recipient's language preference (`user.profile.language` or `client.default_language`) and render localized email subject lines, greeting, body instructions, and button labels.
 
+---
+
+## 10. Phase BS-2.1.1 — Translation Coverage Closure & Migration 0066 Audit
+
+### 10.1 Root-Cause Analysis of Browser Inspection Defects
+During user verification of BS-2.1 on `http://localhost:3010/`, inspection revealed that the homepage hero and login panels were rendering in English even when Spanish was selected:
+1. **Docker Container Stale Image**:
+   - `docker ps -a` inspection showed that `agencyos-frontend-1` and `agencyos-backend-1` were running images built 41 hours prior, tagged `bs-2.0` (`bopsocial-frontend-local:bs-2.0`). At commit `b207c02` (BS-2.0), `HomePage.jsx` and `AuthLayout.jsx` were hardcoded English.
+   - The user's browser was accessing the stale `bs-2.0` container because compose had not forced an image rebuild with fresh tags.
+2. **Uncovered Code Gaps in BS-2.1**:
+   - `LoginPage.jsx`: Hardcoded `"or continue with"`, `"local only · password demo"`, and demo account role labels (`Superadmin`, `Agency`, `End user`).
+   - `AuthLayout.jsx`: `es/auth.json` retained `"eyebrow": "Marketing OS"` instead of `"Sistema Operativo de Marketing"`.
+   - `PasswordStrength.jsx`: Hardcoded `"Password strength: ..."` meter label and level names.
+   - `EndUserSignupPage.jsx`: Hardcoded industry options and Step 3 summary review labels.
+   - `HomePage.jsx`: Floating hero cards (`NotificationCard`, `CampaignMetricCard`, `LeadCapturedCard`, `AIPopupCard`) contained static strings.
+   - `BentoPreviews.jsx`: Interactive mock copy across all 8 bento cards contained static English strings.
+
+### 10.2 Database Migration 0066 Comprehensive Audit
+File: `backend/social_stats/migrations/0066_client_default_language_alter_mediaasset_file_and_more.py`.
+
+- **Internationalization Operations**:
+  - `AddField('client', 'default_language')`: Adds the tenant default language column (`models.CharField(max_length=10, choices=[('en', 'English'), ('es', 'Spanish')], null=True, blank=True)`).
+  - `AlterField('userprofile', 'language')`: Alters `UserProfile.language` to allow `null=True, blank=True, default=None`, enabling fallback to tenant default when unset.
+- **Bundled Non-i18n Operations**:
+  - `AlterField('mediaasset', 'file')` and `AlterField('mediaasset', 'thumbnail')`: Bundled automatically because `models.py` referenced `upload_to=media_asset_upload_path` without a previous migration.
+  - **Schema Impact Assessment**: In PostgreSQL, these fields remain standard `varchar` paths. There was zero change to underlying database column types, constraints, or table structure. The migration is strictly backward-compatible with zero migration failure risk.
+
+### 10.3 Precedence Formalization & Automated Test Suite
+The backend preference hierarchy (`User Preference` -> `Tenant Default` -> `Platform Default 'en'`) was formalized and verified across 10 comprehensive tests in `backend/social_stats/tests/test_language_preferences.py`:
+1. `test_user_preference_overrides_tenant_default`: Explicit user preference wins over company default.
+2. `test_tenant_default_applies_when_user_has_no_preference`: Company default applies when user has no explicit language.
+3. `test_user_preference_persists_across_sessions`: Updates to user profile language persist.
+4. `test_default_fallback_to_english`: Canonical English fallback when neither is set.
+5. `test_anonymous_user_uses_default`: Unauthenticated requests receive canonical fallback.
+6. `test_invalid_language_code_fallback`: Unsupported codes gracefully fall back.
+7. `test_multi_tenant_isolation`: Verifies that language preference does not leak between tenant workspaces.
+8. `test_existing_users_without_language_behave_as_unset`: Verifies backward compatibility for existing records.
+9. `test_switching_between_authorized_tenants`: Switching tenant context resolves the active tenant's default.
+10. `test_transactional_email_locale_resolution`: Transactional email sender renders localized templates based on recipient preference.
+
+### 10.4 Frontend Coverage Implementation & Verification
+- **Catalog Synchronization**:
+  - `es/auth.json`: Added `or_continue_with`, `demo_local_notice`, `demo_password_label`, `demo_role_*`, updated `auth_layout.eyebrow` to `"Sistema Operativo de Marketing"`, and added complete `password_strength` and `end_user_signup` dictionaries.
+  - `en/marketing.json` & `es/marketing.json`: Added `home.hero_float_*` keys and `bento_preview` blocks covering all 8 interactive previews.
+- **Component Updates**:
+  - `LoginPage.jsx`: All demo labels, notices, and divider text wired to `t()`.
+  - `PasswordStrength.jsx`: Translated meter label and levels.
+  - `EndUserSignupPage.jsx`: Dynamic translation for industry options and summary review fields.
+  - `HomePage.jsx`: Floating hero cards dynamically translated.
+  - `BentoPreviews.jsx`: Interactive mock copy wired to `t('bento_preview.*')`.
+- **Regression Tests**:
+  - `frontend/src/i18n/__tests__/i18n.test.js`: Verified 5/5 test suites covering BS-2.1.1 keys in English and Spanish.
+  - `frontend/src/pages/__tests__/LoginPageTranslation.test.jsx`: Verified 3/3 tests confirming full Spanish rendering of `LoginPage` and `PasswordStrength`.
+- **Docker Deployment**:
+  - Tagged local images `bopsocial-frontend-local:bs-2.1.1` and `bopsocial-backend-local:bs-2.1.1` in `docker-compose.local.yml`.
+  - Executed `docker compose up -d --build frontend backend` and verified healthy containers running live on `http://localhost:3010/`.
+
+
