@@ -50,6 +50,22 @@ export function formatDate(date, options = { dateStyle: 'medium' }, locale) {
 }
 
 /**
+ * Format month and year with proper title casing for the leading month only
+ * (e.g. "September 2026" in English, "Septiembre de 2026" in Spanish - avoids "Septiembre De 2026")
+ * @param {Date|string|number} date
+ * @param {string} [locale]
+ * @returns {string}
+ */
+export function formatMonthYear(date, locale) {
+  const d = parseDateSafe(date);
+  if (!d) return '';
+  const resolved = getResolvedLocale(locale);
+  const formatted = new Intl.DateTimeFormat(resolved, { month: 'long', year: 'numeric' }).format(d);
+  if (!formatted) return '';
+  return formatted.charAt(0).toUpperCase() + formatted.slice(1);
+}
+
+/**
  * Format date range in a locale-aware format
  * @param {Date|string|number} startDate
  * @param {Date|string|number} endDate

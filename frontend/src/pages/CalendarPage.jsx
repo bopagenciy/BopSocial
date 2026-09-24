@@ -18,7 +18,7 @@ import {
   useCreatePost, useUpcomingPosts,
 } from '../hooks/useCalendar';
 import { PLATFORMS, PLATFORM_LIST } from '../services/platforms';
-import { formatDate, formatTime } from '../utils/formatters';
+import { formatDate, formatTime, formatMonthYear } from '../utils/formatters';
 import CalendarGrid       from '../components/calendar/CalendarGrid';
 import PostDrawer         from '../components/calendar/PostDrawer';
 import PostFormDrawer     from '../components/calendar/PostFormDrawer';
@@ -415,9 +415,8 @@ export default function CalendarPage({ clientId: propClientId }) {
             color: 'var(--text-primary)',
             minWidth: isEmbedded ? 140 : 160,
             textAlign: 'center',
-            textTransform: 'capitalize',
           }}>
-            {formatDate(currentDate, { month: 'long', year: 'numeric' })}
+            {formatMonthYear(currentDate)}
           </div>
           <button onClick={nextMonth} aria-label={t('calendar.next_month')} style={navBtnStyle}><ChevronRight size={16} /></button>
           <button onClick={goToday} style={{

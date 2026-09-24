@@ -485,6 +485,58 @@ Phase BS-2.4 delivered complete English and Spanish internationalization for Bop
 - **Production Build**: `npm run build` executed cleanly.
 - **Deployment**: Image tag `bopsocial-frontend-local:bs-2.4` in `docker-compose.local.yml`, rebuilt frontend container, verified HTTP 200 health check.
 
+---
+
+## 15. Phase BS-2.5 — Interaction & Engagement Internationalization
+
+### 15.1 Scope and Objectives
+Phase BS-2.5 delivered complete English and Spanish internationalization for Bop Social's operational Interaction & Engagement modules:
+1. **Unified Inbox** (`/inbox`, `frontend/src/pages/inbox/UnifiedInboxPage.jsx`):
+   - Page header title, subtitle, search input placeholder, message filter columns (type, platform, sentiment), quick filter pills (`Unread only`, `Starred only`), conversation list cards, thread conversation view with message balloons, action icon tooltips (`Star`, `Archive`, `Resolve`, `Mark read`), reply composer, character counters, channel hints, delivery feedback toasts, and empty state fallbacks.
+2. **Reviews** (`/reviews`, `frontend/src/pages/inbox/ReviewsPage.jsx`):
+   - Page header title, subtitle, status filter chips (`All`, `New`, `Replied`, `Flagged`), star rating filters (5 to 1 stars), review card rendering, sentiment badges, star rating displays, reply trigger, flag trigger, review reply composition form, owner reply display, flag confirmation dialog with reasons (`Inappropriate`, `Spam`, `Competitor`), and action toasts.
+3. **Automations** (`/automations`, `frontend/src/pages/automations/AutomationsPage.jsx`):
+   - Page header, subtitle, new rule trigger button, automation rule list, trigger badges, action badges, status switches, run counters, execution timestamps, edit trigger, deletion confirmation, prebuilt automation templates sidebar, and comprehensive rule builder modal with trigger selection (`New comment`, `New DM`, `New review`, `Keyword mention`, `Negative sentiment`), action selection (`Auto-reply`, `AI smart reply`, `Notify team`, `Add tag`, `Assign agent`, `Send webhook`), configuration inputs, and execution feedback toasts.
+4. **AI Reply Suggestions** (`frontend/src/components/ai/AIReplySuggestions.jsx`):
+   - Suggestion block header with sparkles icon, regenerate suggestions action, drafting state, error state, suggestion pills, recommended pill badge, tone badges (`Professional`, `Friendly`, `Empathetic`, `Warm`, `Apologetic`), and insertion feedback toasts.
+5. **WhatsApp Inbox** (`frontend/src/pages/WhatsAppInboxPage.jsx`):
+   - Page header, conversation count badge, conversation list rows, 24-hour customer window status badges and warnings (`24h window open` / `24h window closed. Send an approved template message instead.`), message bubbles with relative time formatting, status delivery ticks tooltips (`Sent`, `Delivered`, `Read`, `Failed`), and free-form reply composer.
+6. **BS-2.4 Residual Closures**:
+   - Resolved untranslated `"Write with AI"` button in `frontend/src/components/ai/AIWriteButton.jsx` via `content.json` (`content:write_with_ai` and `content:ai_assistant`).
+   - Resolved Spanish month-year formatting in `frontend/src/pages/CalendarPage.jsx` by creating a dedicated `formatMonthYear(date, locale)` helper in `frontend/src/utils/formatters.js`, eliminating `"Septiembre De 2026"` capitalization bug and ensuring compliant `"Septiembre de 2026"`.
+
+### 15.2 Mandatory Invariants & Rules Enforced
+- **Customer Content & Reviewer Integrity**: Customer inbound messages, usernames, handles, review comments, reviewer names, reviewer avatars, and direct quotes are NEVER modified, translated, or corrupted across language toggling.
+- **Machine-Readable Identifiers**: Trigger identifiers (`new_comment`, `new_dm`, `new_review`, `keyword_mention`, `negative_sentiment`), action types (`auto_reply`, `ai_smart_reply`, `notify_team`, `add_tag`, `assign_agent`, `send_webhook`), platform identifiers, and status codes remain invariant in backend payloads.
+- **Brand & Proper Noun Preservation**: The brand name `Bop Social` remains invariant across all files, and legacy `"Social Stats"` references have been purged. Social network proper nouns (`Facebook`, `Instagram`, `YouTube`, `LinkedIn`, `Google My Business` / `Google Business Profile`, `WhatsApp`) remain as authored.
+
+### 15.3 Translation Namespace Architecture
+- Registered **`engagement.json`** (`frontend/src/locales/en/engagement.json` & `es/engagement.json`) into `frontend/src/i18n/config.js` (`resources` and `ns` array):
+  - `inbox`: Action buttons, filters, quick chips, conversation states, sentiment labels, thread controls, reply placeholders, toast feedback.
+  - `reviews`: Filter labels, status chips, sentiment labels, action triggers, reply form, owner response header, flag modal reasons.
+  - `automations`: Page titles, rule cards, run count text, trigger/action badges, modal form labels, prebuilt templates, execution toasts.
+  - `ai_replies`: Header, regenerate action, tone pills, recommended badge, insertion toast, unavailable alert.
+  - `whatsapp_inbox`: Headers, conversation counters, 24-hour window open/closed badges and alerts, message bubble delivery statuses.
+
+### 15.4 Automated Testing & Verification
+- **Dedicated Automated Test Suite**:
+  - `frontend/src/pages/__tests__/InteractionEngagementTranslation.test.jsx`: 10 passing tests verifying:
+    - BS-2.4 residual closures (`formatMonthYear` lowercase preposition `"Septiembre de 2026"` and `AIWriteButton` localization).
+    - UnifiedInboxPage English and Spanish rendering with full Customer Message Content Integrity.
+    - ReviewsPage English and Spanish rendering with full Reviewer Content Integrity.
+    - AutomationsPage English and Spanish rendering of rules, templates, and builder controls.
+    - AIReplySuggestions English and Spanish tone badges and recommended chips.
+    - WhatsAppInboxPage English and Spanish header, 24h window badge, and message history.
+- **Full Frontend Test Suite**:
+  - **18 / 18 test suites passed, 104 / 104 tests passed**.
+- **Production Build**:
+  - `npm run build` completed cleanly with exit code 0.
+- **Docker Deployment**:
+  - Image tag updated in `docker-compose.local.yml`: `bopsocial-frontend-local:bs-2.5`.
+  - Rebuilt and started container: `agencyos-frontend-1` running `bopsocial-frontend-local:bs-2.5`.
+  - HTTP health check verified: `curl.exe --max-time 10 -I http://localhost:3010/` and `http://localhost:3010/login` returned **HTTP/1.1 200 OK**.
+
+
 
 
 

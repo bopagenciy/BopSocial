@@ -8,6 +8,7 @@
  * ========================================================================== */
 import { useEffect, useRef, useState } from 'react';
 import { Sparkles, Loader2, X, Check, RefreshCw, Copy } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 import Button from '../ui/Button';
 import { aiV2API } from '../../services/api';
@@ -25,7 +26,7 @@ import toast from '../ui/toast';
  *   clientId:  required for tenant-scoped AI calls
  *   platform:  default platform to compose for (the popover lets the user override)
  *   onInsert:  (text) => void — called when user picks a variant
- *   label:     button label (default "Write with AI")
+ *   label:     button label (default translated "Write with AI")
  *   size:      passes through to <Button>
  *   tone:      starting tone (default 'friendly')
  *   align:     'left' | 'right' — popover alignment relative to the trigger
@@ -57,11 +58,14 @@ export default function AIWriteButton({
   clientId,
   platform = 'instagram',
   onInsert,
-  label = 'Write with AI',
+  label,
   size = 'sm',
   tone: initialTone = 'friendly',
   align = 'left',
 }) {
+  const { t } = useTranslation('content');
+  const buttonLabel = label || t('composer.write_with_ai', 'Write with AI');
+
   const [open, setOpen] = useState(false);
   const [topic, setTopic] = useState('');
   const [tone, setTone] = useState(initialTone);
@@ -92,9 +96,9 @@ export default function AIWriteButton({
   }
 
   async function generate() {
-    const t = (topic || '').trim();
-    if (!t) {
-      toast.error('Tell me what to write about');
+    const topicText = (topic || '').trim();
+    if (!topicText) {
+      toast.error(t('composer.ai_tell_topic', 'Tell me what to write about'));
       return;
     }
     if (!clientId) {
@@ -105,7 +109,7 @@ export default function AIWriteButton({
     try {
       const res = await aiV2API.compose({
         client_id: clientId,
-        topic:     t,
+        topic:     topicText,
         platforms: [plat],
         tone,
         length,
@@ -129,16 +133,16 @@ export default function AIWriteButton({
     onInsert?.(text);
     setOpen(false);
     reset();
-    toast.success('Inserted into draft');
+    toast.success(t('composer.ai_inserted', 'Inserted into draft'));
   }
 
   function copyVariant(v) {
     const text = v.content + (v.hashtags?.length ? '\n\n' + v.hashtags.join(' ') : '');
     try {
       navigator.clipboard.writeText(text);
-      toast.success('Copied to clipboard');
+      toast.success(t('composer.ai_copied', 'Copied to clipboard'));
     } catch {
-      toast.error('Could not copy');
+      toast.error(t('composer.ai_copy_failed', 'Could not copy'));
     }
   }
 
@@ -156,13 +160,13 @@ export default function AIWriteButton({
           fontWeight: 600,
         }}
       >
-        {label}
+        {buttonLabel}
       </Button>
 
       {open && (
         <div
           role="dialog"
-          aria-label="Write with AI"
+          aria-label={buttonLabel}
           style={{
             position: 'absolute',
             top: 'calc(100% + 6px)',
@@ -182,12 +186,12 @@ export default function AIWriteButton({
               <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-primary)', fontWeight: 600, fontSize: 14 }}>
                   <Sparkles size={14} style={{ color: 'var(--brand-primary-hover)' }} />
-                  Write with Social Stats
+                  {t('composer.write_with_ai', 'Write with AI')}
                 </div>
                 <Button variant="ghost" size="sm" iconOnly icon={X} aria-label="Close" onClick={() => setOpen(false)} />
               </header>
 
-              <label style={fieldLabel}>What is this post about?</label>
+              <label style={fieldLabel}>{t('composer.ai_topic', 'Topic')}</label>
               <textarea
                 value={topic}
                 onChange={(e) => setTopic(e.target.value)}
@@ -197,7 +201,7 @@ export default function AIWriteButton({
                     if (!loading) generate();
                   }
                 }}
-                placeholder="Summer collection drops Friday — soft drinks for soft moments"
+                placeholder={t('composer.ai_topic_placeholder', 'What is this post about?')}
                 rows={3}
                 autoFocus
                 style={textareaStyle}
@@ -205,20 +209,20 @@ export default function AIWriteButton({
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10 }}>
                 <div>
-                  <label style={fieldLabel}>Platform</label>
+                  <label style={fieldLabel}>{t('composer.ai_platform', 'Platform')}</label>
                   <select value={plat} onChange={(e) => setPlat(e.target.value)} style={selectStyle}>
                     {PLATFORM_OPTIONS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label style={fieldLabel}>Tone</label>
+                  <label style={fieldLabel}>{t('composer.ai_tone', 'Tone')}</label>
                   <select value={tone} onChange={(e) => setTone(e.target.value)} style={selectStyle}>
-                    {TONE_OPTIONS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                    {TONE_OPTIONS.map((tItem) => <option key={tItem.value} value={tItem.value}>{tItem.label}</option>)}
                   </select>
                 </div>
               </div>
 
-              <label style={{ ...fieldLabel, marginTop: 10 }}>Length</label>
+              <label style={{ ...fieldLabel, marginTop: 10 }}>{t('composer.ai_length', 'Length')}</label>
               <div style={{ display: 'flex', gap: 6 }}>
                 {LENGTH_OPTIONS.map((l) => {
                   const active = length === l.value;
@@ -253,7 +257,7 @@ export default function AIWriteButton({
                 style={{ marginTop: 14 }}
                 icon={Sparkles}
               >
-                {loading ? 'Social Stats is writing…' : 'Generate'}
+                {loading ? t('composer.ai_writing', 'Writing with AI…') : t('composer.ai_generate', 'Generate')}
               </Button>
               <p style={{ margin: '8px 0 0', fontSize: 11, color: 'var(--text-tertiary)', textAlign: 'center' }}>
                 Cmd+Enter to generate · Esc to close
@@ -264,7 +268,7 @@ export default function AIWriteButton({
               <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 10 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-primary)', fontWeight: 600, fontSize: 14 }}>
                   <Sparkles size={14} style={{ color: 'var(--brand-primary-hover)' }} />
-                  Pick a variant
+                  {t('composer.ai_pick_variant', 'Pick a variant')}
                 </div>
                 <Button variant="ghost" size="sm" iconOnly icon={X} aria-label="Close" onClick={() => setOpen(false)} />
               </header>
@@ -302,17 +306,17 @@ export default function AIWriteButton({
                       </div>
                     ) : null}
                     <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
-                      <Button size="xs" icon={Check} onClick={() => pickVariant(v)}>Insert</Button>
-                      <Button size="xs" variant="ghost" icon={Copy} onClick={() => copyVariant(v)}>Copy</Button>
+                      <Button size="xs" icon={Check} onClick={() => pickVariant(v)}>{t('composer.ai_insert', 'Insert')}</Button>
+                      <Button size="xs" variant="ghost" icon={Copy} onClick={() => copyVariant(v)}>{t('composer.ai_copy', 'Copy')}</Button>
                     </div>
                   </article>
                 ))}
               </div>
 
               <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
-                <Button size="sm" variant="secondary" icon={RefreshCw} onClick={() => { reset(); }}>Try again</Button>
+                <Button size="sm" variant="secondary" icon={RefreshCw} onClick={() => { reset(); }}>{t('composer.ai_try_again', 'Try again')}</Button>
                 <Button size="sm" variant="ghost" onClick={() => { generate(); }} loading={loading}>
-                  Regenerate
+                  {t('composer.ai_regenerate', 'Regenerate')}
                 </Button>
               </div>
             </>
