@@ -6,7 +6,9 @@
  *  Copyright (c) 2026 Chandrabhan Shekhawat / Gigai Kripa Services.
  *  Released under the MIT License — see LICENSE. Keep this notice.
  * ========================================================================== */
+import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   ArrowRight,
   Building2,
@@ -26,104 +28,77 @@ import ScrollReveal from '../components/marketing/ScrollReveal';
 import Button from '../components/ui/Button';
 import Meta from '../components/Meta';
 
-/**
- * CustomersPage — /customers
- *
- * We don't have customer testimonials, named case studies, or customer logos
- * to feature yet. This page intentionally leads with the workflows the
- * product is built for, not who's already using it. Real customer stories
- * will replace the example workflows as we onboard the first cohort of
- * launch partners.
- *
- * Sections:
- *   1. Hero — "Customer stories — coming soon" + "Become a launch partner" CTA
- *   2. Example workflows — industry-only descriptions of how Bop Social is
- *      designed to be used. Clearly labeled as example workflows, not real
- *      customer stories.
- *   3. CTA to sign up or talk to sales.
- */
-
-const EXAMPLE_WORKFLOWS = [
-  {
-    industry: 'Real estate',
-    icon: Building2,
-    accent: 'var(--brand-primary)',
-    headline: 'Capture and qualify property leads via WhatsApp',
-    body: 'Run click-to-WhatsApp ads, route enquiries through a bot that asks for budget and locality, then push qualified leads to your CRM. Schedule property reels and Instagram posts from the same Composer.',
-    bullets: [
-      'CTWA campaigns with platform-native lead forms',
-      'Visual bot builder for qualification flows',
-      'Brand-voice AI captions per listing',
-    ],
-  },
-  {
-    industry: 'Healthcare',
-    icon: Stethoscope,
-    accent: '#8b5cf6',
-    headline: 'Cut no-shows with WhatsApp reminders + a unified inbox',
-    body: 'Send appointment reminders 24h and 2h before the slot via WhatsApp templates. Reschedule requests land in the same inbox as Instagram DMs and Google reviews — your team works from one queue.',
-    bullets: [
-      'Approved WhatsApp template campaigns',
-      'Unified inbox across DMs, reviews, comments',
-      'Per-clinic workspaces with shared brand voice',
-    ],
-  },
-  {
-    industry: 'Agencies',
-    icon: Users,
-    accent: '#f472b6',
-    headline: 'Manage many clients without losing the thread',
-    body: 'A small agency can manage many client workspaces from one Bop Social tenant. Approval flows, white-label reports, and per-client brand voice mean the work scales without a proportional headcount increase.',
-    bullets: [
-      'Per-client workspace + brand voice',
-      'Approval flows for posts and replies',
-      'White-label reports on a schedule',
-    ],
-  },
-  {
-    industry: 'Restaurants',
-    icon: Utensils,
-    accent: '#f59e0b',
-    headline: 'CTWA bots that take orders and bookings',
-    body: 'Run Click-to-WhatsApp ads that drop the user into a bot for menu, location, and booking. Route confirmed orders to your POS via webhook. Update Instagram and Google Business with daily specials from one Composer.',
-    bullets: [
-      'Menu + booking bots out of the box',
-      'Google Business posts auto-synced',
-      'Per-location workspaces',
-    ],
-  },
-  {
-    industry: 'E-commerce',
-    icon: ShoppingBag,
-    accent: '#10b981',
-    headline: 'Catalogue ads + WhatsApp checkout',
-    body: 'Pull products from Shopify or Woo into Composer. Run carousel ads on Instagram and Facebook with deep links into a WhatsApp catalogue checkout. Reply to inbound messages with AI-suggested replies in your brand voice.',
-    bullets: [
-      'Shopify + Woo product feed',
-      'WhatsApp catalogue + checkout',
-      'AI reply suggestions in brand voice',
-    ],
-  },
-  {
-    industry: 'Creators',
-    icon: Sparkles,
-    accent: '#a78bfa',
-    headline: 'Plan, generate, and ship content across platforms',
-    body: 'Train Bop Social on five posts in your voice. Generate caption variants for Instagram, Facebook, LinkedIn, and YouTube descriptions from one prompt. Schedule once; the Composer formats per platform.',
-    bullets: [
-      'One Composer, five-platform output',
-      'Brand-voice training in 3 minutes',
-      'AI-narrated monthly recap',
-    ],
-  },
-];
-
 export default function CustomersPage() {
+  const { t } = useTranslation(['marketing', 'common']);
+
+  const workflows = useMemo(() => [
+    {
+      industry: t('customers.workflows.real_estate.industry', 'Real estate'),
+      icon: Building2,
+      accent: 'var(--brand-primary)',
+      headline: t('customers.workflows.real_estate.headline', 'Capture and qualify property leads via WhatsApp'),
+      body: t('customers.workflows.real_estate.body', 'Run click-to-WhatsApp ads, route enquiries through a bot that asks for budget and locality, then push qualified leads to your CRM. Schedule property reels and Instagram posts from the same Composer.'),
+      bullets: [
+        t('customers.workflows.real_estate.b1', 'CTWA campaigns with platform-native lead forms'),
+        t('customers.workflows.real_estate.b2', 'Visual bot builder for qualification flows'),
+        t('customers.workflows.real_estate.b3', 'Brand-voice AI captions per listing'),
+      ],
+    },
+    {
+      industry: t('customers.workflows.healthcare.industry', 'Healthcare'),
+      icon: Stethoscope,
+      accent: '#8b5cf6',
+      headline: t('customers.workflows.healthcare.headline', 'Cut no-shows with WhatsApp reminders + a unified inbox'),
+      body: t('customers.workflows.healthcare.body', 'Send appointment reminders 24h and 2h before the slot via WhatsApp templates. Reschedule requests land in the same inbox as Instagram DMs and Google reviews — your team works from one queue.'),
+      bullets: [
+        t('customers.workflows.healthcare.b1', 'Approved WhatsApp template campaigns'),
+        t('customers.workflows.healthcare.b2', 'Unified inbox across DMs, reviews, comments'),
+        t('customers.workflows.healthcare.b3', 'Per-clinic workspaces with shared brand voice'),
+      ],
+    },
+    {
+      industry: t('customers.workflows.agencies.industry', 'Agencies'),
+      icon: Users,
+      accent: '#f472b6',
+      headline: t('customers.workflows.agencies.headline', 'Manage many clients without losing the thread'),
+      body: t('customers.workflows.agencies.body', 'A small agency can manage many client workspaces from one Bop Social tenant. Approval flows, white-label reports, and per-client brand voice mean the work scales without a proportional headcount increase.'),
+      bullets: [
+        t('customers.workflows.agencies.b1', 'Per-client workspace + brand voice'),
+        t('customers.workflows.agencies.b2', 'Approval flows for posts and replies'),
+        t('customers.workflows.agencies.b3', 'White-label reports on a schedule'),
+      ],
+    },
+    {
+      industry: t('customers.workflows.restaurants.industry', 'Restaurants'),
+      icon: Utensils,
+      accent: '#f59e0b',
+      headline: t('customers.workflows.restaurants.headline', 'CTWA bots that take orders and bookings'),
+      body: t('customers.workflows.restaurants.body', 'Run Click-to-WhatsApp ads that drop the user into a bot for menu, location, and booking. Route confirmed orders to your POS via webhook. Update Instagram and Google Business with daily specials from one Composer.'),
+      bullets: [
+        t('customers.workflows.restaurants.b1', 'Menu + booking bots out of the box'),
+        t('customers.workflows.restaurants.b2', 'Google Business posts auto-synced'),
+        t('customers.workflows.restaurants.b3', 'Per-location workspaces'),
+      ],
+    },
+    {
+      industry: t('customers.workflows.ecommerce.industry', 'E-commerce'),
+      icon: ShoppingBag,
+      accent: '#10b981',
+      headline: t('customers.workflows.ecommerce.headline', 'Catalogue ads + WhatsApp checkout'),
+      body: t('customers.workflows.ecommerce.body', 'Pull products from Shopify or Woo into Composer. Run carousel ads on Instagram and Facebook with deep links into a WhatsApp catalogue checkout. Reply to inbound messages with AI-suggested replies in your brand voice.'),
+      bullets: [
+        t('customers.workflows.ecommerce.b1', 'Native product tagging in Composer'),
+        t('customers.workflows.ecommerce.b2', 'WhatsApp catalogue sync with inventory'),
+        t('customers.workflows.ecommerce.b3', 'ROAS + conversion attribution per campaign'),
+      ],
+    },
+  ], [t]);
+
   return (
     <MarketingLayout>
       <Meta
-        title="Customer stories"
-        description="Customer stories will appear here as Bop Social launches publicly. In the meantime, here's how the product is built to be used — by industry."
+        title={t('customers.badge', 'Customers')}
+        description={t('customers.hero_subtitle', "Customer stories will appear here as Bop Social launches publicly. In the meantime, here's how the product is built to be used — by industry.")}
       />
 
       {/* ╭───────────╮
@@ -146,7 +121,7 @@ export default function CustomersPage() {
             border: '1px solid rgba(255,255,255,0.2)',
             borderRadius: 'var(--radius-pill)',
             textTransform: 'uppercase',
-          }}>Coming soon</span>
+          }}>{t('customers.badge', 'Customers')}</span>
 
           <h1 style={{
             margin: 0,
@@ -155,7 +130,7 @@ export default function CustomersPage() {
             lineHeight: 1.1,
             color: '#fff',
           }}>
-            Customer stories — coming soon
+            {t('customers.hero_title', 'Customer stories — coming soon')}
           </h1>
 
           <p style={{
@@ -164,10 +139,7 @@ export default function CustomersPage() {
             lineHeight: 1.55,
             color: 'rgba(255,255,255,0.78)',
           }}>
-            We're rolling out Bop Social to a first cohort of launch partners.
-            Real customer stories, with named teams and real numbers, will
-            appear here as those partners go public. Until then, here's how
-            the product is built to be used.
+            {t('customers.hero_subtitle', "We're rolling out Bop Social to a first cohort of launch partners. Real customer stories, with named teams and real numbers, will appear here as those partners go public. Until then, here's how the product is built to be used.")}
           </p>
 
           <div style={{
@@ -181,7 +153,7 @@ export default function CustomersPage() {
                       border: 'none',
                       fontWeight: 600,
                     }}>
-              Become a launch partner <ArrowRight size={15} />
+              {t('customers.launch_partner', 'Become a launch partner')} <ArrowRight size={15} />
             </Button>
             <Button as={Link} to="/contact" size="lg" variant="ghost"
                     style={{
@@ -189,7 +161,7 @@ export default function CustomersPage() {
                       background: 'rgba(255,255,255,0.08)',
                       border: '1px solid rgba(255,255,255,0.18)',
                     }}>
-              Talk to the team
+              {t('customers.talk_team', 'Talk to the team')}
             </Button>
           </div>
         </div>
@@ -213,20 +185,18 @@ export default function CustomersPage() {
                 background: 'var(--brand-primary-soft)',
                 borderRadius: 'var(--radius-pill)',
                 letterSpacing: '0.06em', textTransform: 'uppercase',
-              }}>Example workflows · illustrative</span>
+              }}>{t('customers.example_workflows_badge', 'Example workflows · illustrative')}</span>
               <h2 style={{
                 margin: 0, fontSize: 'clamp(28px, 4vw, 40px)',
                 fontWeight: 700, letterSpacing: '-0.02em',
                 color: 'var(--text-primary)', lineHeight: 1.15,
-              }}>How Bop Social is built to be used</h2>
+              }}>{t('customers.example_workflows_title', 'Built for how your team actually works')}</h2>
               <p style={{
                 margin: '14px auto 0', maxWidth: 620,
                 fontSize: 16, lineHeight: 1.55,
                 color: 'var(--text-secondary)',
               }}>
-                These are example workflows, not real customer stories.
-                Each describes a typical setup for that industry — the
-                channels, AI features, and approval flows that fit.
+                {t('customers.sample_disclaimer', 'These are example workflows, not real customer stories. Each describes a typical setup for that industry — the channels, AI features, and approval flows that fit.')}
               </p>
             </div>
           </ScrollReveal>
@@ -235,7 +205,7 @@ export default function CustomersPage() {
             display: 'grid', gap: 16,
             gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
           }}>
-            {EXAMPLE_WORKFLOWS.map((w, i) => {
+            {workflows.map((w, i) => {
               const Icon = w.icon;
               return (
                 <ScrollReveal key={w.industry} delay={i * 0.05}>
@@ -319,7 +289,7 @@ export default function CustomersPage() {
             background: 'var(--brand-primary-soft)',
             borderRadius: 'var(--radius-pill)', textTransform: 'uppercase',
           }}>
-            <Sparkles size={12} /> Launch partner programme
+            <Sparkles size={12} /> {t('customers.launch_partner', 'Launch partner programme')}
           </div>
           <h2 style={{
             margin: 0,
@@ -327,26 +297,24 @@ export default function CustomersPage() {
             fontWeight: 700, letterSpacing: '-0.02em',
             color: 'var(--text-primary)', lineHeight: 1.2,
           }}>
-            Be the first customer story on this page
+            {t('customers.cta_title', 'Be the first customer story on this page')}
           </h2>
           <p style={{
             margin: '14px auto 0', maxWidth: 520,
             fontSize: 15, lineHeight: 1.55,
             color: 'var(--text-secondary)',
           }}>
-            Launch-partner teams get hands-on onboarding, a direct line to
-            the team, and a feature spot here when they're ready to share
-            their numbers.
+            {t('customers.cta_subtitle', "Launch-partner teams get hands-on onboarding, a direct line to the team, and a feature spot here when they're ready to share their numbers.")}
           </p>
           <div style={{
             marginTop: 28, display: 'inline-flex', gap: 12,
             justifyContent: 'center', flexWrap: 'wrap',
           }}>
             <Button as={Link} to="/signup" size="lg" variant="primary">
-              Start free <ArrowRight size={15} />
+              {t('common:actions.start_free', 'Start free')} <ArrowRight size={15} />
             </Button>
             <Button as={Link} to="/contact" size="lg" variant="ghost">
-              Talk to the team
+              {t('customers.talk_team', 'Talk to the team')}
             </Button>
           </div>
         </div>

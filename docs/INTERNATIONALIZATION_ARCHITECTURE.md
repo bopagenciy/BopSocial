@@ -184,3 +184,39 @@ To add a new language (e.g. Portuguese `pt` or French `fr`) in future phases:
    Add `frontend/src/locales/pt/common.json`, `navigation.json`, `auth.json`.
 3. **Register Backend Language**:
    Add `('pt', 'Portuguese')` to `LANGUAGES` in `backend/dashboard/settings.py` and `UserProfile.language` choices.
+
+---
+
+## 9. Phase BS-2.1 — Marketing & Authentication Translation Architecture
+
+### 9.1 Overview & Scope
+Phase BS-2.1 completes end-to-end Spanish and English bilingual support across Bop Social's entire public surface and authentication lifecycle:
+- **Authentication Flows**: Sign-in, organization onboarding / sign-up, password reset, email verification, team invitation acceptance, end-user client portal onboarding, and OAuth callback error handling.
+- **Transactional Communications**: Password reset emails and email verification communications delivered in the user's selected language.
+- **Public Marketing Experience**: All 13 dedicated marketing pages, legal layouts, error/maintenance views, and data-driven marketing modules (Products, Solutions, Case Studies, Partner Agencies Showcase, and Blog).
+
+### 9.2 Positioning & Brand Invariants
+- **Brand Name**: `Bop Social` (never translated or altered).
+- **Canonical Positioning Tagline**:
+  - English: `Built for the Bop Universe`
+  - Spanish: `Diseñado para el Universo Bop`
+- **Machine Contract Preservation**:
+  - Slugs (e.g. `/products/composer`, `/customers/urban-nest-realty`, `/blog/unified-marketing-os-is-here`), API routes, database fields, and error codes (`ERR_*`) remain canonical and untranslated.
+
+### 9.3 Data-Driven Modular Companion Pattern
+For content-heavy and structured marketing modules (products, solutions, case studies, agency directory, blog articles), Bop Social employs a **companion localization pattern**:
+- **Canonical Structure**: English content and component metadata (Lucide icons, cover gradients, route anchors) reside in canonical files (`productPages.js`, `solutionPages.js`, `caseStudies.js`, `agencyProfiles.js`, `blogPosts.js`).
+- **Localized Companions**: Complete Spanish content overrides reside in lightweight companion files:
+  - `frontend/src/pages/marketing/productPages.es.js` (10 products)
+  - `frontend/src/pages/marketing/solutionPages.es.js` (7 industry solutions)
+  - `frontend/src/pages/marketing/caseStudies.es.js` (3 customer case studies)
+  - `frontend/src/pages/marketing/agencyProfiles.es.js` (6 partner agency showcases)
+  - `frontend/src/pages/marketing/blogPosts.es.jsx` (6 full-length blog articles with JSX body nodes)
+- **Runtime Resolution**:
+  Getter helpers (`getProductPage(slug, lang)`, `getSolutionPage(slug, lang)`, `getCaseStudy(slug, lang)`, `getAgency(slug, lang)`, `getPost(slug, lang)`, `getPosts(lang)`) inspect `i18n.language` and cleanly merge Spanish overrides while maintaining fallback to English.
+
+### 9.4 Backend & Client Default Language
+- **Organization Tenant Default**: Added `Client.default_language` (`CharField(max_length=10, choices=[('en', 'English'), ('es', 'Spanish')], default='en')`) via migration `0066_client_default_language_alter_mediaasset_file_and_more.py`.
+- **Transactional Email Localization**:
+  `auth_views._send_verification_email` and `auth_views._send_reset_email` resolve the recipient's language preference (`user.profile.language` or `client.default_language`) and render localized email subject lines, greeting, body instructions, and button labels.
+

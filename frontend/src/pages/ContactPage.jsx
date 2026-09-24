@@ -6,8 +6,9 @@
  *  Copyright (c) 2026 Chandrabhan Shekhawat / Gigai Kripa Services.
  *  Released under the MIT License — see LICENSE. Keep this notice.
  * ========================================================================== */
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   Mail, MessageSquare, Phone, MapPin, ArrowRight,
   BookOpen, Activity, ShieldCheck, CheckCircle, Send,
@@ -21,15 +22,17 @@ import Textarea from '../components/ui/Textarea';
 import Select from '../components/ui/Select';
 import Meta from '../components/Meta';
 
-const REASONS = [
-  { value: 'sales',     label: 'Sales — pricing or demo' },
-  { value: 'support',   label: 'Support — I\'m a customer' },
-  { value: 'partner',   label: 'Partnership / integration' },
-  { value: 'press',     label: 'Press / media inquiry' },
-  { value: 'other',     label: 'Something else' },
-];
-
 export default function ContactPage() {
+  const { t } = useTranslation(['marketing', 'common']);
+
+  const reasons = useMemo(() => [
+    { value: 'sales',     label: t('contact.reasons.sales', 'Sales — pricing or demo') },
+    { value: 'support',   label: t('contact.reasons.support', "Support — I'm a customer") },
+    { value: 'partner',   label: t('contact.reasons.partner', 'Partnership / integration') },
+    { value: 'press',     label: t('contact.reasons.press', 'Press / media inquiry') },
+    { value: 'other',     label: t('contact.reasons.other', 'Something else') },
+  ], [t]);
+
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [company, setCompany] = useState('');
@@ -41,11 +44,11 @@ export default function ContactPage() {
 
   function validate() {
     const e = {};
-    if (!name.trim()) e.name = 'Your name helps us reply properly.';
-    if (!email.trim()) e.email = 'We need your email to reply.';
-    else if (!/\S+@\S+\.\S+/.test(email)) e.email = 'That doesn\'t look like a valid email.';
-    if (!message.trim()) e.message = 'Tell us a bit about what you\'re working on.';
-    else if (message.trim().length < 10) e.message = 'A few more words, please.';
+    if (!name.trim()) e.name = t('contact.val_name', 'Your name helps us reply properly.');
+    if (!email.trim()) e.email = t('contact.val_email', 'We need your email to reply.');
+    else if (!/\S+@\S+\.\S+/.test(email)) e.email = t('contact.val_email_valid', "That doesn't look like a valid email.");
+    if (!message.trim()) e.message = t('contact.val_msg', "Tell us a bit about what you're working on.");
+    else if (message.trim().length < 10) e.message = t('contact.val_msg_len', 'A few more words, please.');
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -67,8 +70,8 @@ export default function ContactPage() {
   return (
     <MarketingLayout>
       <Meta
-        title="Contact"
-        description="Sales, support, partnerships, press — get in touch with the Bop Social team. We typically reply within one business day."
+        title={t('contact.badge', 'Contact')}
+        description={t('contact.hero_subtitle', 'Sales, support, partnerships, press — pick a reason and we\'ll route you to the right human.')}
       />
       {/* Hero */}
       <section style={{ padding: '128px 32px 56px', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
@@ -81,7 +84,7 @@ export default function ContactPage() {
           }}
         />
         <div style={{ position: 'relative', maxWidth: 720, margin: '0 auto' }}>
-          <Badge variant="brand" size="md">Contact</Badge>
+          <Badge variant="brand" size="md">{t('contact.badge', 'Contact')}</Badge>
           <h1 style={{
             margin: '20px 0 18px',
             fontSize: 'clamp(40px, 5vw, 56px)',
@@ -90,10 +93,10 @@ export default function ContactPage() {
             fontWeight: 600,
             color: 'var(--text-primary)',
           }}>
-            Let's talk.
+            {t('contact.hero_title', "Let's talk.")}
           </h1>
           <p style={{ margin: 0, fontSize: 18, lineHeight: 1.65, color: 'var(--text-secondary)' }}>
-            Sales, support, partnerships, press — pick a reason and we'll route you to the right human.
+            {t('contact.hero_subtitle', "Sales, support, partnerships, press — pick a reason and we'll route you to the right human.")}
           </p>
         </div>
       </section>
@@ -137,65 +140,66 @@ export default function ContactPage() {
                   <CheckCircle size={26} strokeWidth={1.8} />
                 </div>
                 <h2 style={{ margin: 0, fontSize: 22, fontWeight: 600, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
-                  Thanks — we got your message.
+                  {t('contact.sent_title', 'Thanks — we got your message.')}
                 </h2>
                 <p style={{ margin: '8px auto 20px', maxWidth: 380, fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-                  We usually reply within one business day. If it's urgent, email us at{' '}
-                  <a href="mailto:hello@bopsocial.com" style={{ color: 'var(--text-link)', fontWeight: 500 }}>hello@bopsocial.com</a>.
+                  {t('contact.sent_body', "We usually reply within one business day. If it's urgent, email us at hello@bopsocial.com.")}
                 </p>
-                <Button as={Link} to="/" variant="secondary" size="md">Back to home</Button>
+                <Button as={Link} to="/" variant="secondary" size="md">
+                  {t('contact.back_home', 'Back to home')}
+                </Button>
               </div>
             ) : (
               <>
                 <h2 style={{ margin: 0, fontSize: 22, fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--text-primary)' }}>
-                  Send us a message
+                  {t('contact.form_title', 'Send us a message')}
                 </h2>
                 <p style={{ margin: '6px 0 22px', fontSize: 14, color: 'var(--text-secondary)' }}>
-                  We typically reply within one business day.
+                  {t('contact.form_subtitle', 'We typically reply within one business day.')}
                 </p>
 
                 <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }} className="contact-row">
                     <Input
-                      label="Your name"
+                      label={t('contact.name_label', 'Your name')}
                       value={name}
                       onChange={(e) => { setName(e.target.value); setErrors((p) => ({ ...p, name: undefined })); }}
-                      placeholder="Your full name"
+                      placeholder={t('contact.name_placeholder', 'Your full name')}
                       error={errors.name}
                       size="lg"
                     />
                     <Input
-                      label="Work email"
+                      label={t('contact.email_label', 'Work email')}
                       type="email"
                       value={email}
                       onChange={(e) => { setEmail(e.target.value); setErrors((p) => ({ ...p, email: undefined })); }}
-                      placeholder="you@company.com"
+                      placeholder={t('contact.email_placeholder', 'you@company.com')}
                       error={errors.email}
                       size="lg"
                     />
                   </div>
 
                   <Input
-                    label="Company (optional)"
+                    label={t('contact.company_label', 'Company (optional)')}
                     value={company}
                     onChange={(e) => setCompany(e.target.value)}
-                    placeholder="Your agency or company"
+                    placeholder={t('contact.company_placeholder', 'Your agency or company')}
                     size="lg"
                   />
 
                   <Select
-                    label="What's this about?"
+                    label={t('contact.reason_label', "What's this about?")}
                     value={reason}
                     onChange={setReason}
-                    options={REASONS}
+                    options={reasons}
                     size="lg"
                   />
 
                   <Textarea
-                    label="Message"
+                    label={t('contact.message_label', 'Message')}
                     value={message}
                     onChange={(e) => { setMessage(e.target.value); setErrors((p) => ({ ...p, message: undefined })); }}
-                    placeholder="Tell us a bit about what you're working on…"
+                    placeholder={t('contact.message_placeholder', "Tell us a bit about what you're working on…")}
                     minRows={4}
                     maxRows={10}
                     error={errors.message}
@@ -204,12 +208,14 @@ export default function ContactPage() {
                   />
 
                   <Button type="submit" size="lg" icon={Send} fullWidth loading={submitting}>
-                    Send message
+                    {t('contact.submit', 'Send message')}
                   </Button>
 
                   <p style={{ margin: 0, fontSize: 11, color: 'var(--text-tertiary)', textAlign: 'center' }}>
-                    By sending you agree to our{' '}
-                    <Link to="/privacy" style={{ color: 'var(--text-link)' }}>Privacy Policy</Link>.
+                    {t('contact.privacy_agreement', 'By sending you agree to our')}{' '}
+                    <Link to="/privacy" style={{ color: 'var(--text-link)' }}>
+                      {t('navigation:legal.privacy', 'Privacy Policy')}
+                    </Link>.
                   </p>
                 </form>
               </>
@@ -223,30 +229,30 @@ export default function ContactPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <ContactInfoCard
               icon={Mail}
-              title="Email"
+              title={t('contact.direct_email', 'Email')}
               body="hello@bopsocial.com"
-              detail="General inquiries, partnerships, press."
+              detail="hello@bopsocial.com"
               link="mailto:hello@bopsocial.com"
             />
             <ContactInfoCard
               icon={MessageSquare}
-              title="Sales"
+              title={t('contact.live_chat', 'Sales')}
               body="sales@bopsocial.com"
-              detail="Demos, pricing, and enterprise contracts."
+              detail="sales@bopsocial.com"
               link="mailto:sales@bopsocial.com"
             />
             <ContactInfoCard
               icon={Phone}
-              title="Phone"
-              body="Email-first support"
-              detail="Phone callbacks scheduled via support."
+              title={t('contact.phone', 'Phone')}
+              body={t('contact.phone_body', 'Email-first support')}
+              detail="support@bopsocial.com"
               link="mailto:support@bopsocial.com"
             />
             <ContactInfoCard
               icon={MapPin}
-              title="Office"
-              body="Bengaluru, India"
-              detail="Postal address shared on request via support@bopsocial.com."
+              title={t('contact.office', 'Office')}
+              body={t('contact.office_body', 'Global HQ')}
+              detail="support@bopsocial.com"
             />
           </div>
         </div>
@@ -261,7 +267,7 @@ export default function ContactPage() {
         <div style={{ maxWidth: 'var(--container-xl)', margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: 32 }}>
             <h2 style={{ margin: 0, fontSize: 'clamp(24px, 2.8vw, 32px)', fontWeight: 600, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
-              Looking for something specific?
+              {t('contact.looking_for_specific', 'Looking for something specific?')}
             </h2>
           </div>
           <div
@@ -274,20 +280,20 @@ export default function ContactPage() {
           >
             <SupportLinkCard
               icon={BookOpen}
-              title="Help Center"
-              body="Setup guides, troubleshooting, FAQs."
+              title={t('navigation:resources.help_center', 'Help Center')}
+              body={t('contact.help_center_desc', 'Setup guides, troubleshooting, FAQs.')}
               to="/help"
             />
             <SupportLinkCard
               icon={Activity}
-              title="System Status"
-              body="Live uptime, incidents, scheduled maintenance."
+              title={t('navigation:resources.status', 'System Status')}
+              body={t('contact.status_desc', 'Live uptime, incidents, scheduled maintenance.')}
               to="/status"
             />
             <SupportLinkCard
               icon={ShieldCheck}
-              title="Security"
-              body="Compliance, certifications, vulnerability reports."
+              title={t('navigation:legal.security', 'Security')}
+              body={t('contact.security_desc', 'Compliance, certifications, vulnerability reports.')}
               to="/security"
             />
           </div>

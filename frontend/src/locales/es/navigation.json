@@ -82,6 +82,12 @@
     "terms": "Términos",
     "security": "Seguridad",
     "cookies": "Cookies",
-    "status": "Estado"
+    "status": "Estado",
+    "gdpr": "RGPD",
+    "dpdp": "DPDP",
+    "press": "Prensa",
+    "careers": "Empleo",
+    "systems_operational": "Todos los sistemas operativos",
+    "built_for_universe": "Diseñado para el Universo Bop"
   }
 }

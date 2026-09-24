@@ -21,6 +21,7 @@
  *   6. Final CTA
  */
 import { useParams, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { ArrowRight, Check, Sparkles, AlertTriangle } from 'lucide-react';
 
@@ -37,7 +38,8 @@ import ComingSoonPage from './ComingSoonPage';
 
 export default function SolutionPage() {
   const { slug } = useParams();
-  const data = getSolutionPage(slug);
+  const { t, i18n } = useTranslation(['marketing', 'navigation', 'common']);
+  const data = getSolutionPage(slug, i18n.language);
   if (!data) return <ComingSoonPage />;
 
   return (
@@ -46,14 +48,14 @@ export default function SolutionPage() {
         title={data.title}
         description={data.description}
       />
-      <Hero data={data} />
+      <Hero data={data} t={t} />
       {data.painPoints && <PainPoints data={data.painPoints} />}
       {data.stripes?.map((s, i) => (
         <FeatureStripe key={i} data={s} reverse={i % 2 === 1} />
       ))}
       {data.templates && <TemplatesGallery data={data.templates} />}
       {data.quote && <CustomerQuote data={data.quote} />}
-      <FinalCTA data={data} />
+      <FinalCTA data={data} t={t} />
     </MarketingLayout>
   );
 }
@@ -64,7 +66,7 @@ export const solutionSlugs = Object.keys(solutionPages);
 // ─────────────────────────────────────────────────────────────────────────────
 // Hero
 // ─────────────────────────────────────────────────────────────────────────────
-function Hero({ data }) {
+function Hero({ data, t }) {
   const Demo = data.heroDemo;
   return (
     <section style={{
@@ -149,14 +151,14 @@ function Hero({ data }) {
                       background: 'var(--brand-gradient)',
                       color: '#1B1D28', border: 'none', fontWeight: 600,
                     }}>
-              {data.ctaPrimary || 'Get started'} <ArrowRight size={15} />
+              {data.ctaPrimary || (t ? t('marketing:home.get_started', 'Get started') : 'Get started')} <ArrowRight size={15} />
             </Button>
             <Button as={Link} to="/features" size="lg" variant="ghost"
                     style={{
                       color: '#fff', background: 'rgba(255,255,255,0.06)',
                       border: '1px solid rgba(255,255,255,0.18)',
                     }}>
-              Explore features
+              {t ? t('marketing:features.catalog_cta_explore', 'Explore features') : 'Explore features'}
             </Button>
           </motion.div>
         </div>
@@ -482,15 +484,15 @@ function CustomerQuote({ data }) {
 // ─────────────────────────────────────────────────────────────────────────────
 // Final CTA
 // ─────────────────────────────────────────────────────────────────────────────
-function FinalCTA({ data }) {
+function FinalCTA({ data, t }) {
   return (
     <section style={{ padding: 'clamp(56px, 9vh, 96px) 24px', background: 'var(--surface-page)' }}>
       <CTASection
-        title={data.ctaTitle || 'Ready to elevate your marketing operations?'}
-        subtitle={data.ctaSubtitle || 'Unified social management, real-time analytics, and native AI workflows.'}
-        primary={{ to: '/signup', label: data.ctaPrimary || 'Get started' }}
-        secondary={{ to: '/features', label: 'Explore features' }}
-        microCopy="Enterprise ready · Multi-tenant architecture · Built for the Bop Universe"
+        title={data.ctaTitle || (t ? t('marketing:banners.cta_title', 'Ready to elevate your marketing operations?') : 'Ready to elevate your marketing operations?')}
+        subtitle={data.ctaSubtitle || (t ? t('marketing:banners.cta_subtitle', 'Unified social management, real-time analytics, and native AI workflows.') : 'Unified social management, real-time analytics, and native AI workflows.')}
+        primary={{ to: '/signup', label: data.ctaPrimary || (t ? t('marketing:home.get_started', 'Get started') : 'Get started') }}
+        secondary={{ to: '/features', label: t ? t('marketing:features.catalog_cta_explore', 'Explore features') : 'Explore features' }}
+        microCopy={t ? t('marketing:home.cta_microcopy', 'Enterprise ready · Multi-tenant architecture · Built for the Bop Universe') : 'Enterprise ready · Multi-tenant architecture · Built for the Bop Universe'}
         variant="cta"
       />
     </section>

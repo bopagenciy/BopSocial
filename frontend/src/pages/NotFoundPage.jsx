@@ -9,6 +9,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Search, ArrowRight, Home, BookOpen } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 import MarketingLayout from '../components/marketing/MarketingLayout';
 import Button from '../components/ui/Button';
@@ -16,6 +17,7 @@ import Input from '../components/ui/Input';
 import Meta from '../components/Meta';
 
 export default function NotFoundPage() {
+  const { t } = useTranslation(['marketing', 'common']);
   const navigate = useNavigate();
 
   function handleSearch(e) {
@@ -27,8 +29,8 @@ export default function NotFoundPage() {
   return (
     <MarketingLayout>
       <Meta
-        title="Page not found"
-        description="The page you're looking for doesn't exist, has moved, or was never here."
+        title={t('metadata.not_found_title', 'Page Not Found')}
+        description={t('errors.not_found_desc', "The page you're looking for doesn't exist, has moved, or was never here.")}
       />
       <section
         style={{
@@ -69,7 +71,7 @@ export default function NotFoundPage() {
               marginBottom: 12,
             }}
           >
-            404
+            {t('errors.not_found_code', '404')}
           </motion.div>
 
           <h1 style={{
@@ -79,11 +81,10 @@ export default function NotFoundPage() {
             letterSpacing: '-0.025em',
             color: 'var(--text-primary)',
           }}>
-            Page not found
+            {t('errors.not_found_title', 'Page not found')}
           </h1>
           <p style={{ margin: '12px auto 28px', maxWidth: 440, fontSize: 16, lineHeight: 1.65, color: 'var(--text-secondary)' }}>
-            The page you're looking for doesn't exist, has moved, or was never here.
-            Try the home page or search our help center.
+            {t('errors.not_found_desc', "The page you're looking for doesn't exist, has moved, or was never here.")}
           </p>
 
           <form onSubmit={handleSearch} style={{ maxWidth: 420, margin: '0 auto 24px' }}>
@@ -91,21 +92,17 @@ export default function NotFoundPage() {
               name="q"
               type="search"
               size="lg"
-              placeholder="Search the help center…"
+              placeholder={t('help.search_placeholder', 'Search the help center…')}
               prefix={<Search size={16} />}
             />
           </form>
 
           <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Button as={Link} to="/" size="lg" icon={Home}>Go home</Button>
+            <Button as={Link} to="/" size="lg" icon={Home}>{t('errors.back_home', 'Go home')}</Button>
             <Button as={Link} to="/help" variant="secondary" size="lg" icon={BookOpen} iconRight={ArrowRight}>
-              Help center
+              {t('resources.help_center', 'Help center')}
             </Button>
           </div>
-
-          <p style={{ marginTop: 28, fontSize: 12, color: 'var(--text-tertiary)' }}>
-            Think this is a bug? <Link to="/contact" style={{ color: 'var(--text-link)', fontWeight: 500 }}>Let us know</Link>.
-          </p>
         </div>
       </section>
     </MarketingLayout>

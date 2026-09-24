@@ -1,12 +1,10 @@
 /* ============================================================================
- *  Social Stats — Social Media Management & Marketing Platform
- *  Author    : Chandrabhan Shekhawat
- *  Company   : Gigai Kripa Services
- *  Website   : https://gigaikripaservices.com/
- *  Copyright (c) 2026 Chandrabhan Shekhawat / Gigai Kripa Services.
- *  Released under the MIT License — see LICENSE. Keep this notice.
+ *  Bop Social — Marketing Operating System
+ *  Author    : Bop Social Team
+ *  Website   : https://bopsocial.com
  * ========================================================================== */
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { CheckCircle2, AlertTriangle, XCircle, RefreshCw } from 'lucide-react';
 import MarketingLayout from '../components/marketing/MarketingLayout';
 import Badge from '../components/ui/Badge';
@@ -35,17 +33,36 @@ const TO_UI = {
   outage:      'down',
 };
 
-const SEV = {
-  operational: { color: 'var(--success)', bg: 'var(--success-bg)', label: 'Operational',    icon: CheckCircle2 },
-  partial:     { color: 'var(--warning)', bg: 'var(--warning-bg)', label: 'Partial outage', icon: AlertTriangle },
-  down:        { color: 'var(--danger)',  bg: 'var(--danger-bg)',  label: 'Major outage',   icon: XCircle },
-  unknown:     { color: 'var(--text-tertiary)', bg: 'var(--surface-card-elevated)', label: 'Checking…', icon: RefreshCw },
-  minor:       { color: 'var(--warning)', bg: 'var(--warning-bg)', label: 'Minor',          icon: AlertTriangle },
-  maintenance: { color: 'var(--info)',    bg: 'var(--info-bg)',    label: 'Maintenance',    icon: AlertTriangle },
+const SEV_CONFIG = {
+  operational: { color: 'var(--success)', bg: 'var(--success-bg)', key: 'all_operational', defaultLabel: 'Operational', icon: CheckCircle2 },
+  partial:     { color: 'var(--warning)', bg: 'var(--warning-bg)', key: 'partial_outage',  defaultLabel: 'Partial outage', icon: AlertTriangle },
+  down:        { color: 'var(--danger)',  bg: 'var(--danger-bg)',  key: 'major_outage',    defaultLabel: 'Major outage', icon: XCircle },
+  unknown:     { color: 'var(--text-tertiary)', bg: 'var(--surface-card-elevated)', key: 'checking', defaultLabel: 'Checking…', icon: RefreshCw },
+  minor:       { color: 'var(--warning)', bg: 'var(--warning-bg)', key: 'partial_outage',  defaultLabel: 'Minor', icon: AlertTriangle },
+  maintenance: { color: 'var(--info)',    bg: 'var(--info-bg)',    key: 'maintenance',     defaultLabel: 'Maintenance', icon: AlertTriangle },
 };
 
-// 90-day historical uptime — seeded so bars are stable per service. The latest
-// day's status is overridden by the live response so today never disagrees.
+function getSev(statusKey, t) {
+  const conf = SEV_CONFIG[statusKey] || SEV_CONFIG.unknown;
+  return {
+    ...conf,
+    label: t ? t(`status.${conf.key}`, conf.defaultLabel) : conf.defaultLabel,
+  };
+}
+
+const FALLBACK_SERVICES = [
+  { id: 'web',      name: 'Web app' },
+  { id: 'api',      name: 'API' },
+  { id: 'workers',  name: 'Background workers (Celery)' },
+  { id: 'realtime', name: 'Realtime / WebSockets' },
+  { id: 'db',       name: 'Database' },
+  { id: 'meta',     name: 'Meta integration (Facebook + Instagram)' },
+  { id: 'google',   name: 'Google integration (YouTube + GMB)' },
+  { id: 'linkedin', name: 'LinkedIn integration' },
+  { id: 'pinbot',   name: 'WhatsApp (Pinbot.ai)' },
+  { id: 'ai',       name: 'Bop Social AI' },
+];
+
 function buildUptime(seed, todayStatus) {
   const days = [];
   let r = seed;
@@ -57,7 +74,6 @@ function buildUptime(seed, todayStatus) {
     if (v > 0.998) s = 'down';
     days.push(s);
   }
-  // Override today (last bar) to match live status.
   if (todayStatus === 'down')    days[days.length - 1] = 'down';
   else if (todayStatus === 'partial') days[days.length - 1] = 'partial';
   else                                days[days.length - 1] = 'up';
@@ -88,20 +104,8 @@ const INCIDENTS = [
   },
 ];
 
-const FALLBACK_SERVICES = [
-  { id: 'web',      name: 'Web app' },
-  { id: 'api',      name: 'API' },
-  { id: 'workers',  name: 'Background workers (Celery)' },
-  { id: 'realtime', name: 'Realtime / WebSockets' },
-  { id: 'db',       name: 'Database' },
-  { id: 'meta',     name: 'Meta integration (Facebook + Instagram)' },
-  { id: 'google',   name: 'Google integration (YouTube + GMB)' },
-  { id: 'linkedin', name: 'LinkedIn integration' },
-  { id: 'pinbot',   name: 'WhatsApp (Pinbot.ai)' },
-  { id: 'ai',       name: 'Social Stats' },
-];
-
 export default function StatusPage() {
+  const { t } = useTranslation(['marketing', 'navigation']);
   const [data,  setData]  = useState(null);   // raw response
   const [error, setError] = useState(null);   // 'unreachable' | null
   const [lastChecked, setLastChecked] = useState(null);
@@ -144,14 +148,14 @@ export default function StatusPage() {
     return TO_UI[data.overall] || 'operational';
   }, [data, error]);
 
-  const ov = SEV[overall];
+  const ov = getSev(overall, t);
   const Icon = ov.icon;
 
   return (
     <MarketingLayout>
       <Meta
-        title="System Status"
-        description="Live uptime, scheduled maintenance, and recent incidents for the Social Stats platform."
+        title={t('metadata.status_title')}
+        description={t('metadata.status_desc')}
       />
 
       {/* Hero / overall status */}
@@ -169,7 +173,7 @@ export default function StatusPage() {
           }}
         />
         <div style={{ position: 'relative', maxWidth: 720, margin: '0 auto', textAlign: 'center' }}>
-          <Badge variant="brand" size="md">Status</Badge>
+          <Badge variant="brand" size="md">{t('status.badge')}</Badge>
 
           <div style={{
             marginTop: 24,
@@ -183,11 +187,11 @@ export default function StatusPage() {
           }}>
             <Icon size={16} className={refreshing ? 'spin' : undefined} />
             {error
-              ? 'Status API unreachable — last cache shown'
+              ? t('status.api_unreachable')
               : overall === 'operational'
-                ? 'All systems operational'
+                ? t('status.all_operational')
                 : overall === 'unknown'
-                  ? 'Checking…'
+                  ? t('status.checking')
                   : ov.label}
           </div>
 
@@ -199,13 +203,13 @@ export default function StatusPage() {
             fontWeight: 600,
             color: 'var(--text-primary)',
           }}>
-            Social Stats System Status
+            {t('status.hero_title')}
           </h1>
           <p style={{ margin: 0, fontSize: 13, color: 'var(--text-tertiary)' }}>
             {lastChecked
-              ? <>Last checked {lastChecked.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' })} · auto-refreshes every 30s</>
-              : 'Checking…'}
-            {data?.region && <> · region <strong style={{ color: 'var(--text-secondary)' }}>{data.region}</strong></>}
+              ? t('status.last_checked', { time: lastChecked.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' }) })
+              : t('status.checking')}
+            {data?.region && <> · {t('status.region')} <strong style={{ color: 'var(--text-secondary)' }}>{data.region}</strong></>}
             {' · '}
             <button
               type="button"
@@ -221,7 +225,7 @@ export default function StatusPage() {
                 textDecoration: 'underline',
               }}
             >
-              Refresh now
+              {t('status.refresh_now')}
             </button>
           </p>
         </div>
@@ -242,11 +246,12 @@ export default function StatusPage() {
           {services.map((svc, i) => {
             const uiStatus = svc.status === 'unknown'
               ? 'unknown'
-              : (TO_UI[svc.status] || svc.status); // accept both raw + UI keys
-            const s = SEV[uiStatus] || SEV.unknown;
+              : (TO_UI[svc.status] || svc.status);
+            const s = getSev(uiStatus, t);
             const SvcIcon = s.icon;
             const days = buildUptime(svc.id.charCodeAt(0) * 17 + i, uiStatus);
             const upPct = (days.filter((d) => d === 'up').length / days.length * 100).toFixed(2);
+            const svcName = t(`status.services.${svc.id}`, svc.name);
 
             return (
               <div
@@ -263,15 +268,15 @@ export default function StatusPage() {
               >
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
-                    {svc.name}
+                    {svcName}
                   </div>
                   <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>
-                    {upPct}% uptime · 90 days
+                    {t('status.uptime_pct', { pct: upPct })}
                     {svc.latency_ms != null && uiStatus === 'operational' && (
                       <> · {svc.latency_ms}ms</>
                     )}
                     {svc.workers != null && (
-                      <> · {svc.workers} worker{svc.workers === 1 ? '' : 's'}</>
+                      <> · {svc.workers} {svc.workers === 1 ? t('status.worker') : t('status.workers')}</>
                     )}
                   </div>
                 </div>
@@ -331,7 +336,7 @@ export default function StatusPage() {
       <section style={{ padding: '32px 32px 96px' }}>
         <div style={{ maxWidth: 'var(--container-xl)', margin: '0 auto' }}>
           <h2 style={{ margin: '0 0 18px', fontSize: 18, fontWeight: 600, color: 'var(--text-primary)' }}>
-            Recent incidents
+            {t('status.recent_incidents')}
           </h2>
 
           <div style={{
@@ -342,11 +347,11 @@ export default function StatusPage() {
           }}>
             {INCIDENTS.length === 0 ? (
               <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>
-                No incidents in the last 30 days.
+                {t('status.no_incidents')}
               </div>
             ) : (
               INCIDENTS.map((inc, i) => {
-                const sev = SEV[inc.severity] || SEV.minor;
+                const sev = getSev(inc.severity, t);
                 return (
                   <article
                     key={inc.id}
@@ -374,8 +379,8 @@ export default function StatusPage() {
           </div>
 
           <p style={{ marginTop: 16, fontSize: 12, color: 'var(--text-tertiary)', textAlign: 'center' }}>
-            Subscribe to incident notifications via the link in your{' '}
-            <a href="/dashboard/account-settings" style={{ color: 'var(--text-link)' }}>account settings</a>.
+            {t('status.subscribe_prefix')}{' '}
+            <a href="/dashboard/account-settings" style={{ color: 'var(--text-link)' }}>{t('status.account_settings')}</a>.
           </p>
         </div>
       </section>

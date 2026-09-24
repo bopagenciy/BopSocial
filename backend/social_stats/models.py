@@ -95,6 +95,16 @@ class Client(models.Model):
     # IANA timezone for accurate scheduled-post timing per client.
     timezone = models.CharField(max_length=64, blank=True, default='')
 
+    # Workspace/tenant default language when user has not set an explicit preference.
+    default_language = models.CharField(
+        max_length=10,
+        choices=[('en', 'English'), ('es', 'Spanish')],
+        null=True,
+        blank=True,
+        default=None,
+        help_text="Tenant default language ('en' or 'es'). Unset/None falls back to browser/system fallback.",
+    )
+
     # ── Marketplace ownership ────────────────────────────────────
     # Who owns this workspace? Existing rows backfill to 'agency_owned' so the
     # legacy agency-managed flow stays untouched. End-user self-signups create
@@ -192,7 +202,14 @@ class UserProfile(models.Model):
     terms_accepted_at = models.DateTimeField(null=True, blank=True)
     is_self_registered = models.BooleanField(default=False)
     email_verified     = models.BooleanField(default=True)   # False for email/password signups until verified
-    language           = models.CharField(max_length=10, choices=[('en', 'English'), ('es', 'Spanish')], default='en')
+    language           = models.CharField(
+        max_length=10,
+        choices=[('en', 'English'), ('es', 'Spanish')],
+        null=True,
+        blank=True,
+        default=None,
+        help_text="Explicit user language preference ('en' or 'es'). Unset/None falls back to tenant default or browser.",
+    )
     agency             = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='managed_clients')
 
     # ── Marketplace account type ────────────────────────────────

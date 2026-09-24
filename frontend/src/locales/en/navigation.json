@@ -82,6 +82,12 @@
     "terms": "Terms",
     "security": "Security",
     "cookies": "Cookies",
-    "status": "Status"
+    "status": "Status",
+    "gdpr": "GDPR",
+    "dpdp": "DPDP",
+    "press": "Press",
+    "careers": "Careers",
+    "systems_operational": "All systems operational",
+    "built_for_universe": "Built for the Bop Universe"
   }
 }

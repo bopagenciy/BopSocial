@@ -401,18 +401,33 @@ def _send_client_joined_email(agency_user, client_user):
 def _send_verification_email(user, token):
     verify_url = f"{FRONTEND_URL}/verify-email?token={token}"
     name       = user.first_name or user.email.split('@')[0]
+    profile    = getattr(user, 'profile', None)
+    lang       = getattr(profile, 'language', None) or (getattr(profile.client, 'default_language', None) if (profile and profile.client) else None)
 
-    subject = 'Verify your Bop Social account'
+    if lang == 'es':
+        subject = 'Verifica tu cuenta de Bop Social'
+        title   = 'Verifica tu correo electrónico'
+        greeting = f'Hola <strong style="color:#0f172a;">{name}</strong>, ¡gracias por registrarte! Haz clic en el botón a continuación para verificar tu dirección de correo electrónico y activar tu cuenta de Bop Social.'
+        cta_label = 'Verificar Correo Electrónico'
+        expiry_note = '&#128274; Este enlace expira en <strong>24 horas</strong>. Si no creaste una cuenta en Bop Social, puedes ignorar este mensaje con seguridad.'
+        plain = f"Hola {name},\n\nVerifica tu cuenta de Bop Social:\n{verify_url}\n\nEste enlace expira en 24 horas."
+    else:
+        subject = 'Verify your Bop Social account'
+        title   = 'Verify your email'
+        greeting = f'Hi <strong style="color:#0f172a;">{name}</strong>, thanks for signing up! Click the button below to verify your email address and activate your Bop Social account.'
+        cta_label = 'Verify Email Address'
+        expiry_note = '&#128274; This link expires in <strong>24 hours</strong>. If you didn\'t create a Bop Social account, you can safely ignore this email.'
+        plain = f"Hi {name},\n\nVerify your Bop Social account:\n{verify_url}\n\nThis link expires in 24 hours."
+
     html = _email_html(
-        title      = 'Verify your email',
-        greeting   = f'Hi <strong style="color:#0f172a;">{name}</strong>, thanks for signing up! Click the button below to verify your email address and activate your Bop Social account.',
+        title      = title,
+        greeting   = greeting,
         body_html  = '',
         cta_url    = verify_url,
-        cta_label  = 'Verify Email Address',
-        expiry_note= '&#128274; This link expires in <strong>24 hours</strong>. If you didn\'t create a Bop Social account, you can safely ignore this email.',
+        cta_label  = cta_label,
+        expiry_note= expiry_note,
         frontend_url = FRONTEND_URL,
     )
-    plain = f"Hi {name},\n\nVerify your Bop Social account:\n{verify_url}\n\nThis link expires in 24 hours."
 
     try:
         send_mail(subject, plain, FROM_EMAIL, [user.email], html_message=html, fail_silently=False)
@@ -423,18 +438,33 @@ def _send_verification_email(user, token):
 def _send_reset_email(user, token):
     reset_url = f"{FRONTEND_URL}/reset-password?token={token}"
     name      = user.first_name or user.email.split('@')[0]
+    profile   = getattr(user, 'profile', None)
+    lang      = getattr(profile, 'language', None) or (getattr(profile.client, 'default_language', None) if (profile and profile.client) else None)
 
-    subject = 'Reset your Bop Social password'
+    if lang == 'es':
+        subject = 'Restablece tu contraseña de Bop Social'
+        title   = 'Restablece tu contraseña'
+        greeting = f'Hola <strong style="color:#0f172a;">{name}</strong>, recibimos una solicitud para restablecer tu contraseña de Bop Social. Haz clic en el botón a continuación para crear una nueva.'
+        cta_label = 'Restablecer Contraseña'
+        expiry_note = '&#9203; Este enlace expira en <strong>2 horas</strong>. Si no solicitaste restablecer tu contraseña, puedes ignorar este mensaje con seguridad.'
+        plain = f"Hola {name},\n\nRestablece tu contraseña de Bop Social:\n{reset_url}\n\nEste enlace expira en 2 horas."
+    else:
+        subject = 'Reset your Bop Social password'
+        title   = 'Reset your password'
+        greeting = f'Hi <strong style="color:#0f172a;">{name}</strong>, we received a request to reset your Bop Social password. Click the button below to set a new one.'
+        cta_label = 'Reset Password'
+        expiry_note = '&#9203; This link expires in <strong>2 hours</strong>. If you didn\'t request a password reset, you can safely ignore this email.'
+        plain = f"Hi {name},\n\nReset your Bop Social password:\n{reset_url}\n\nThis link expires in 2 hours."
+
     html = _email_html(
-        title      = 'Reset your password',
-        greeting   = f'Hi <strong style="color:#0f172a;">{name}</strong>, we received a request to reset your Bop Social password. Click the button below to set a new one.',
+        title      = title,
+        greeting   = greeting,
         body_html  = '',
         cta_url    = reset_url,
-        cta_label  = 'Reset Password',
-        expiry_note= '&#9203; This link expires in <strong>2 hours</strong>. If you didn\'t request a password reset, you can safely ignore this email.',
+        cta_label  = cta_label,
+        expiry_note= expiry_note,
         frontend_url = FRONTEND_URL,
     )
-    plain = f"Hi {name},\n\nReset your Bop Social password:\n{reset_url}\n\nThis link expires in 2 hours."
 
     try:
         send_mail(subject, plain, FROM_EMAIL, [user.email], html_message=html, fail_silently=False)

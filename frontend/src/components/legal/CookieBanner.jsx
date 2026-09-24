@@ -24,6 +24,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Cookie, ChevronDown, ChevronUp } from 'lucide-react';
 
 import { privacyAPI } from '../../services/api';
@@ -44,6 +45,7 @@ export function readCookieChoice() {
 
 
 export default function CookieBanner() {
+  const { t } = useTranslation('common');
   const [choices, setChoices] = useState(() => readCookieChoice());
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [pending, setPending] = useState({
@@ -92,15 +94,14 @@ export default function CookieBanner() {
   }
 
   return (
-    <div role="dialog" aria-label="Cookie preferences" style={s.wrap}>
+    <div role="dialog" aria-label={t('cookie_banner.title', 'Cookie preferences')} style={s.wrap}>
       <div style={s.card}>
         <div style={s.header}>
           <Cookie size={18} style={{ color: 'var(--brand-primary-hover)', flexShrink: 0 }} />
           <div style={{ flex: 1 }}>
-            <div style={s.title}>We use cookies</div>
+            <div style={s.title}>{t('cookie_banner.title', 'We use cookies')}</div>
             <div style={s.subtitle}>
-              Essential cookies keep Social Stats working. Analytics + marketing cookies are
-              optional — you can change preferences any time in Settings → Data & Privacy.
+              {t('cookie_banner.description', 'Essential cookies keep Bop Social working. Analytics + marketing cookies are optional — you can change preferences any time in Settings → Data & Privacy.')}
             </div>
           </div>
         </div>
@@ -108,24 +109,28 @@ export default function CookieBanner() {
         {advancedOpen && (
           <div style={s.advanced}>
             <Toggle name="essential" pending={pending} setPending={setPending}
-                    label="Essential" desc="Login, security, CSRF — can't be disabled" disabled />
+                    label={t('cookie_banner.essential', 'Essential')}
+                    desc={t('cookie_banner.essential_desc', "Login, security, CSRF — can't be disabled")} disabled />
             <Toggle name="functional" pending={pending} setPending={setPending}
-                    label="Functional" desc="Theme, language, layout preferences" />
+                    label={t('cookie_banner.functional', 'Functional')}
+                    desc={t('cookie_banner.functional_desc', 'Theme, language, layout preferences')} />
             <Toggle name="analytics" pending={pending} setPending={setPending}
-                    label="Analytics" desc="Anonymous usage stats (Posthog)" />
+                    label={t('cookie_banner.analytics', 'Analytics')}
+                    desc={t('cookie_banner.analytics_desc', 'Anonymous usage stats')} />
             <Toggle name="marketing" pending={pending} setPending={setPending}
-                    label="Marketing" desc="Ad measurement and retargeting" />
+                    label={t('cookie_banner.marketing', 'Marketing')}
+                    desc={t('cookie_banner.marketing_desc', 'Ad measurement and platform updates')} />
           </div>
         )}
 
         <div style={s.actions}>
-          <button type="button" onClick={acceptAll} style={s.btnPrimary}>Accept all</button>
-          <button type="button" onClick={essentialOnly} style={s.btnSecondary}>Essential only</button>
+          <button type="button" onClick={acceptAll} style={s.btnPrimary}>{t('cookie_banner.accept_all', 'Accept all')}</button>
+          <button type="button" onClick={essentialOnly} style={s.btnSecondary}>{t('cookie_banner.reject_non_essential', 'Essential only')}</button>
           <button type="button" onClick={() => setAdvancedOpen((v) => !v)} style={s.btnGhost}>
-            {advancedOpen ? <><ChevronUp size={13} /> Hide options</> : <><ChevronDown size={13} /> Customise</>}
+            {advancedOpen ? <><ChevronUp size={13} /> {t('actions.close', 'Hide options')}</> : <><ChevronDown size={13} /> {t('cookie_banner.customize', 'Customise')}</>}
           </button>
           {advancedOpen && (
-            <button type="button" onClick={saveCustom} style={s.btnPrimary}>Save preferences</button>
+            <button type="button" onClick={saveCustom} style={s.btnPrimary}>{t('cookie_banner.save_preferences', 'Save preferences')}</button>
           )}
         </div>
       </div>

@@ -14,6 +14,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { CheckCircle, XCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 
 import AuthLayout from '../components/auth/AuthLayout';
 import Button from '../components/ui/Button';
@@ -22,6 +23,7 @@ import { authAPI } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
 
 export default function VerifyEmailPage() {
+  const { t } = useTranslation('auth');
   const navigate = useNavigate();
   const { refreshAuth } = useAuth();
   const token = new URLSearchParams(window.location.search).get('token');
@@ -32,7 +34,7 @@ export default function VerifyEmailPage() {
   useEffect(() => {
     if (!token) {
       setStatus('error');
-      setMessage('No verification token found in the URL.');
+      setMessage(t('verify_email.failed_default', 'This verification link is invalid or has expired.'));
       return;
     }
     authAPI
@@ -45,21 +47,21 @@ export default function VerifyEmailPage() {
       })
       .catch((err) => {
         setStatus('error');
-        setMessage(err?.response?.data?.error || 'This verification link is invalid or has expired.');
+        setMessage(err?.response?.data?.error || t('verify_email.failed_default', 'This verification link is invalid or has expired.'));
       });
-  }, []);
+  }, [token, t, refreshAuth, navigate]);
 
   return (
     <AuthLayout
       heroTitle={
-        status === 'success' ? 'You\'re verified.' :
-        status === 'error'   ? 'Couldn\'t verify your email.' :
-                               'Just a moment…'
+        status === 'success' ? t('verify_email.success_title', 'Email verified!') :
+        status === 'error'   ? t('verify_email.failed_title', 'Verification failed') :
+                               t('verify_email.loading_title', 'Verifying your email...')
       }
       heroSub={
-        status === 'success' ? 'Welcome to Social Stats. Let\'s get your workspace set up.' :
-        status === 'error'   ? 'Verification links expire after 24 hours. Resend a fresh one if needed.' :
-                               'We\'re activating your Social Stats account.'
+        status === 'success' ? t('verify_email.success_subtitle', 'Your account is active. Redirecting to your dashboard...') :
+        status === 'error'   ? t('verify_email.failed_default', 'This verification link is invalid or has expired.') :
+                               t('verify_email.loading_subtitle', 'This usually takes just a second.')
       }
     >
       <div style={cardStyle}>
@@ -68,8 +70,8 @@ export default function VerifyEmailPage() {
             <div aria-hidden style={iconBubbleStyle}>
               <Spinner size="md" />
             </div>
-            <h1 style={titleStyle}>Verifying your email…</h1>
-            <p style={subStyle}>This usually takes just a second.</p>
+            <h1 style={titleStyle}>{t('verify_email.loading_title', 'Verifying your email...')}</h1>
+            <p style={subStyle}>{t('verify_email.loading_subtitle', 'This usually takes just a second.')}</p>
           </>
         )}
 
@@ -82,8 +84,8 @@ export default function VerifyEmailPage() {
             <div aria-hidden style={{ ...iconBubbleStyle, background: 'var(--success-bg)', color: 'var(--success)' }}>
               <CheckCircle size={28} strokeWidth={1.8} />
             </div>
-            <h1 style={titleStyle}>Email verified!</h1>
-            <p style={subStyle}>Your account is active. Redirecting to your dashboard…</p>
+            <h1 style={titleStyle}>{t('verify_email.success_title', 'Email verified!')}</h1>
+            <p style={subStyle}>{t('verify_email.success_subtitle', 'Your account is active. Redirecting to your dashboard...')}</p>
           </motion.div>
         )}
 
@@ -92,17 +94,17 @@ export default function VerifyEmailPage() {
             <div aria-hidden style={{ ...iconBubbleStyle, background: 'var(--danger-bg)', color: 'var(--danger)' }}>
               <XCircle size={28} strokeWidth={1.8} />
             </div>
-            <h1 style={titleStyle}>Verification failed</h1>
+            <h1 style={titleStyle}>{t('verify_email.failed_title', 'Verification failed')}</h1>
             <p style={subStyle}>{message}</p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 20 }}>
               <Button as={Link} to="/signup" size="md" fullWidth>
-                Back to sign up
+                {t('verify_email.back_to_signup', 'Back to sign up')}
               </Button>
               <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-                Already verified?{' '}
+                {t('signup.already_have_account', 'Already verified?')}{' '}
                 <Link to="/login" style={{ color: 'var(--text-link)', fontWeight: 600, textDecoration: 'none' }}>
-                  Sign in
+                  {t('verify_email.sign_in', 'Sign in')}
                 </Link>
               </div>
             </div>

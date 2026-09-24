@@ -48,7 +48,9 @@ def user_profile(request):
             'last_name':     user.last_name,
             'email':         user.email,
             'role':          profile.role if profile else 'client',
-            'language':      profile.language if profile else 'en',
+            'language':      profile.language if (profile and profile.language) else (getattr(profile.client, 'default_language', None) if (profile and profile.client) else None),
+            'user_language': profile.language if profile else None,
+            'tenant_language': getattr(profile.client, 'default_language', None) if (profile and profile.client) else None,
             'avatar':        avatar_url,
             'is_social':     not user.has_usable_password(),
             'email_verified': profile.email_verified if profile else True,
@@ -70,11 +72,15 @@ def user_profile(request):
     user.save(update_fields=['first_name', 'last_name'])
 
     # Language preference
-    lang = data.get('language')
-    if lang and profile:
-        lang = lang.strip().lower()
-        if lang in ('en', 'es'):
-            profile.language = lang
+    if 'language' in data and profile:
+        lang = data.get('language')
+        if lang:
+            lang_str = str(lang).strip().lower()
+            if lang_str in ('en', 'es'):
+                profile.language = lang_str
+                profile.save(update_fields=['language'])
+        else:
+            profile.language = None
             profile.save(update_fields=['language'])
 
     # Avatar upload
@@ -109,7 +115,9 @@ def user_profile(request):
     return Response({
         'first_name': user.first_name,
         'last_name':  user.last_name,
-        'language':   profile.language if profile else 'en',
+        'language':   profile.language if (profile and profile.language) else (getattr(profile.client, 'default_language', None) if (profile and profile.client) else None),
+        'user_language': profile.language if profile else None,
+        'tenant_language': getattr(profile.client, 'default_language', None) if (profile and profile.client) else None,
         'avatar':     avatar_url,
     })
 

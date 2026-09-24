@@ -8,6 +8,7 @@
  * ========================================================================== */
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { ArrowLeft, ArrowRight, Linkedin, Facebook, Link as LinkIcon, Quote } from 'lucide-react';
 
 import MarketingLayout from '../components/marketing/MarketingLayout';
@@ -35,7 +36,8 @@ import POSTS, { getPost, getRelated } from './marketing/blogPosts';
  */
 export default function BlogPostPage() {
   const { slug } = useParams();
-  const post = getPost(slug);
+  const { t, i18n } = useTranslation(['marketing', 'navigation', 'common']);
+  const post = getPost(slug, i18n.language);
 
   // Slugify h2s for TOC anchors.
   const sections = useMemo(
@@ -62,16 +64,16 @@ export default function BlogPostPage() {
     return () => obs.disconnect();
   }, [sections]);
 
-  if (!post) return <NotFoundState slug={slug} />;
+  if (!post) return <NotFoundState slug={slug} t={t} />;
 
-  const related = getRelated(slug, 3);
+  const related = getRelated(slug, 3, i18n.language);
 
   function copyLink() {
     try {
       navigator.clipboard.writeText(window.location.href);
-      toast.success('Link copied to clipboard');
+      toast.success(t('marketing:blog.link_copied', 'Link copied to clipboard'));
     } catch {
-      toast.error('Could not copy link');
+      toast.error(t('marketing:common.error', 'Could not copy link'));
     }
   }
 
@@ -97,8 +99,8 @@ export default function BlogPostPage() {
       <JsonLd
         id="breadcrumbs"
         data={buildBreadcrumbs([
-          { name: 'Home',  url: `${SITE_URL}/` },
-          { name: 'Blog',  url: `${SITE_URL}/blog` },
+          { name: t('navigation:nav.home', 'Home'),  url: `${SITE_URL}/` },
+          { name: t('marketing:blog.badge', 'Blog'),  url: `${SITE_URL}/blog` },
           { name: post.title, url: `${SITE_URL}/blog/${post.slug}` },
         ])}
       />
@@ -126,7 +128,7 @@ export default function BlogPostPage() {
                 marginBottom: 24,
               }}
             >
-              <ArrowLeft size={13} /> Back to blog
+              <ArrowLeft size={13} /> {t('marketing:blog.back_to_blog', 'Back to blog')}
             </Link>
 
             <Badge variant="brand" size="sm">{post.category}</Badge>
@@ -148,7 +150,7 @@ export default function BlogPostPage() {
                   {post.author.name} · {post.author.role}
                 </div>
                 <div style={{ color: 'var(--text-tertiary)' }}>
-                  {new Date(post.date).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}
+                  {new Date(post.date).toLocaleDateString(i18n.language || undefined, { year: 'numeric', month: 'long', day: 'numeric' })}
                   {' · '}{post.readTime}
                 </div>
               </div>
@@ -203,11 +205,11 @@ export default function BlogPostPage() {
                 borderRadius: 'var(--radius-md)',
               }}
             >
-              <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>Share this post</span>
+              <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>{t('marketing:blog.share_heading', 'Share this article')}</span>
               <div style={{ display: 'flex', gap: 6 }}>
-                <ShareBtn icon={Linkedin} href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`} label="Share on LinkedIn" />
-                <ShareBtn icon={Facebook} href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`} label="Share on Facebook" />
-                <ShareBtn icon={LinkIcon} onClick={copyLink} label="Copy link" />
+                <ShareBtn icon={Linkedin} href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`} label={t('marketing:blog.share_linkedin', 'Share on LinkedIn')} />
+                <ShareBtn icon={Facebook} href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`} label={t('marketing:blog.share_facebook', 'Share on Facebook')} />
+                <ShareBtn icon={LinkIcon} onClick={copyLink} label={t('marketing:blog.copy_link', 'Copy link')} />
               </div>
             </div>
 
@@ -229,7 +231,9 @@ export default function BlogPostPage() {
                   {post.author.role}
                 </div>
                 <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: 'var(--text-secondary)' }}>
-                  Writes about {post.tags?.slice(0, 2).join(' and ').toLowerCase() || post.category.toLowerCase()} on the SocialStats journal.
+                  {i18n.language?.startsWith('es')
+                    ? `Escribe sobre ${post.tags?.slice(0, 2).join(' y ').toLowerCase() || post.category.toLowerCase()} en el diario de Bop Social.`
+                    : `Writes about ${post.tags?.slice(0, 2).join(' and ').toLowerCase() || post.category.toLowerCase()} on the Bop Social journal.`}
                 </p>
               </div>
             </div>
@@ -254,7 +258,7 @@ export default function BlogPostPage() {
                 color: 'var(--text-tertiary)',
                 padding: '4px 8px 10px',
               }}>
-                On this page
+                {t('marketing:blog.table_of_contents', 'In this article')}
               </div>
               <nav style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                 {sections.map((s) => (
@@ -293,7 +297,7 @@ export default function BlogPostPage() {
               letterSpacing: '0.06em', textTransform: 'uppercase',
               color: 'var(--text-tertiary)',
             }}>
-              Keep reading
+              {t('marketing:blog.related_title', 'Keep reading')}
             </h2>
             <div
               style={{
@@ -325,14 +329,14 @@ export default function BlogPostPage() {
           boxShadow: 'var(--shadow-sm)',
         }}>
           <h3 style={{ margin: 0, fontSize: 22, fontWeight: 600, letterSpacing: '-0.015em', color: 'var(--text-primary)' }}>
-            Build your unified marketing OS today.
+            {t('marketing:blog.bottom_cta_title', 'Build your unified marketing OS today.')}
           </h3>
           <p style={{ margin: '8px auto 18px', maxWidth: 480, fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-            Experience the unified marketing platform built for modern teams.
+            {t('marketing:blog.bottom_cta_sub', 'Experience the unified marketing platform built for modern teams.')}
           </p>
           <div style={{ display: 'flex', justifyContent: 'center', gap: 10, flexWrap: 'wrap' }}>
-            <Button as={Link} to="/signup" size="md" iconRight={ArrowRight}>Get started with Bop Social</Button>
-            <Button as={Link} to="/blog" variant="ghost" size="md" icon={ArrowLeft}>All posts</Button>
+            <Button as={Link} to="/signup" size="md" iconRight={ArrowRight}>{t('marketing:home.hero_cta_free', 'Get started with Bop Social')}</Button>
+            <Button as={Link} to="/blog" variant="ghost" size="md" icon={ArrowLeft}>{t('marketing:blog.all_posts', 'All posts')}</Button>
           </div>
         </div>
       </section>
@@ -505,10 +509,13 @@ function RelatedCard({ post }) {
   );
 }
 
-function NotFoundState({ slug }) {
+function NotFoundState({ slug, t }) {
+  const title = t ? t('marketing:blog.not_found_title', "We couldn't find that post.") : "We couldn't find that post.";
+  const sub = t ? t('marketing:blog.not_found_sub', 'The article you are looking for does not exist or has been moved.') : 'The article you are looking for does not exist or has been moved.';
+  const back = t ? t('marketing:blog.back_to_blog', 'Back to all posts') : 'Back to all posts';
   return (
     <MarketingLayout>
-      <Meta title="Post not found" />
+      <Meta title={title} />
       <section style={{
         padding: '160px 32px 96px',
         textAlign: 'center',
@@ -523,16 +530,16 @@ function NotFoundState({ slug }) {
             letterSpacing: '-0.02em',
             color: 'var(--text-primary)',
           }}>
-            We couldn't find that post.
+            {title}
           </h1>
           <p style={{ margin: '0 0 24px', fontSize: 15, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-            The slug <code style={{
+            {sub} (<code style={{
               padding: '2px 8px', background: 'var(--surface-card)',
               border: '1px solid var(--border-subtle)', borderRadius: 4,
               fontSize: 13,
-            }}>{slug}</code> doesn't match any post in our journal.
+            }}>{slug}</code>)
           </p>
-          <Button as={Link} to="/blog" size="md" icon={ArrowLeft}>Back to all posts</Button>
+          <Button as={Link} to="/blog" size="md" icon={ArrowLeft}>{back}</Button>
         </div>
       </section>
     </MarketingLayout>

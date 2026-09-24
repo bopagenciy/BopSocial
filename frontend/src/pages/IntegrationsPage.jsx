@@ -1,14 +1,12 @@
 /* ============================================================================
- *  Social Stats — Social Media Management & Marketing Platform
- *  Author    : Chandrabhan Shekhawat
- *  Company   : Gigai Kripa Services
- *  Website   : https://gigaikripaservices.com/
- *  Copyright (c) 2026 Chandrabhan Shekhawat / Gigai Kripa Services.
- *  Released under the MIT License — see LICENSE. Keep this notice.
+ *  Bop Social — Marketing Operating System
+ *  Author    : Bop Social Team
+ *  Website   : https://bopsocial.com
  * ========================================================================== */
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import {
   Search, Sparkles, ArrowRight, CheckCircle2,
   MessageSquare, BarChart3, Megaphone, Workflow, CreditCard, ShoppingBag,
@@ -110,6 +108,7 @@ const INTEGRATIONS = [
 const FEATURED_SLUGS = ['facebook', 'whatsapp', 'gmb'];
 
 export default function IntegrationsPage() {
+  const { t } = useTranslation(['marketing', 'navigation']);
   const [filter, setFilter] = useState('all');
   const [query, setQuery]   = useState('');
 
@@ -125,8 +124,8 @@ export default function IntegrationsPage() {
   return (
     <MarketingLayout>
       <Meta
-        title="Integrations"
-        description="40+ native integrations across social, messaging, analytics, CRM, commerce, AI and more. Plug Bop Social into your existing stack in minutes."
+        title={t('metadata.integrations_title')}
+        description={t('metadata.integrations_desc')}
       />
 
       {/* ╭──────────────╮
@@ -150,7 +149,7 @@ export default function IntegrationsPage() {
             border: '1px solid rgba(245,166,35,0.25)',
             borderRadius: 'var(--radius-pill)',
           }}>
-            <Sparkles size={12} /> Integrations
+            <Sparkles size={12} /> {t('integrations.badge')}
           </span>
 
           <h1 style={{
@@ -161,9 +160,9 @@ export default function IntegrationsPage() {
             color: '#fff',
             lineHeight: 1.05,
           }}>
-            Plug Bop Social into the<br />
+            {t('integrations.hero_title_pre')}<br />
             <span style={{ background: 'var(--brand-gradient)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-              tools you already use
+              {t('integrations.hero_title_highlight')}
             </span>
           </h1>
 
@@ -174,7 +173,7 @@ export default function IntegrationsPage() {
             color: 'rgba(255,255,255,0.75)',
             lineHeight: 1.55,
           }}>
-            40+ native integrations across social, messaging, analytics, CRM, commerce, AI and more. Native means &quot;built and maintained by us, not Zapier.&quot;
+            {t('integrations.hero_subtitle')}
           </p>
 
           {/* Search */}
@@ -190,8 +189,8 @@ export default function IntegrationsPage() {
             <Search size={16} color="rgba(255,255,255,0.55)" />
             <input
               type="search"
-              aria-label="Search integrations"
-              placeholder="Search integrations…"
+              aria-label={t('integrations.search_placeholder')}
+              placeholder={t('integrations.search_placeholder')}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               style={{
@@ -232,7 +231,7 @@ export default function IntegrationsPage() {
                 color: 'rgba(255,255,255,0.55)', marginBottom: 16,
                 textAlign: 'center',
               }}>
-                Featured
+                {t('integrations.featured')}
               </div>
             </ScrollReveal>
 
@@ -267,6 +266,7 @@ export default function IntegrationsPage() {
             {CATEGORIES.map(({ id, label, icon: Icon }) => {
               const count = id === 'all' ? INTEGRATIONS.length : INTEGRATIONS.filter((i) => i.category === id).length;
               const active = filter === id;
+              const displayLabel = t(`integrations.categories.${id}`, label);
               return (
                 <button
                   key={id}
@@ -286,7 +286,7 @@ export default function IntegrationsPage() {
                   }}
                 >
                   <Icon size={13} />
-                  {label}
+                  {displayLabel}
                   <span style={{ opacity: 0.6, fontSize: 11 }}>{count}</span>
                 </button>
               );
@@ -312,10 +312,10 @@ export default function IntegrationsPage() {
               borderRadius: 'var(--radius-xl)',
             }}>
               <p style={{ margin: 0, fontSize: 15 }}>
-                No integrations match &quot;{query}&quot;.
+                {t('integrations.no_matches', { query })}
               </p>
               <p style={{ margin: '8px 0 16px', fontSize: 13 }}>
-                Try a different keyword — or request it below.
+                {t('integrations.try_different')}
               </p>
               <Button as={Link} to="/contact" size="sm" variant="ghost"
                 style={{
@@ -323,7 +323,7 @@ export default function IntegrationsPage() {
                   background: 'rgba(255,255,255,0.08)',
                   border: '1px solid rgba(255,255,255,0.18)',
                 }}>
-                Request integration
+                {t('integrations.request_button')}
               </Button>
             </div>
           )}
@@ -342,21 +342,21 @@ export default function IntegrationsPage() {
           }}>
             <Tile
               icon={Zap}
-              title="Build your own"
-              body="Public REST API + outbound webhooks + Zapier/Make. Build any integration we haven't shipped yet."
-              cta={{ to: '/contact?topic=api', label: 'Get API access' }}
+              title={t('integrations.tiles.build.title')}
+              body={t('integrations.tiles.build.body')}
+              cta={{ to: '/contact?topic=api', label: t('integrations.tiles.build.cta') }}
             />
             <Tile
               icon={Mail}
-              title="Don't see your tool?"
-              body="Tell us what you use. We ship 2–3 new native integrations every quarter, and customer requests jump the queue."
-              cta={{ to: '/contact', label: 'Request integration' }}
+              title={t('integrations.tiles.request.title')}
+              body={t('integrations.tiles.request.body')}
+              cta={{ to: '/contact', label: t('integrations.tiles.request.cta') }}
             />
             <Tile
               icon={Image}
-              title="Enterprise integrations"
-              body="SCIM provisioning, SSO (SAML / OIDC), private webhooks. Available on Enterprise plans."
-              cta={{ to: '/contact?topic=enterprise', label: 'Talk to sales' }}
+              title={t('integrations.tiles.enterprise.title')}
+              body={t('integrations.tiles.enterprise.body')}
+              cta={{ to: '/contact?topic=enterprise', label: t('integrations.tiles.enterprise.cta') }}
             />
           </div>
         </div>
@@ -382,9 +382,9 @@ export default function IntegrationsPage() {
             color: '#fff',
             lineHeight: 1.1,
           }}>
-            Connect your stack<br />
+            {t('integrations.cta.title_pre')}<br />
             <span style={{ background: 'var(--brand-gradient)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-              in under 10 minutes
+              {t('integrations.cta.title_highlight')}
             </span>
           </h2>
 
@@ -395,7 +395,7 @@ export default function IntegrationsPage() {
             color: 'rgba(255,255,255,0.75)',
             lineHeight: 1.55,
           }}>
-            Most teams connect 4–6 platforms in minutes. Unified management from day one.
+            {t('integrations.cta.subtitle')}
           </p>
 
           <div style={{
@@ -408,7 +408,7 @@ export default function IntegrationsPage() {
                 background: 'var(--brand-gradient)',
                 color: '#1E202A', fontWeight: 600, border: 'none',
               }}>
-              Get started <ArrowRight size={15} />
+              {t('integrations.cta.start')} <ArrowRight size={15} />
             </Button>
             <Button as={Link} to="/contact" size="lg" variant="ghost"
               style={{
@@ -416,7 +416,7 @@ export default function IntegrationsPage() {
                 background: 'rgba(255,255,255,0.08)',
                 border: '1px solid rgba(255,255,255,0.18)',
               }}>
-              Talk to sales
+              {t('integrations.cta.sales')}
             </Button>
           </div>
         </div>
@@ -427,6 +427,7 @@ export default function IntegrationsPage() {
 
 // ── card components ────────────────────────────────────────────────────
 function FeaturedCard({ i }) {
+  const { t } = useTranslation('marketing');
   return (
     <motion.article
       whileHover={{ y: -4 }}
@@ -471,13 +472,14 @@ function FeaturedCard({ i }) {
         fontSize: 12, fontWeight: 600,
         color: 'var(--brand-primary)',
       }}>
-        <CheckCircle2 size={13} /> Live now
+        <CheckCircle2 size={13} /> {t('integrations.live_now')}
       </div>
     </motion.article>
   );
 }
 
 function IntegrationCard({ i }) {
+  const { t } = useTranslation('marketing');
   return (
     <motion.div
       whileHover={{ y: -3 }}
@@ -517,7 +519,7 @@ function IntegrationCard({ i }) {
             borderRadius: 'var(--radius-pill)',
             whiteSpace: 'nowrap',
           }}>
-            Live
+            {t('integrations.live')}
           </span>
         ) : (
           <span style={{
@@ -529,7 +531,7 @@ function IntegrationCard({ i }) {
             borderRadius: 'var(--radius-pill)',
             whiteSpace: 'nowrap',
           }}>
-            Soon
+            {t('integrations.soon')}
           </span>
         )}
       </div>

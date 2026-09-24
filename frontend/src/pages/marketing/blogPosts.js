@@ -7,6 +7,7 @@
  *  Released under the MIT License — see LICENSE. Keep this notice.
  * ========================================================================== */
 import React from 'react';
+import { blogPosts_es } from './blogPosts.es';
 
 /**
  * blogPosts.js — content for /blog and /blog/:slug.
@@ -214,20 +215,38 @@ const POSTS = [
 
 export default POSTS;
 
-export function getPost(slug) {
-  return POSTS.find((p) => p.slug === slug) || null;
+export function getPost(slug, lang = 'en') {
+  const post = POSTS.find((p) => p.slug === slug);
+  if (!post) return null;
+  if (lang && lang.startsWith('es') && blogPosts_es[slug]) {
+    const es = blogPosts_es[slug];
+    return {
+      ...post,
+      ...es,
+      author: {
+        ...post.author,
+        ...(es.author || {}),
+      },
+    };
+  }
+  return post;
 }
 
-export function getRelated(slug, n = 3) {
-  const post = getPost(slug);
-  if (!post) return POSTS.slice(0, n);
+export function getPosts(lang = 'en') {
+  return POSTS.map((p) => getPost(p.slug, lang));
+}
+
+export function getRelated(slug, n = 3, lang = 'en') {
+  const post = getPost(slug, lang);
+  const allPosts = getPosts(lang);
+  if (!post) return allPosts.slice(0, n);
   // Prefer same-category, then same-tag, then most recent.
-  const sameCat = POSTS.filter((p) => p.slug !== slug && p.category === post.category);
+  const sameCat = allPosts.filter((p) => p.slug !== slug && p.category === post.category);
   const tags = new Set(post.tags || []);
-  const sameTag = POSTS.filter((p) =>
+  const sameTag = allPosts.filter((p) =>
     p.slug !== slug && p.category !== post.category && (p.tags || []).some((t) => tags.has(t))
   );
-  const others = POSTS.filter((p) =>
+  const others = allPosts.filter((p) =>
     p.slug !== slug && !sameCat.includes(p) && !sameTag.includes(p)
   );
   return [...sameCat, ...sameTag, ...others].slice(0, n);

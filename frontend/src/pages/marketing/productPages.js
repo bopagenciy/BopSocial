@@ -38,6 +38,7 @@ import {
   AIInsightPreview, AutomationsPreview, AnalyticsPreview, ReportsPreview,
 } from '../../components/marketing/BentoPreviews';
 import AnimatedChat from '../../components/marketing/AnimatedChat';
+import { productPages_es } from './productPages.es';
 
 
 // Reusable inline chat demo for the AI pages
@@ -677,6 +678,31 @@ export const productPages = {
 
 
 // Lookup helper used by ProductPage.jsx
-export function getProductPage(slug) {
-  return productPages[slug] || null;
+export function getProductPage(slug, lang = 'en') {
+  const base = productPages[slug];
+  if (!base) return null;
+  if (lang?.startsWith('es') && productPages_es[slug]) {
+    const es = productPages_es[slug];
+    return {
+      ...base,
+      ...es,
+      stripes: base.stripes?.map((s, idx) => ({
+        ...s,
+        ...(es.stripes?.[idx] || {}),
+      })),
+      capabilities: base.capabilities ? {
+        ...base.capabilities,
+        ...(es.capabilities || {}),
+        items: base.capabilities.items?.map((item, idx) => ({
+          ...item,
+          ...(es.capabilities?.items?.[idx] || {}),
+        })),
+      } : undefined,
+      quote: base.quote ? {
+        ...base.quote,
+        ...(es.quote || {}),
+      } : undefined,
+    };
+  }
+  return base;
 }

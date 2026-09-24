@@ -1,13 +1,11 @@
 /* ============================================================================
- *  Social Stats — Social Media Management & Marketing Platform
- *  Author    : Chandrabhan Shekhawat
- *  Company   : Gigai Kripa Services
- *  Website   : https://gigaikripaservices.com/
- *  Copyright (c) 2026 Chandrabhan Shekhawat / Gigai Kripa Services.
- *  Released under the MIT License — see LICENSE. Keep this notice.
+ *  Bop Social — Marketing Operating System
+ *  Author    : Bop Social Team
+ *  Website   : https://bopsocial.com
  * ========================================================================== */
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   Search, Rocket, Plug, PenSquare, Inbox, CreditCard, Wrench, Shield, BookOpen, ArrowRight, MessageCircle,
 } from 'lucide-react';
@@ -28,7 +26,7 @@ const CATEGORIES = [
   { id: 'api',             icon: BookOpen,  color: '#6366f1', title: 'API & developers',    count: 16, body: 'API keys, webhooks, rate limits.' },
 ];
 
-const POPULAR = [
+const DEFAULT_POPULAR = [
   'How do I connect a Facebook page?',
   'Why did my Meta token expire?',
   'How do I invite teammates and assign roles?',
@@ -38,22 +36,34 @@ const POPULAR = [
 ];
 
 export default function HelpCenterPage() {
+  const { t } = useTranslation(['marketing', 'navigation']);
   const [query, setQuery] = useState('');
+
+  const popularList = t('help.popular', { returnObjects: true }) || DEFAULT_POPULAR;
+
+  const localizedCategories = useMemo(() => {
+    return CATEGORIES.map((c) => ({
+      ...c,
+      title: t(`help.categories.${c.id}.title`, c.title),
+      body: t(`help.categories.${c.id}.body`, c.body),
+    }));
+  }, [t]);
+
   const filtered = useMemo(() => {
-    if (!query.trim()) return CATEGORIES;
+    if (!query.trim()) return localizedCategories;
     const q = query.toLowerCase();
-    return CATEGORIES.filter((c) =>
+    return localizedCategories.filter((c) =>
       c.title.toLowerCase().includes(q) ||
       c.body.toLowerCase().includes(q) ||
       c.id.includes(q)
     );
-  }, [query]);
+  }, [query, localizedCategories]);
 
   return (
     <MarketingLayout>
       <Meta
-        title="Help Center"
-        description="Setup guides, troubleshooting steps, FAQs, and answers to common questions about using Bop Social."
+        title={t('metadata.help_title')}
+        description={t('metadata.help_desc')}
       />
       {/* Hero with search */}
       <section style={{ padding: '128px 32px 56px', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
@@ -66,7 +76,7 @@ export default function HelpCenterPage() {
           }}
         />
         <div style={{ position: 'relative', maxWidth: 720, margin: '0 auto' }}>
-          <Badge variant="brand" size="md" icon={BookOpen}>Help Center</Badge>
+          <Badge variant="brand" size="md" icon={BookOpen}>{t('help.badge')}</Badge>
           <h1 style={{
             margin: '20px 0 16px',
             fontSize: 'clamp(36px, 4.4vw, 48px)',
@@ -75,17 +85,18 @@ export default function HelpCenterPage() {
             fontWeight: 600,
             color: 'var(--text-primary)',
           }}>
-            How can we help?
+            {t('help.hero_title')}
           </h1>
           <p style={{ margin: '0 auto 28px', maxWidth: 560, fontSize: 16, lineHeight: 1.65, color: 'var(--text-secondary)' }}>
-            Search articles, guides, and troubleshooting steps — or browse by category.
+            {t('help.hero_subtitle')}
           </p>
 
           <div style={{ maxWidth: 540, margin: '0 auto' }}>
             <Input
               size="lg"
               type="search"
-              placeholder="Search articles, guides, error codes…"
+              aria-label={t('help.search_placeholder')}
+              placeholder={t('help.search_placeholder')}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               prefix={<Search size={16} />}
@@ -94,12 +105,12 @@ export default function HelpCenterPage() {
 
           {/* Popular searches */}
           <div style={{ marginTop: 20, display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
-            <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-tertiary)', alignSelf: 'center' }}>Popular:</span>
-            {POPULAR.slice(0, 3).map((t) => (
+            <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-tertiary)', alignSelf: 'center' }}>{t('help.popular_label')}</span>
+            {(Array.isArray(popularList) ? popularList : DEFAULT_POPULAR).slice(0, 3).map((itemText) => (
               <button
-                key={t}
+                key={itemText}
                 type="button"
-                onClick={() => setQuery(t)}
+                onClick={() => setQuery(itemText)}
                 style={{
                   padding: '4px 12px',
                   fontSize: 12,
@@ -113,7 +124,7 @@ export default function HelpCenterPage() {
                   fontFamily: 'inherit',
                 }}
               >
-                {t}
+                {itemText}
               </button>
             ))}
           </div>
@@ -124,7 +135,7 @@ export default function HelpCenterPage() {
       <section style={{ padding: '32px 32px 64px' }}>
         <div style={{ maxWidth: 'var(--container-xl)', margin: '0 auto' }}>
           <h2 style={{ margin: '0 0 24px', fontSize: 14, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-tertiary)' }}>
-            Browse by category
+            {t('help.browse_heading')}
           </h2>
 
           {filtered.length === 0 ? (
@@ -138,8 +149,8 @@ export default function HelpCenterPage() {
                 color: 'var(--text-secondary)',
               }}
             >
-              No categories match "{query}". Try a different search or{' '}
-              <Link to="/contact" style={{ color: 'var(--text-link)', fontWeight: 500 }}>contact support</Link>.
+              {t('help.no_matches', { query })}{' '}
+              <Link to="/contact" style={{ color: 'var(--text-link)', fontWeight: 500 }}>{t('help.contact_support_link')}</Link>.
             </div>
           ) : (
             <div
@@ -182,9 +193,9 @@ export default function HelpCenterPage() {
                     {c.body}
                   </p>
                   <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, fontSize: 12 }}>
-                    <span style={{ color: 'var(--text-tertiary)' }}>{c.count} articles</span>
+                    <span style={{ color: 'var(--text-tertiary)' }}>{t('help.articles_count', { count: c.count })}</span>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--text-link)', fontWeight: 600 }}>
-                      Browse <ArrowRight size={12} />
+                      {t('help.browse_link')} <ArrowRight size={12} />
                     </span>
                   </span>
                 </Link>
@@ -227,14 +238,14 @@ export default function HelpCenterPage() {
           </span>
           <div style={{ minWidth: 0, flex: 1 }}>
             <div style={{ fontSize: 17, fontWeight: 600, color: 'var(--text-primary)' }}>
-              Still need help?
+              {t('help.cta_title')}
             </div>
             <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.55 }}>
-              Our support team typically replies within one business day.
+              {t('help.cta_subtitle')}
             </div>
           </div>
           <Button as={Link} to="/contact" size="md" iconRight={ArrowRight}>
-            Contact support
+            {t('help.cta_button')}
           </Button>
           <style>{`
             @media (max-width: 640px) { .help-cta { flex-direction: column !important; align-items: flex-start !important; text-align: left; } }

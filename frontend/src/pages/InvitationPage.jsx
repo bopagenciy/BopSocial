@@ -15,6 +15,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Building2, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 import AuthLayout from '../components/auth/AuthLayout';
 import Button from '../components/ui/Button';
@@ -23,6 +24,7 @@ import { invitationAPI } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
 
 export default function InvitationPage() {
+  const { t } = useTranslation('auth');
   const { token } = useParams();
   const navigate = useNavigate();
   const { user, refreshAuth } = useAuth();
@@ -36,9 +38,9 @@ export default function InvitationPage() {
   useEffect(() => {
     invitationAPI.getByToken(token)
       .then((res) => setInv(res.data))
-      .catch((e) => setError(e?.response?.data?.error || 'Invitation not found.'))
+      .catch((e) => setError(e?.response?.data?.error || t('invitation.not_found_desc', 'Invitation not found.')))
       .finally(() => setLoading(false));
-  }, [token]);
+  }, [token, t]);
 
   // Stash & redirect to login if not authenticated
   useEffect(() => {
@@ -61,7 +63,7 @@ export default function InvitationPage() {
         setDone('rejected');
       }
     } catch (e) {
-      setError(e?.response?.data?.error || 'Something went wrong.');
+      setError(e?.response?.data?.error || t('common.something_went_wrong', 'Something went wrong.'));
     } finally {
       setResponding('');
     }
@@ -70,16 +72,16 @@ export default function InvitationPage() {
   // ── Render ─────────────────────────────────────────────────────────────
   let content;
   if (loading) {
-    content = <CenteredState icon={<Spinner size="md" />} title="Loading invitation…" />;
+    content = <CenteredState icon={<Spinner size="md" />} title={t('invitation.loading', 'Loading invitation...')} />;
   } else if (error && !inv) {
     content = (
       <CenteredState
         icon={<XCircle size={28} strokeWidth={1.8} />}
         iconColor="var(--danger)"
         iconBg="var(--danger-bg)"
-        title="Invitation not found"
+        title={t('invitation.not_found_title', 'Invitation not found')}
         description={error}
-        action={<Button as={Link} to="/login" variant="secondary" fullWidth>Back to sign in</Button>}
+        action={<Button as={Link} to="/login" variant="secondary" fullWidth>{t('invitation.back_to_login', 'Back to sign in')}</Button>}
       />
     );
   } else if (done === 'accepted') {
@@ -88,8 +90,8 @@ export default function InvitationPage() {
         icon={<CheckCircle size={28} strokeWidth={1.8} />}
         iconColor="var(--success)"
         iconBg="var(--success-bg)"
-        title="Invitation accepted!"
-        description="Redirecting you to your dashboard…"
+        title={t('invitation.accepted_title', 'Invitation accepted!')}
+        description={t('invitation.accepted_desc', 'Redirecting you to your dashboard...')}
       />
     );
   } else if (done === 'rejected') {
@@ -98,9 +100,9 @@ export default function InvitationPage() {
         icon={<XCircle size={28} strokeWidth={1.8} />}
         iconColor="var(--danger)"
         iconBg="var(--danger-bg)"
-        title="Invitation declined"
-        description={`You've declined the invitation from ${inv?.agency_name}.`}
-        action={<Button as={Link} to="/pending" variant="secondary" fullWidth>Back to dashboard</Button>}
+        title={t('invitation.rejected_title', 'Invitation declined')}
+        description={t('invitation.rejected_desc', 'You have declined this invitation.')}
+        action={<Button as={Link} to="/pending" variant="secondary" fullWidth>{t('invitation.back_to_dashboard', 'Back to dashboard')}</Button>}
       />
     );
   } else if (inv?.is_expired || inv?.status === 'expired') {
@@ -109,18 +111,18 @@ export default function InvitationPage() {
         icon={<Clock size={28} strokeWidth={1.8} />}
         iconColor="var(--warning)"
         iconBg="var(--warning-bg)"
-        title="Invitation expired"
-        description="This invitation has expired. Ask the agency to send a new one."
-        action={<Button as={Link} to="/login" variant="secondary" fullWidth>Back to sign in</Button>}
+        title={t('invitation.not_found_title', 'Invitation expired')}
+        description={t('invitation.not_found_desc', 'This invitation has expired. Ask the agency to send a new one.')}
+        action={<Button as={Link} to="/login" variant="secondary" fullWidth>{t('invitation.back_to_login', 'Back to sign in')}</Button>}
       />
     );
   } else if (inv?.status && inv.status !== 'pending') {
     content = (
       <CenteredState
         icon={<Building2 size={28} strokeWidth={1.8} />}
-        title="Already responded"
+        title={t('invitation.already_responded', 'Already responded')}
         description={`This invitation was already ${inv.status}.`}
-        action={<Button as={Link} to="/dashboard" variant="secondary" fullWidth>Go to dashboard</Button>}
+        action={<Button as={Link} to="/dashboard" variant="secondary" fullWidth>{t('invitation.go_to_dashboard', 'Go to dashboard')}</Button>}
       />
     );
   } else if (inv) {
@@ -130,10 +132,10 @@ export default function InvitationPage() {
         <div aria-hidden style={{ ...iconBubbleStyle, background: 'var(--brand-primary-soft)', color: 'var(--brand-primary-hover)' }}>
           <Building2 size={26} strokeWidth={1.8} />
         </div>
-        <h1 style={titleStyle}>You've been invited</h1>
+        <h1 style={titleStyle}>{t('invitation.title', "You're invited to join")}</h1>
         <p style={subStyle}>
-          <strong style={{ color: 'var(--text-primary)' }}>{inv.agency_name}</strong> wants to manage your
-          social media analytics on Social Stats.
+          <strong style={{ color: 'var(--text-primary)' }}>{inv.agency_name}</strong>{' '}
+          {t('invitation.invited_by', 'Invited by {{name}}', { name: inv.agency_name })}
         </p>
 
         <div
@@ -202,7 +204,7 @@ export default function InvitationPage() {
             onClick={() => handleRespond('reject')}
             fullWidth
           >
-            Decline
+            {t('invitation.reject_button', 'Decline')}
           </Button>
           <Button
             size="md"
@@ -212,7 +214,7 @@ export default function InvitationPage() {
             onClick={() => handleRespond('accept')}
             fullWidth
           >
-            Accept
+            {t('invitation.accept_button', 'Accept invitation')}
           </Button>
         </div>
       </div>
@@ -221,8 +223,8 @@ export default function InvitationPage() {
 
   return (
     <AuthLayout
-      heroTitle="Join your agency on Social Stats."
-      heroSub="Accept the invitation to give your agency access to your social media analytics."
+      heroTitle={t('invitation.title', "You're invited to join")}
+      heroSub={t('invitation.hero_sub', 'Accept the invitation to give your agency access to your social media analytics.')}
     >
       {content}
     </AuthLayout>

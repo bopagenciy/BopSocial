@@ -1,0 +1,745 @@
+{
+  "metadata": {
+    "home_title": "Bop Social — El Sistema Operativo de Marketing para Equipos Modernos",
+    "home_desc": "Administra analíticas, contenido, conversaciones y campañas para cada cliente y organización — en múltiples plataformas — en un solo lugar. Diseñado para el Universo Bop.",
+    "features_title": "Funcionalidades",
+    "features_desc": "Una plataforma unificada de analíticas, compositor de contenido, bandeja de entrada unificada, flujos con IA y automatizaciones.",
+    "customers_title": "Casos de Clientes",
+    "customers_desc": "Descubre cómo equipos modernos, agencias y creadores utilizan Bop Social para escalar su marketing.",
+    "about_title": "Acerca de",
+    "about_desc": "Bop Social es el sistema operativo de marketing para equipos modernos — analíticas unificadas, contenido, mensajería e IA en las principales plataformas.",
+    "contact_title": "Contacto",
+    "contact_desc": "Ponte en contacto con nuestro equipo para consultas comerciales, demostraciones, alianzas o soporte técnico.",
+    "integrations_title": "Integraciones",
+    "integrations_desc": "Conecta tus redes sociales, canales de mensajería, CRMs y herramientas de marketing a Bop Social.",
+    "for_businesses_title": "Para Empresas",
+    "for_businesses_desc": "Diseñado para empresas y marcas. Conecta Instagram, Facebook, YouTube, LinkedIn y Google My Business en 5 minutos. Tú mantienes el control.",
+    "for_agencies_title": "Para Agencias",
+    "for_agencies_desc": "Un panel de control para analíticas, contenido, bandeja de entrada, anuncios y campañas de WhatsApp de todos tus clientes.",
+    "help_title": "Centro de Ayuda",
+    "help_desc": "Guías de configuración, resolución de problemas, preguntas frecuentes y respuestas sobre el uso de Bop Social.",
+    "security_title": "Seguridad",
+    "security_desc": "Cifrado en reposo con Fernet, TLS 1.3 en tránsito, registro de auditoría en cada acción, cumplimiento con GDPR y DPDP. SOC 2 Tipo II en progreso.",
+    "changelog_title": "Historial de Cambios",
+    "changelog_desc": "Novedades en Bop Social — lanzamientos recientes, actualizaciones de funciones, mejoras y correcciones.",
+    "status_title": "Estado del Sistema",
+    "status_desc": "Métricas en tiempo real sobre el estado y disponibilidad de los servicios, APIs y procesos de Bop Social.",
+    "agencies_title": "Agencias Asociadas",
+    "agencies_desc": "Encuentra agencias asociadas verificadas especializadas en gestión de redes sociales, marketing por WhatsApp y estrategia de contenido.",
+    "blog_title": "Blog",
+    "blog_desc": "Actualizaciones de producto, estrategias para agencias, experimentos con IA y decisiones de diseño del equipo de Bop Social.",
+    "privacy_title": "Política de Privacidad",
+    "terms_title": "Términos de Servicio",
+    "cookies_title": "Política de Cookies",
+    "gdpr_title": "Compromiso con GDPR",
+    "dpdp_title": "Cumplimiento DPDP",
+    "data_deletion_title": "Instrucciones de Eliminación de Datos",
+    "not_found_title": "Página no encontrada",
+    "server_error_title": "Error del Servidor",
+    "maintenance_title": "Mantenimiento del Sistema"
+  },
+  "home": {
+    "eyebrow_new": "NUEVO",
+    "eyebrow_text": "El creador de bots CTWA ya está disponible",
+    "hero_title_pre": "El ",
+    "hero_title_highlight": "Sistema Operativo de Marketing",
+    "hero_title_post": "para equipos modernos",
+    "hero_subtitle": "Administra analíticas, contenido, conversaciones y campañas para cada cliente y organización — en múltiples plataformas — en un solo lugar.",
+    "get_started": "Comenzar",
+    "watch_demo": "Ver demo de 90s",
+    "positioning": "Arquitectura multicompañía · Analíticas en tiempo real · Diseñado para el Universo Bop",
+    "pillars_eyebrow": "Tres Pilares",
+    "pillars_title": "Analiza. Conecta. Convierte.",
+    "pillars_desc": "Todo lo que tu equipo necesita para transformar la presencia en redes sociales en ingresos cuantificables.",
+    "bento_eyebrow": "Capacidades",
+    "bento_title": "Todo lo necesario. Sin complicaciones.",
+    "use_cases_eyebrow": "Casos de Uso",
+    "use_cases_title": "Diseñado para la forma real de trabajar de tu equipo",
+    "how_it_works_eyebrow": "Cómo Funciona",
+    "how_it_works_title": "De cero a producción en menos de 5 minutos",
+    "ai_eyebrow": "IA en Todas Partes",
+    "ai_title": "IA entrenada con la voz de tu marca, no con internet genérico",
+    "comparison_eyebrow": "Comparativa",
+    "comparison_title": "Cómo se compara Bop Social",
+    "marketplace_eyebrow": "Marketplace",
+    "marketplace_title": "Dos lados, un solo ecosistema",
+    "marketplace_desc": "Conéctate con agencias verificadas o encuentra nuevos clientes comerciales directamente en la plataforma.",
+    "stats_uptime": "SLA de Disponibilidad",
+    "stats_platforms": "Plataformas Soportadas",
+    "stats_clients": "Arquitectura Multiinquilino",
+    "stats_languages": "idiomas compatibles",
+    "cta_title": "¿Listo para transformar tu marketing?",
+    "cta_subtitle": "Comienza gratis en 2 minutos — no se requiere tarjeta de crédito.",
+    "cta_button": "Comenzar gratis",
+    "cta_micro": "Arquitectura multi-inquilino · Diseñado para el Universo Bop",
+    "channels_headline": "Una plataforma, cada canal que importa",
+    "pillar_analyze_label": "ANALIZAR",
+    "pillar_analyze_title": "Monitorea todo",
+    "pillar_analyze_blurb": "Alcance, interacción e ingresos en múltiples plataformas dentro de un solo panel.",
+    "pillar_engage_label": "INTERACTUAR",
+    "pillar_engage_title": "Responde en un solo lugar",
+    "pillar_engage_blurb": "Cada mensaje directo, comentario y reseña en todas las plataformas — ordenados, priorizados con IA y listos para responder.",
+    "pillar_convert_label": "CONVERTIR",
+    "pillar_convert_title": "Captura más clientes potenciales",
+    "pillar_convert_blurb": "Ejecuta campañas conversacionales con bots de IA que califican prospectos las 24 horas y los envían a tu CRM.",
+    "bento_subtitle": "Pasa el cursor sobre cualquier tarjeta para verla en acción. Haz clic para profundizar.",
+    "use_case_agencies_headline": "Gestiona más de 100 clientes sin perder el control.",
+    "use_case_agencies_bullet_1": "Espacios de trabajo multicliente con cambio en un solo clic",
+    "use_case_agencies_bullet_2": "Colaboración en equipo con permisos por roles",
+    "use_case_agencies_bullet_3": "Portales de clientes de marca blanca e informes personalizados",
+    "use_case_agencies_bullet_4": "Flujos de aprobación para cada acción",
+    "use_case_agencies_bullet_5": "Asistente de IA ajustado a la voz de marca de cada cliente",
+    "read_case_study": "Leer caso de estudio de agencia",
+    "use_case_real_estate_headline": "Vende más propiedades en redes sociales.",
+    "use_case_real_estate_bullet_1": "Carruseles de listados de propiedades para Instagram y Facebook",
+    "use_case_real_estate_bullet_2": "Recordatorios de visitas a propiedades vía WhatsApp",
+    "use_case_real_estate_bullet_3": "Captura de leads desde anuncios CTWA directo a tu CRM",
+    "use_case_real_estate_bullet_4": "Descripciones de propiedades redactadas con IA",
+    "use_case_real_estate_bullet_5": "Automatización de promociones de puertas abiertas",
+    "real_estate_playbook": "Guía práctica de bienes raíces",
+    "use_case_healthcare_headline": "Conecta con pacientes en todas las plataformas.",
+    "use_case_healthcare_bullet_1": "Recordatorios de citas vía WhatsApp Business",
+    "use_case_healthcare_bullet_2": "Envío de resultados de laboratorio con trazabilidad completa",
+    "use_case_healthcare_bullet_3": "Calendario de contenido de salud preconfigurado",
+    "use_case_healthcare_bullet_4": "Verificador de contenido conforme a normativas de salud",
+    "use_case_healthcare_bullet_5": "Gestión de reseñas con respuestas sugeridas por IA",
+    "healthcare_playbook": "Guía práctica para salud",
+    "use_case_restaurants_headline": "Llena más mesas con tus redes sociales.",
+    "use_case_restaurants_bullet_1": "Bots de reservas que se integran con tu punto de venta (POS)",
+    "use_case_restaurants_bullet_2": "Publicación automática de platos del día en piloto automático",
+    "use_case_restaurants_bullet_3": "Gestión de reseñas en Google y plataformas de delivery",
+    "use_case_restaurants_bullet_4": "Contacto y seguimiento de colaboraciones con influencers",
+    "use_case_restaurants_bullet_5": "Campañas para festividades y fechas especiales listas para usar",
+    "restaurant_playbook": "Guía práctica para restaurantes",
+    "use_case_creators_headline": "Monitorea tu economía creativa.",
+    "use_case_creators_bullet_1": "Analíticas unificadas de YouTube, Instagram y LinkedIn en una sola vista",
+    "use_case_creators_bullet_2": "Seguimiento de acuerdos comerciales y facturación de marcas",
+    "use_case_creators_bullet_3": "Estadísticas de audiencia — lo que tu comunidad realmente busca",
+    "use_case_creators_bullet_4": "Optimización de publicaciones con predicciones de IA",
+    "use_case_creators_bullet_5": "Calendario editorial adaptado a tus horarios",
+    "creator_playbook": "Guía práctica para creadores",
+    "step_1_title": "Regístrate gratis",
+    "step_1_blurb": "Correo y contraseña. Flujo de 5 segundos. Sin tarjeta de crédito.",
+    "step_2_title": "Conecta tus cuentas",
+    "step_2_blurb": "Pega tokens o autoriza vía OAuth — Meta, Google y LinkedIn soportados.",
+    "step_3_title": "Crea con Inteligencia Artificial",
+    "step_3_blurb": "Genera publicaciones, respuestas e informes ajustados a tu tono de marca.",
+    "step_4_title": "Mide tus resultados",
+    "step_4_blurb": "Analíticas multiplataforma e informes ejecutivos en PDF redactados por IA.",
+    "ai_badge": "IMPULSADO POR INTELIGENCIA BOP",
+    "ai_desc": "Bop Social está diseñado con inteligencia artificial nativa en analíticas, programación de publicaciones e informes de espacios de trabajo.",
+    "ai_button": "Explorar funciones de IA",
+    "ai_feature_1": "Voz de marca ajustada a tu empresa",
+    "ai_feature_2": "Genera publicaciones, respuestas e informes",
+    "ai_feature_3": "Predice los mejores momentos para publicar",
+    "ai_feature_4": "Detecta crisis de reputación antes de que se propaguen",
+    "ai_feature_5": "Captura clientes potenciales con anuncios conversacionales",
+    "chat_user": "¿Cómo nos fue en Instagram esta semana?",
+    "chat_assistant": "Tu alcance creció un 23% respecto a la semana pasada — impulsado principalmente por tu Reel sobre el tour inmobiliario (tuvo 3.2× más guardados de lo habitual). Recomiendo publicar 2 Reels más esta semana. ¿Quieres que redacte los textos?",
+    "comparison_subtitle": "Diseñado para agencias multicliente y empresas que se toman en serio la IA, la mensajería y los flujos multi-inquilino.",
+    "comp_analytics": "Analíticas multiplataforma",
+    "comp_ai": "Asistente profundo de IA",
+    "comp_whatsapp": "API de WhatsApp Business",
+    "comp_ctwa": "Bots Click-to-WhatsApp",
+    "comp_bot_builder": "Constructor visual de bots",
+    "comp_crm": "CRM de captura de clientes potenciales",
+    "comp_multitenant": "Espacios de trabajo para clientes multi-inquilino",
+    "comp_audit": "Registro y auditoría de actividad",
+    "comp_universe": "Diseñado para el Universo Bop",
+    "marketplace_cta": "Explorar el marketplace",
+    "mkt_step_1_title": "Explora agencias verificadas",
+    "mkt_step_1_body": "Busca por industria, idioma, presupuesto y plataformas.",
+    "mkt_step_2_title": "Encuentra la ideal",
+    "mkt_step_2_body": "Consulta rangos de precios, especialidades y flujos de trabajo de antemano.",
+    "mkt_step_3_title": "Gestiona desde una sola bandeja",
+    "mkt_step_3_body": "Aprobaciones, publicaciones programadas e informes a través de Bop Social."
+  },
+  "features": {
+    "badge": "Funcionalidades",
+    "hero_title": "Una plataforma. Todos tus flujos de trabajo.",
+    "hero_subtitle": "Todo lo que necesitas para gestionar una agencia moderna. Desde la primera conexión OAuth hasta el informe ejecutivo para clientes — Bop Social cubre todo el ciclo de crecimiento.",
+    "on_this_page": "En esta página",
+    "see_in_workflow": "Míralo en tu flujo de trabajo.",
+    "see_in_workflow_sub": "Comienza gratis. Gestiona cada cliente en un solo lugar — sin tarjeta de crédito.",
+    "get_started": "Comenzar gratis",
+    "contact_sales": "Hablar con ventas",
+    "cta_title": "Comienza a escalar tus redes hoy",
+    "cta_subtitle": "Únete a agencias y empresas modernas que gestionan su crecimiento social con Bop Social.",
+    "items": {
+      "analytics": {
+        "title": "Métricas multiplataforma, unificadas.",
+        "body": "Reúne Facebook, Instagram, YouTube, LinkedIn, GMB y más en un solo panel en vivo. Analiza cualquier publicación, plataforma o período — sin hojas de cálculo.",
+        "b1": "Métricas de seguidores, interacción y alcance en tiempo real",
+        "b2": "Rangos de fechas personalizados con comparaciones dinámicas",
+        "b3": "Desgloses por plataforma y vistas agregadas",
+        "b4": "Exportaciones de informes en PDF de marca blanca para clientes"
+      },
+      "composer": {
+        "title": "Escribe una vez. Publica en todas partes.",
+        "body": "Crea una única publicación y adáptala por plataforma directamente. Adjunta archivos de la biblioteca multimedia, programa en colas o publica al instante.",
+        "b1": "Ajustes específicos por plataforma sin tener que reescribir",
+        "b2": "Programación inteligente con colas que consideran zonas horarias",
+        "b3": "Controles de aprobación antes de publicar",
+        "b4": "Biblioteca multimedia integrada con transformación de recursos"
+      },
+      "inbox": {
+        "title": "Todas las respuestas en una sola cronología.",
+        "body": "Comentarios, mensajes directos, menciones, reseñas y mensajes de WhatsApp — unificados en una bandeja con detección de sentimiento y respuestas con IA.",
+        "b1": "Hilos de conversación entre múltiples plataformas",
+        "b2": "Etiquetado de intención y sentimiento de forma nativa",
+        "b3": "Sugerencias de respuesta con IA en la voz de tu marca",
+        "b4": "Flujos de trabajo para asignar, posponer y resolver"
+      },
+      "ai": {
+        "title": "IA que domina la voz de tu marca.",
+        "body": "Sube ejemplos de publicaciones para entrenar un perfil privado con la voz de tu marca. Genera textos, hashtags, respuestas y predicciones con tu tono único.",
+        "b1": "Generación de textos alineados a tu tono",
+        "b2": "Búsqueda de hashtags con puntuación de interacción",
+        "b3": "Predicciones de los mejores horarios para publicar",
+        "b4": "Resúmenes ejecutivos automáticos del rendimiento semanal"
+      },
+      "automations": {
+        "title": "Automatizaciones inteligentes, sin código.",
+        "body": "Dispara acciones por horario, sentimiento o palabras clave. Responde preguntas frecuentes, escala reseñas negativas y avisa al equipo correcto.",
+        "b1": "Constructor visual de reglas — sin necesidad de código",
+        "b2": "Disparadores por programación, palabra clave o sentimiento",
+        "b3": "Conectores integrados con Slack, correo electrónico y WhatsApp",
+        "b4": "Historial de ejecuciones con registro completo de auditoría"
+      },
+      "reports": {
+        "title": "Informes ejecutivos que encantan a los clientes.",
+        "body": "Genera atractivos informes de rendimiento con marca blanca en minutos. Programa entregas semanales o mensuales, comparte enlaces seguros o exporta a PDF.",
+        "b1": "PDFs con tu marca y enlaces web para compartir",
+        "b2": "Frecuencia de envío programada automáticamente",
+        "b3": "Reordenamiento de secciones mediante arrastrar y soltar",
+        "b4": "Resumen ejecutivo generado por Inteligencia Artificial"
+      },
+      "team": {
+        "title": "Controles de colaboración detallados.",
+        "body": "Invita a tu equipo, asigna clientes y define permisos por página o acción. Los flujos de aprobación aseguran la marca sin frenar la velocidad.",
+        "b1": "Permisos basados en roles y modificaciones por usuario",
+        "b2": "Asignación de espacios de trabajo multicliente",
+        "b3": "Cadenas de aprobación con hilos de comentarios",
+        "b4": "Autenticación única SAML SSO para empresas"
+      },
+      "security": {
+        "title": "Nivel corporativo de manera predeterminada.",
+        "body": "Tokens cifrados en reposo con Fernet. Autenticación JWT con actualización rotativa. Registro de auditoría de cada acción. Diseñado para cumplimiento corporativo.",
+        "b1": "Cifrado en reposo (Fernet) y en tránsito (TLS 1.3)",
+        "b2": "Registro de auditoría con búsqueda en cada acción",
+        "b3": "Cumplimiento normativo de protección de datos internacionales",
+        "b4": "Control de acceso por roles y respuesta a incidentes 24/7"
+      }
+    }
+  },
+  "customers": {
+    "badge": "Clientes",
+    "hero_title": "Historias de clientes — próximamente",
+    "hero_subtitle": "Estamos implementando Bop Social con una primera cohorte de socios de lanzamiento. Las historias reales de clientes, con nombres y métricas verificadas, se publicarán aquí. Hasta entonces, así es como está diseñado el producto.",
+    "launch_partner": "Sé un socio de lanzamiento",
+    "talk_team": "Hablar con el equipo",
+    "explore_features": "Explorar funcionalidades",
+    "sample_disclaimer": "Flujos de muestra — vista previa ilustrativa de arquitecturas operativas soportadas.",
+    "example_workflows_badge": "Flujos de trabajo de ejemplo · ilustrativo",
+    "example_workflows_title": "Diseñado para la forma real en que trabaja tu equipo",
+    "workflows": {
+      "real_estate": {
+        "industry": "Bienes raíces",
+        "headline": "Captura y califica prospectos inmobiliarios por WhatsApp",
+        "body": "Ejecuta anuncios Click-to-WhatsApp, filtra solicitudes con un bot que consulta presupuesto y zona, y envía leads calificados a tu CRM. Programa publicaciones e historias desde el mismo Compositor.",
+        "b1": "Campañas CTWA con formularios nativos de prospectos",
+        "b2": "Constructor visual de bots para flujos de calificación",
+        "b3": "Descripciones con IA adaptadas a la voz de tu marca"
+      },
+      "healthcare": {
+        "industry": "Salud y Clínicas",
+        "headline": "Reduce ausencias con recordatorios por WhatsApp y una bandeja unificada",
+        "body": "Envía recordatorios de citas 24h y 2h antes mediante plantillas oficiales de WhatsApp. Las reprogramaciones llegan a la misma bandeja que los DMs y reseñas de Google.",
+        "b1": "Campañas con plantillas aprobadas de WhatsApp",
+        "b2": "Bandeja unificada para mensajes directos, reseñas y comentarios",
+        "b3": "Espacios de trabajo por clínica con voz de marca compartida"
+      },
+      "agencies": {
+        "industry": "Agencias",
+        "headline": "Gestiona decenas de clientes sin perder el control",
+        "body": "Una agencia pequeña puede administrar múltiples espacios de trabajo desde una sola cuenta. Flujos de aprobación, informes de marca blanca y tono por cliente permiten escalar sin disparar los costos.",
+        "b1": "Espacio de trabajo y tono de marca independiente por cliente",
+        "b2": "Flujos de aprobación para publicaciones y respuestas",
+        "b3": "Informes ejecutivos de marca blanca programados"
+      },
+      "restaurants": {
+        "industry": "Restaurantes",
+        "headline": "Bots de WhatsApp que gestionan reservas y pedidos",
+        "body": "Lanza anuncios Click-to-WhatsApp que conectan con un bot de menú, ubicación y reservas. Envía pedidos confirmados a tu punto de venta (POS) y actualiza platos del día en redes.",
+        "b1": "Bots de menú y reservas listos para usar",
+        "b2": "Publicaciones sincronizadas automáticamente con Google Business",
+        "b3": "Espacios de trabajo organizados por sucursal"
+      },
+      "ecommerce": {
+        "industry": "Comercio electrónico",
+        "headline": "Anuncios de catálogo y ventas directas por WhatsApp",
+        "body": "Sincroniza productos desde Shopify o WooCommerce al Compositor. Lanza carruseles en Instagram y Facebook con enlaces directos a catálogos en WhatsApp y respuestas sugeridas por IA.",
+        "b1": "Etiquetado nativo de productos en el Compositor",
+        "b2": "Sincronización de catálogo e inventario en WhatsApp",
+        "b3": "Atribución de conversión y retorno de inversión por campaña"
+      }
+    }
+  },
+  "about": {
+    "badge": "Acerca de",
+    "hero_title": "Estamos creando el sistema operativo de marketing que queríamos en nuestra empresa anterior.",
+    "hero_subtitle": "Bop Social nació de un equipo fundador cansado de herramientas de marketing dispersas y desconectadas. Construimos la solución unificada que siempre necesitamos.",
+    "mission_badge": "Nuestra Misión",
+    "mission_title": "Ofrecer a cada equipo de marketing — desde creadores individuales hasta agencias globales — una plataforma unificada y atractiva para entender, crear y crecer.",
+    "values_badge": "Nuestros Valores",
+    "values_title": "Cómo trabajamos.",
+    "values_subtitle": "Cuatro principios rectores en cada decisión de producto.",
+    "values": {
+      "honest": {
+        "title": "Honestos por defecto",
+        "body": "Sin patrones oscuros, sin cobros sorpresa ni flujos engañosos. Creemos que la confianza se construye con hechos — igual que los buenos productos."
+      },
+      "quality": {
+        "title": "Calidad sobre cantidad",
+        "body": "Cada funcionalidad se lanza solo cuando es intuitiva y sólida. Preferimos resolver cinco necesidades a la perfección que cincuenta a medias."
+      },
+      "customers": {
+        "title": "Clientes en el centro",
+        "body": "Conversamos con nuestros usuarios cada semana. La hoja de ruta refleja las necesidades reales de los equipos, no suposiciones corporativas."
+      },
+      "universe": {
+        "title": "Diseñado para el Universo Bop",
+        "body": "Arquitectura multi-inquilino de clase mundial, estándares globales de privacidad y claridad operativa de extremo a extremo."
+      }
+    },
+    "team_badge": "Equipo",
+    "team_title": "El equipo detrás de Bop Social.",
+    "team_subtitle": "Somos un equipo multidisciplinar y experimentado, dedicado a crear infraestructura de marketing de clase mundial.",
+    "team_empty": "Los perfiles individuales de nuestro equipo se publicarán en el lanzamiento general. Mientras tanto, puedes contactarnos directamente en hello@bopsocial.com.",
+    "team_hiring": "Estamos incorporando talento en ingeniería, diseño y éxito del cliente.",
+    "get_in_touch": "Ponte en contacto →",
+    "timeline_badge": "Trayectoria",
+    "timeline_title": "Cómo llegamos hasta aquí.",
+    "timeline": {
+      "t1": { "date": "2024", "title": "Primer prototipo", "body": "Bop Social nació como un panel unificado de analíticas entre las plataformas que las agencias realmente utilizan." },
+      "t2": { "date": "2025", "title": "Compositor y Bandeja", "body": "Editor de contenido con formateo específico por red social y bandeja unificada para mensajes directos, comentarios y reseñas." },
+      "t3": { "date": "2026", "title": "Marketing OS (estás aquí)", "body": "Centro de control integral que unifica analíticas, mensajería, anuncios, IA y automatizaciones." }
+    },
+    "cta_title": "¿Quieres construir con nosotros?",
+    "cta_subtitle": "Estamos contratando en todas las áreas. O simplemente saluda.",
+    "say_hello": "Saluda",
+    "try_free": "Comenzar con Bop Social"
+  },
+  "contact": {
+    "badge": "Contacto",
+    "hero_title": "Hablemos.",
+    "hero_subtitle": "Ventas, soporte, alianzas o prensa — selecciona un motivo y te comunicaremos con la persona indicada.",
+    "form_title": "Envíanos un mensaje",
+    "form_subtitle": "Normalmente respondemos en el transcurso de un día laborable.",
+    "name_label": "Tu nombre",
+    "name_placeholder": "Nombre y apellido",
+    "email_label": "Correo corporativo",
+    "email_placeholder": "tu@empresa.com",
+    "company_label": "Empresa o Agencia (opcional)",
+    "company_placeholder": "Acme Inc.",
+    "reason_label": "¿En qué podemos ayudarte?",
+    "message_label": "Mensaje",
+    "message_placeholder": "Cuéntanos un poco sobre tu proyecto o necesidades…",
+    "submit": "Enviar mensaje",
+    "submitting": "Enviando...",
+    "sent_title": "¡Mensaje recibido con éxito!",
+    "sent_body": "Normalmente respondemos en el transcurso de un día laborable. Si es urgente, escríbenos a hello@bopsocial.com.",
+    "back_home": "Volver al inicio",
+    "privacy_agreement": "Al enviar aceptas nuestra",
+    "direct_email": "Correo",
+    "live_chat": "Ventas",
+    "phone": "Teléfono",
+    "office": "Sede",
+    "phone_body": "Soporte prioritario por correo",
+    "office_body": "Sede Global",
+    "looking_for_specific": "¿Buscas algo específico?",
+    "reasons": {
+      "sales": "Ventas — precios o demo",
+      "support": "Soporte — soy cliente",
+      "partner": "Alianzas e integraciones",
+      "press": "Prensa o medios",
+      "other": "Otro motivo"
+    }
+  },
+  "security": {
+    "badge": "Seguridad",
+    "hero_title": "Seguridad por diseño.",
+    "hero_subtitle": "Bop Social está diseñado con los mismos principios de seguridad en los que confían bancos y hospitales. Tratamos tus datos — y los de tus clientes — como si fueran propios.",
+    "commitments_title": "Compromisos de seguridad",
+    "commitments": {
+      "encryption": {
+        "title": "Cifrado integral",
+        "body": "TLS 1.3 en tránsito. AES-256-GCM (Fernet) en reposo para tokens OAuth, claves de API y credenciales de clientes. Claves rotadas trimestralmente."
+      },
+      "infrastructure": {
+        "title": "Infraestructura reforzada",
+        "body": "Despliegues multi-zona en AWS. Aislamiento por entorno. Mitigación de WAF y DDoS. Parches automáticos y escaneos de vulnerabilidades diarios."
+      },
+      "audit": {
+        "title": "Registro de auditoría continuo",
+        "body": "Cada acción (autenticación, conexión OAuth, publicación, cambio de roles) queda registrada con actor, marca temporal, IP y resultado. Búsqueda de 1 año en Growth, personalizada en Enterprise."
+      },
+      "compliance": {
+        "title": "Preparado para cumplimiento normativo",
+        "body": "Cumplimiento de RGPD y DPDP de India por diseño. SOC 2 Tipo II en curso (meta Q3 2026). HIPAA e ISO 27001 en contratos Enterprise."
+      }
+    },
+    "certifications_title": "Certificaciones y cumplimiento.",
+    "certifications_subtitle": "Dónde nos encontramos hoy y hacia dónde nos dirigimos.",
+    "certifications": {
+      "gdpr": { "name": "RGPD", "status": "En cumplimiento", "description": "Protección de datos de la UE/EEE." },
+      "dpdp": { "name": "DPDP India", "status": "En cumplimiento", "description": "Ley de Protección de Datos de India 2023." },
+      "soc2": { "name": "SOC 2 Tipo II", "status": "En progreso", "description": "Auditoría en curso, prevista para Q3 2026." },
+      "iso": { "name": "ISO 27001", "status": "Hoja de ruta", "description": "Previsto para 2027." }
+    },
+    "vulnerability_title": "¿Encontraste una vulnerabilidad?",
+    "vulnerability_body": "Operamos un programa privado de divulgación de vulnerabilidades con recompensas competitivas para fallas críticas verificadas. Envía un correo a security@bopsocial.com con los pasos de reproducción y evaluación de impacto. Respondemos en 24 horas y evaluamos en 72.",
+    "report_button": "Reportar vulnerabilidad",
+    "status_button": "Estado del sistema",
+    "footer_looking": "¿Buscas nuestra",
+    "footer_privacy": "política de privacidad",
+    "footer_gdpr": "información de RGPD",
+    "footer_dpdp": "detalles de DPDP"
+  },
+  "status": {
+    "badge": "Estado",
+    "all_operational": "Todos los sistemas operando con normalidad",
+    "partial_outage": "Interrupción parcial del servicio",
+    "major_outage": "Corte mayor del servicio",
+    "checking": "Comprobando…",
+    "api_unreachable": "API de estado no disponible — se muestra la última caché",
+    "hero_title": "Estado del sistema Bop Social",
+    "hero_subtitle": "Métricas de disponibilidad y estado en tiempo real de todos los servicios de Bop Social.",
+    "last_checked": "Última comprobación: {{time}} · se actualiza automáticamente cada 30 s",
+    "region": "región",
+    "refresh_now": "Actualizar ahora",
+    "uptime_pct": "{{pct}}% de tiempo de actividad · 90 días",
+    "worker": "trabajador",
+    "workers": "trabajadores",
+    "recent_incidents": "Incidentes recientes",
+    "no_incidents": "Sin incidentes reportados en los últimos 30 días.",
+    "subscribe_prefix": "Suscríbete a las notificaciones de incidentes desde el enlace en tus",
+    "account_settings": "ajustes de cuenta",
+    "services": {
+      "web": "Aplicación web",
+      "api": "API",
+      "workers": "Procesadores en segundo plano (Celery)",
+      "realtime": "Tiempo real / WebSockets",
+      "db": "Base de datos",
+      "meta": "Integración de Meta (Facebook e Instagram)",
+      "google": "Integración de Google (YouTube y Perfil de Negocio)",
+      "linkedin": "Integración de LinkedIn",
+      "pinbot": "WhatsApp (Pinbot.ai)",
+      "ai": "IA de Bop Social"
+    }
+  },
+  "changelog": {
+    "badge": "Registro de cambios",
+    "hero_title": "Novedades en Bop Social.",
+    "hero_subtitle": "Cada versión, cada corrección. Suscríbete para recibirlo en tu bandeja cada mes.",
+    "subscribe_link": "recibirlo en tu bandeja",
+    "tags": {
+      "new": "Nuevo",
+      "improved": "Mejorado",
+      "fixed": "Corregido"
+    }
+  },
+  "integrations": {
+    "badge": "Integraciones",
+    "hero_title_pre": "Conecta Bop Social con las",
+    "hero_title_highlight": "herramientas que ya utilizas",
+    "hero_subtitle": "Más de 40 integraciones nativas en redes sociales, mensajería, analítica, CRM, comercio electrónico, IA y más. Nativo significa «construido y mantenido por nosotros, no por Zapier».",
+    "search_placeholder": "Buscar integraciones…",
+    "featured": "Destacadas",
+    "categories": {
+      "all": "Todas",
+      "social": "Redes sociales",
+      "messaging": "Mensajería",
+      "analytics": "Analítica",
+      "crm": "CRM",
+      "commerce": "Comercio",
+      "automation": "Automatización",
+      "ai": "IA",
+      "productivity": "Productividad"
+    },
+    "live_now": "Disponible ahora",
+    "live": "Activo",
+    "soon": "Pronto",
+    "no_matches": "No hay integraciones que coincidan con «{{query}}».",
+    "try_different": "Prueba otra palabra clave o solicita una nueva integración abajo.",
+    "request_button": "Solicitar integración",
+    "tiles": {
+      "build": {
+        "title": "Crea la tuya propia",
+        "body": "API REST pública, webhooks de salida y compatibilidad con Zapier/Make. Conecta cualquier herramienta que aún no hayamos lanzado.",
+        "cta": "Obtener acceso a la API"
+      },
+      "request": {
+        "title": "¿No encuentras tu herramienta?",
+        "body": "Cuéntanos qué utilizas. Publicamos 2 o 3 integraciones nativas nuevas cada trimestre, y las solicitudes de usuarios tienen prioridad.",
+        "cta": "Solicitar integración"
+      },
+      "enterprise": {
+        "title": "Integraciones Enterprise",
+        "body": "Aprovisionamiento SCIM, SSO (SAML / OIDC), webhooks privados. Disponible en planes Enterprise.",
+        "cta": "Hablar con ventas"
+      }
+    },
+    "cta": {
+      "title_pre": "Conecta tu infraestructura",
+      "title_highlight": "en menos de 10 minutos",
+      "subtitle": "La mayoría de los equipos conectan entre 4 y 6 plataformas en minutos. Gestión unificada desde el primer día.",
+      "start": "Comenzar",
+      "sales": "Hablar con ventas"
+    }
+  },
+  "for_businesses": {
+    "badge": "Para empresas · Marketing unificado",
+    "hero_title_pre": "Toma el control de tus ",
+    "hero_title_highlight": "redes sociales.",
+    "hero_subtitle": "Agentes inmobiliarios, clínicas, restaurantes, creadores: conecta tus cuentas en 5 minutos y comienza a publicar, responder y analizar resultados con total claridad.",
+    "cta_start": "Comenzar",
+    "cta_agencies": "Explorar agencias",
+    "micro": "Panel unificado · 5 plataformas · ✨ Asistido por IA desde el primer día",
+    "value_title": "Diseñado para tu forma real de trabajar",
+    "value_subtitle": "Cinco plataformas conectadas. Un único panel. Cero hojas de cálculo.",
+    "items": {
+      "connect": {
+        "title": "Conéctate en 5 minutos",
+        "body": "OAuth directo con Instagram, Facebook, YouTube, LinkedIn y Perfil de Negocio de Google. Gestionamos la renovación de tokens y peculiaridades de cada red."
+      },
+      "analytics": {
+        "title": "Descubre lo que funciona",
+        "body": "Analítica unificada en todas las plataformas: dile adiós a cambiar de pestañas y toma decisiones basadas en datos."
+      },
+      "ai": {
+        "title": "IA integrada",
+        "body": "Redacta publicaciones, sugiere respuestas y encuentra el mejor momento para publicar, sin copiar ni pegar en herramientas externas."
+      },
+      "trust": {
+        "title": "Tus datos, tus reglas",
+        "body": "Desconecta cuando quieras. Exporta en cualquier momento. Registro de auditoría de cada acción realizada por ti, por la IA o por una agencia asociada."
+      }
+    },
+    "agency_badge": "Compatible con agencias",
+    "agency_title": "¿Ya trabajas con una agencia? Colaboración sin fricciones.",
+    "agency_subtitle": "Invítalos por correo electrónico: obtendrán acceso a Bop Social con permisos basados en roles. Tú defines los permisos, marcas las acciones delicadas como «pedir aprobación previa» y revocas el acceso con un solo clic. Sin contraseñas compartidas.",
+    "agency_cta": "Explorar el mercado de agencias",
+    "agency_bullets": [
+      "Matriz de permisos: define con exactitud qué pueden y qué no pueden hacer",
+      "Aprobaciones previas para acciones de riesgo (publicación, gasto publicitario, eliminaciones)",
+      "Registro de actividad: cada acción de la agencia queda auditada",
+      "Pausa el acceso en vacaciones; revócalo por completo cuando finalice la relación"
+    ],
+    "trust_title": "Tus datos son tuyos.",
+    "trust_subtitle": "Nunca vendemos tus datos. Nunca entrenamos modelos con tus publicaciones privadas. Desconectar una plataforma requiere un solo clic, incluso si una agencia gestiona tu cuenta. Exporta o elimina cuando quieras.",
+    "final_title": "Listo en 5 minutos.",
+    "final_subtitle": "Marketing unificado para impulsar tu marca. Sin obligación de contratar agencias; intégralas cuando lo decidas.",
+    "final_button": "Crear mi cuenta"
+  },
+  "for_agencies": {
+    "badge": "Para agencias · Mercado incluido",
+    "hero_title_pre": "Gestiona más de 100 clientes desde ",
+    "hero_title_highlight": "un solo lugar.",
+    "hero_subtitle": "Analítica, contenido, bandeja unificada, campañas de WhatsApp, anuncios e IA: todos tus clientes en un panel intuitivo. Publica tu perfil en nuestro mercado y capta clientes entrantes. Basado en confianza: cada acción auditada, cada permiso revocable.",
+    "cta_start": "Comenzar",
+    "cta_marketplace": "Ver el mercado",
+    "micro": "Arquitectura multi-inquilino escalable · 5 plataformas conectadas por cliente",
+    "roi": [
+      { "stat": "15+ h", "label": "ahorradas por semana frente a gestionar 5 plataformas independientes" },
+      { "stat": "40% más rápido", "label": "en tiempo de respuesta en bandeja con sugerencias de IA" },
+      { "stat": "3× clientes", "label": "gestionables por asesor con el flujo de trabajo unificado" },
+      { "stat": "0 contraseñas", "label": "compartidas con clientes: ellos conservan el control de sus cuentas" }
+    ],
+    "marketplace_badge": "Nuevo: Mercado de agencias",
+    "marketplace_title": "Clientes potenciales entrantes, sin correos en frío.",
+    "marketplace_subtitle": "Publica tu agencia en el mercado de Bop Social. Empresas verificadas buscan por sector, ubicación y valoración, y te envían solicitudes directas. Las valoraciones provienen de relaciones cliente-agencia verificadas.",
+    "marketplace_cta": "Ver el mercado",
+    "marketplace_bullets": [
+      "Insignia de agencia verificada tras validar el registro de tu empresa",
+      "Filtros por sector, servicios, ubicación, precio y valoración",
+      "Reseñas reales de clientes verificados (sin opiniones falsas)",
+      "Perfil público con catálogo de servicios, precios y portafolio (editor en vivo)",
+      "Ubicación destacada para agencias verificadas con 4.5+ estrellas"
+    ],
+    "features_title": "Todo lo que una agencia necesita, en un solo lugar",
+    "features_subtitle": "Sin cambiar entre 5 pestañas, sin exportaciones a hojas de cálculo y sin compartir accesos de clientes.",
+    "items": {
+      "analytics": {
+        "title": "Analítica unificada",
+        "body": "Un panel único para Facebook, Instagram, YouTube, LinkedIn y Perfil de Negocio. Comparativas entre clientes y reportes de marca blanca."
+      },
+      "inbox": {
+        "title": "Bandeja unificada",
+        "body": "Mensajes directos, comentarios y reseñas en una sola pantalla. Respuestas sugeridas por IA adaptadas a la voz de cada cliente y reglas de aprobación opcionales."
+      },
+      "composer": {
+        "title": "Editor y programador",
+        "body": "Redacta una vez, publica en todas partes. Ajustes específicos por plataforma, texto alternativo automático con IA, análisis de hashtags y mejores horarios."
+      },
+      "whatsapp": {
+        "title": "Campañas de WhatsApp",
+        "body": "Campañas impulsadas por Pinbot con contactos consentidos, plantillas oficiales, programación y analítica detallada de entrega."
+      },
+      "trust": {
+        "title": "Confianza por diseño",
+        "body": "Cada acción queda registrada. Permisos transparentes tanto para ti como para el cliente. Desconexión autónoma para el cliente final sin bloqueos."
+      },
+      "ai": {
+        "title": "AI Studio integral",
+        "body": "Entrenamiento de voz de marca, redacción de publicaciones, detección de anomalías y narración de reportes. Todo el paquete de IA integrado en tu panel."
+      }
+    },
+    "final_title": "Comprueba cuánto tiempo recuperarás.",
+    "final_subtitle": "Arquitectura abierta. Trae a tus clientes reales: permisos multi-inquilino listos para usar.",
+    "final_button": "Comenzar"
+  },
+  "help": {
+    "badge": "Centro de ayuda",
+    "hero_title": "¿Cómo podemos ayudarte?",
+    "hero_subtitle": "Busca artículos, guías y soluciones paso a paso, o explora por categoría.",
+    "search_placeholder": "Buscar artículos, guías, códigos de error…",
+    "popular_label": "Popular:",
+    "popular": [
+      "¿Cómo conecto una página de Facebook?",
+      "¿Por qué expiró mi token de Meta?",
+      "¿Cómo invito colaboradores y asigno roles?",
+      "¿Cómo funcionan las aprobaciones en el Editor?",
+      "¿Dónde descargo un reporte de cliente en PDF?",
+      "¿Cómo cancelo mi suscripción?"
+    ],
+    "browse_heading": "Explorar por categoría",
+    "no_matches": "No hay categorías que coincidan con «{{query}}». Prueba con otra búsqueda o",
+    "contact_support_link": "contacta a soporte",
+    "articles_count": "{{count}} artículos",
+    "browse_link": "Explorar",
+    "categories": {
+      "getting-started": { "title": "Primeros pasos", "body": "Registro, configuración del espacio de trabajo e invitación al equipo." },
+      "connections": { "title": "Conexiones", "body": "OAuth, tokens manuales y solución de reconexiones." },
+      "composer": { "title": "Editor de publicaciones", "body": "Redacción, programación, aprobaciones y biblioteca multimedia." },
+      "inbox": { "title": "Bandeja de entrada", "body": "Bandeja unificada, respuestas con IA y reglas de automatización." },
+      "billing": { "title": "Facturación", "body": "Planes, métodos de pago, facturas y reembolsos." },
+      "troubleshooting": { "title": "Solución de problemas", "body": "Incidencias habituales, códigos de error y pasos de recuperación." },
+      "security": { "title": "Seguridad y privacidad", "body": "Autenticación, registro de auditoría y retención de datos." },
+      "api": { "title": "API y desarrolladores", "body": "Claves de API, webhooks y límites de peticiones." }
+    },
+    "cta_title": "¿Aún necesitas ayuda?",
+    "cta_subtitle": "Nuestro equipo de soporte suele responder en el plazo de un día hábil.",
+    "cta_button": "Contactar a soporte"
+  },
+  "coming_soon": {
+    "badge_solution": "Página de soluciones — disponible pronto",
+    "badge_product": "Página de producto — disponible pronto",
+    "notice": "Estamos terminando esta sección. Mientras tanto, crea una cuenta y explora la plataforma: todas las funciones del menú ya están operativas.",
+    "get_started": "Comenzar",
+    "back_home": "Volver al inicio"
+  },
+  "legal": {
+    "contents": "Contenido",
+    "effective": "Vigente desde:",
+    "last_updated": "Última actualización:",
+    "all_rights": "Todos los derechos reservados.",
+    "back_to_site": "Volver a Bop Social"
+  },
+  "errors": {
+    "not_found_code": "404",
+    "not_found_title": "Página no encontrada",
+    "not_found_desc": "La página que buscas no existe, fue movida o nunca estuvo aquí.",
+    "server_error_code": "500",
+    "server_error_title": "Error del servidor",
+    "server_error_desc": "Algo salió mal de nuestro lado. Hemos sido notificados y estamos trabajando en resolverlo.",
+    "maintenance_title": "Mantenimiento del sistema en progreso",
+    "maintenance_desc": "Actualmente estamos realizando tareas de mantenimiento programado para mejorar la estabilidad y el rendimiento de la plataforma.",
+    "back_home": "Volver al inicio",
+    "check_status": "Verificar estado del sistema",
+    "reload": "Recargar página"
+  },
+  "banners": {
+    "sample_agency": "Perfil de agencia de muestra — vista previa ilustrativa mientras el marketplace incorpora socios reales.",
+    "sample_case_study": "Caso de estudio de muestra — vista previa ilustrativa mientras incorporamos socios de lanzamiento."
+  },
+  "case_study": {
+    "all_customers": "Todos los clientes",
+    "challenge": "El desafío",
+    "solution": "La solución",
+    "results": "Resultados",
+    "industry": "Sector",
+    "size": "Tamaño",
+    "founded": "Fundación",
+    "location": "Ubicación",
+    "website": "Sitio web",
+    "uses": "Usa",
+    "ready_story_title_1": "¿Listo para escribir tu",
+    "ready_story_title_2": "propia historia de éxito?",
+    "ready_story_sub": "Comienza gratis. Cancela en cualquier momento. La mayoría de los equipos ven resultados en la primera semana.",
+    "start_free": "Comenzar gratis"
+  },
+  "agencies_showcase": {
+    "badge": "Agencias asociadas",
+    "hero_title": "Agencias verificadas que impulsan marcas con Bop Social.",
+    "hero_subtitle": "Encuentra un socio de marketing calificado para gestionar tu presencia digital, campañas y canales de WhatsApp. Invitaciones directas al espacio de trabajo con permisos granulares.",
+    "search_placeholder": "Buscar agencias por nombre, servicio o ciudad…",
+    "all_industries": "Todas las industrias",
+    "all_services": "Todos los servicios",
+    "featured_badge": "Mejor valoradas",
+    "featured_title": "Agencias asociadas destacadas",
+    "all_agencies_title": "Todas las agencias asociadas",
+    "agencies_count": "{{count}} agencias",
+    "no_results_title": "Ninguna agencia coincide con tus filtros",
+    "no_results_sub": "Intenta ampliar los términos de búsqueda o restablecer los filtros.",
+    "reset_filters": "Restablecer filtros",
+    "view_profile": "Ver perfil",
+    "from": "Desde",
+    "trust_strip_1": "Credenciales y portafolio verificados",
+    "trust_strip_2": "Invitaciones directas a espacios multiinquilino",
+    "trust_strip_3": "Permisos granulares y registros de auditoría",
+    "partner_cta_title": "¿Tienes una agencia de marketing?",
+    "partner_cta_sub": "Únete a la Red de Agencias Asociadas de Bop Social. Recibe clientes calificados, portales de marca blanca para tus clientes y herramientas exclusivas.",
+    "partner_cta_button": "Postular mi agencia como socia",
+    "back_to_agencies": "Todas las agencias",
+    "about_heading": "Acerca de",
+    "services_heading": "Servicios y especialidades",
+    "portfolio_heading": "Casos destacados y resultados",
+    "reviews_heading": "Opiniones de clientes",
+    "contact_card_title": "Trabajar con",
+    "invite_to_workspace": "Invitar al espacio de trabajo",
+    "contact_agency": "Contactar agencia",
+    "similar_agencies": "Agencias asociadas similares"
+  },
+  "blog": {
+    "badge": "Blog",
+    "hero_title": "El diario de Bop Social.",
+    "hero_subtitle": "Actualizaciones de producto, metodologías para agencias, experimentos con IA y decisiones de diseño — escritas por el equipo que construye Bop Social.",
+    "search_placeholder": "Buscar artículos por título, etiqueta o tema…",
+    "all_filter": "Todos",
+    "featured_badge": "Destacado",
+    "read_article": "Leer artículo",
+    "min_read": "min de lectura",
+    "no_posts": "No encontramos artículos con tu criterio de búsqueda.",
+    "clear_search": "Borrar búsqueda",
+    "newsletter_badge": "Boletín",
+    "newsletter_title": "El despacho semanal de marketing.",
+    "newsletter_sub": "Sin spam. Solo guías prácticas para agencias, actualizaciones de producto y métricas exclusivas cada jueves.",
+    "newsletter_placeholder": "Ingresa tu correo electrónico",
+    "newsletter_button": "Suscribirme",
+    "newsletter_success": "¡Gracias por suscribirte!",
+    "table_of_contents": "En este artículo",
+    "share_heading": "Compartir este artículo",
+    "share_linkedin": "Compartir en LinkedIn",
+    "share_facebook": "Compartir en Facebook",
+    "copy_link": "Copiar enlace",
+    "link_copied": "Enlace copiado al portapapeles",
+    "related_title": "Artículos relacionados",
+    "back_to_blog": "Volver al blog",
+    "all_posts": "Todos los artículos",
+    "bottom_cta_title": "Construye hoy tu sistema operativo unificado de marketing.",
+    "bottom_cta_sub": "Descubre la plataforma de marketing unificada diseñada para equipos modernos.",
+    "not_found_title": "Artículo no encontrado",
+    "not_found_sub": "El artículo que buscas no existe o ha sido trasladado."
+  }
+}

@@ -18,6 +18,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, ArrowLeft, Check, Sparkles } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 import { endUserAPI } from '../../services/api';
 import toast from '../../components/ui/toast';
@@ -33,6 +34,7 @@ const INDUSTRY_OPTIONS = [
 ];
 
 export default function EndUserSignupPage() {
+  const { t } = useTranslation(['auth', 'common']);
   const navigate = useNavigate();
   const [step,    setStep]    = useState(1);
   const [loading, setLoading] = useState(false);
@@ -51,16 +53,16 @@ export default function EndUserSignupPage() {
 
   function next() {
     if (step === 1) {
-      if (!form.full_name.trim()) return toast.error('Tell us your name');
-      if (!form.email.trim())     return toast.error('Email is required');
-      if (form.password.length < 8) return toast.error('Password must be at least 8 characters');
+      if (!form.full_name.trim()) return toast.error(t('end_user_signup.validation.name_required', 'Tell us your name'));
+      if (!form.email.trim())     return toast.error(t('end_user_signup.validation.email_required', 'Email is required'));
+      if (form.password.length < 8) return toast.error(t('end_user_signup.validation.password_length', 'Password must be at least 8 characters'));
     }
-    if (step === 2 && !form.industry) return toast.error('Pick an industry so we can tune Social Stats for you');
+    if (step === 2 && !form.industry) return toast.error(t('end_user_signup.validation.industry_required', 'Pick an industry so we can tune Bop Social for you'));
     setStep((s) => Math.min(3, s + 1));
   }
 
   async function submit() {
-    if (!form.terms) return toast.error('Please accept the Terms of Service');
+    if (!form.terms) return toast.error(t('end_user_signup.validation.terms_required', 'Please accept the Terms of Service'));
     setLoading(true);
     try {
       const res = await endUserAPI.signup({
@@ -76,14 +78,14 @@ export default function EndUserSignupPage() {
       localStorage.setItem('access_token',  access);
       localStorage.setItem('refresh_token', refresh);
       localStorage.setItem('end_user_signup_workspace', JSON.stringify(workspace || {}));
-      toast.success(`Welcome to Social Stats, ${user?.first_name || ''}!`);
+      toast.success(t('end_user_signup.welcome_toast', 'Welcome to Bop Social, {{name}}!', { name: user?.first_name || '' }));
       // Trigger a fresh /me bootstrap by routing through /auth-callback so the
       // existing useAuth hook picks up the new session.
       navigate('/u');
     } catch (e) {
       const data = e?.response?.data || {};
       const errs = data.errors || {};
-      const first = Object.values(errs)[0] || data.detail || 'Signup failed';
+      const first = Object.values(errs)[0] || data.detail || t('common.something_went_wrong', 'Signup failed');
       toast.error(String(first));
     } finally {
       setLoading(false);
@@ -112,10 +114,10 @@ export default function EndUserSignupPage() {
           </span>
           <div>
             <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>
-              Get started with Social Stats
+              {t('end_user_signup.title_step_1', 'Create your business account')}
             </div>
             <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
-              Free forever · no agency required
+              {t('end_user_signup.subtitle_step_1', 'You own your workspace, credentials, and data — always.')}
             </div>
           </div>
         </header>
@@ -124,25 +126,25 @@ export default function EndUserSignupPage() {
 
         {step === 1 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <Field label="Your full name" value={form.full_name} onChange={set('full_name')} placeholder="Priya Singh" autoFocus />
-            <Field label="Email" type="email" value={form.email} onChange={set('email')} placeholder="you@yourbiz.com" />
-            <Field label="Password" type="password" value={form.password} onChange={set('password')} placeholder="At least 8 characters" />
+            <Field label={t('signup.full_name_label', 'Your full name')} value={form.full_name} onChange={set('full_name')} placeholder={t('signup.full_name_placeholder', 'Jane Doe')} autoFocus />
+            <Field label={t('signup.email_label', 'Email')} type="email" value={form.email} onChange={set('email')} placeholder={t('signup.email_placeholder', 'you@company.com')} />
+            <Field label={t('signup.password_label', 'Password')} type="password" value={form.password} onChange={set('password')} placeholder={t('signup.password_placeholder', 'At least 8 characters')} />
           </div>
         )}
 
         {step === 2 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div>
-              <Label>What do you do?</Label>
+              <Label>{t('end_user_signup.industry_label', 'What do you do?')}</Label>
               <select value={form.industry} onChange={set('industry')} style={selectStyle}>
-                <option value="">Choose one…</option>
+                <option value="">{t('end_user_signup.industry_placeholder', 'Choose one…')}</option>
                 {INDUSTRY_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
               </select>
             </div>
-            <Field label="Business name (optional)" value={form.company_name} onChange={set('company_name')} placeholder="Defaults to your name" />
-            <Field label="Phone (optional)" value={form.phone} onChange={set('phone')} placeholder="+91 …" />
+            <Field label={t('end_user_signup.company_label', 'Business name (optional)')} value={form.company_name} onChange={set('company_name')} placeholder={t('end_user_signup.company_placeholder', 'Defaults to your name')} />
+            <Field label={t('end_user_signup.phone_label', 'Phone (optional)')} value={form.phone} onChange={set('phone')} placeholder={t('end_user_signup.phone_placeholder', '+1 (555) 000-0000')} />
           </div>
         )}
 
@@ -157,8 +159,10 @@ export default function EndUserSignupPage() {
                 style={{ marginTop: 3 }}
               />
               <span>
-                I accept the <Link to="/terms" style={{ color: 'var(--brand-primary-hover)' }}>Terms of Service</Link>{' '}
-                and the <Link to="/privacy" style={{ color: 'var(--brand-primary-hover)' }}>Privacy Policy</Link>.
+                {t('signup.terms_agree', 'I accept the')}{' '}
+                <Link to="/terms" style={{ color: 'var(--brand-primary-hover)' }}>{t('signup.terms_link', 'Terms of Service')}</Link>{' '}
+                {t('common.and', 'and')}{' '}
+                <Link to="/privacy" style={{ color: 'var(--brand-primary-hover)' }}>{t('signup.privacy_link', 'Privacy Policy')}</Link>.
               </span>
             </label>
           </div>
@@ -167,24 +171,25 @@ export default function EndUserSignupPage() {
         <footer style={{ display: 'flex', gap: 8, marginTop: 22 }}>
           {step > 1 && (
             <button type="button" onClick={() => setStep(step - 1)} style={btnGhost}>
-              <ArrowLeft size={14} /> Back
+              <ArrowLeft size={14} /> {t('end_user_signup.back_button', 'Back')}
             </button>
           )}
           <div style={{ flex: 1 }} />
           {step < 3 && (
             <button type="button" onClick={next} style={btnPrimary}>
-              Continue <ArrowRight size={14} />
+              {t('end_user_signup.next_button', 'Continue')} <ArrowRight size={14} />
             </button>
           )}
           {step === 3 && (
             <button type="button" onClick={submit} disabled={loading || !form.terms} style={btnPrimary}>
-              {loading ? 'Creating…' : 'Create account'} <Check size={14} />
+              {loading ? t('end_user_signup.finishing', 'Creating…') : t('end_user_signup.finish_button', 'Create account')} <Check size={14} />
             </button>
           )}
         </footer>
 
         <p style={{ marginTop: 16, fontSize: 12, color: 'var(--text-tertiary)', textAlign: 'center' }}>
-          Already have an account? <Link to="/login" style={{ color: 'var(--brand-primary-hover)', fontWeight: 600 }}>Sign in</Link>
+          {t('signup.already_have_account', 'Already have an account?')}{' '}
+          <Link to="/login" style={{ color: 'var(--brand-primary-hover)', fontWeight: 600 }}>{t('signup.sign_in', 'Sign in')}</Link>
         </p>
       </div>
     </div>

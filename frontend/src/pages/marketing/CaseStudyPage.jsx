@@ -44,12 +44,14 @@ import Button          from '../../components/ui/Button';
 import Meta            from '../../components/Meta';
 import JsonLd, { buildBreadcrumbs, SITE_URL } from '../../components/JsonLd';
 
-import STUDIES from './caseStudies';
+import { useTranslation } from 'react-i18next';
+import { getCaseStudy } from './caseStudies';
 import ComingSoonPage from './ComingSoonPage';
 
 export default function CaseStudyPage() {
   const { slug } = useParams();
-  const study = STUDIES[slug];
+  const { t, i18n } = useTranslation(['marketing', 'navigation', 'common']);
+  const study = getCaseStudy(slug, i18n.language);
   if (!study) return <ComingSoonPage />;
 
   const { company, industry, accent, tagline, hero, profile,
@@ -64,9 +66,9 @@ export default function CaseStudyPage() {
       <JsonLd
         id="breadcrumbs"
         data={buildBreadcrumbs([
-          { name: 'Home',      url: `${SITE_URL}/` },
-          { name: 'Customers', url: `${SITE_URL}/customers` },
-          { name: company,     url: `${SITE_URL}/customers/${slug}` },
+          { name: t('navigation:home', 'Home'),           url: `${SITE_URL}/` },
+          { name: t('navigation:customers', 'Customers'), url: `${SITE_URL}/customers` },
+          { name: company,                                url: `${SITE_URL}/customers/${slug}` },
         ])}
       />
 
@@ -91,7 +93,7 @@ export default function CaseStudyPage() {
             textDecoration: 'none',
             marginBottom: 24,
           }}>
-            <ArrowLeft size={14} /> All customers
+            <ArrowLeft size={14} /> {t('marketing:case_study.all_customers', 'All customers')}
           </Link>
 
           <div style={{
@@ -246,11 +248,11 @@ export default function CaseStudyPage() {
                 {industry}
               </div>
 
-              <ProfileRow label="Industry"  value={profile.sector} />
-              <ProfileRow label="Size"      value={profile.size} />
-              <ProfileRow label="Founded"   value={profile.founded} />
-              <ProfileRow label="Location"  value={profile.location} />
-              <ProfileRow label="Website"   value={profile.website} icon={<ExternalLink size={11} />} />
+              <ProfileRow label={t('marketing:case_study.industry', 'Industry')}  value={profile.sector} />
+              <ProfileRow label={t('marketing:case_study.size', 'Size')}          value={profile.size} />
+              <ProfileRow label={t('marketing:case_study.founded', 'Founded')}    value={profile.founded} />
+              <ProfileRow label={t('marketing:case_study.location', 'Location')}  value={profile.location} />
+              <ProfileRow label={t('marketing:case_study.website', 'Website')}    value={profile.website} icon={<ExternalLink size={11} />} />
 
               <div style={{
                 marginTop: 18,
@@ -258,7 +260,7 @@ export default function CaseStudyPage() {
                 borderTop: '1px solid rgba(255,255,255,0.08)',
               }}>
                 <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase', color: 'rgba(255,255,255,0.45)', marginBottom: 10 }}>
-                  Uses
+                  {t('marketing:case_study.uses', 'Uses')}
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                   {profile.uses.map((u) => (
@@ -281,7 +283,7 @@ export default function CaseStudyPage() {
           {/* Long-form */}
           <div style={{ minWidth: 0 }}>
             <ScrollReveal>
-              <SectionLabel accent={accent}>The challenge</SectionLabel>
+              <SectionLabel accent={accent}>{t('marketing:case_study.challenge', 'The challenge')}</SectionLabel>
               <h2 style={{
                 margin: '8px 0 16px',
                 fontSize: 'clamp(26px, 3.5vw, 36px)',
@@ -306,7 +308,7 @@ export default function CaseStudyPage() {
 
             {/* Solution */}
             <ScrollReveal>
-              <SectionLabel accent={accent}>The solution</SectionLabel>
+              <SectionLabel accent={accent}>{t('marketing:case_study.solution', 'The solution')}</SectionLabel>
               <h2 style={{
                 margin: '8px 0 16px',
                 fontSize: 'clamp(26px, 3.5vw, 36px)',
@@ -346,7 +348,7 @@ export default function CaseStudyPage() {
                 background: `linear-gradient(135deg, ${accent}10, rgba(255,255,255,0.02))`,
                 border: `1px solid ${accent}30`,
               }}>
-                <SectionLabel accent={accent}>Results</SectionLabel>
+                <SectionLabel accent={accent}>{t('marketing:case_study.results', 'Results')}</SectionLabel>
                 <h2 style={{
                   margin: '8px 0 12px',
                   fontSize: 'clamp(24px, 3vw, 32px)',
@@ -423,9 +425,9 @@ export default function CaseStudyPage() {
             color: '#fff',
             lineHeight: 1.1,
           }}>
-            Ready to write your<br />
+            {t('marketing:case_study.ready_story_title_1', 'Ready to write your')}<br />
             <span style={{ background: `linear-gradient(135deg, ${accent}, #8b5cf6)`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-              own success story?
+              {t('marketing:case_study.ready_story_title_2', 'own success story?')}
             </span>
           </h2>
 
@@ -436,7 +438,7 @@ export default function CaseStudyPage() {
             color: 'rgba(255,255,255,0.75)',
             lineHeight: 1.55,
           }}>
-            Start free. Cancel anytime. Most teams see results in week one.
+            {t('marketing:case_study.ready_story_sub', 'Start free. Cancel anytime. Most teams see results in week one.')}
           </p>
 
           <div style={{
@@ -448,7 +450,7 @@ export default function CaseStudyPage() {
                 background: `linear-gradient(135deg, ${accent}, #00A8D8)`,
                 color: '#0a0e14', border: 'none',
               }}>
-              Start free <ArrowRight size={15} />
+              {t('marketing:case_study.start_free', 'Start free')} <ArrowRight size={15} />
             </Button>
             <Button as={Link} to="/customers" size="lg" variant="ghost"
               style={{
@@ -456,7 +458,7 @@ export default function CaseStudyPage() {
                 background: 'rgba(255,255,255,0.08)',
                 border: '1px solid rgba(255,255,255,0.18)',
               }}>
-              <ArrowLeft size={15} /> All customers
+              <ArrowLeft size={15} /> {t('marketing:case_study.all_customers', 'All customers')}
             </Button>
           </div>
         </div>

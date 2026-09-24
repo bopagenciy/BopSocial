@@ -7,6 +7,7 @@
  *  Released under the MIT License — see LICENSE. Keep this notice.
  * ========================================================================== */
 import { Info } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 /**
  * Visible disclosure rendered above marketplace agency profiles and customer
@@ -18,9 +19,10 @@ import { Info } from 'lucide-react';
  * before the hero loads.
  */
 export default function SamplePreviewBanner({ kind = 'agency' }) {
+  const { t } = useTranslation('marketing');
   const label = kind === 'agency'
-    ? 'Sample agency listing — illustrative preview while the marketplace onboards real partners.'
-    : 'Sample case study — illustrative preview while we onboard launch partners.';
+    ? t('banners.sample_agency', 'Sample agency listing — illustrative preview while the marketplace onboards real partners.')
+    : t('banners.sample_case_study', 'Sample case study — illustrative preview while we onboard launch partners.');
   return (
     <div
       role="note"

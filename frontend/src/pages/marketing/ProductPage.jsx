@@ -20,6 +20,7 @@
  *   5. Final CTA
  */
 import { useParams, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { ArrowRight, Check, Sparkles } from 'lucide-react';
 
@@ -39,7 +40,8 @@ import ComingSoonPage from './ComingSoonPage';
 
 export default function ProductPage() {
   const { slug } = useParams();
-  const data = getProductPage(slug);
+  const { t, i18n } = useTranslation(['marketing', 'navigation', 'common']);
+  const data = getProductPage(slug, i18n.language);
 
   if (!data) return <ComingSoonPage />;
 
@@ -61,18 +63,18 @@ export default function ProductPage() {
       <JsonLd
         id="breadcrumbs"
         data={buildBreadcrumbs([
-          { name: 'Home',     url: `${SITE_URL}/` },
-          { name: 'Product',  url: `${SITE_URL}/product/${slug}` },
+          { name: t('navigation:home', 'Home'), url: `${SITE_URL}/` },
+          { name: t('navigation:features', 'Product'), url: `${SITE_URL}/features` },
           { name: data.title, url: `${SITE_URL}/product/${slug}` },
         ])}
       />
-      <Hero data={data} />
+      <Hero data={data} t={t} />
       {data.stripes?.map((s, i) => (
         <FeatureStripe key={i} data={s} reverse={i % 2 === 1} />
       ))}
       {data.capabilities && <CapabilityGrid data={data.capabilities} />}
       {data.quote && <CustomerQuote data={data.quote} />}
-      <FinalCTA data={data} />
+      <FinalCTA data={data} t={t} />
     </MarketingLayout>
   );
 }
@@ -84,7 +86,7 @@ export const productSlugs = Object.keys(productPages);
 // ─────────────────────────────────────────────────────────────────────────────
 // Hero
 // ─────────────────────────────────────────────────────────────────────────────
-function Hero({ data }) {
+function Hero({ data, t }) {
   const Demo = data.heroDemo;
   return (
     <section style={{
@@ -162,7 +164,7 @@ function Hero({ data }) {
                       background: 'var(--brand-gradient)',
                       color: '#1E202A', border: 'none', fontWeight: 600,
                     }}>
-              Get started <ArrowRight size={15} />
+              {t ? t('marketing:home.get_started', 'Get started') : 'Get started'} <ArrowRight size={15} />
             </Button>
             <Button as={Link} to="/features" size="lg" variant="ghost"
                     style={{
@@ -170,7 +172,7 @@ function Hero({ data }) {
                       background: 'rgba(255,255,255,0.06)',
                       border: '1px solid rgba(255,255,255,0.18)',
                     }}>
-              Explore features
+              {t ? t('marketing:features.catalog_cta_explore', 'Explore features') : 'Explore features'}
             </Button>
           </motion.div>
         </div>
@@ -411,15 +413,15 @@ function CustomerQuote({ data }) {
 // ─────────────────────────────────────────────────────────────────────────────
 // Final CTA
 // ─────────────────────────────────────────────────────────────────────────────
-function FinalCTA({ data }) {
+function FinalCTA({ data, t }) {
   return (
     <section style={{ padding: 'clamp(56px, 9vh, 96px) 24px', background: 'var(--surface-page)' }}>
       <CTASection
-        title={data.ctaTitle || 'Get started with Bop Social'}
-        subtitle={data.ctaSubtitle || 'Unify your social media operations with enterprise multi-tenant capabilities.'}
-        primary={{ to: '/signup', label: 'Start free trial' }}
-        secondary={{ to: '/features', label: 'Explore features' }}
-        microCopy="Enterprise multi-tenant · Built for the Bop Universe"
+        title={data.ctaTitle || (t ? t('marketing:banners.cta_title', 'Get started with Bop Social') : 'Get started with Bop Social')}
+        subtitle={data.ctaSubtitle || (t ? t('marketing:banners.cta_subtitle', 'Unify your social media operations with enterprise multi-tenant capabilities.') : 'Unify your social media operations with enterprise multi-tenant capabilities.')}
+        primary={{ to: '/signup', label: t ? t('marketing:home.cta_start_free_trial', 'Start free trial') : 'Start free trial' }}
+        secondary={{ to: '/features', label: t ? t('marketing:features.catalog_cta_explore', 'Explore features') : 'Explore features' }}
+        microCopy={t ? t('marketing:home.cta_microcopy', 'Enterprise multi-tenant · Built for the Bop Universe') : 'Enterprise multi-tenant · Built for the Bop Universe'}
         variant="cta"
       />
     </section>

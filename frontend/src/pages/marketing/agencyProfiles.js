@@ -22,6 +22,8 @@
  *   reviews[], contact { website, email, phone }
  */
 
+import { agencyProfiles_es } from './agencyProfiles.es';
+
 const AGENCIES = {
   // ──────────────────────────────────────────────────────────────────────
   'bluewave-agency': {
@@ -307,15 +309,52 @@ const AGENCIES = {
 
 export default AGENCIES;
 
-export function getAgency(slug) {
-  return AGENCIES[slug] || null;
+export function getAgency(slug, lang = 'en') {
+  const base = AGENCIES[slug];
+  if (!base) return null;
+  if (lang?.startsWith('es') && agencyProfiles_es[slug]) {
+    const es = agencyProfiles_es[slug];
+    return {
+      ...base,
+      ...es,
+      pricing: {
+        ...base.pricing,
+        ...(es.pricing || {}),
+      },
+      metric: {
+        ...base.metric,
+        ...(es.metric || {}),
+      },
+      stats: base.stats?.map((stat, idx) => ({
+        ...stat,
+        ...(es.stats?.[idx] || {}),
+      })),
+      services_detail: base.services_detail?.map((srv, idx) => ({
+        ...srv,
+        ...(es.services_detail?.[idx] || {}),
+      })),
+      portfolio: base.portfolio?.map((port, idx) => ({
+        ...port,
+        ...(es.portfolio?.[idx] || {}),
+      })),
+      reviews: base.reviews?.map((rev, idx) => ({
+        ...rev,
+        ...(es.reviews?.[idx] || {}),
+      })),
+    };
+  }
+  return base;
+}
+
+export function getAgencies(lang = 'en') {
+  return Object.keys(AGENCIES).map((slug) => getAgency(slug, lang));
 }
 
 export const AGENCY_LIST = Object.values(AGENCIES);
 
-export function listIndustries() {
-  return Array.from(new Set(AGENCY_LIST.flatMap((a) => a.industries))).sort();
+export function listIndustries(lang = 'en') {
+  return Array.from(new Set(getAgencies(lang).flatMap((a) => a.industries))).sort();
 }
-export function listServices() {
-  return Array.from(new Set(AGENCY_LIST.flatMap((a) => a.services))).sort();
+export function listServices(lang = 'en') {
+  return Array.from(new Set(getAgencies(lang).flatMap((a) => a.services))).sort();
 }

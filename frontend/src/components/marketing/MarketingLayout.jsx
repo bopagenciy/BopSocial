@@ -714,59 +714,59 @@ function MarketingFooter() {
     {
       title: t('footer.product', 'Product'),
       links: [
-        { label: 'Analytics',     to: '/product/analytics' },
-        { label: 'Composer',      to: '/product/composer' },
-        { label: 'Inbox',         to: '/product/inbox' },
-        { label: 'WhatsApp',      to: '/product/whatsapp' },
-        { label: 'Bot Builder',   to: '/product/bot-builder' },
-        { label: 'AI Studio',     to: '/product/ai' },
-        { label: 'Reports',       to: '/product/reports' },
-        { label: 'Automations',   to: '/product/automations' },
-        { label: 'Marketplace',   to: '/product/marketplace-product' },
+        { label: t('products.analytics', 'Analytics'),     to: '/product/analytics' },
+        { label: t('products.composer', 'Composer'),      to: '/product/composer' },
+        { label: t('products.inbox', 'Inbox'),         to: '/product/inbox' },
+        { label: t('products.whatsapp', 'WhatsApp'),      to: '/product/whatsapp' },
+        { label: t('products.bot_builder', 'Bot Builder'),   to: '/product/bot-builder' },
+        { label: t('products.ai_studio', 'AI Studio'),     to: '/product/ai' },
+        { label: t('products.reports', 'Reports'),       to: '/product/reports' },
+        { label: t('products.automations', 'Automations'),   to: '/product/automations' },
+        { label: t('products.marketplace', 'Marketplace'),   to: '/product/marketplace-product' },
       ],
     },
     {
       title: t('footer.solutions', 'Solutions'),
       links: [
-        { label: 'For Agencies',   to: '/solutions/agencies' },
-        { label: 'For Businesses', to: '/solutions/businesses' },
-        { label: 'Real Estate',    to: '/solutions/real-estate' },
-        { label: 'Healthcare',     to: '/solutions/clinics' },
-        { label: 'Restaurants',    to: '/solutions/restaurants' },
-        { label: 'Creators',       to: '/solutions/creators' },
-        { label: 'E-commerce',     to: '/solutions/ecommerce' },
+        { label: t('solutions.agencies', 'For Agencies'),   to: '/solutions/agencies' },
+        { label: t('solutions.businesses', 'For Businesses'), to: '/solutions/businesses' },
+        { label: t('solutions.real_estate', 'Real Estate'),    to: '/solutions/real-estate' },
+        { label: t('solutions.healthcare', 'Healthcare'),     to: '/solutions/clinics' },
+        { label: t('solutions.restaurants', 'Restaurants'),    to: '/solutions/restaurants' },
+        { label: t('solutions.creators', 'Creators'),       to: '/solutions/creators' },
+        { label: t('solutions.ecommerce', 'E-commerce'),     to: '/solutions/ecommerce' },
       ],
     },
     {
       title: t('footer.resources', 'Resources'),
       links: [
-        { label: 'Customers',     to: '/customers' },
-        { label: 'Blog',          to: '/blog' },
-        { label: 'Help Center',   to: '/help' },
-        { label: 'Changelog',     to: '/changelog' },
-        { label: 'Status',        to: '/status' },
-        { label: 'Integrations',  to: '/integrations' },
+        { label: t('nav.customers', 'Customers'),     to: '/customers' },
+        { label: t('resources.blog', 'Blog'),          to: '/blog' },
+        { label: t('resources.help_center', 'Help Center'),   to: '/help' },
+        { label: t('resources.changelog', 'Changelog'),     to: '/changelog' },
+        { label: t('resources.status', 'Status'),        to: '/status' },
+        { label: t('resources.integrations', 'Integrations'),  to: '/integrations' },
       ],
     },
     {
       title: t('footer.company', 'Company'),
       links: [
-        { label: 'About',     to: '/about' },
-        { label: 'Customers', to: '/customers' },
-        { label: 'Contact',   to: '/contact' },
-        { label: 'Press',     to: '/about#press' },
-        { label: 'Careers',   to: '/about#careers' },
+        { label: t('nav.about', 'About'),     to: '/about' },
+        { label: t('nav.customers', 'Customers'), to: '/customers' },
+        { label: t('resources.contact', 'Contact'),   to: '/contact' },
+        { label: t('footer.press', 'Press'),     to: '/about#press' },
+        { label: t('footer.careers', 'Careers'),   to: '/about#careers' },
       ],
     },
     {
       title: t('footer.legal', 'Legal'),
       links: [
-        { label: 'Privacy',         to: '/privacy' },
-        { label: 'Terms',           to: '/terms' },
-        { label: 'Cookies',         to: '/cookies' },
-        { label: 'GDPR',            to: '/gdpr' },
-        { label: 'DPDP',            to: '/dpdp' },
-        { label: 'Security',        to: '/security' },
+        { label: t('footer.privacy', 'Privacy'),         to: '/privacy' },
+        { label: t('footer.terms', 'Terms'),           to: '/terms' },
+        { label: t('footer.cookies', 'Cookies'),         to: '/cookies' },
+        { label: t('footer.gdpr', 'GDPR'),            to: '/gdpr' },
+        { label: t('footer.dpdp', 'DPDP'),            to: '/dpdp' },
+        { label: t('footer.security', 'Security'),        to: '/security' },
       ],
     },
   ];
@@ -803,7 +803,7 @@ function MarketingFooter() {
               color: 'var(--text-secondary)',
               maxWidth: 280,
             }}>
-              The AI marketing OS for modern agencies. Analytics, content, conversations, and ads — for every client, in one place.
+              {t('footer.tagline', 'The AI marketing OS for modern agencies. Analytics, content, conversations, and ads — for every client, in one place.')}
             </p>
             <div style={{ display: 'flex', gap: 6 }}>
               <SocialIconLink href="https://github.com/bopagenciy/BopSocial"   label="GitHub"   icon={Github} />
@@ -865,13 +865,13 @@ function MarketingFooter() {
                 background: 'var(--success)',
                 boxShadow: '0 0 8px rgba(16,185,129,0.6)',
               }} />
-              All systems operational
+              {t('footer.systems_operational', 'All systems operational')}
             </Link>
             <span style={{
               display: 'inline-flex', alignItems: 'center', gap: 4,
               color: 'var(--text-tertiary)',
             }}>
-              <Sparkles size={11} /> Built for the Bop Universe
+              <Sparkles size={11} /> {t('footer.built_for_universe', 'Built for the Bop Universe')}
             </span>
           </div>
         </div>

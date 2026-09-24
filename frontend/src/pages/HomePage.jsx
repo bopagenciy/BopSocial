@@ -30,6 +30,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, useReducedMotion } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import {
   ArrowRight, PlayCircle, Sparkles, Check,
   BarChart3, MessageCircle, Zap, Bot, Inbox, PenSquare,
@@ -60,12 +61,13 @@ import { track } from '../services/analytics';
 
 // ─────────────────────────────────────────────────────────────────────────────
 export default function HomePage() {
+  const { t } = useTranslation(['marketing', 'navigation', 'common']);
   return (
     <MarketingLayout>
       <Meta
         noSuffix
-        title="Bop Social — The Marketing OS for Modern Teams"
-        description="Manage analytics, content, conversations, and campaigns for every client and organization — across multiple platforms — in one place. Part of the Bop Universe."
+        title={t('marketing:metadata.home_title', 'Bop Social — The Marketing OS for Modern Teams')}
+        description={t('marketing:metadata.home_desc', 'Manage analytics, content, conversations, and campaigns for every client and organization — across multiple platforms — in one place. Built for the Bop Universe.')}
       />
       <JsonLd id="organization" data={buildOrganization()} />
       <JsonLd id="website"      data={buildWebSite()} />
@@ -88,6 +90,7 @@ export default function HomePage() {
 // Section 1 — HERO
 // ─────────────────────────────────────────────────────────────────────────────
 function Hero() {
+  const { t } = useTranslation(['marketing', 'navigation', 'common']);
   const reduced = useReducedMotion();
   return (
     <section style={{
@@ -120,8 +123,8 @@ function Hero() {
             backdropFilter: 'blur(10px)',
           }}>
             <Sparkles size={12} style={{ color: '#F5A623' }} />
-            <span style={{ color: 'rgba(255,255,255,0.65)' }}>NEW</span>
-            CTWA Bot Builder is live
+            <span style={{ color: 'rgba(255,255,255,0.65)' }}>{t('home.eyebrow_new', 'NEW')}</span>
+            {t('home.eyebrow_text', 'CTWA Bot Builder is live')}
             <ArrowRight size={11} style={{ opacity: 0.6 }} />
           </Link>
         </motion.div>
@@ -137,15 +140,15 @@ function Hero() {
             color: '#fff', maxWidth: 900, marginInline: 'auto',
           }}
         >
-          The{' '}
+          {t('home.hero_title_pre', 'The ')}
           <span style={{
             background: 'linear-gradient(135deg, #F5A623 0%, #F7C06D 50%, #E09612 100%)',
             WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
             backgroundClip: 'text',
           }}>
-            Marketing OS
+            {t('home.hero_title_highlight', 'Marketing OS')}
           </span>
-          <br />for modern teams
+          <br />{t('home.hero_title_post', 'for modern teams')}
         </motion.h1>
 
         {/* Subheading */}
@@ -159,8 +162,7 @@ function Hero() {
             maxWidth: 640,
           }}
         >
-          Manage analytics, content, conversations, and campaigns for every client and organization —
-          across multiple platforms — in one place.
+          {t('home.hero_subtitle', 'Manage analytics, content, conversations, and campaigns for every client and organization — across multiple platforms — in one place.')}
         </motion.p>
 
         {/* CTAs */}
@@ -178,7 +180,7 @@ function Hero() {
                     background: 'linear-gradient(135deg, #F5A623, #E09612)',
                     color: '#1E202A', border: 'none', fontWeight: 600,
                   }}>
-            Get started <ArrowRight size={15} />
+            {t('home.get_started', 'Get started')} <ArrowRight size={15} />
           </Button>
           <Button as={Link} to="/customers" size="lg" variant="ghost"
                   style={{
@@ -186,7 +188,7 @@ function Hero() {
                     background: 'rgba(255,255,255,0.06)',
                     border: '1px solid rgba(255,255,255,0.18)',
                   }}>
-            <PlayCircle size={15} /> Watch 90s demo
+            <PlayCircle size={15} /> {t('home.watch_demo', 'Watch 90s demo')}
           </Button>
         </motion.div>
 
@@ -195,7 +197,7 @@ function Hero() {
           transition={{ duration: 0.5, delay: 0.6 }}
           style={{ marginTop: 14, fontSize: 13, color: 'rgba(255,255,255,0.5)' }}
         >
-          Multi-company architecture · Real-time analytics · Built for the Bop Universe
+          {t('home.positioning', 'Multi-company architecture · Real-time analytics · Built for the Bop Universe')}
         </motion.p>
 
         {/* Hero mockup with floating cards */}
@@ -321,6 +323,7 @@ const floatIconStyle = (bg, color) => ({
 // Customer-logo carousel intentionally omitted until we have real customers.
 // ─────────────────────────────────────────────────────────────────────────────
 function TrustStrip() {
+  const { t } = useTranslation('marketing');
   const platforms = ['Facebook', 'Instagram', 'YouTube', 'LinkedIn', 'Google Business', 'WhatsApp Business'];
   return (
     <section style={{
@@ -336,7 +339,7 @@ function TrustStrip() {
           letterSpacing: '0.08em', textTransform: 'uppercase',
           color: 'var(--text-tertiary)',
         }}>
-          One platform, every channel that matters
+          {t('home.channels_headline', 'One platform, every channel that matters')}
         </p>
         <div style={{
           display: 'flex', flexWrap: 'wrap', gap: '20px 32px',
@@ -359,18 +362,22 @@ function TrustStrip() {
 // Section 3 — THREE PILLARS
 // ─────────────────────────────────────────────────────────────────────────────
 function ThreePillars() {
+  const { t } = useTranslation('marketing');
   const pillars = [
-    { icon: BarChart3, tone: '#F5A623', toneSoft: 'rgba(245,166,35,0.12)', label: 'ANALYZE',
-      title: 'Track everything',
-      blurb: 'Reach, engagement, and revenue across multiple platforms in one dashboard.',
+    { icon: BarChart3, tone: '#F5A623', toneSoft: 'rgba(245,166,35,0.12)',
+      label: t('home.pillar_analyze_label', 'ANALYZE'),
+      title: t('home.pillar_analyze_title', 'Track everything'),
+      blurb: t('home.pillar_analyze_blurb', 'Reach, engagement, and revenue across multiple platforms in one dashboard.'),
       preview: <AnalyticsPreview /> },
-    { icon: MessageCircle, tone: '#a78bfa', toneSoft: 'rgba(139,92,246,0.10)', label: 'ENGAGE',
-      title: 'Reply in one place',
-      blurb: 'Every DM, comment, and review across platforms — sorted, AI-prioritised, replyable.',
+    { icon: MessageCircle, tone: '#a78bfa', toneSoft: 'rgba(139,92,246,0.10)',
+      label: t('home.pillar_engage_label', 'ENGAGE'),
+      title: t('home.pillar_engage_title', 'Reply in one place'),
+      blurb: t('home.pillar_engage_blurb', 'Every DM, comment, and review across platforms — sorted, AI-prioritised, replyable.'),
       preview: <InboxPreview /> },
-    { icon: Bot, tone: '#34d399', toneSoft: 'rgba(16,185,129,0.10)', label: 'CONVERT',
-      title: 'Capture more leads',
-      blurb: 'Run conversational campaigns with AI bots that qualify customers 24/7 and route them to your CRM.',
+    { icon: Bot, tone: '#34d399', toneSoft: 'rgba(16,185,129,0.10)',
+      label: t('home.pillar_convert_label', 'CONVERT'),
+      title: t('home.pillar_convert_title', 'Capture more leads'),
+      blurb: t('home.pillar_convert_blurb', 'Run conversational campaigns with AI bots that qualify customers 24/7 and route them to your CRM.'),
       preview: <BotBuilderPreview /> },
   ];
   return (
@@ -378,9 +385,9 @@ function ThreePillars() {
       <div style={{ maxWidth: 1180, margin: '0 auto' }}>
         <ScrollReveal>
           <SectionHeading
-            eyebrow="What is Bop Social"
-            title="One platform, complete visibility"
-            subtitle="Eliminate fragmented tools. Bop Social delivers unified analytics, cross-channel engagement, and automated intelligence for your organization."
+            eyebrow={t('home.pillars_eyebrow', 'Three Pillars')}
+            title={t('home.pillars_title', 'Analyze. Engage. Convert.')}
+            subtitle={t('home.pillars_desc', 'Everything your team needs to turn social presence into measurable revenue.')}
           />
         </ScrollReveal>
 
@@ -440,39 +447,40 @@ function ThreePillars() {
 // Section 4 — BENTO GRID
 // ─────────────────────────────────────────────────────────────────────────────
 function BentoSection() {
+  const { t } = useTranslation(['marketing', 'navigation']);
   const items = [
-    { id: 'ai-assistant', title: 'AI Assistant',
-      description: 'Talk to your marketing data. Cmd+J anywhere.',
+    { id: 'ai-assistant', title: t('navigation:products.ai_assistant', 'AI Assistant'),
+      description: t('navigation:products.ai_assistant_desc', 'Talk to your marketing data. Cmd+J anywhere.'),
       to: '/product/ai-assistant', tone: 'cyan', accentBg: true,
       icon: Sparkles, span: { col: 2, row: 1 },
       preview: <AIAssistantPreview /> },
-    { id: 'composer', title: 'Composer',
-      description: 'Write once, publish 5x.',
+    { id: 'composer', title: t('navigation:products.composer', 'Composer'),
+      description: t('navigation:products.composer_desc', 'Write once, publish 5x.'),
       to: '/product/composer', tone: 'purple', icon: PenSquare,
       preview: <ComposerPreview /> },
-    { id: 'inbox', title: 'Unified Inbox',
-      description: 'Every conversation in one place.',
+    { id: 'inbox', title: t('navigation:products.inbox', 'Unified Inbox'),
+      description: t('navigation:products.inbox_desc', 'Every conversation in one place.'),
       to: '/product/inbox', tone: 'green', icon: Inbox,
       preview: <InboxPreview /> },
-    { id: 'bot-builder', title: 'Bot Builder',
-      description: 'Visual flow editor for CTWA ads.',
+    { id: 'bot-builder', title: t('navigation:products.bot_builder', 'Bot Builder'),
+      description: t('navigation:products.bot_builder_desc', 'Visual flow editor for CTWA ads.'),
       to: '/product/bot-builder', tone: 'pink', icon: Bot,
       preview: <BotBuilderPreview /> },
-    { id: 'ai-insights', title: 'AI Insights',
-      description: 'Spot trends + drops before they hurt.',
+    { id: 'ai-insights', title: t('navigation:products.ai_studio', 'AI Insights'),
+      description: t('navigation:products.ai_studio_desc', 'Spot trends + drops before they hurt.'),
       to: '/product/ai', tone: 'amber', icon: TrendingUp,
       preview: <AIInsightPreview /> },
-    { id: 'automations', title: 'Automations',
-      description: 'IF this happens, do that.',
+    { id: 'automations', title: t('navigation:products.automations', 'Automations'),
+      description: t('navigation:products.automations_desc', 'IF this happens, do that.'),
       to: '/product/automations', tone: 'cyan', accentBg: true,
       icon: Zap, span: { col: 2, row: 1 },
       preview: <AutomationsPreview /> },
-    { id: 'analytics', title: 'Analytics',
-      description: 'Cross-platform metrics, demystified.',
+    { id: 'analytics', title: t('navigation:products.analytics', 'Analytics'),
+      description: t('navigation:products.analytics_desc', 'Cross-platform metrics, demystified.'),
       to: '/product/analytics', tone: 'cyan', icon: BarChart3,
       preview: <AnalyticsPreview /> },
-    { id: 'reports', title: 'Reports',
-      description: 'Reports that write themselves.',
+    { id: 'reports', title: t('navigation:products.reports', 'Reports'),
+      description: t('navigation:products.reports_desc', 'Reports that write themselves.'),
       to: '/product/reports', tone: 'purple', icon: BarChart3,
       preview: <ReportsPreview /> },
   ];
@@ -486,9 +494,9 @@ function BentoSection() {
       <div style={{ maxWidth: 1180, margin: '0 auto' }}>
         <ScrollReveal>
           <SectionHeading
-            eyebrow="Every surface, polished"
-            title="Eight features that make every team faster"
-            subtitle="Hover any tile to see it move. Click for the deep dive."
+            eyebrow={t('home.bento_eyebrow', 'Capabilities')}
+            title={t('home.bento_title', "Everything you need. Nothing you don't.")}
+            subtitle={t('home.bento_subtitle', 'Hover any tile to see it move. Click for the deep dive.')}
           />
         </ScrollReveal>
         <div style={{ marginTop: 48 }}>
@@ -505,57 +513,58 @@ function BentoSection() {
 // Section 5 — USE CASE TABS
 // ─────────────────────────────────────────────────────────────────────────────
 function UseCaseTabs() {
+  const { t } = useTranslation(['marketing', 'navigation']);
   const tabs = [
-    { id: 'agencies', label: 'Agencies', icon: Briefcase,
-      headline: 'Manage 100+ clients without losing your mind.',
+    { id: 'agencies', label: t('navigation:solutions.agencies', 'Agencies'), icon: Briefcase,
+      headline: t('home.use_case_agencies_headline', 'Manage 100+ clients without losing your mind.'),
       bullets: [
-        'Multi-client workspaces with one-click switcher',
-        'Team collaboration with role permissions',
-        'White-label client portals + branded reports',
-        'Approval workflows for every action',
-        'AI assistant tuned to each client\'s brand voice',
+        t('home.use_case_agencies_bullet_1', 'Multi-client workspaces with one-click switcher'),
+        t('home.use_case_agencies_bullet_2', 'Team collaboration with role permissions'),
+        t('home.use_case_agencies_bullet_3', 'White-label client portals + branded reports'),
+        t('home.use_case_agencies_bullet_4', 'Approval workflows for every action'),
+        t('home.use_case_agencies_bullet_5', "AI assistant tuned to each client's brand voice"),
       ],
-      cta: { label: 'Read agency case study', to: '/customers' } },
-    { id: 'real-estate', label: 'Real Estate', icon: Building2,
-      headline: 'Sell more properties on social media.',
+      cta: { label: t('home.read_case_study', 'Read agency case study'), to: '/customers' } },
+    { id: 'real-estate', label: t('navigation:solutions.real_estate', 'Real Estate'), icon: Building2,
+      headline: t('home.use_case_real_estate_headline', 'Sell more properties on social media.'),
       bullets: [
-        'Property listing carousels for Instagram + Facebook',
-        'Site-visit reminders via WhatsApp',
-        'Lead capture from CTWA ads — directly to CRM',
-        'AI-written property descriptions',
-        'Open-house promo automation',
+        t('home.use_case_real_estate_bullet_1', 'Property listing carousels for Instagram + Facebook'),
+        t('home.use_case_real_estate_bullet_2', 'Site-visit reminders via WhatsApp'),
+        t('home.use_case_real_estate_bullet_3', 'Lead capture from CTWA ads — directly to CRM'),
+        t('home.use_case_real_estate_bullet_4', 'AI-written property descriptions'),
+        t('home.use_case_real_estate_bullet_5', 'Open-house promo automation'),
       ],
-      cta: { label: 'Real estate playbook', to: '/solutions/real-estate' } },
-    { id: 'clinics', label: 'Healthcare', icon: Stethoscope,
-      headline: 'Engage patients across every platform.',
+      cta: { label: t('home.real_estate_playbook', 'Real estate playbook'), to: '/solutions/real-estate' } },
+    { id: 'clinics', label: t('navigation:solutions.clinics', 'Healthcare'), icon: Stethoscope,
+      headline: t('home.use_case_healthcare_headline', 'Engage patients across every platform.'),
       bullets: [
-        'Appointment reminders via WhatsApp Business',
-        'Lab-report delivery with end-to-end audit trail',
-        'Pre-built health-awareness content calendar',
-        'HIPAA-aligned content checker',
-        'Review management with AI-suggested replies',
+        t('home.use_case_healthcare_bullet_1', 'Appointment reminders via WhatsApp Business'),
+        t('home.use_case_healthcare_bullet_2', 'Lab-report delivery with end-to-end audit trail'),
+        t('home.use_case_healthcare_bullet_3', 'Pre-built health-awareness content calendar'),
+        t('home.use_case_healthcare_bullet_4', 'HIPAA-aligned content checker'),
+        t('home.use_case_healthcare_bullet_5', 'Review management with AI-suggested replies'),
       ],
-      cta: { label: 'Healthcare playbook', to: '/solutions/clinics' } },
-    { id: 'restaurants', label: 'Restaurants', icon: UtensilsCrossed,
-      headline: 'Fill more tables with social.',
+      cta: { label: t('home.healthcare_playbook', 'Healthcare playbook'), to: '/solutions/clinics' } },
+    { id: 'restaurants', label: t('navigation:solutions.restaurants', 'Restaurants'), icon: UtensilsCrossed,
+      headline: t('home.use_case_restaurants_headline', 'Fill more tables with social.'),
       bullets: [
-        'Reservation bots that integrate with your POS',
-        'Daily-specials posting on auto-pilot',
-        'Review management for Zomato + Google',
-        'Influencer outreach + tracking',
-        'Festival campaigns (Diwali, Eid, Christmas) ready to go',
+        t('home.use_case_restaurants_bullet_1', 'Reservation bots that integrate with your POS'),
+        t('home.use_case_restaurants_bullet_2', 'Daily-specials posting on auto-pilot'),
+        t('home.use_case_restaurants_bullet_3', 'Review management for Zomato + Google'),
+        t('home.use_case_restaurants_bullet_4', 'Influencer outreach + tracking'),
+        t('home.use_case_restaurants_bullet_5', 'Festival campaigns ready to go'),
       ],
-      cta: { label: 'Restaurant playbook', to: '/solutions/restaurants' } },
-    { id: 'creators', label: 'Creators', icon: Palette,
-      headline: 'Track your creator economy.',
+      cta: { label: t('home.restaurant_playbook', 'Restaurant playbook'), to: '/solutions/restaurants' } },
+    { id: 'creators', label: t('navigation:solutions.creators', 'Creators'), icon: Palette,
+      headline: t('home.use_case_creators_headline', 'Track your creator economy.'),
       bullets: [
-        'YouTube + Instagram + LinkedIn analytics in one view',
-        'Brand-deal tracking + invoicing',
-        'Audience insights — what your fans actually want',
-        'Posting optimization with AI predictions',
-        'Content calendar tuned to your schedule',
+        t('home.use_case_creators_bullet_1', 'YouTube + Instagram + LinkedIn analytics in one view'),
+        t('home.use_case_creators_bullet_2', 'Brand-deal tracking + invoicing'),
+        t('home.use_case_creators_bullet_3', 'Audience insights — what your fans actually want'),
+        t('home.use_case_creators_bullet_4', 'Posting optimization with AI predictions'),
+        t('home.use_case_creators_bullet_5', 'Content calendar tuned to your schedule'),
       ],
-      cta: { label: 'Creator playbook', to: '/solutions/creators' } },
+      cta: { label: t('home.creator_playbook', 'Creator playbook'), to: '/solutions/creators' } },
   ];
   const [active, setActive] = useState(tabs[0].id);
   const current = tabs.find((t) => t.id === active) || tabs[0];
@@ -564,33 +573,36 @@ function UseCaseTabs() {
     <section style={{ padding: 'clamp(64px, 10vh, 120px) 24px', background: 'var(--surface-page)' }}>
       <div style={{ maxWidth: 1080, margin: '0 auto' }}>
         <ScrollReveal>
-          <SectionHeading eyebrow="Made for every kind of marketer" title="Whoever you are, Bop Social fits" />
+          <SectionHeading
+            eyebrow={t('home.use_cases_eyebrow', 'Made for every kind of marketer')}
+            title={t('home.use_cases_title', 'Whoever you are, Bop Social fits')}
+          />
         </ScrollReveal>
 
         <ScrollReveal delay={0.1}>
           <div role="tablist" style={{
             marginTop: 36, display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'center',
           }}>
-            {tabs.map((t) => (
+            {tabs.map((tab) => (
               <button
-                key={t.id} role="tab" aria-selected={active === t.id}
-                onClick={() => setActive(t.id)}
+                key={tab.id} role="tab" aria-selected={active === tab.id}
+                onClick={() => setActive(tab.id)}
                 style={{
                   padding: '10px 16px',
                   fontSize: 13, fontWeight: 600,
-                  color: active === t.id ? '#1E202A' : 'var(--text-secondary)',
-                  background: active === t.id
+                  color: active === tab.id ? '#1E202A' : 'var(--text-secondary)',
+                  background: active === tab.id
                     ? 'linear-gradient(135deg, #F5A623, #E09612)' : 'var(--surface-card)',
                   border: '1px solid',
-                  borderColor: active === t.id ? 'transparent' : 'var(--border-default)',
+                  borderColor: active === tab.id ? 'transparent' : 'var(--border-default)',
                   borderRadius: 'var(--radius-pill)',
                   cursor: 'pointer',
                   display: 'inline-flex', alignItems: 'center', gap: 6,
                   fontFamily: 'inherit', transition: 'var(--transition-fast)',
                 }}
               >
-                <t.icon size={13} />
-                {t.label}
+                <tab.icon size={13} />
+                {tab.label}
               </button>
             ))}
           </div>
@@ -654,11 +666,12 @@ function UseCaseTabs() {
 // Section 6 — HOW IT WORKS
 // ─────────────────────────────────────────────────────────────────────────────
 function HowItWorks() {
+  const { t } = useTranslation('marketing');
   const steps = [
-    { n: 1, title: 'Sign up free',     blurb: 'Email + password. 5-second flow. No credit card.' },
-    { n: 2, title: 'Connect accounts', blurb: 'Paste tokens or OAuth — Meta + Google + LinkedIn supported.' },
-    { n: 3, title: 'Create with AI',   blurb: 'Generate posts, replies, and reports tuned to your brand voice.' },
-    { n: 4, title: 'Track results',    blurb: 'Cross-platform analytics + AI-narrated PDF reports for clients.' },
+    { n: 1, title: t('home.step_1_title', 'Sign up free'),     blurb: t('home.step_1_blurb', 'Email + password. 5-second flow. No credit card.') },
+    { n: 2, title: t('home.step_2_title', 'Connect accounts'), blurb: t('home.step_2_blurb', 'Paste tokens or OAuth — Meta + Google + LinkedIn supported.') },
+    { n: 3, title: t('home.step_3_title', 'Create with AI'),   blurb: t('home.step_3_blurb', 'Generate posts, replies, and reports tuned to your brand voice.') },
+    { n: 4, title: t('home.step_4_title', 'Track results'),    blurb: t('home.step_4_blurb', 'Cross-platform analytics + AI-narrated PDF reports for clients.') },
   ];
   return (
     <section style={{
@@ -669,7 +682,10 @@ function HowItWorks() {
     }}>
       <div style={{ maxWidth: 1080, margin: '0 auto' }}>
         <ScrollReveal>
-          <SectionHeading eyebrow="From zero to live" title="Get up and running in 4 steps" />
+          <SectionHeading
+            eyebrow={t('home.how_it_works_eyebrow', 'From zero to live')}
+            title={t('home.how_it_works_title', 'Get up and running in 4 steps')}
+          />
         </ScrollReveal>
 
         <div style={{
@@ -718,12 +734,13 @@ function HowItWorks() {
 // Section 7 — AI EVERYWHERE
 // ─────────────────────────────────────────────────────────────────────────────
 function AIEverywhere() {
+  const { t } = useTranslation('marketing');
   const features = [
-    'Brand voice tuned to your business',
-    'Generates posts, replies, and reports',
-    'Predicts best posting times',
-    'Detects PR crises before they spread',
-    'Captures leads with conversational ads',
+    t('home.ai_feature_1', 'Brand voice tuned to your business'),
+    t('home.ai_feature_2', 'Generates posts, replies, and reports'),
+    t('home.ai_feature_3', 'Predicts best posting times'),
+    t('home.ai_feature_4', 'Detects PR crises before they spread'),
+    t('home.ai_feature_5', 'Captures leads with conversational ads'),
   ];
   return (
     <section style={{ padding: 'clamp(64px, 10vh, 120px) 24px', background: 'var(--surface-page)' }}>
@@ -736,18 +753,18 @@ function AIEverywhere() {
               fontSize: 11, fontWeight: 700,
               color: '#F5A623', background: 'rgba(245,166,35,0.12)',
               borderRadius: 'var(--radius-pill)', letterSpacing: '0.06em',
-            }}>POWERED BY BOP INTELLIGENCE</span>
+            }}>{t('home.ai_badge', 'POWERED BY BOP INTELLIGENCE')}</span>
             <h2 style={{
               margin: 0, fontSize: 'clamp(28px, 4vw, 40px)',
               fontWeight: 700, letterSpacing: '-0.02em',
               color: 'var(--text-primary)', lineHeight: 1.15,
-            }}>AI in every corner</h2>
+            }}>{t('home.ai_title', 'AI in every corner')}</h2>
             <p style={{
               margin: '14px 0 0',
               fontSize: 16, lineHeight: 1.6,
               color: 'var(--text-secondary)', maxWidth: 480,
             }}>
-              Bop Social is engineered with native AI intelligence across analytics, post scheduling, and workspace reporting.
+              {t('home.ai_desc', 'Bop Social is engineered with native AI intelligence across analytics, post scheduling, and workspace reporting.')}
             </p>
             <ul style={{ margin: '24px 0 0', padding: 0, listStyle: 'none' }}>
               {features.map((f) => (
@@ -763,15 +780,15 @@ function AIEverywhere() {
             </ul>
             <div style={{ marginTop: 24 }}>
               <Button as={Link} to="/product/ai" size="md">
-                Explore AI features <ArrowRight size={14} />
+                {t('home.ai_button', 'Explore AI features')} <ArrowRight size={14} />
               </Button>
             </div>
           </ScrollReveal>
 
           <ScrollReveal delay={0.15}>
             <AnimatedChat
-              userMessage="How are we doing on Instagram this week?"
-              assistantReply="Your reach grew 23% vs last week — mostly driven by your Reel about the Acme Heights property tour (had 3.2× normal saves). I'd suggest posting 2 more Reels this week. Want me to draft the captions?"
+              userMessage={t('home.chat_user', 'How are we doing on Instagram this week?')}
+              assistantReply={t('home.chat_assistant', "Your reach grew 23% vs last week — mostly driven by your Reel about the Acme Heights property tour (had 3.2× normal saves). I'd suggest posting 2 more Reels this week. Want me to draft the captions?")}
               speedMs={16}
             />
           </ScrollReveal>
@@ -788,17 +805,18 @@ function AIEverywhere() {
 // Section 8 — COMPARISON
 // ─────────────────────────────────────────────────────────────────────────────
 function ComparisonSection() {
+  const { t } = useTranslation('marketing');
   const columns = ['Bop Social', 'Hootsuite', 'Sprout Social', 'Buffer'];
   const rows = [
-    { feature: 'Multi-platform analytics',     cells: ['yes',          'yes',     'yes',     'partial'] },
-    { feature: 'Deep AI assistant',            cells: ['Bop Social',   'partial', 'partial', 'no'] },
-    { feature: 'WhatsApp Business API',        cells: ['yes',          'no',      'no',      'no'] },
-    { feature: 'Click-to-WhatsApp bots',       cells: ['yes',          'no',      'no',      'no'] },
-    { feature: 'Visual bot builder',           cells: ['yes',          'no',      'no',      'no'] },
-    { feature: 'Lead-capture CRM',             cells: ['yes',          'no',      'partial', 'no'] },
-    { feature: 'Multi-tenant client workspaces', cells: ['yes',        'partial', 'partial', 'no'] },
-    { feature: 'Activity audit trail',         cells: ['yes',          'partial', 'yes',     'no'] },
-    { feature: 'Built for Bop Universe',       cells: ['yes',          'no',      'no',      'no'] },
+    { feature: t('home.comp_analytics', 'Multi-platform analytics'),     cells: ['yes',          'yes',     'yes',     'partial'] },
+    { feature: t('home.comp_ai', 'Deep AI assistant'),            cells: ['Bop Social',   'partial', 'partial', 'no'] },
+    { feature: t('home.comp_whatsapp', 'WhatsApp Business API'),        cells: ['yes',          'no',      'no',      'no'] },
+    { feature: t('home.comp_ctwa', 'Click-to-WhatsApp bots'),       cells: ['yes',          'no',      'no',      'no'] },
+    { feature: t('home.comp_bot_builder', 'Visual bot builder'),           cells: ['yes',          'no',      'no',      'no'] },
+    { feature: t('home.comp_crm', 'Lead-capture CRM'),             cells: ['yes',          'no',      'partial', 'no'] },
+    { feature: t('home.comp_multitenant', 'Multi-tenant client workspaces'), cells: ['yes',        'partial', 'partial', 'no'] },
+    { feature: t('home.comp_audit', 'Activity audit trail'),         cells: ['yes',          'partial', 'yes',     'no'] },
+    { feature: t('home.comp_universe', 'Built for Bop Universe'),       cells: ['yes',          'no',      'no',      'no'] },
   ];
   return (
     <section style={{
@@ -810,9 +828,9 @@ function ComparisonSection() {
       <div style={{ maxWidth: 1080, margin: '0 auto' }}>
         <ScrollReveal>
           <SectionHeading
-            eyebrow="Honest comparison"
-            title="How Bop Social stacks up"
-            subtitle="Built for multi-company agencies and enterprises serious about AI, messaging, and multi-tenant workflows."
+            eyebrow={t('home.comparison_eyebrow', 'Honest comparison')}
+            title={t('home.comparison_title', 'How Bop Social stacks up')}
+            subtitle={t('home.comparison_subtitle', 'Built for multi-company agencies and enterprises serious about AI, messaging, and multi-tenant workflows.')}
           />
         </ScrollReveal>
         <ScrollReveal delay={0.1}>
@@ -829,23 +847,21 @@ function ComparisonSection() {
 // Section 11 — MARKETPLACE TEASER
 // ─────────────────────────────────────────────────────────────────────────────
 function MarketplaceTeaser() {
-  // Explainer cards for the two-sided marketplace.
-  // We don't list specific agencies until we've onboarded them and they've
-  // opted into being featured.
+  const { t } = useTranslation('marketing');
   const steps = [
-    { title: 'Browse verified agencies',  body: 'Search by industry, language, budget, and platform.' },
-    { title: 'Match by fit',              body: 'See pricing ranges, specialities, and example workflows up front.' },
-    { title: 'Manage from one inbox',     body: 'Approvals, scheduled posts, and reporting flow through Bop Social.' },
+    { title: t('home.mkt_step_1_title', 'Browse verified agencies'),  body: t('home.mkt_step_1_body', 'Search by industry, language, budget, and platform.') },
+    { title: t('home.mkt_step_2_title', 'Match by fit'),              body: t('home.mkt_step_2_body', 'See pricing ranges, specialities, and example workflows up front.') },
+    { title: t('home.mkt_step_3_title', 'Manage from one inbox'),     body: t('home.mkt_step_3_body', 'Approvals, scheduled posts, and reporting flow through Bop Social.') },
   ];
   return (
     <section style={{ padding: 'clamp(64px, 10vh, 120px) 24px', background: 'var(--surface-page)' }}>
       <div style={{ maxWidth: 1180, margin: '0 auto' }}>
         <ScrollReveal>
           <SectionHeading
-            eyebrow="Built-in marketplace"
-            title="Need an agency to help?"
-            subtitle="A two-sided marketplace where verified agencies match with businesses by industry and budget. Onboarding the first cohort of agencies now."
-            cta={{ to: '/agencies', label: 'Browse the marketplace' }}
+            eyebrow={t('home.marketplace_eyebrow', 'Built-in marketplace')}
+            title={t('home.marketplace_title', 'Need an agency to help?')}
+            subtitle={t('home.marketplace_desc', 'A two-sided marketplace where verified agencies match with businesses by industry and budget. Onboarding the first cohort of agencies now.')}
+            cta={{ to: '/agencies', label: t('home.marketplace_cta', 'Browse the marketplace') }}
           />
         </ScrollReveal>
 
@@ -896,11 +912,12 @@ function MarketplaceTeaser() {
 // Section 12 — STATS BAND
 // ─────────────────────────────────────────────────────────────────────────────
 function StatsBand() {
+  const { t } = useTranslation('marketing');
   const stats = [
-    { value: 5,    suffix: '',   label: 'platforms integrated' },
-    { value: 14,   suffix: '+',  label: 'languages supported' },
-    { value: 99.9, suffix: '%',  label: 'uptime target', decimals: 1 },
-    { value: 100,  suffix: '%',  label: 'multi-tenant architecture' },
+    { value: 5,    suffix: '',   label: t('home.stats_platforms', 'platforms integrated') },
+    { value: 14,   suffix: '+',  label: t('home.stats_languages', 'languages supported') },
+    { value: 99.9, suffix: '%',  label: t('home.stats_uptime', 'uptime target'), decimals: 1 },
+    { value: 100,  suffix: '%',  label: t('home.stats_clients', 'multi-tenant architecture') },
   ];
   return (
     <section style={{ position: 'relative', overflow: 'hidden' }}>
@@ -949,14 +966,15 @@ function StatsBand() {
 // Section 14 — FINAL CTA
 // ─────────────────────────────────────────────────────────────────────────────
 function FinalCTA() {
+  const { t } = useTranslation('marketing');
   return (
     <section style={{ padding: 'clamp(64px, 10vh, 120px) 24px', background: 'var(--surface-page)' }}>
       <CTASection
-        title="Ready to elevate your marketing operations?"
-        subtitle="Unified social management, real-time analytics, and native AI workflows."
-        primary={{ to: '/signup', label: 'Get started' }}
+        title={t('home.cta_title', 'Ready to elevate your marketing operations?')}
+        subtitle={t('home.cta_subtitle', 'Unified social management, real-time analytics, and native AI workflows.')}
+        primary={{ to: '/signup', label: t('home.cta_button', 'Get started') }}
         showEmail
-        microCopy="Enterprise ready · Multi-tenant architecture · Built for the Bop Universe"
+        microCopy={t('home.cta_micro', 'Enterprise ready · Multi-tenant architecture · Built for the Bop Universe')}
         variant="cta"
       />
     </section>

@@ -1,12 +1,10 @@
 /* ============================================================================
- *  Social Stats — Social Media Management & Marketing Platform
- *  Author    : Chandrabhan Shekhawat
- *  Company   : Gigai Kripa Services
- *  Website   : https://gigaikripaservices.com/
- *  Copyright (c) 2026 Chandrabhan Shekhawat / Gigai Kripa Services.
- *  Released under the MIT License — see LICENSE. Keep this notice.
+ *  Bop Social — Marketing Operating System
+ *  Author    : Bop Social Team
+ *  Website   : https://bopsocial.com
  * ========================================================================== */
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Sparkles, Wrench, Bug, ArrowRight } from 'lucide-react';
 import MarketingLayout from '../components/marketing/MarketingLayout';
 import Button from '../components/ui/Button';
@@ -75,11 +73,13 @@ const TAGS = {
 };
 
 export default function ChangelogPage() {
+  const { t, i18n } = useTranslation(['marketing', 'navigation']);
+
   return (
     <MarketingLayout>
       <Meta
-        title="Changelog"
-        description="Every release, every fix. The latest features, improvements, and bug fixes shipped to Bop Social."
+        title={t('metadata.changelog_title')}
+        description={t('metadata.changelog_desc')}
       />
       {/* Hero */}
       <section style={{ padding: '128px 32px 56px', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
@@ -92,7 +92,7 @@ export default function ChangelogPage() {
           }}
         />
         <div style={{ position: 'relative', maxWidth: 720, margin: '0 auto' }}>
-          <Badge variant="brand" size="md">Changelog</Badge>
+          <Badge variant="brand" size="md">{t('changelog.badge')}</Badge>
           <h1 style={{
             margin: '20px 0 16px',
             fontSize: 'clamp(36px, 4.4vw, 48px)',
@@ -101,10 +101,12 @@ export default function ChangelogPage() {
             fontWeight: 600,
             color: 'var(--text-primary)',
           }}>
-            What's new in Bop Social.
+            {t('changelog.hero_title')}
           </h1>
           <p style={{ margin: '0 auto', maxWidth: 560, fontSize: 16, lineHeight: 1.65, color: 'var(--text-secondary)' }}>
-            Every release, every fix. Subscribe to <a href="mailto:hello@bopsocial.com?subject=Subscribe%20to%20changelog" style={{ color: 'var(--text-link)', fontWeight: 500 }}>get it in your inbox</a> monthly.
+            {t('changelog.hero_subtitle', {
+              defaultValue: 'Every release, every fix. Subscribe to get it in your inbox monthly.'
+            })}
           </p>
         </div>
       </section>
@@ -157,7 +159,7 @@ export default function ChangelogPage() {
                   {r.version}
                 </span>
                 <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
-                  {new Date(r.date).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}
+                  {new Date(r.date).toLocaleDateString(i18n.language?.startsWith('es') ? 'es-ES' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
                 </span>
               </div>
 
@@ -178,8 +180,9 @@ export default function ChangelogPage() {
                 display: 'flex', flexDirection: 'column', gap: 10,
               }}>
                 {r.entries.map((entry, i) => {
-                  const t = TAGS[entry.tag] || TAGS.improved;
-                  const Icon = t.icon;
+                  const tagDef = TAGS[entry.tag] || TAGS.improved;
+                  const Icon = tagDef.icon;
+                  const tagLabel = t(`changelog.tags.${entry.tag}`, tagDef.label);
                   return (
                     <li
                       key={i}
@@ -190,8 +193,8 @@ export default function ChangelogPage() {
                           flexShrink: 0,
                           display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4,
                           padding: '2px 8px',
-                          background: t.bg,
-                          color: t.color,
+                          background: tagDef.bg,
+                          color: tagDef.color,
                           borderRadius: 'var(--radius-pill)',
                           fontSize: 10, fontWeight: 600,
                           letterSpacing: '0.04em', textTransform: 'uppercase',
@@ -199,7 +202,7 @@ export default function ChangelogPage() {
                         }}
                       >
                         <Icon size={10} strokeWidth={2.4} />
-                        {t.label}
+                        {tagLabel}
                       </span>
                       <span style={{ lineHeight: 1.55, color: 'var(--text-secondary)' }}>
                         {entry.text}
@@ -214,7 +217,7 @@ export default function ChangelogPage() {
           {/* Older releases CTA */}
           <div style={{ paddingLeft: 56, marginTop: 32 }}>
             <Button as={Link} to="/contact" variant="secondary" size="md" iconRight={ArrowRight}>
-              Looking for older releases?
+              {t('changelog.older_releases', 'Looking for older releases?')}
             </Button>
           </div>
         </div>

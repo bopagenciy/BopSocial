@@ -8,6 +8,7 @@
  * ========================================================================== */
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import {
   Search, Sparkles, Star, MapPin, Users, ArrowRight, ArrowUpRight,
@@ -21,36 +22,28 @@ import Button          from '../../components/ui/Button';
 import Meta            from '../../components/Meta';
 
 import {
-  AGENCY_LIST, listIndustries, listServices,
+  getAgencies, listIndustries, listServices,
 } from './agencyProfiles';
 
 /**
  * AgenciesShowcasePage — /agencies
- *
- * Static, SEO-friendly partner-agency showcase. Uses MarketingLayout chrome.
- * Distinct from the functional /marketplace which talks to the live
- * marketplace API for end-user invitation flows.
- *
- *   1. Hero with search + "find an agency" pitch
- *   2. Trust strip (verified · SOC2 · vetted)
- *   3. Featured trio (top-rated)
- *   4. Industry / service / language filters
- *   5. Full grid (filterable + searchable)
- *   6. Become-a-partner CTA
- *   7. Bottom CTA
  */
 
 export default function AgenciesShowcasePage() {
+  const { t, i18n } = useTranslation(['marketing', 'navigation', 'common']);
+  const lang = i18n.language;
+
   const [query,    setQuery]    = useState('');
   const [industry, setIndustry] = useState('');
   const [service,  setService]  = useState('');
 
-  const industries = useMemo(listIndustries, []);
-  const services   = useMemo(listServices,   []);
+  const agencyList = useMemo(() => getAgencies(lang), [lang]);
+  const industries = useMemo(() => listIndustries(lang), [lang]);
+  const services   = useMemo(() => listServices(lang),   [lang]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return AGENCY_LIST
+    return agencyList
       .filter((a) => !industry || a.industries.includes(industry))
       .filter((a) => !service  || a.services.includes(service))
       .filter((a) => !q
@@ -59,16 +52,18 @@ export default function AgenciesShowcasePage() {
         || a.location.toLowerCase().includes(q)
         || a.industries.some((i) => i.toLowerCase().includes(q))
         || a.services.some((s) => s.toLowerCase().includes(q)));
-  }, [query, industry, service]);
+  }, [agencyList, query, industry, service]);
 
-  const featured = AGENCY_LIST.slice().sort((a, b) => b.rating.score - a.rating.score).slice(0, 3);
+  const featured = useMemo(() => (
+    agencyList.slice().sort((a, b) => b.rating.score - a.rating.score).slice(0, 3)
+  ), [agencyList]);
   const isPristine = !query && !industry && !service;
 
   return (
     <MarketingLayout>
       <Meta
-        title="Partner Agencies"
-        description="Find a verified marketing agency built on Bop Social. Partner agencies vetted for compliance, capability, and customer outcomes."
+        title={t('marketing:metadata.agencies_title', 'Partner Agencies')}
+        description={t('marketing:metadata.agencies_desc', 'Find a verified marketing agency built on Bop Social. Partner agencies vetted for compliance, capability, and customer outcomes.')}
       />
 
       {/* ╭──────────────╮
@@ -92,7 +87,7 @@ export default function AgenciesShowcasePage() {
             border: '1px solid var(--brand-primary-glow)',
             borderRadius: 'var(--radius-pill)',
           }}>
-            <Sparkles size={12} /> Partner agencies
+            <Sparkles size={12} /> {t('marketing:agencies_showcase.badge', 'Partner agencies')}
           </span>
 
           <h1 style={{
@@ -103,10 +98,7 @@ export default function AgenciesShowcasePage() {
             color: '#fff',
             lineHeight: 1.05,
           }}>
-            Find a marketing agency<br />
-            <span style={{ background: 'var(--brand-gradient)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-              that runs on Bop Social
-            </span>
+            {t('marketing:agencies_showcase.hero_title', 'Find a marketing agency that runs on Bop Social')}
           </h1>
 
           <p style={{
@@ -116,7 +108,7 @@ export default function AgenciesShowcasePage() {
             color: 'rgba(255,255,255,0.75)',
             lineHeight: 1.55,
           }}>
-            50+ vetted agencies across India. Verified credentials. Real customer reviews. The agency you hire here uses the same tools you'll use to monitor them.
+            {t('marketing:agencies_showcase.hero_subtitle', '50+ vetted agencies across India. Verified credentials. Real customer reviews. The agency you hire here uses the same tools you\'ll use to monitor them.')}
           </p>
 
           {/* Search */}
@@ -132,8 +124,8 @@ export default function AgenciesShowcasePage() {
             <Search size={16} color="rgba(255,255,255,0.55)" />
             <input
               type="search"
-              aria-label="Search agencies"
-              placeholder="Search by name, industry, or city…"
+              aria-label={t('marketing:agencies_showcase.search_placeholder', 'Search agencies')}
+              placeholder={t('marketing:agencies_showcase.search_placeholder', 'Search by name, industry, or city…')}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               style={{
@@ -172,9 +164,9 @@ export default function AgenciesShowcasePage() {
           justifyContent: 'center', alignItems: 'center',
           fontSize: 13, color: 'rgba(255,255,255,0.65)',
         }}>
-          <TrustItem icon={ShieldCheck} text="Every partner verified" />
-          <TrustItem icon={BadgeCheck}  text="Bop Social Native trained" />
-          <TrustItem icon={Star}        text="4.8+ avg. customer rating" />
+          <TrustItem icon={ShieldCheck} text={t('marketing:agencies_showcase.trust_strip_1', 'Every partner verified')} />
+          <TrustItem icon={BadgeCheck}  text={t('marketing:agencies_showcase.trust_strip_2', 'Bop Social Native trained')} />
+          <TrustItem icon={Star}        text={t('marketing:agencies_showcase.trust_strip_3', '4.8+ avg. customer rating')} />
           <TrustItem icon={Users}       text="50,000+ campaigns delivered" />
         </div>
       </section>
@@ -191,7 +183,7 @@ export default function AgenciesShowcasePage() {
                 color: 'rgba(255,255,255,0.55)', marginBottom: 16,
                 textAlign: 'center',
               }}>
-                Featured · Top rated
+                {t('marketing:agencies_showcase.featured_title', 'Featured · Top rated')}
               </div>
             </ScrollReveal>
 
@@ -202,7 +194,7 @@ export default function AgenciesShowcasePage() {
             }}>
               {featured.map((a, i) => (
                 <ScrollReveal key={a.slug} delay={i * 0.06}>
-                  <FeaturedCard a={a} />
+                  <FeaturedCard a={a} t={t} />
                 </ScrollReveal>
               ))}
             </div>
@@ -222,13 +214,13 @@ export default function AgenciesShowcasePage() {
             marginBottom: 28,
           }}>
             <ChipSelect
-              label="Industry"
+              label={t('marketing:case_study.industry', 'Industry')}
               value={industry}
               options={industries}
               onChange={setIndustry}
             />
             <ChipSelect
-              label="Service"
+              label={t('marketing:agencies_showcase.all_services', 'Service')}
               value={service}
               options={services}
               onChange={setService}
@@ -247,7 +239,7 @@ export default function AgenciesShowcasePage() {
                   cursor: 'pointer',
                 }}
               >
-                Clear filters
+                {t('marketing:agencies_showcase.reset_filters', 'Clear filters')}
               </button>
             )}
           </div>
@@ -260,9 +252,9 @@ export default function AgenciesShowcasePage() {
             color: 'rgba(255,255,255,0.55)',
             textAlign: 'center',
           }}>
-            {filtered.length} {filtered.length === 1 ? 'agency' : 'agencies'}
-            {industry && <> in <span style={{ color: '#fff' }}>{industry}</span></>}
-            {service  && <> for <span style={{ color: '#fff' }}>{service}</span></>}
+            {filtered.length} {t('marketing:agencies_showcase.agencies_count', 'agencies', { count: filtered.length })}
+            {industry && <> · <span style={{ color: '#fff' }}>{industry}</span></>}
+            {service  && <> · <span style={{ color: '#fff' }}>{service}</span></>}
           </h2>
 
           {filtered.length > 0 ? (
@@ -271,7 +263,7 @@ export default function AgenciesShowcasePage() {
               gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
               gap: 16,
             }}>
-              {filtered.map((a) => <AgencyCard key={a.slug} a={a} />)}
+              {filtered.map((a) => <AgencyCard key={a.slug} a={a} t={t} />)}
             </div>
           ) : (
             <div style={{
@@ -281,10 +273,10 @@ export default function AgenciesShowcasePage() {
               borderRadius: 'var(--radius-xl)',
             }}>
               <p style={{ margin: 0, fontSize: 15 }}>
-                No agencies match these filters yet.
+                {t('marketing:agencies_showcase.no_results_title', 'No agencies match these filters yet.')}
               </p>
               <p style={{ margin: '8px 0 16px', fontSize: 13 }}>
-                Try widening your search — or apply to be the first.
+                {t('marketing:agencies_showcase.no_results_sub', 'Try widening your search — or apply to be the first.')}
               </p>
             </div>
           )}
@@ -316,7 +308,7 @@ export default function AgenciesShowcasePage() {
                 border: '1px solid var(--brand-primary-glow)',
                 borderRadius: 'var(--radius-pill)',
               }}>
-                For agencies
+                {t('marketing:for_agencies.eyebrow', 'For agencies')}
               </div>
               <h2 style={{
                 margin: 0,
@@ -326,8 +318,7 @@ export default function AgenciesShowcasePage() {
                 letterSpacing: '-0.02em',
                 lineHeight: 1.15,
               }}>
-                Run your agency on Bop Social.<br />
-                Get listed here. Earn referral revenue.
+                {t('marketing:agencies_showcase.partner_cta_title', 'Run your agency on Bop Social.')}
               </h2>
               <p style={{
                 margin: '14px 0 24px',
@@ -335,7 +326,7 @@ export default function AgenciesShowcasePage() {
                 color: 'rgba(255,255,255,0.75)',
                 lineHeight: 1.55,
               }}>
-                Agencies on the Bop Social Partner Program get listed in this directory, earn referral commissions, and receive priority support.
+                {t('marketing:agencies_showcase.partner_cta_sub', 'Agencies on the Bop Social Partner Program get listed in this directory, earn referral commissions, and receive priority support.')}
               </p>
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                 <Button as={Link} to="/for-agencies" size="md"
@@ -343,7 +334,7 @@ export default function AgenciesShowcasePage() {
                     background: 'var(--brand-gradient)',
                     color: '#1E202A', border: 'none', fontWeight: 600,
                   }}>
-                  Become a partner <ArrowRight size={14} />
+                  {t('marketing:agencies_showcase.partner_cta_button', 'Become a partner')} <ArrowRight size={14} />
                 </Button>
                 <Button as={Link} to="/contact?topic=partnership" size="md" variant="ghost"
                   style={{
@@ -351,7 +342,7 @@ export default function AgenciesShowcasePage() {
                     background: 'rgba(255,255,255,0.06)',
                     border: '1px solid rgba(255,255,255,0.14)',
                   }}>
-                  Talk to partnerships
+                  {t('marketing:contact.support_partner_cta', 'Talk to partnerships')}
                 </Button>
               </div>
             </div>
@@ -504,7 +495,7 @@ function ChipSelect({ label, value, options, onChange }) {
   );
 }
 
-function FeaturedCard({ a }) {
+function FeaturedCard({ a, t }) {
   return (
     <Link to={`/agencies/${a.slug}`} style={{ textDecoration: 'none', display: 'block', height: '100%' }}>
       <motion.article
@@ -550,9 +541,9 @@ function FeaturedCard({ a }) {
           flexWrap: 'wrap',
         }}>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#facc15' }}>
-            <Star size={12} fill="#facc15" /> {a.rating.score} · {a.rating.count} reviews
+            <Star size={12} fill="#facc15" /> {a.rating.score} · {a.rating.count} {t ? t('marketing:agencies_showcase.reviews_heading', 'reviews').toLowerCase() : 'reviews'}
           </span>
-          <span>· From {a.pricing.from}</span>
+          <span>· {t ? `${t('marketing:agencies_showcase.from', 'From')} ${a.pricing.from}` : `From ${a.pricing.from}`}</span>
         </div>
 
         <div style={{
@@ -562,14 +553,14 @@ function FeaturedCard({ a }) {
           fontSize: 13, fontWeight: 600,
           color: a.accent,
         }}>
-          View profile <ArrowUpRight size={13} />
+          {t ? t('marketing:agencies_showcase.view_profile', 'View profile') : 'View profile'} <ArrowUpRight size={13} />
         </div>
       </motion.article>
     </Link>
   );
 }
 
-function AgencyCard({ a }) {
+function AgencyCard({ a, t }) {
   return (
     <Link to={`/agencies/${a.slug}`} style={{ textDecoration: 'none', display: 'block', height: '100%' }}>
       <motion.div
@@ -643,7 +634,7 @@ function AgencyCard({ a }) {
             <Star size={11} fill="#facc15" /> {a.rating.score}
             <span style={{ color: 'rgba(255,255,255,0.45)', marginLeft: 4 }}>· {a.rating.count}</span>
           </span>
-          <span>From {a.pricing.from}</span>
+          <span>{t ? `${t('marketing:agencies_showcase.from', 'From')} ${a.pricing.from}` : `From ${a.pricing.from}`}</span>
         </div>
       </motion.div>
     </Link>

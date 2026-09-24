@@ -22,6 +22,7 @@
  *   features — used products
  *   cta — final CTA + back link
  */
+import { caseStudies_es } from './caseStudies.es';
 
 const STUDIES = {
   // ── 1. Acme Realty ────────────────────────────────────────────────
@@ -237,5 +238,58 @@ const STUDIES = {
     ],
   },
 };
+
+export function getCaseStudy(slug, lang = 'en') {
+  const base = STUDIES[slug];
+  if (!base) return null;
+  if (lang?.startsWith('es') && caseStudies_es[slug]) {
+    const es = caseStudies_es[slug];
+    return {
+      ...base,
+      ...es,
+      hero: {
+        ...base.hero,
+        ...(es.hero || {}),
+        metric: {
+          ...base.hero?.metric,
+          ...(es.hero?.metric || {}),
+        },
+        portrait: {
+          ...base.hero?.portrait,
+          ...(es.hero?.portrait || {}),
+        },
+      },
+      profile: {
+        ...base.profile,
+        ...(es.profile || {}),
+      },
+      challenge: {
+        ...base.challenge,
+        ...(es.challenge || {}),
+      },
+      solution: {
+        ...base.solution,
+        ...(es.solution || {}),
+      },
+      results: {
+        ...base.results,
+        ...(es.results || {}),
+        stats: base.results?.stats?.map((stat, idx) => ({
+          ...stat,
+          ...(es.results?.stats?.[idx] || {}),
+        })),
+      },
+      pulls: base.pulls?.map((pull, idx) => ({
+        ...pull,
+        ...(es.pulls?.[idx] || {}),
+      })),
+    };
+  }
+  return base;
+}
+
+export function getCaseStudies(lang = 'en') {
+  return Object.keys(STUDIES).map((slug) => getCaseStudy(slug, lang));
+}
 
 export default STUDIES;

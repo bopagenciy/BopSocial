@@ -52,14 +52,22 @@ const DEFAULT_STATS = [
 
 export default function AuthLayout({
   children,
-  eyebrow = 'Marketing OS',
-  heroTitle = 'The marketing OS for modern agencies.',
-  heroSub = 'Manage analytics, messaging, and ads for every client — from one beautiful dashboard.',
+  eyebrow,
+  heroTitle,
+  heroSub,
   testimonials = DEFAULT_TESTIMONIALS,
-  stats = DEFAULT_STATS,
+  stats,
   footer,
 }) {
   const { t } = useTranslation('auth');
+  const displayEyebrow = eyebrow || t('auth_layout.eyebrow', 'Marketing OS');
+  const displayHeroTitle = heroTitle || t('auth_layout.hero_title', 'The marketing OS for modern agencies.');
+  const displayHeroSub = heroSub || t('auth_layout.hero_sub', 'Manage analytics, messaging, and ads for every client — from one beautiful dashboard.');
+  const displayStats = stats || [
+    { value: '5',    label: t('auth_layout.stat_platforms', 'Platforms') },
+    { value: 'AI',   label: t('auth_layout.stat_native', 'Native') },
+    { value: '24/7', label: t('auth_layout.stat_uptime', 'Uptime target') },
+  ];
   const [isMobile, setIsMobile] = useState(() =>
     typeof window === 'undefined' ? false : window.innerWidth < 880
   );
@@ -154,7 +162,7 @@ export default function AuthLayout({
               }}
             >
               <Sparkles size={11} strokeWidth={2.4} />
-              {eyebrow}
+              {displayEyebrow}
             </div>
           </div>
 
@@ -169,7 +177,7 @@ export default function AuthLayout({
                 color: 'var(--text-primary)',
               }}
             >
-              {heroTitle}
+              {displayHeroTitle}
             </h1>
             <p
               style={{
@@ -180,7 +188,7 @@ export default function AuthLayout({
                 maxWidth: 480,
               }}
             >
-              {heroSub}
+              {displayHeroSub}
             </p>
 
             {/* Rotating testimonial */}
@@ -257,19 +265,19 @@ export default function AuthLayout({
           </div>
 
           {/* Stat strip */}
-          {stats.length > 0 && (
+          {displayStats.length > 0 && (
             <div
               style={{
                 position: 'relative',
                 display: 'grid',
-                gridTemplateColumns: `repeat(${stats.length}, minmax(0, 1fr))`,
+                gridTemplateColumns: `repeat(${displayStats.length}, minmax(0, 1fr))`,
                 gap: 16,
                 paddingTop: 24,
                 borderTop: '1px solid var(--border-subtle)',
                 maxWidth: 540,
               }}
             >
-              {stats.map((s) => (
+              {displayStats.map((s) => (
                 <div key={s.label}>
                   <div
                     style={{
@@ -384,7 +392,7 @@ export default function AuthLayout({
           >
             <Link to="/privacy" style={legalLinkStyle}>{t('auth_layout.privacy', 'Privacy')}</Link>
             <Link to="/terms"   style={legalLinkStyle}>{t('auth_layout.terms', 'Terms')}</Link>
-            <a href="mailto:support@socialstats.app" style={legalLinkStyle}>{t('auth_layout.support', 'Support')}</a>
+            <a href="mailto:support@bopsocial.com" style={legalLinkStyle}>{t('auth_layout.support', 'Support')}</a>
           </div>
         </div>
       </main>

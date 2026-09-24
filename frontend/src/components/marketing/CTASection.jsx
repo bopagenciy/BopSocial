@@ -7,6 +7,7 @@
  *  Released under the MIT License — see LICENSE. Keep this notice.
  * ========================================================================== */
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { ArrowRight } from 'lucide-react';
 
 import Button from '../ui/Button';
@@ -14,27 +15,21 @@ import MeshGradient from './MeshGradient';
 
 /**
  * CTASection — reusable bottom-of-page CTA with mesh gradient backdrop.
- *
- *   <CTASection
- *     title="Ready to upgrade your marketing?"
- *     subtitle="Start free in 2 minutes — no credit card required."
- *     primary={{ to: '/signup', label: 'Start free' }}
- *     secondary={{ to: '/contact', label: 'Talk to sales' }}
- *     showEmail
- *   />
- *
- * `showEmail` renders an email input → /signup deep-link with the email
- * pre-filled (sign-up wizard reads the query param).
  */
 export default function CTASection({
-  title = 'Ready to upgrade your marketing?',
-  subtitle = 'Start free in 2 minutes — no credit card required.',
-  primary = { to: '/signup', label: 'Start free' },
+  title,
+  subtitle,
+  primary,
   secondary = null,
   showEmail = false,
-  microCopy = 'No credit card · Free forever · Setup in 2 minutes',
+  microCopy,
   variant = 'cta',
 }) {
+  const { t } = useTranslation(['marketing', 'common']);
+  const resolvedTitle = title || t('marketing:home.cta_title', 'Ready to upgrade your marketing?');
+  const resolvedSubtitle = subtitle !== undefined ? subtitle : t('marketing:home.cta_subtitle', 'Start free in 2 minutes — no credit card required.');
+  const resolvedPrimary = primary || { to: '/signup', label: t('marketing:home.cta_button', 'Start free') };
+  const resolvedMicro = microCopy || t('marketing:home.cta_micro', 'No credit card · Free forever · Setup in 2 minutes');
   return (
     <section style={{
       position: 'relative',
@@ -59,15 +54,15 @@ export default function CTASection({
           letterSpacing: '-0.02em',
           color: '#fff',
           lineHeight: 1.15,
-        }}>{title}</h2>
-        {subtitle && (
+        }}>{resolvedTitle}</h2>
+        {resolvedSubtitle && (
           <p style={{
             margin: '14px auto 0',
             fontSize: 'clamp(15px, 1.6vw, 17px)',
             color: 'rgba(255,255,255,0.75)',
             lineHeight: 1.55,
             maxWidth: 540,
-          }}>{subtitle}</p>
+          }}>{resolvedSubtitle}</p>
         )}
 
         {showEmail && (
@@ -117,7 +112,7 @@ export default function CTASection({
                 fontFamily: 'inherit',
               }}
             >
-              {primary.label} <ArrowRight size={15} />
+              {resolvedPrimary.label} <ArrowRight size={15} />
             </button>
           </form>
         )}
@@ -128,14 +123,14 @@ export default function CTASection({
             display: 'flex', gap: 12,
             justifyContent: 'center', flexWrap: 'wrap',
           }}>
-            <Button as={Link} to={primary.to} size="lg" variant="primary"
+            <Button as={Link} to={resolvedPrimary.to} size="lg" variant="primary"
                     style={{
                       background: 'linear-gradient(135deg, #F5A623, #E09612)',
                       color: '#1E202A',
                       border: 'none',
                       fontWeight: 600,
                     }}>
-              {primary.label} <ArrowRight size={15} />
+              {resolvedPrimary.label} <ArrowRight size={15} />
             </Button>
             {secondary && (
               <Button as={Link} to={secondary.to} size="lg"
@@ -151,11 +146,11 @@ export default function CTASection({
           </div>
         )}
 
-        {microCopy && (
+        {resolvedMicro && (
           <p style={{
             margin: '18px 0 0',
             fontSize: 12, color: 'rgba(255,255,255,0.55)',
-          }}>{microCopy}</p>
+          }}>{resolvedMicro}</p>
         )}
       </div>
     </section>

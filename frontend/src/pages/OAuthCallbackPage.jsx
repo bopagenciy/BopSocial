@@ -17,9 +17,11 @@
  */
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../hooks/useAuth';
 
 export default function OAuthCallbackPage() {
+  const { t } = useTranslation('auth');
   const navigate = useNavigate();
   const { user, loading } = useAuth();
 
@@ -54,7 +56,7 @@ export default function OAuthCallbackPage() {
     <div style={styles.page}>
       <div style={styles.card}>
         <div style={styles.spinner} />
-        <p style={styles.msg}>Finalising connection…</p>
+        <p style={styles.msg}>{t('callback.finalising', 'Finalising connection...')}</p>
       </div>
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>

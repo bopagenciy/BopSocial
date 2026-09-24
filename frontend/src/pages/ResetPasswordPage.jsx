@@ -14,6 +14,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, AlertCircle, CheckCircle, Mail } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 import AuthLayout from '../components/auth/AuthLayout';
 import PasswordStrength from '../components/auth/PasswordStrength';
@@ -28,6 +29,7 @@ export default function ResetPasswordPage() {
 
 // ─── Forgot password (request reset link) ────────────────────────────────
 function ForgotForm() {
+  const { t } = useTranslation('auth');
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
@@ -35,14 +37,14 @@ function ForgotForm() {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!email.trim()) { setError('Email is required.'); return; }
+    if (!email.trim()) { setError(t('forgot_password.validation.email_required', 'Email is required.')); return; }
     setError('');
     setLoading(true);
     try {
       await authAPI.passwordResetRequest(email.trim().toLowerCase());
       setDone(true);
     } catch {
-      setError('Something went wrong. Please try again.');
+      setError(t('common.something_went_wrong', 'Something went wrong. Please try again.'));
     } finally {
       setLoading(false);
     }
@@ -51,19 +53,19 @@ function ForgotForm() {
   if (done) {
     return (
       <AuthLayout
-        heroTitle="Help is on the way."
-        heroSub="If we recognise the email, you'll receive a reset link in the next minute or two."
+        heroTitle={t('forgot_password.check_email_title', 'Check your inbox')}
+        heroSub={t('forgot_password.check_email_desc', 'If {{email}} is registered, a password reset link is on its way.', { email })}
       >
         <div style={{ ...cardStyle, textAlign: 'center' }}>
           <div aria-hidden style={iconBubbleStyle}>
             <Mail size={26} strokeWidth={1.8} />
           </div>
-          <h1 style={titleStyle}>Check your inbox</h1>
+          <h1 style={titleStyle}>{t('forgot_password.check_email_title', 'Check your inbox')}</h1>
           <p style={{ ...subStyle, margin: '8px 0 20px' }}>
-            If <strong style={{ color: 'var(--text-primary)' }}>{email}</strong> is registered, a reset link is on its way.
+            {t('forgot_password.check_email_desc', 'If {{email}} is registered, a password reset link is on its way.', { email })}
           </p>
           <Button as={Link} to="/login" variant="secondary" size="md" fullWidth>
-            Back to sign in
+            {t('forgot_password.back_to_login', 'Back to sign in')}
           </Button>
         </div>
       </AuthLayout>
@@ -74,33 +76,32 @@ function ForgotForm() {
     <AuthLayout
       footer={
         <>
-          Remembered it?{' '}
           <Link to="/login" style={{ color: 'var(--text-link)', fontWeight: 600, textDecoration: 'none' }}>
-            Back to sign in
+            {t('forgot_password.back_to_login', 'Back to sign in')}
           </Link>
         </>
       }
     >
       <div style={cardStyle}>
         <header style={{ marginBottom: 22 }}>
-          <h1 style={titleStyle}>Reset your password</h1>
-          <p style={subStyle}>Enter your email — we'll send a secure link to reset your password.</p>
+          <h1 style={titleStyle}>{t('forgot_password.title', 'Reset your password')}</h1>
+          <p style={subStyle}>{t('forgot_password.subtitle', "Enter your email — we'll send a secure link to reset your password.")}</p>
         </header>
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <Input
-            label="Email"
+            label={t('forgot_password.email_label', 'Email address')}
             type="email"
             autoComplete="email"
             value={email}
             onChange={(e) => { setEmail(e.target.value); setError(''); }}
-            placeholder="you@company.com"
+            placeholder={t('forgot_password.email_placeholder', 'you@company.com')}
             error={error}
             size="lg"
             autoFocus
           />
           <Button type="submit" size="lg" iconRight={ArrowRight} fullWidth loading={loading}>
-            Send reset link
+            {loading ? t('forgot_password.submitting', 'Sending link...') : t('forgot_password.submit_button', 'Send reset link')}
           </Button>
         </form>
       </div>
@@ -110,6 +111,7 @@ function ForgotForm() {
 
 // ─── Reset password (confirm new password) ───────────────────────────────
 function ResetForm({ token }) {
+  const { t } = useTranslation('auth');
   const navigate = useNavigate();
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -129,10 +131,10 @@ function ResetForm({ token }) {
 
   function validate() {
     const e = {};
-    if (!password) e.password = 'Password is required.';
-    else if (password.length < 8) e.password = 'Password must be at least 8 characters.';
-    if (!confirm) e.confirm = 'Please confirm your password.';
-    else if (password !== confirm) e.confirm = 'Passwords do not match.';
+    if (!password) e.password = t('reset_password.validation.password_required', 'Password is required.');
+    else if (password.length < 8) e.password = t('reset_password.validation.password_length', 'Password must be at least 8 characters.');
+    if (!confirm) e.confirm = t('reset_password.validation.confirm_required', 'Please confirm your password.');
+    else if (password !== confirm) e.confirm = t('reset_password.validation.passwords_mismatch', 'Passwords do not match.');
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -149,7 +151,7 @@ function ResetForm({ token }) {
     } catch (err) {
       const data = err?.response?.data;
       if (data?.errors?.password) setErrors((p) => ({ ...p, password: data.errors.password }));
-      else setServerError(data?.error || 'This reset link is invalid or has expired.');
+      else setServerError(data?.error || t('verify_email.failed_default', 'This reset link is invalid or has expired.'));
     } finally {
       setLoading(false);
     }
@@ -158,15 +160,15 @@ function ResetForm({ token }) {
   if (done) {
     return (
       <AuthLayout
-        heroTitle="You're all set."
-        heroSub="Your password is updated. Redirecting you to sign in…"
+        heroTitle={t('reset_password.success_title', 'Password updated!')}
+        heroSub={t('reset_password.success_subtitle', 'Your password has been changed successfully. Redirecting to sign in...')}
       >
         <div style={{ ...cardStyle, textAlign: 'center' }}>
           <div aria-hidden style={{ ...iconBubbleStyle, background: 'var(--success-bg)', color: 'var(--success)' }}>
             <CheckCircle size={26} strokeWidth={1.8} />
           </div>
-          <h1 style={titleStyle}>Password updated</h1>
-          <p style={subStyle}>Your password has been changed successfully.</p>
+          <h1 style={titleStyle}>{t('reset_password.success_title', 'Password updated!')}</h1>
+          <p style={subStyle}>{t('reset_password.success_subtitle', 'Your password has been changed successfully. Redirecting to sign in...')}</p>
         </div>
       </AuthLayout>
     );
@@ -176,25 +178,25 @@ function ResetForm({ token }) {
     <AuthLayout
       footer={
         <Link to="/login" style={{ color: 'var(--text-link)', fontWeight: 600, textDecoration: 'none' }}>
-          Back to sign in
+          {t('forgot_password.back_to_login', 'Back to sign in')}
         </Link>
       }
     >
       <div style={cardStyle}>
         <header style={{ marginBottom: 22 }}>
-          <h1 style={titleStyle}>Set a new password</h1>
-          <p style={subStyle}>Choose a strong password you haven't used before.</p>
+          <h1 style={titleStyle}>{t('reset_password.title', 'Set new password')}</h1>
+          <p style={subStyle}>{t('reset_password.subtitle', 'Choose a strong password with at least 8 characters.')}</p>
         </header>
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div>
             <Input
-              label="New password"
+              label={t('reset_password.new_password_label', 'New password')}
               type="password"
               autoComplete="new-password"
               value={password}
               onChange={(e) => { setPassword(e.target.value); clearField('password'); }}
-              placeholder="At least 8 characters"
+              placeholder={t('reset_password.new_password_placeholder', 'At least 8 characters')}
               error={errors.password}
               size="lg"
               autoFocus
@@ -203,12 +205,12 @@ function ResetForm({ token }) {
           </div>
 
           <Input
-            label="Confirm password"
+            label={t('reset_password.confirm_password_label', 'Confirm new password')}
             type="password"
             autoComplete="new-password"
             value={confirm}
             onChange={(e) => { setConfirm(e.target.value); clearField('confirm'); }}
-            placeholder="Re-enter your password"
+            placeholder={t('reset_password.confirm_password_placeholder', 'Re-enter your new password')}
             error={errors.confirm}
             success={!!confirm && confirm === password && password.length >= 8 && !errors.confirm}
             size="lg"
@@ -235,7 +237,7 @@ function ResetForm({ token }) {
           )}
 
           <Button type="submit" size="lg" iconRight={ArrowRight} fullWidth loading={loading}>
-            Update password
+            {loading ? t('reset_password.submitting', 'Updating...') : t('reset_password.submit_button', 'Update password')}
           </Button>
         </form>
       </div>

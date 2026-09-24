@@ -245,8 +245,14 @@ def me(request):
         from .permissions import PermissionChecker
         profile = user.profile
         ensure_client_profile(profile)
-        data = UserSerializer(user).data
-        data['language'] = getattr(profile, 'language', 'en')
+        user_lang = getattr(profile, 'language', None)
+        tenant_lang = getattr(profile.client, 'default_language', None) if (profile and profile.client) else None
+        effective_lang = user_lang or tenant_lang
+
+        data['language'] = effective_lang
+        data['user_language'] = user_lang
+        data['tenant_language'] = tenant_lang
+        data['has_explicit_language'] = bool(user_lang)
         data['permissions'] = PermissionChecker.get_user_permissions(profile)
         data['onboarding_complete'] = profile.client.onboarding_complete if profile.client else False
         # Feature flags surfaced to the client app.

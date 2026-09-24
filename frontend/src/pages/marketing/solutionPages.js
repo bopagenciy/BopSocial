@@ -32,6 +32,7 @@ import {
   ComposerPreview, InboxPreview, BotBuilderPreview, AIInsightPreview,
   AutomationsPreview, AnalyticsPreview, ReportsPreview,
 } from '../../components/marketing/BentoPreviews';
+import { solutionPages_es } from './solutionPages.es';
 
 
 export const solutionPages = {
@@ -452,7 +453,7 @@ export const solutionPages = {
         bullets: [
           'WhatsApp catalog auto-populated',
           'Cart-builder bot flow',
-          'Cash-on-delivery + UPI checkout',
+          'Flexible payment gateways + local checkout',
           'Order-status updates via template',
         ],
         demo: BotBuilderPreview },
@@ -489,6 +490,39 @@ export const solutionPages = {
 };
 
 
-export function getSolutionPage(slug) {
-  return solutionPages[slug] || null;
+export function getSolutionPage(slug, lang = 'en') {
+  const base = solutionPages[slug];
+  if (!base) return null;
+  if (lang?.startsWith('es') && solutionPages_es[slug]) {
+    const es = solutionPages_es[slug];
+    return {
+      ...base,
+      ...es,
+      painPoints: base.painPoints ? {
+        ...base.painPoints,
+        ...(es.painPoints || {}),
+        items: base.painPoints.items?.map((item, idx) => ({
+          ...item,
+          ...(es.painPoints?.items?.[idx] || {}),
+        })),
+      } : undefined,
+      stripes: base.stripes?.map((s, idx) => ({
+        ...s,
+        ...(es.stripes?.[idx] || {}),
+      })),
+      templates: base.templates ? {
+        ...base.templates,
+        ...(es.templates || {}),
+        items: base.templates.items?.map((item, idx) => ({
+          ...item,
+          ...(es.templates?.items?.[idx] || {}),
+        })),
+      } : undefined,
+      quote: base.quote ? {
+        ...base.quote,
+        ...(es.quote || {}),
+      } : undefined,
+    };
+  }
+  return base;
 }

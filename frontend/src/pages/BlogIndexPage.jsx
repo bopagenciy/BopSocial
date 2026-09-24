@@ -8,15 +8,17 @@
  * ========================================================================== */
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { ArrowRight, Search, Sparkles } from 'lucide-react';
 
 import MarketingLayout from '../components/marketing/MarketingLayout';
 import Badge from '../components/ui/Badge';
 import Avatar from '../components/ui/Avatar';
 import Meta from '../components/Meta';
+import toast from '../components/ui/toast';
 import { track } from '../services/analytics';
 
-import POSTS from './marketing/blogPosts';
+import { getPosts } from './marketing/blogPosts';
 
 /**
  * BlogIndexPage — /blog
@@ -31,31 +33,33 @@ import POSTS from './marketing/blogPosts';
  * hidden and all matching posts go into the grid.
  */
 
-const CATEGORIES = ['All', ...Array.from(new Set(POSTS.map((p) => p.category)))];
-
 export default function BlogIndexPage() {
+  const { t, i18n } = useTranslation(['marketing', 'navigation', 'common']);
   const [filter, setFilter] = useState('All');
   const [query,  setQuery]  = useState('');
 
+  const posts = useMemo(() => getPosts(i18n.language), [i18n.language]);
+  const categories = useMemo(() => ['All', ...Array.from(new Set(posts.map((p) => p.category)))], [posts]);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return POSTS
+    return posts
       .filter((p) => filter === 'All' || p.category === filter)
       .filter((p) => !q
         || p.title.toLowerCase().includes(q)
         || p.excerpt.toLowerCase().includes(q)
         || (p.tags || []).some((t) => t.toLowerCase().includes(q)));
-  }, [filter, query]);
+  }, [posts, filter, query]);
 
   const isPristine = filter === 'All' && !query;
-  const featured   = isPristine ? POSTS[0] : null;
-  const grid       = isPristine ? POSTS.slice(1) : filtered;
+  const featured   = isPristine ? posts[0] : null;
+  const grid       = isPristine ? posts.slice(1) : filtered;
 
   return (
     <MarketingLayout>
       <Meta
-        title="Blog"
-        description="Product updates, agency playbooks, AI experiments, and design decisions from the team building Bop Social."
+        title={t('marketing:blog.badge', 'Blog')}
+        description={t('marketing:blog.hero_subtitle', 'Product updates, agency playbooks, AI experiments, and design decisions from the team building Bop Social.')}
       />
 
       {/* ╭──────────────╮
@@ -71,7 +75,7 @@ export default function BlogIndexPage() {
           }}
         />
         <div style={{ position: 'relative', maxWidth: 720, margin: '0 auto' }}>
-          <Badge variant="brand" size="md">Blog</Badge>
+          <Badge variant="brand" size="md">{t('marketing:blog.badge', 'Blog')}</Badge>
           <h1 style={{
             margin: '20px 0 12px',
             fontSize: 'clamp(36px, 4.4vw, 48px)',
@@ -80,10 +84,10 @@ export default function BlogIndexPage() {
             fontWeight: 600,
             color: 'var(--text-primary)',
           }}>
-            The Bop Social journal.
+            {t('marketing:blog.hero_title', 'The Bop Social journal.')}
           </h1>
           <p style={{ margin: 0, fontSize: 16, lineHeight: 1.6, color: 'var(--text-secondary)' }}>
-            Product updates, agency playbooks, AI experiments, design decisions — written by the team building Bop Social.
+            {t('marketing:blog.hero_subtitle', 'Product updates, agency playbooks, AI experiments, design decisions — written by the team building Bop Social.')}
           </p>
 
           {/* Search */}
@@ -99,8 +103,8 @@ export default function BlogIndexPage() {
             <Search size={15} color="var(--text-tertiary)" />
             <input
               type="search"
-              aria-label="Search blog posts"
-              placeholder="Search articles, tags, topics…"
+              aria-label={t('marketing:blog.search_placeholder', 'Search articles, tags, topics…')}
+              placeholder={t('marketing:blog.search_placeholder', 'Search articles, tags, topics…')}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               style={{
@@ -116,7 +120,7 @@ export default function BlogIndexPage() {
               <button
                 type="button"
                 onClick={() => setQuery('')}
-                aria-label="Clear search"
+                aria-label={t('marketing:blog.clear_search', 'Clear search')}
                 style={{
                   background: 'transparent', border: 'none',
                   color: 'var(--text-tertiary)',
@@ -137,9 +141,10 @@ export default function BlogIndexPage() {
           display: 'flex', flexWrap: 'wrap', gap: 8,
           justifyContent: 'center',
         }}>
-          {CATEGORIES.map((cat) => {
+          {categories.map((cat) => {
             const active = filter === cat;
-            const count = cat === 'All' ? POSTS.length : POSTS.filter((p) => p.category === cat).length;
+            const count = cat === 'All' ? posts.length : posts.filter((p) => p.category === cat).length;
+            const label = cat === 'All' ? t('marketing:blog.all_filter', 'All') : cat;
             return (
               <button
                 key={cat}
@@ -158,7 +163,7 @@ export default function BlogIndexPage() {
                   transition: 'var(--transition-fast)',
                 }}
               >
-                {cat}
+                {label}
                 <span style={{ opacity: 0.7, fontSize: 11 }}>{count}</span>
               </button>
             );
@@ -219,7 +224,7 @@ export default function BlogIndexPage() {
               <div>
                 <Badge variant="brand" size="sm">
                   <Sparkles size={11} style={{ marginRight: 4, verticalAlign: -1 }} />
-                  Featured · {featured.category}
+                  {t('marketing:blog.featured_badge', 'Featured')} · {featured.category}
                 </Badge>
                 <h2 style={{
                   margin: '12px 0 12px',
@@ -239,13 +244,13 @@ export default function BlogIndexPage() {
                   <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
                     <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{featured.author.name}</span>
                     {' · '}
-                    {new Date(featured.date).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+                    {new Date(featured.date).toLocaleDateString(i18n.language || undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
                     {' · '}
                     {featured.readTime}
                   </div>
                 </div>
                 <div style={{ marginTop: 16, display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--text-link)', fontWeight: 600, fontSize: 13 }}>
-                  Read article <ArrowRight size={13} />
+                  {t('marketing:blog.read_article', 'Read article')} <ArrowRight size={13} />
                 </div>
               </div>
             </Link>
@@ -270,12 +275,16 @@ export default function BlogIndexPage() {
             letterSpacing: '0.06em', textTransform: 'uppercase',
             color: 'var(--text-tertiary)',
           }}>
-            {isPristine ? 'Recent posts' : `${filtered.length} ${filtered.length === 1 ? 'post' : 'posts'}`}
+            {isPristine
+              ? (i18n.language?.startsWith('es') ? 'Artículos recientes' : 'Recent posts')
+              : (i18n.language?.startsWith('es')
+                  ? `${filtered.length} ${filtered.length === 1 ? 'artículo' : 'artículos'}`
+                  : `${filtered.length} ${filtered.length === 1 ? 'post' : 'posts'}`)}
             {!isPristine && filter !== 'All' && (
-              <> in <span style={{ color: 'var(--text-secondary)' }}>{filter}</span></>
+              <> {i18n.language?.startsWith('es') ? 'en' : 'in'} <span style={{ color: 'var(--text-secondary)' }}>{filter}</span></>
             )}
             {!isPristine && query && (
-              <> matching <span style={{ color: 'var(--text-secondary)' }}>"{query}"</span></>
+              <> {i18n.language?.startsWith('es') ? 'para' : 'matching'} <span style={{ color: 'var(--text-secondary)' }}>"{query}"</span></>
             )}
           </h2>
 
@@ -287,7 +296,7 @@ export default function BlogIndexPage() {
               borderRadius: 'var(--radius-xl)',
               color: 'var(--text-tertiary)',
             }}>
-              <p style={{ margin: 0, fontSize: 14 }}>No posts match your filter.</p>
+              <p style={{ margin: 0, fontSize: 14 }}>{t('marketing:blog.no_posts', 'No posts match your filter.')}</p>
               <button
                 type="button"
                 onClick={() => { setFilter('All'); setQuery(''); }}
@@ -302,7 +311,7 @@ export default function BlogIndexPage() {
                   cursor: 'pointer',
                 }}
               >
-                Clear filters
+                {t('marketing:blog.clear_search', 'Clear filters')}
               </button>
             </div>
           ) : (
@@ -314,7 +323,7 @@ export default function BlogIndexPage() {
               }}
               className="blog-grid"
             >
-              {grid.map((p) => <PostCard key={p.slug} post={p} />)}
+              {grid.map((p) => <PostCard key={p.slug} post={p} lang={i18n.language} />)}
             </div>
           )}
 
@@ -341,23 +350,24 @@ export default function BlogIndexPage() {
           }}
         >
           <h3 style={{ margin: 0, fontSize: 22, fontWeight: 600, letterSpacing: '-0.015em', color: 'var(--text-primary)' }}>
-            Get our best playbooks, monthly.
+            {t('marketing:blog.newsletter_title', 'Get our best playbooks, monthly.')}
           </h3>
           <p style={{ margin: '8px auto 18px', maxWidth: 480, fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-            One email a month. Real frameworks. No fluff. Unsubscribe in one click.
+            {t('marketing:blog.newsletter_sub', 'One email a month. Real frameworks. No fluff. Unsubscribe in one click.')}
           </p>
           <form
             onSubmit={(e) => {
               e.preventDefault();
               track('newsletter_subscribed', { source: 'blog_index' });
+              toast.success(t('marketing:blog.newsletter_success', 'Thanks for subscribing!'));
             }}
             style={{ display: 'flex', gap: 8, maxWidth: 420, margin: '0 auto', flexWrap: 'wrap', justifyContent: 'center' }}
           >
             <input
               type="email"
               required
-              placeholder="you@company.com"
-              aria-label="Email for newsletter"
+              placeholder={t('marketing:blog.newsletter_placeholder', 'you@company.com')}
+              aria-label={t('marketing:blog.newsletter_placeholder', 'Email for newsletter')}
               style={{
                 flex: '1 1 220px',
                 minWidth: 0,
@@ -387,7 +397,7 @@ export default function BlogIndexPage() {
                 boxShadow: 'var(--shadow-sm)',
               }}
             >
-              Subscribe
+              {t('marketing:blog.newsletter_button', 'Subscribe')}
             </button>
           </form>
         </div>
@@ -396,7 +406,7 @@ export default function BlogIndexPage() {
   );
 }
 
-function PostCard({ post }) {
+function PostCard({ post, lang }) {
   return (
     <Link
       to={`/blog/${post.slug}`}
@@ -432,7 +442,7 @@ function PostCard({ post }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
           <Avatar name={post.author.name} size="xs" />
           <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
-            {post.author.name} · {new Date(post.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })} · {post.readTime}
+            {post.author.name} · {new Date(post.date).toLocaleDateString(lang || undefined, { month: 'short', day: 'numeric', year: 'numeric' })} · {post.readTime}
           </span>
         </div>
       </div>
