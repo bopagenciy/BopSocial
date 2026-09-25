@@ -128,7 +128,7 @@ export default function UserSettingsPage() {
           {tab === 'notifications' && <NotificationsSection />}
           {tab === 'appearance'    && <AppearanceSection />}
           {tab === 'shortcuts'     && <KeyboardShortcutsSection />}
-          {tab === 'api'           && <APIKeysSection />}
+          {tab === 'api'           && <APIKeysSection user={user} />}
           {tab === 'webhooks'      && <WebhooksSection />}
           {tab === 'data'          && <DataPrivacySection />}
           {tab === 'more'          && <CrossLinksSection user={user} />}

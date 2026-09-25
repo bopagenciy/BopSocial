@@ -14,13 +14,14 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Sun, Moon, Monitor, Plus, Copy, Trash2,
+  Sun, Moon, Monitor, Plus, Copy, Trash2, Key,
   Download, AlertTriangle, Bell, Mail, Smartphone,
   Sparkles, ArrowRight, Webhook,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import { useTheme } from '../../hooks/useTheme';
+import { useAuth } from '../../hooks/useAuth';
 import Button from '../../components/ui/Button';
 import Switch from '../../components/ui/Switch';
 import Card from '../../components/ui/Card';
@@ -308,8 +309,10 @@ export function KeyboardShortcutsSection() {
 // ─────────────────────────────────────────────────────────────────────────
 // 4. API Keys — generate / revoke (: now wired to /api/api-keys/)
 // ─────────────────────────────────────────────────────────────────────────
-export function APIKeysSection() {
+export function APIKeysSection({ user }) {
   const { t, i18n } = useTranslation('settings');
+  const auth = useAuth();
+  const currentUser = user || auth?.user;
   const [keys, setKeys] = useState([]);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState('');
@@ -317,17 +320,38 @@ export function APIKeysSection() {
   // The plaintext key is shown ONCE on creation. After that, only key_prefix.
   const [justCreated, setJustCreated] = useState(null);
   const [creating, setCreating] = useState(false);
+  const [missingContext, setMissingContext] = useState(false);
 
   function load() {
+    if (currentUser?.role === 'superadmin' && !currentUser?.client_id) {
+      setMissingContext(true);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     apiKeysAPI.list()
-      .then((r) => setKeys(r.data?.keys || []))
-      .catch(() => toast.error(t('api_keys.err_create', 'Could not load API keys')))
+      .then((r) => {
+        setKeys(r.data?.keys || []);
+        setMissingContext(false);
+      })
+      .catch((err) => {
+        // Distinguish missing client context from genuine loading failures
+        if (err?.response?.status === 403 && (err?.response?.data?.error === 'no client context' || !currentUser?.client_id)) {
+          setMissingContext(true);
+          setKeys([]);
+        } else {
+          toast.error(t('api_keys.err_load', 'Could not load API keys'));
+        }
+      })
       .finally(() => setLoading(false));
   }
   useEffect(() => { load(); }, []);
 
   async function generate() {
+    if (missingContext) {
+      toast.error(t('api_keys.no_client_desc', 'API keys are scoped to specific client workspaces. Please select or switch to a client workspace to manage its API keys.'));
+      return;
+    }
     if (!name.trim()) { toast.error(t('api_keys.err_name_required', 'Give the key a name first')); return; }
     setCreating(true);
     try {
@@ -347,6 +371,7 @@ export function APIKeysSection() {
   }
 
   async function revoke(id) {
+    if (missingContext) return;
     if (!window.confirm(t('api_keys.confirm_revoke', 'Revoke this key? Any application using it will stop working.'))) return;
     try {
       await apiKeysAPI.revoke(id);
@@ -365,108 +390,131 @@ export function APIKeysSection() {
       title={t('api_keys.title', 'API Keys')}
       description={t('api_keys.subtitle', 'Programmatic access for your scripts and integrations. Keys are stored as SHA-256 hashes — we never see the plaintext after creation.')}
     >
-      <Card padding="md" style={{ marginBottom: 16 }}>
-        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8 }}>
-          {t('api_keys.generate_title', 'Generate a new key')}
-        </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap' }}>
-          <div style={{ flex: '2 1 220px', minWidth: 0 }}>
-            <Input size="md" placeholder={t('api_keys.name_placeholder', 'e.g. "Production deploy"')}
-                   value={name} onChange={(e) => setName(e.target.value)} />
+      {missingContext ? (
+        <Card padding="md" style={{ background: 'var(--surface-sunken)', border: '1px solid var(--border-default)' }}>
+          <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+            <span style={{
+              display: 'inline-flex', flexShrink: 0,
+              width: 40, height: 40, borderRadius: 'var(--radius-md)',
+              background: 'var(--brand-primary-soft)', color: 'var(--brand-primary-hover)',
+              alignItems: 'center', justifyContent: 'center',
+            }}><Key size={18} strokeWidth={2.2} /></span>
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>
+                {t('api_keys.no_client_title', 'Client workspace required')}
+              </div>
+              <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                {t('api_keys.no_client_desc', 'API keys are scoped to specific client workspaces. Please select or switch to a client workspace to manage its API keys.')}
+              </p>
+            </div>
           </div>
-          <div style={{ flex: '2 1 220px', minWidth: 0 }}>
-            <Input size="md" placeholder={t('api_keys.scopes_placeholder', 'Scopes (comma-separated, e.g. read:posts, write:leads)')}
-                   value={scopes} onChange={(e) => setScopes(e.target.value)} />
-          </div>
-          <Button onClick={generate} icon={Plus} size="md" disabled={creating}>
-            {creating ? t('api_keys.creating', 'Creating…') : t('api_keys.generate_btn', 'Generate')}
-          </Button>
-        </div>
-        <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--text-tertiary)' }}>
-          {t('api_keys.hint', 'Keys are shown once at generation — copy and store them securely.')}
-        </p>
-      </Card>
-
-      {justCreated && justCreated.plaintext_key && (
-        <Card padding="md" style={{ marginBottom: 16, borderColor: 'var(--warning)', background: 'var(--warning-bg)' }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--warning)', marginBottom: 8,
-                        display: 'flex', alignItems: 'center', gap: 6 }}>
-            <AlertTriangle size={14} /> {t('api_keys.warning_title', 'Save this key now — it will not be shown again')}
-          </div>
-          <div style={{
-            fontFamily: 'var(--font-mono)', fontSize: 12,
-            background: 'var(--surface-sunken)', padding: '8px 12px',
-            borderRadius: 'var(--radius-xs)',
-            wordBreak: 'break-all', userSelect: 'all',
-          }}>{justCreated.plaintext_key}</div>
-          <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
-            <Button size="sm" icon={Copy} onClick={() => copyKey(justCreated.plaintext_key)}>
-              {t('api_keys.copy', 'Copy')}
-            </Button>
-            <Button size="sm" variant="ghost" onClick={() => setJustCreated(null)}>
-              {t('api_keys.saved_it', "I've saved it")}
-            </Button>
-          </div>
-        </Card>
-      )}
-
-      {loading ? (
-        <Card padding="md"><div style={{ color: 'var(--text-tertiary)', fontSize: 13 }}>{t('api_keys.loading', 'Loading…')}</div></Card>
-      ) : keys.length === 0 ? (
-        <Card padding="none">
-          <EmptyState icon={Sparkles} title={t('api_keys.empty_title', 'No API keys yet')}
-                      description={t('api_keys.empty_desc', 'Generate your first key above to start integrating Bop Social with your other tools.')}
-                      compact />
         </Card>
       ) : (
-        <Card padding="none">
-          {keys.map((k, i) => {
-            const dateStr = new Date(k.created_at).toLocaleDateString(i18n.language?.startsWith('es') ? 'es-ES' : 'en-US');
-            const lastUsedStr = k.last_used_at
-              ? t('api_keys.last_used_at', { date: new Date(k.last_used_at).toLocaleDateString(i18n.language?.startsWith('es') ? 'es-ES' : 'en-US'), defaultValue: `Last used ${new Date(k.last_used_at).toLocaleDateString()}` })
-              : t('api_keys.never_used', 'Never used');
-            const callsText = k.use_count === 1
-              ? t('api_keys.calls_count_one', '1 call')
-              : t('api_keys.calls_count_other', { count: k.use_count, defaultValue: `${k.use_count} calls` });
+        <>
+          <Card padding="md" style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8 }}>
+              {t('api_keys.generate_title', 'Generate a new key')}
+            </div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+              <div style={{ flex: '2 1 220px', minWidth: 0 }}>
+                <Input size="md" placeholder={t('api_keys.name_placeholder', 'e.g. "Production deploy"')}
+                       value={name} onChange={(e) => setName(e.target.value)} />
+              </div>
+              <div style={{ flex: '2 1 220px', minWidth: 0 }}>
+                <Input size="md" placeholder={t('api_keys.scopes_placeholder', 'Scopes (comma-separated, e.g. read:posts, write:leads)')}
+                       value={scopes} onChange={(e) => setScopes(e.target.value)} />
+              </div>
+              <Button onClick={generate} icon={Plus} size="md" disabled={creating}>
+                {creating ? t('api_keys.creating', 'Creating…') : t('api_keys.generate_btn', 'Generate')}
+              </Button>
+            </div>
+            <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--text-tertiary)' }}>
+              {t('api_keys.hint', 'Keys are shown once at generation — copy and store them securely.')}
+            </p>
+          </Card>
 
-            return (
-              <div key={k.id} style={{
-                display: 'grid', gridTemplateColumns: '1fr auto', gap: 12,
-                alignItems: 'center', padding: '14px 18px',
-                borderTop: i > 0 ? '1px solid var(--border-subtle)' : 'none',
-                opacity: k.is_active ? 1 : 0.6,
-              }}>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
-                    {k.name}
-                    {!k.is_active && (
-                      <Badge style={{ marginLeft: 8 }}>{k.is_expired ? t('api_keys.expired', 'Expired') : t('api_keys.revoked', 'Revoked')}</Badge>
+          {justCreated && justCreated.plaintext_key && (
+            <Card padding="md" style={{ marginBottom: 16, borderColor: 'var(--warning)', background: 'var(--warning-bg)' }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--warning)', marginBottom: 8,
+                            display: 'flex', alignItems: 'center', gap: 6 }}>
+                <AlertTriangle size={14} /> {t('api_keys.warning_title', 'Save this key now — it will not be shown again')}
+              </div>
+              <div style={{
+                fontFamily: 'var(--font-mono)', fontSize: 12,
+                background: 'var(--surface-sunken)', padding: '8px 12px',
+                borderRadius: 'var(--radius-xs)',
+                wordBreak: 'break-all', userSelect: 'all',
+              }}>{justCreated.plaintext_key}</div>
+              <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
+                <Button size="sm" icon={Copy} onClick={() => copyKey(justCreated.plaintext_key)}>
+                  {t('api_keys.copy', 'Copy')}
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setJustCreated(null)}>
+                  {t('api_keys.saved_it', "I've saved it")}
+                </Button>
+              </div>
+            </Card>
+          )}
+
+          {loading ? (
+            <Card padding="md"><div style={{ color: 'var(--text-tertiary)', fontSize: 13 }}>{t('api_keys.loading', 'Loading…')}</div></Card>
+          ) : keys.length === 0 ? (
+            <Card padding="none">
+              <EmptyState icon={Sparkles} title={t('api_keys.empty_title', 'No API keys yet')}
+                          description={t('api_keys.empty_desc', 'Generate your first key above to start integrating Bop Social with your other tools.')}
+                          compact />
+            </Card>
+          ) : (
+            <Card padding="none">
+              {keys.map((k, i) => {
+                const dateStr = new Date(k.created_at).toLocaleDateString(i18n.language?.startsWith('es') ? 'es-ES' : 'en-US');
+                const lastUsedStr = k.last_used_at
+                  ? t('api_keys.last_used_at', { date: new Date(k.last_used_at).toLocaleDateString(i18n.language?.startsWith('es') ? 'es-ES' : 'en-US'), defaultValue: `Last used ${new Date(k.last_used_at).toLocaleDateString()}` })
+                  : t('api_keys.never_used', 'Never used');
+                const callsText = k.use_count === 1
+                  ? t('api_keys.calls_count_one', '1 call')
+                  : t('api_keys.calls_count_other', { count: k.use_count, defaultValue: `${k.use_count} calls` });
+
+                return (
+                  <div key={k.id} style={{
+                    display: 'grid', gridTemplateColumns: '1fr auto', gap: 12,
+                    alignItems: 'center', padding: '14px 18px',
+                    borderTop: i > 0 ? '1px solid var(--border-subtle)' : 'none',
+                    opacity: k.is_active ? 1 : 0.6,
+                  }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
+                        {k.name}
+                        {!k.is_active && (
+                          <Badge style={{ marginLeft: 8 }}>{k.is_expired ? t('api_keys.expired', 'Expired') : t('api_keys.revoked', 'Revoked')}</Badge>
+                        )}
+                      </div>
+                      <div style={{ marginTop: 2, fontSize: 12, color: 'var(--text-tertiary)',
+                                    display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                        <span>{t('api_keys.created_at', { date: dateStr, defaultValue: `Created ${dateStr}` })}</span>
+                        <span>{lastUsedStr}</span>
+                        <span>{callsText}</span>
+                        {k.scopes?.length > 0 && <span>{t('api_keys.scopes_label', { scopes: k.scopes.join(', '), defaultValue: `Scopes: ${k.scopes.join(', ')}` })}</span>}
+                      </div>
+                      <div style={{
+                        marginTop: 6, fontFamily: 'var(--font-mono)', fontSize: 12,
+                        color: 'var(--text-secondary)', background: 'var(--surface-sunken)',
+                        padding: '4px 8px', borderRadius: 'var(--radius-xs)',
+                        display: 'inline-block',
+                      }}>
+                        {k.key_prefix}{'•'.repeat(24)}
+                      </div>
+                    </div>
+                    {k.is_active && (
+                      <Button variant="ghost" size="sm" iconOnly icon={Trash2}
+                              aria-label={t('api_keys.revoke_aria', 'Revoke key')} onClick={() => revoke(k.id)} />
                     )}
                   </div>
-                  <div style={{ marginTop: 2, fontSize: 12, color: 'var(--text-tertiary)',
-                                display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                    <span>{t('api_keys.created_at', { date: dateStr, defaultValue: `Created ${dateStr}` })}</span>
-                    <span>{lastUsedStr}</span>
-                    <span>{callsText}</span>
-                    {k.scopes?.length > 0 && <span>{t('api_keys.scopes_label', { scopes: k.scopes.join(', '), defaultValue: `Scopes: ${k.scopes.join(', ')}` })}</span>}
-                  </div>
-                  <div style={{
-                    marginTop: 6, fontFamily: 'var(--font-mono)', fontSize: 12,
-                    color: 'var(--text-secondary)', background: 'var(--surface-sunken)',
-                    padding: '4px 8px', borderRadius: 'var(--radius-xs)',
-                    display: 'inline-block',
-                  }}>
-                    {k.key_prefix}{'•'.repeat(24)}
-                  </div>
-                </div>
-                {k.is_active && (
-                  <Button variant="ghost" size="sm" iconOnly icon={Trash2}
-                          aria-label={t('api_keys.revoke_aria', 'Revoke key')} onClick={() => revoke(k.id)} />
-                )}
-              </div>
-            );
-          })}
-        </Card>
+                );
+              })}
+            </Card>
+          )}
+        </>
       )}
     </SectionContainer>
   );

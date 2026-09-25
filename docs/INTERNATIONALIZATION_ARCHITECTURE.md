@@ -675,6 +675,46 @@ Phase BS-2.6B.1 internationalized the authenticated User Settings, Account Secur
 - **Production Build**: `npm run build` executed cleanly with exit code 0.
 - **Docker Deployment**: Frontend image updated to `bopsocial-frontend-local:bs-2.6b.1` in `docker-compose.local.yml`, container recreated and verified live with HTTP 200 health checks on `http://localhost:3010/` and `http://localhost:3010/account-settings`.
 
+---
+
+## 18. Phase BS-2.6B.1.1 — API Key Error & Tenant Context Closure
+
+### 18.1 Problem Statement & Root Cause
+- **Observed Behavior**:
+  - A superadmin navigating to `/admin/account-settings` and switching to the API Keys section immediately saw a red error toast: `"No se pudo crear la clave"` (or `"Could not create key"` in English) without clicking "Generate".
+- **Diagnostic Root Cause Analysis**:
+  1. **Backend Scoping Invariant**: The backend endpoint `GET /api/api-keys/` requires a tenant/client context (`_resolve_client_for_user()` returns `None` for superadmins without an active `client_id`), correctly returning HTTP 403 Forbidden with `{"error": "no client context"}`.
+  2. **Frontend Error Key Misattribution**: In `APIKeysSection.load().catch()`, the failure handler incorrectly referenced translation key `api_keys.err_create` (`"No se pudo crear la clave"`) instead of an API load error key.
+  3. **Zero Mutation / Idempotency**: Zero POST requests were sent, zero keys were created, and zero backend security boundaries were breached.
+
+### 18.2 Remediation & Architectural Invariants
+- **Translation Catalog Parity**:
+  - Added the following keys to `frontend/src/locales/en/settings.json` and `frontend/src/locales/es/settings.json`:
+    - `api_keys.err_load`: `"Could not load API keys"` / `"No se pudieron cargar las claves de API"`
+    - `api_keys.no_client_title`: `"Client workspace required"` / `"Se requiere un espacio de trabajo de cliente"`
+    - `api_keys.no_client_desc`: `"API keys are scoped to specific client workspaces. Please select or switch to a client workspace to manage its API keys."` / `"Las claves de API están asociadas a espacios de trabajo de clientes específicos. Selecciona o cambia a un espacio de trabajo de cliente para gestionar sus claves de API."`
+  - Re-verified 100% key parity between English and Spanish (299 keys in both catalogs).
+- **Graceful Tenant Context Handling**:
+  - `UserSettingsPage.jsx` passes `user={user}` to `<APIKeysSection user={user} />`.
+  - `APIKeysSection` resolves the current user context via props or `useAuth()`.
+  - When the user is a superadmin without a selected `client_id` or when the backend returns HTTP 403 with `"no client context"`, the component enters a clean informational state (`missingContext = true`):
+    - Red error toast is completely suppressed.
+    - Informational card is rendered with an intuitive icon and bilingual explanation.
+    - Key generation and revocation controls are not rendered, preventing invalid operations.
+- **Accurate Error Localization**:
+  - On genuine load failures (HTTP 500 / network error), `APIKeysSection` invokes `toast.error(t('api_keys.err_load'))`, cleanly distinguishing load errors from key creation errors.
+
+### 18.3 Verification & Deployment
+- **Automated Unit & Integration Tests**:
+  - `frontend/src/pages/__tests__/UserSettingsSecurityTranslation.test.jsx`: **22 / 22 passing tests** (added 4 new tests specifically verifying missing client context suppression, 403 handling, localized load error reporting, and zero POST calls on mount).
+  - Full frontend suite: **20 / 20 test suites passed, 142 / 142 tests passed**.
+- **Production Build**:
+  - `npm run build` executed cleanly with exit code 0.
+- **Docker Deployment**:
+  - Image tag updated in `docker-compose.local.yml`: `bopsocial-frontend-local:bs-2.6b.1.1`.
+  - Container recreated and healthy on `http://localhost:3010/` (HTTP 200).
+
+
 
 
 

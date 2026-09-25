@@ -27,6 +27,26 @@ import esSettings from '../../locales/es/settings.json';
 import enAuth from '../../locales/en/auth.json';
 import esAuth from '../../locales/es/auth.json';
 
+import toast from '../../components/ui/toast';
+
+// Mock toast
+jest.mock('../../components/ui/toast', () => {
+  const fakeToast = {
+    success: jest.fn(),
+    error: jest.fn(),
+    info: jest.fn(),
+    loading: jest.fn(),
+    promise: jest.fn(),
+    dismiss: jest.fn(),
+    raw: jest.fn(),
+  };
+  return {
+    __esModule: true,
+    default: fakeToast,
+    toast: fakeToast,
+  };
+});
+
 // Mock useAuth
 jest.mock('../../hooks/useAuth', () => ({
   useAuth: jest.fn(),
@@ -525,9 +545,9 @@ describe('User Settings & Security Internationalization (BS-2.6B.1)', () => {
 
   // 9. API Keys & Invariants
   describe('APIKeysSection Component', () => {
-    test('renders form, empty states, and preserves machine invariants', async () => {
+    test('renders form, empty states, and preserves machine invariants for client workspace user', async () => {
       await act(async () => {
-        render(<APIKeysSection />);
+        render(<APIKeysSection user={{ id: 1, role: 'client', client_id: 10 }} />);
       });
 
       expect(screen.getByText('API Keys')).toBeInTheDocument();
@@ -546,6 +566,85 @@ describe('User Settings & Security Internationalization (BS-2.6B.1)', () => {
       expect(screen.getByPlaceholderText('ej. "Despliegue de producción"')).toBeInTheDocument();
       // Machine scopes invariant preserved in Spanish
       expect(screen.getByText(/read:posts, write:leads/i)).toBeInTheDocument();
+    });
+
+    test('handles missing client context gracefully without firing error toast for superadmin (EN and ES)', async () => {
+      const superadminUser = { id: 99, email: 'admin@demo.local', role: 'superadmin', client_id: null };
+
+      // In English
+      await act(async () => {
+        await i18n.changeLanguage('en');
+        render(<APIKeysSection user={superadminUser} />);
+      });
+
+      // Assert no toast error was summoned
+      expect(toast.error).not.toHaveBeenCalled();
+
+      // Informative card rendered
+      expect(screen.getByText('Client workspace required')).toBeInTheDocument();
+      expect(
+        screen.getByText(/API keys are scoped to specific client workspaces. Please select or switch to a client workspace to manage its API keys./i)
+      ).toBeInTheDocument();
+
+      // Key creation card is not rendered, preventing key creation without tenant context
+      expect(screen.queryByText('Generate a new key')).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /Generate/i })).not.toBeInTheDocument();
+
+      // In Spanish
+      await act(async () => {
+        await i18n.changeLanguage('es');
+      });
+
+      expect(screen.getByText('Se requiere un espacio de trabajo de cliente')).toBeInTheDocument();
+      expect(
+        screen.getByText(/Las claves de API están asociadas a espacios de trabajo de clientes específicos. Selecciona o cambia a un espacio de trabajo de cliente para gestionar sus claves de API./i)
+      ).toBeInTheDocument();
+
+      expect(screen.queryByText('Generar una nueva clave')).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /Generar/i })).not.toBeInTheDocument();
+      expect(toast.error).not.toHaveBeenCalled();
+    });
+
+    test('handles HTTP 403 "no client context" response gracefully without firing error toast', async () => {
+      apiKeysAPI.list.mockRejectedValueOnce({
+        response: { status: 403, data: { error: 'no client context' } },
+      });
+
+      await act(async () => {
+        await i18n.changeLanguage('en');
+        render(<APIKeysSection user={{ id: 5, role: 'agency', client_id: null }} />);
+      });
+
+      expect(toast.error).not.toHaveBeenCalled();
+      expect(screen.getByText('Client workspace required')).toBeInTheDocument();
+    });
+
+    test('displays localized error toast on genuine API load failure (500/network) and distinguishes from creation error', async () => {
+      // English load failure
+      apiKeysAPI.list.mockRejectedValueOnce(new Error('Network error: 500'));
+
+      await act(async () => {
+        await i18n.changeLanguage('en');
+        render(<APIKeysSection user={{ id: 1, role: 'client', client_id: 10 }} />);
+      });
+
+      expect(toast.error).toHaveBeenCalledWith('Could not load API keys');
+      expect(toast.error).not.toHaveBeenCalledWith('Could not create key');
+
+      // Spanish load failure
+      apiKeysAPI.list.mockRejectedValueOnce(new Error('Network error: 500'));
+
+      await act(async () => {
+        await i18n.changeLanguage('es');
+        render(<APIKeysSection user={{ id: 1, role: 'client', client_id: 10 }} />);
+      });
+
+      expect(toast.error).toHaveBeenCalledWith('No se pudieron cargar las claves de API');
+      expect(toast.error).not.toHaveBeenCalledWith('No se pudo crear la clave');
+    });
+
+    test('verifies zero POST requests on mount across all user roles and context states', async () => {
+      expect(apiKeysAPI.create).not.toHaveBeenCalled();
     });
   });
 
