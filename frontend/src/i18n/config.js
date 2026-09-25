@@ -30,6 +30,8 @@ import enEngagement from '../locales/en/engagement.json';
 import esEngagement from '../locales/es/engagement.json';
 import enConnections from '../locales/en/connections.json';
 import esConnections from '../locales/es/connections.json';
+import enManagement from '../locales/en/management.json';
+import esManagement from '../locales/es/management.json';
 
 export const LANGUAGE_STORAGE_KEY = 'bop_social_language';
 export const SUPPORTED_LANGUAGES = [
@@ -77,6 +79,7 @@ const resources = {
     content: enContent,
     engagement: enEngagement,
     connections: enConnections,
+    management: enManagement,
   },
   es: {
     common: esCommon,
@@ -91,6 +94,7 @@ const resources = {
     content: esContent,
     engagement: esEngagement,
     connections: esConnections,
+    management: esManagement,
   },
 };
 
@@ -101,7 +105,7 @@ i18n
     lng: getInitialLanguage(),
     fallbackLng: 'en',
     supportedLngs: ['en', 'es'],
-    ns: ['common', 'navigation', 'auth', 'marketing', 'app', 'dashboard', 'settings', 'analytics', 'reports', 'content', 'engagement', 'connections'],
+    ns: ['common', 'navigation', 'auth', 'marketing', 'app', 'dashboard', 'settings', 'analytics', 'reports', 'content', 'engagement', 'connections', 'management'],
     defaultNS: 'common',
     interpolation: {
       escapeValue: false, // React already escapes values safely

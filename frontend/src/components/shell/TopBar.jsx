@@ -166,7 +166,7 @@ function NotificationBellWrapper() {
   }
 }
 
-function buildBreadcrumbs(pathname, basePath, t) {
+export function buildBreadcrumbs(pathname, basePath, t) {
   // Strip basePath
   const rest = pathname.startsWith(basePath) ? pathname.slice(basePath.length) : pathname;
   const parts = rest.split('/').filter(Boolean);
@@ -178,7 +178,13 @@ function buildBreadcrumbs(pathname, basePath, t) {
     acc += `/${parts[i]}`;
     const rawSeg = parts[i];
     const key = rawSeg.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
-    const translated = t ? (t(`sidebar.items.${key}`, '') || t(`modules.${key}.label`, '') || t(`mobile_nav.${key}`, '')) : '';
+    const translated = t ? (
+      t(`breadcrumbs.${key}`, '') ||
+      t(`sidebar.items.${key}`, '') ||
+      t(`modules.${key}.label`, '') ||
+      t(`rail.${key}`, '') ||
+      t(`mobile_nav.${key}`, '')
+    ) : '';
     out.push({
       label: translated || humanize(rawSeg),
       to: i < parts.length - 1 ? acc : undefined,
@@ -187,7 +193,7 @@ function buildBreadcrumbs(pathname, basePath, t) {
   return out;
 }
 
-function humanize(seg) {
+export function humanize(seg) {
   // Strip query, IDs that look numeric, then capitalize-ish
   if (/^\d+$/.test(seg)) return `#${seg}`;
   return seg

@@ -20,6 +20,21 @@
     "whats_new": "What's new",
     "breadcrumb_home": "Home"
   },
+  "breadcrumbs": {
+    "home": "Home",
+    "account_settings": "Account Settings",
+    "clients": "Clients",
+    "management": "Team Management",
+    "client": "Client",
+    "edit": "Edit",
+    "trust": "Trust & Approvals",
+    "approvals": "Approvals",
+    "audit_log": "Audit Log",
+    "settings": "Settings",
+    "analytics": "Analytics",
+    "messaging": "Messaging",
+    "ads": "Ads"
+  },
   "mobile_nav": {
     "home": "Home",
     "calendar": "Calendar",

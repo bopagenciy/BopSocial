@@ -8,8 +8,10 @@
  * ========================================================================== */
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useClients } from '../hooks/useData';
 import { invitationAPI, clientsAPI } from '../services/api';
+import { formatDate } from '../utils/formatters';
 import {
   Search, ChevronRight, Settings, Mail, X,
   Loader2, Users, Send, Clock, CheckCircle,
@@ -17,18 +19,19 @@ import {
 } from 'lucide-react';
 import PageHeader from '../components/layout/PageHeader';
 
-const STATUS_COLOR = {
-  pending:   { text: '#d97706', bg: '#fef3c7', label: 'Pending' },
-  accepted:  { text: '#16a34a', bg: '#dcfce7', label: 'Accepted' },
-  rejected:  { text: '#dc2626', bg: '#fee2e2', label: 'Rejected' },
-  expired:   { text: 'var(--text-tertiary)', bg: 'var(--surface-sunken)', label: 'Expired' },
-  cancelled: { text: 'var(--text-tertiary)', bg: 'var(--surface-sunken)', label: 'Canceled' },
-};
-
 export default function AllClientsPage({ onSelectClient }) {
+  const { t } = useTranslation(['management', 'common']);
   const navigate             = useNavigate();
   const { clients } = useClients();
   const [search, setSearch]  = useState('');
+
+  const STATUS_CONFIG = {
+    pending:   { text: '#d97706', bg: '#fef3c7', label: t('clients.statuses.pending', 'Pending') },
+    accepted:  { text: '#16a34a', bg: '#dcfce7', label: t('clients.statuses.accepted', 'Accepted') },
+    rejected:  { text: '#dc2626', bg: '#fee2e2', label: t('clients.statuses.rejected', 'Rejected') },
+    expired:   { text: 'var(--text-tertiary)', bg: 'var(--surface-sunken)', label: t('clients.statuses.expired', 'Expired') },
+    cancelled: { text: 'var(--text-tertiary)', bg: 'var(--surface-sunken)', label: t('clients.statuses.cancelled', 'Canceled') },
+  };
 
   // ── Sync state ───────────────────────────────────────────────────────────────
   const [syncingAll,  setSyncingAll]  = useState(false);
@@ -39,9 +42,10 @@ export default function AllClientsPage({ onSelectClient }) {
     setSyncingAll(true); setSyncMsg('');
     try {
       const res = await clientsAPI.syncAll();
-      setSyncMsg(`Queued sync for ${res.data.queued_clients} client(s).`);
+      const count = res.data?.queued_clients ?? 0;
+      setSyncMsg(t('clients.connected.sync_queued', { count, defaultValue: `Queued sync for ${count} client(s).` }));
       setTimeout(() => setSyncMsg(''), 5000);
-    } catch { setSyncMsg('Sync failed. Please try again.'); }
+    } catch { setSyncMsg(t('clients.connected.sync_failed', 'Sync failed. Please try again.')); }
     finally { setSyncingAll(false); }
   };
 
@@ -85,7 +89,7 @@ export default function AllClientsPage({ onSelectClient }) {
       setInviteEmail(''); setInviteMsg('');
       fetchInvitations();
     } catch (err) {
-      setInviteResult('error:' + (err?.response?.data?.error || 'Failed to send invitation.'));
+      setInviteResult('error:' + (err?.response?.data?.error || t('clients.invite.failed_send', 'Failed to send invitation.')));
     } finally { setInviting(false); }
   };
 
@@ -109,8 +113,11 @@ export default function AllClientsPage({ onSelectClient }) {
   return (
     <div style={S.page}>
       <PageHeader
-        title="Clients"
-        subtitle={`${clients.length} connected client${clients.length !== 1 ? 's' : ''}`}
+        title={t('clients.title', 'Clients')}
+        subtitle={clients.length === 1
+          ? t('clients.subtitle_one', { count: 1, defaultValue: '1 connected client' })
+          : t('clients.subtitle_other', { count: clients.length, defaultValue: `${clients.length} connected clients` })
+        }
       />
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
@@ -121,21 +128,21 @@ export default function AllClientsPage({ onSelectClient }) {
           <UserCheck size={18} style={{ color: '#16a34a' }} />
           <div>
             <div style={S.statNum}>{clients.length}</div>
-            <div style={S.statLabel}>Connected Clients</div>
+            <div style={S.statLabel}>{t('clients.stats.connected_clients', 'Connected Clients')}</div>
           </div>
         </div>
         <div style={S.statCard}>
           <Clock size={18} style={{ color: '#d97706' }} />
           <div>
             <div style={S.statNum}>{pendingCount}</div>
-            <div style={S.statLabel}>Pending Invitations</div>
+            <div style={S.statLabel}>{t('clients.stats.pending_invitations', 'Pending Invitations')}</div>
           </div>
         </div>
         <div style={S.statCard}>
           <Mail size={18} style={{ color: '#7c3aed' }} />
           <div>
             <div style={S.statNum}>{invitations.length}</div>
-            <div style={S.statLabel}>Total Invitations Sent</div>
+            <div style={S.statLabel}>{t('clients.stats.total_invitations', 'Total Invitations Sent')}</div>
           </div>
         </div>
       </div>
@@ -145,31 +152,31 @@ export default function AllClientsPage({ onSelectClient }) {
         <div style={S.invitePanelHeader}>
           <div style={S.invitePanelIcon}><Send size={16} style={{ color: '#7c3aed' }} /></div>
           <div>
-            <h3 style={S.invitePanelTitle}>Invite a Client</h3>
-            <p style={S.invitePanelSub}>Send an invitation link. Once they sign up and verify their email, you'll receive a notification to send a dashboard access request.</p>
+            <h3 style={S.invitePanelTitle}>{t('clients.invite.title', 'Invite a Client')}</h3>
+            <p style={S.invitePanelSub}>{t('clients.invite.description', "Send an invitation link. Once they sign up and verify their email, you'll receive a notification to send a dashboard access request.")}</p>
           </div>
         </div>
 
         {inviteResult === 'success' ? (
           <div style={S.successBanner}>
             <CheckCircle size={16} />
-            Invitation sent! The client will receive an email with the invite link. You'll be notified when they join.
-            <button onClick={() => setInviteResult('')} style={S.dismissBtn}>Send another</button>
+            {t('clients.invite.success_message', "Invitation sent! The client will receive an email with the invite link. You'll be notified when they join.")}
+            <button onClick={() => setInviteResult('')} style={S.dismissBtn}>{t('clients.invite.send_another', 'Send another')}</button>
           </div>
         ) : (
           <form onSubmit={handleInvite} style={S.inviteForm}>
             <div style={{ flex: '1 1 220px' }}>
-              <label style={S.label}>Client Email <span style={S.req}>*</span></label>
+              <label style={S.label}>{t('clients.invite.client_email', 'Client Email')} <span style={S.req}>*</span></label>
               <input
-                type="email" required placeholder="client@company.com"
+                type="email" required placeholder={t('clients.invite.client_email_placeholder', 'client@company.com')}
                 value={inviteEmail} onChange={e => setInviteEmail(e.target.value)}
                 style={S.input}
               />
             </div>
             <div style={{ flex: '2 1 300px' }}>
-              <label style={S.label}>Personal Message (optional)</label>
+              <label style={S.label}>{t('clients.invite.personal_message', 'Personal Message (optional)')}</label>
               <input
-                placeholder="We'd love to manage your social analytics…"
+                placeholder={t('clients.invite.personal_message_placeholder', "We'd love to manage your social analytics…")}
                 value={inviteMsg} onChange={e => setInviteMsg(e.target.value)}
                 style={S.input}
               />
@@ -177,8 +184,8 @@ export default function AllClientsPage({ onSelectClient }) {
             <div style={{ alignSelf: 'flex-end' }}>
               <button type="submit" disabled={inviting} style={S.sendBtn}>
                 {inviting
-                  ? <><Loader2 size={13} style={{ animation: 'spin .8s linear infinite' }} /> Sending…</>
-                  : <><Send size={13} /> Send Invitation</>}
+                  ? <><Loader2 size={13} style={{ animation: 'spin .8s linear infinite' }} /> {t('clients.invite.sending', 'Sending…')}</>
+                  : <><Send size={13} /> {t('clients.invite.send_invitation', 'Send Invitation')}</>}
               </button>
             </div>
             {inviteResult.startsWith('error:') && (
@@ -193,8 +200,8 @@ export default function AllClientsPage({ onSelectClient }) {
       {/* ── Sent Invitations ─────────────────────────────────────────────────── */}
       <div style={S.section}>
         <div style={S.sectionHeader}>
-          <h3 style={S.sectionTitle}>Sent Invitations</h3>
-          <button onClick={fetchInvitations} style={S.refreshBtn} title="Refresh">
+          <h3 style={S.sectionTitle}>{t('clients.sent_invitations.title', 'Sent Invitations')}</h3>
+          <button onClick={fetchInvitations} style={S.refreshBtn} title={t('clients.sent_invitations.refresh', 'Refresh')}>
             <RefreshCw size={13} style={loadingInvList ? { animation: 'spin .8s linear infinite' } : {}} />
           </button>
         </div>
@@ -206,22 +213,29 @@ export default function AllClientsPage({ onSelectClient }) {
         ) : invitations.length === 0 ? (
           <div style={S.emptyState}>
             <Mail size={28} style={{ color: 'var(--text-quaternary)', marginBottom: 8 }} />
-            <p style={{ margin: 0, color: 'var(--text-tertiary)', fontSize: 13 }}>No invitations sent yet. Use the form above to invite your first client.</p>
+            <p style={{ margin: 0, color: 'var(--text-tertiary)', fontSize: 13 }}>{t('clients.sent_invitations.empty', 'No invitations sent yet. Use the form above to invite your first client.')}</p>
           </div>
         ) : (
           <div style={S.tableWrap}>
             <table style={S.table}>
               <thead>
                 <tr>
-                  {['Client Email', 'Status', 'Sent', 'Message', 'Action'].map(h => (
+                  {[
+                    t('clients.sent_invitations.col_email', 'Client Email'),
+                    t('clients.sent_invitations.col_status', 'Status'),
+                    t('clients.sent_invitations.col_sent', 'Sent'),
+                    t('clients.sent_invitations.col_message', 'Message'),
+                    t('clients.sent_invitations.col_action', 'Action'),
+                  ].map(h => (
                     <th key={h} style={S.th}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {invitations.map(inv => {
-                  const st = STATUS_COLOR[inv.is_expired && inv.status === 'pending' ? 'expired' : inv.status] || STATUS_COLOR.expired;
-                  const displayStatus = inv.is_expired && inv.status === 'pending' ? 'expired' : inv.status;
+                  const statusKey = inv.is_expired && inv.status === 'pending' ? 'expired' : inv.status;
+                  const st = STATUS_CONFIG[statusKey] || STATUS_CONFIG.expired;
+                  const displayStatus = statusKey;
                   return (
                     <tr key={inv.id} style={S.tr}>
                       <td style={{ ...S.td, fontWeight: 500 }}>{inv.client_email}</td>
@@ -231,7 +245,7 @@ export default function AllClientsPage({ onSelectClient }) {
                         </span>
                       </td>
                       <td style={{ ...S.td, color: 'var(--text-tertiary)', fontSize: 12 }}>
-                        {inv.invited_at ? new Date(inv.invited_at).toLocaleDateString() : '—'}
+                        {inv.invited_at ? formatDate(inv.invited_at, { dateStyle: 'short' }) : '—'}
                       </td>
                       <td style={{ ...S.td, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text-secondary)' }}>
                         {inv.message || <span style={{ color: 'var(--text-quaternary)' }}>—</span>}
@@ -246,7 +260,9 @@ export default function AllClientsPage({ onSelectClient }) {
                             {cancelingId === inv.id
                               ? <Loader2 size={11} style={{ animation: 'spin .8s linear infinite' }} />
                               : <X size={11} />}
-                            Cancel
+                            {cancelingId === inv.id
+                              ? t('clients.sent_invitations.canceling', 'Canceling…')
+                              : t('clients.sent_invitations.cancel', 'Cancel')}
                           </button>
                         ) : (
                           <span style={{ color: 'var(--text-quaternary)', fontSize: 12 }}>—</span>
@@ -264,24 +280,24 @@ export default function AllClientsPage({ onSelectClient }) {
       {/* ── Connected Clients ─────────────────────────────────────────────────── */}
       <div style={S.section}>
         <div style={S.sectionHeader}>
-          <h3 style={S.sectionTitle}>Connected Clients</h3>
+          <h3 style={S.sectionTitle}>{t('clients.connected.title', 'Connected Clients')}</h3>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             {syncMsg && (
               <span style={{ fontSize: 12, color: syncMsg.includes('failed') ? '#dc2626' : '#16a34a', fontWeight: 600 }}>
                 {syncMsg}
               </span>
             )}
-            <button onClick={handleSyncAll} disabled={syncingAll} style={S.syncAllBtn} title="Sync all clients">
+            <button onClick={handleSyncAll} disabled={syncingAll} style={S.syncAllBtn} title={t('clients.connected.sync_all', 'Sync all clients')}>
               {syncingAll
-                ? <><Loader2 size={13} style={{ animation: 'spin .8s linear infinite' }} /> Syncing…</>
-                : <><Zap size={13} /> Sync All</>}
+                ? <><Loader2 size={13} style={{ animation: 'spin .8s linear infinite' }} /> {t('clients.connected.syncing', 'Syncing…')}</>
+                : <><Zap size={13} /> {t('clients.connected.sync_all', 'Sync All')}</>}
             </button>
             <div style={S.searchWrapper}>
               <Search size={14} style={S.searchIcon} />
               <input
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                placeholder="Search clients…"
+                placeholder={t('clients.connected.search_placeholder', 'Search clients…')}
                 style={S.searchInput}
               />
             </div>
@@ -293,8 +309,8 @@ export default function AllClientsPage({ onSelectClient }) {
             <Users size={28} style={{ color: 'var(--text-quaternary)', marginBottom: 8 }} />
             <p style={{ margin: 0, color: 'var(--text-tertiary)', fontSize: 13 }}>
               {clients.length === 0
-                ? "No clients connected yet. Invite a client above — once they accept your access request they'll appear here."
-                : 'No clients match your search.'}
+                ? t('clients.connected.empty_title', "No clients connected yet. Invite a client above — once they accept your access request they'll appear here.")
+                : t('clients.connected.empty_search', 'No clients match your search.')}
             </p>
           </div>
         ) : (
@@ -302,7 +318,13 @@ export default function AllClientsPage({ onSelectClient }) {
             <table style={S.table}>
               <thead>
                 <tr>
-                  {['Company', 'Contact', 'Email', 'Website', 'Actions'].map(h => (
+                  {[
+                    t('clients.connected.col_company', 'Company'),
+                    t('clients.connected.col_contact', 'Contact'),
+                    t('clients.connected.col_email', 'Email'),
+                    t('clients.connected.col_website', 'Website'),
+                    t('clients.connected.col_actions', 'Actions'),
+                  ].map(h => (
                     <th key={h} style={S.th}>{h}</th>
                   ))}
                 </tr>
@@ -330,7 +352,7 @@ export default function AllClientsPage({ onSelectClient }) {
                           style={S.dashBtn}
                         >
                           <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                            Dashboard <ChevronRight size={12} />
+                            {t('clients.connected.btn_dashboard', 'Dashboard')} <ChevronRight size={12} />
                           </span>
                         </button>
                         <button
@@ -338,14 +360,14 @@ export default function AllClientsPage({ onSelectClient }) {
                           style={S.settingsBtn}
                         >
                           <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                            <Settings size={12} /> Account
+                            <Settings size={12} /> {t('clients.connected.btn_account', 'Account')}
                           </span>
                         </button>
                         <button
                           onClick={() => handleSyncOne(c.id)}
                           disabled={syncingId === c.id}
                           style={S.syncBtn}
-                          title="Sync this client"
+                          title={t('clients.connected.btn_sync_one', 'Sync this client')}
                         >
                           {syncingId === c.id
                             ? <Loader2 size={12} style={{ animation: 'spin .8s linear infinite' }} />
@@ -364,13 +386,13 @@ export default function AllClientsPage({ onSelectClient }) {
       {/* ── How it works ─────────────────────────────────────────────────────── */}
       {clients.length === 0 && invitations.length === 0 && (
         <div style={S.howItWorks}>
-          <h4 style={S.howTitle}>How client onboarding works</h4>
+          <h4 style={S.howTitle}>{t('clients.how_it_works.title', 'How client onboarding works')}</h4>
           <div style={S.steps}>
             {[
-              { icon: <Send size={16} />, color: '#7c3aed', label: '1. Send Invitation', desc: 'Enter the client\'s email above and send an invitation.' },
-              { icon: <Mail size={16} />, color: '#0369a1', label: '2. Client Signs Up', desc: 'The client receives an email, signs up on Social Stats, and verifies their account.' },
-              { icon: <Building2 size={16} />, color: '#d97706', label: '3. You Get Notified', desc: 'You\'ll receive an email when the client joins. Then send a dashboard access request.' },
-              { icon: <CheckCircle size={16} />, color: '#16a34a', label: '4. Client Accepts', desc: 'Once they accept the access request, they appear in your clients list.' },
+              { icon: <Send size={16} />, color: '#7c3aed', label: t('clients.how_it_works.step1_title', '1. Send Invitation'), desc: t('clients.how_it_works.step1_desc', "Enter the client's email above and send an invitation.") },
+              { icon: <Mail size={16} />, color: '#0369a1', label: t('clients.how_it_works.step2_title', '2. Client Signs Up'), desc: t('clients.how_it_works.step2_desc', 'The client receives an email, signs up on Bop Social, and verifies their account.') },
+              { icon: <Building2 size={16} />, color: '#d97706', label: t('clients.how_it_works.step3_title', '3. You Get Notified'), desc: t('clients.how_it_works.step3_desc', "You'll receive an email when the client joins. Then send a dashboard access request.") },
+              { icon: <CheckCircle size={16} />, color: '#16a34a', label: t('clients.how_it_works.step4_title', '4. Client Accepts'), desc: t('clients.how_it_works.step4_desc', 'Once they accept the access request, they appear in your clients list.') },
             ].map(s => (
               <div key={s.label} style={S.step}>
                 <div style={{ ...S.stepIcon, color: s.color, background: s.color + '18' }}>{s.icon}</div>

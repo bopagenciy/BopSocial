@@ -20,6 +20,21 @@
     "whats_new": "Novedades",
     "breadcrumb_home": "Inicio"
   },
+  "breadcrumbs": {
+    "home": "Inicio",
+    "account_settings": "Configuración de cuenta",
+    "clients": "Clientes",
+    "management": "Gestión de equipo",
+    "client": "Cliente",
+    "edit": "Editar",
+    "trust": "Confianza y aprobaciones",
+    "approvals": "Aprobaciones",
+    "audit_log": "Registro de auditoría",
+    "settings": "Configuración",
+    "analytics": "Analítica",
+    "messaging": "Mensajería",
+    "ads": "Anuncios"
+  },
   "mobile_nav": {
     "home": "Inicio",
     "calendar": "Calendario",

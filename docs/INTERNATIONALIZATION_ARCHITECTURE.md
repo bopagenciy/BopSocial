@@ -714,6 +714,51 @@ Phase BS-2.6B.1 internationalized the authenticated User Settings, Account Secur
   - Image tag updated in `docker-compose.local.yml`: `bopsocial-frontend-local:bs-2.6b.1.1`.
   - Container recreated and healthy on `http://localhost:3010/` (HTTP 200).
 
+## 19. Phase BS-2.6B.2 — Client & Tenant Management Internationalization
+
+### 19.1 Scope & Architecture
+- **Dedicated Namespace**: Registered `management` namespace across `frontend/src/i18n/config.js` (`resources` and `ns` array).
+- **Target Administration Interfaces**:
+  - `/admin/clients` (`AllClientsPage.jsx`): Client statistics, invitations panel, invitation tracking with localized badges, connected client directory, client-level and global platform sync triggers, and onboarding guides.
+  - `/admin/management` (`ManagementPage.jsx`): Staff members and role assignment, permissions editor with granular ability groups, user access and custom portal configuration, role default permission matrix, and staff creation modal.
+  - `/admin/client/:clientId/edit` (`EditClientPage.jsx`): Client organization settings, contact info, default language preference (`en`, `es`, system), validation feedback, and status.
+  - `/admin/trust` (`AdminTrustQueuePage.jsx`): Agency verification queue, decision prompts (approval note, rejection reason), dispute handling with category and status filters, evidence inspection, and resolution workflow.
+  - `/admin/analytics/approvals` (`ApprovalQueuePage.jsx`): Post approval queue with count-based subtitle pluralization, inbox-zero empty state, review action buttons (Approve, Reject, Edit), and confirmation dialogs.
+  - `/admin/analytics/audit-log` (`AuditLogPage.jsx`): Write action audit history, action search, result filter dropdown (`all`, `success`, `partial`, `failed`), and tabular log inspection.
+- **Shared Breadcrumb Resolution (BS-2.6B.1 residual closure)**:
+  - Updated `TopBar.jsx` (`buildBreadcrumbs`) to look up `breadcrumbs.${key}` in `app.json`.
+  - Added full admin routing segments in `frontend/src/locales/en/app.json` and `frontend/src/locales/es/app.json`:
+    - `account_settings`: `"Account Settings"` / `"Configuración de cuenta"`
+    - `clients`: `"Clients"` / `"Clientes"`
+    - `management`: `"Team Management"` / `"Gestión de equipo"`
+    - `client`: `"Client"` / `"Cliente"`
+    - `edit`: `"Edit"` / `"Editar"`
+    - `trust`: `"Trust & Approvals"` / `"Confianza y aprobaciones"`
+    - `approvals`: `"Approvals"` / `"Aprobaciones"`
+    - `audit_log`: `"Audit Log"` / `"Registro de auditoría"`
+
+### 19.2 Invariants Preserved
+- **Data Isolation & Backend Schemas**: Preserved exact backend role values (`superadmin`, `staff`, `client`, `agency_member`, `end_user`) and entity IDs.
+- **Customer Content Integrity**: Company names, user names, emails, and post content remain completely unmutated across language transitions.
+- **100% Key Parity**:
+  - `management.json`: 247 keys in both English and Spanish (0 missing in ES, 0 missing in EN).
+  - `app.json`: 152 keys in both English and Spanish (0 missing in ES, 0 missing in EN).
+
+### 19.3 Verification & Deployment
+- **Automated Tests**:
+  - Created `frontend/src/pages/__tests__/ClientTenantManagementTranslation.test.jsx`: **11 / 11 passing tests**.
+  - Full frontend suite: **21 / 21 test suites passed, 153 / 153 tests passed**.
+  - Backend regression test suite: **334 / 334 tests passed**.
+- **Production Build**:
+  - `npm run build` executed with zero warnings/errors.
+- **Local Docker Deployment**:
+  - Built frontend image: `bopsocial-frontend-local:bs-2.6b.2`.
+  - Backend image retained: `bopsocial-backend-local:bs-2.1.1`.
+  - Verified container recreation and endpoints:
+    - `http://localhost:3010/` -> HTTP 200 OK
+    - `http://localhost:3010/login` -> HTTP 200 OK
+
+
 
 
 

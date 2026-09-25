@@ -7,6 +7,7 @@
  *  Released under the MIT License — see LICENSE. Keep this notice.
  * ========================================================================== */
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Loader2, Search, FileText } from 'lucide-react';
 
 import PageHeader from '../../components/layout/PageHeader';
@@ -14,6 +15,7 @@ import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
 import EmptyState from '../../components/ui/EmptyState';
 import { auditAPI } from '../../services/api';
+import { formatDate } from '../../utils/formatters';
 
 const RESULT_VARIANT = {
   success: 'success',
@@ -22,6 +24,7 @@ const RESULT_VARIANT = {
 };
 
 export default function AuditLogPage() {
+  const { t, i18n } = useTranslation(['management', 'common']);
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState({ action: '', result: '', search: '' });
@@ -43,8 +46,8 @@ export default function AuditLogPage() {
   return (
     <div style={{ paddingBottom: 32 }}>
       <PageHeader
-        title="Audit log"
-        subtitle="Every write action Social Stats performed on your behalf"
+        title={t('audit_log.title', 'Audit log')}
+        subtitle={t('audit_log.subtitle', 'Every write action Bop Social performed on your behalf')}
       />
 
       <div style={{ padding: '0 24px' }}>
@@ -56,7 +59,7 @@ export default function AuditLogPage() {
             <Search size={14} color="var(--text-tertiary)"
                     style={{ position: 'absolute', top: 11, left: 10 }} />
             <input
-              placeholder="Search action…"
+              placeholder={t('audit_log.search_placeholder', 'Search action…')}
               value={filter.search}
               onChange={(e) => setFilter({ ...filter, search: e.target.value })}
               style={{ ...inputStyle, paddingLeft: 30 }}
@@ -65,10 +68,10 @@ export default function AuditLogPage() {
           <select value={filter.result}
                    onChange={(e) => setFilter({ ...filter, result: e.target.value })}
                    style={inputStyle}>
-            <option value="">All results</option>
-            <option value="success">Success</option>
-            <option value="partial">Partial</option>
-            <option value="failed">Failed</option>
+            <option value="">{t('audit_log.filter_all', 'All results')}</option>
+            <option value="success">{t('audit_log.filter_success', 'Success')}</option>
+            <option value="partial">{t('audit_log.filter_partial', 'Partial')}</option>
+            <option value="failed">{t('audit_log.filter_failed', 'Failed')}</option>
           </select>
         </Card>
 
@@ -82,8 +85,8 @@ export default function AuditLogPage() {
           <Card padding="none" style={{ overflow: 'hidden' }}>
             <EmptyState
               icon={FileText}
-              title="No audit entries yet"
-              description="Once Social Stats publishes a post, sends a reply, or fires an automation, it'll show up here."
+              title={t('audit_log.empty_title', 'No audit entries yet')}
+              description={t('audit_log.empty_desc', "Once Bop Social publishes a post, sends a reply, or fires an automation, it'll show up here.")}
             />
           </Card>
         )}
@@ -93,18 +96,18 @@ export default function AuditLogPage() {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
                 <tr>
-                  <th style={th}>When</th>
-                  <th style={th}>Action</th>
-                  <th style={th}>Object</th>
-                  <th style={th}>Platform</th>
-                  <th style={th}>Actor</th>
-                  <th style={th}>Result</th>
+                  <th style={th}>{t('audit_log.col_when', 'When')}</th>
+                  <th style={th}>{t('audit_log.col_action', 'Action')}</th>
+                  <th style={th}>{t('audit_log.col_object', 'Object')}</th>
+                  <th style={th}>{t('audit_log.col_platform', 'Platform')}</th>
+                  <th style={th}>{t('audit_log.col_actor', 'Actor')}</th>
+                  <th style={th}>{t('audit_log.col_result', 'Result')}</th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map((r) => (
                   <tr key={r.id}>
-                    <td style={td}>{new Date(r.created_at).toLocaleString()}</td>
+                    <td style={td}>{r.created_at ? formatDate(r.created_at, { dateStyle: 'short', timeStyle: 'short' }, i18n?.language) : '—'}</td>
                     <td style={td}>
                       <span style={{
                         fontFamily: 'var(--font-mono)', fontSize: 12,
@@ -127,12 +130,12 @@ export default function AuditLogPage() {
                     </td>
                     <td style={td}>
                       <span style={{ color: 'var(--text-secondary)' }}>
-                        {r.actor_email || 'system'}
+                        {r.actor_email || t('audit_log.system_actor', 'system')}
                       </span>
                     </td>
                     <td style={td}>
                       <Badge variant={RESULT_VARIANT[r.result] || 'default'} dot>
-                        {r.result}
+                        {r.result ? t(`audit_log.filter_${r.result}`, r.result) : '—'}
                       </Badge>
                     </td>
                   </tr>
