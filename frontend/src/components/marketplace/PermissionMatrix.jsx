@@ -24,6 +24,8 @@
  * ( send-flow) and editors ( my-agency page).
  */
 
+import { useTranslation } from 'react-i18next';
+
 const RISK_COLOR = {
   low:      'var(--text-tertiary)',
   medium:   'var(--warning)',
@@ -38,6 +40,8 @@ export default function PermissionMatrix({
   readOnly = false,
   onChange,
 }) {
+  const { t } = useTranslation('agency_portal');
+
   // Group catalog by category, preserving server-side ordering as best we can
   const grouped = {};
   Object.entries(catalog).forEach(([key, meta]) => {
@@ -70,7 +74,7 @@ export default function PermissionMatrix({
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       {Object.entries(grouped).map(([cat, perms]) => (
         <div key={cat}>
-          <div style={catLabel}>{cat}</div>
+          <div style={catLabel}>{t(`permissions.categories.${cat}`, cat)}</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             {perms.map((p) => {
               const granted = !!permissions[p.key];
@@ -84,9 +88,9 @@ export default function PermissionMatrix({
                     onChange={() => togglePerm(p.key)}
                     style={{ cursor: readOnly ? 'not-allowed' : 'pointer' }}
                   />
-                  <span style={{ flex: 1, color: 'var(--text-primary)', fontSize: 13 }}>{p.label || p.key}</span>
+                  <span style={{ flex: 1, color: 'var(--text-primary)', fontSize: 13 }}>{t(`permissions.labels.${p.key}`, p.label || p.key)}</span>
                   <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: RISK_COLOR[p.risk] || RISK_COLOR.low }}>
-                    {p.risk}
+                    {t(`permissions.risk.${p.risk}`, p.risk)}
                   </span>
                   {granted && (
                     <label style={{ fontSize: 11, color: 'var(--text-tertiary)', display: 'inline-flex', alignItems: 'center', gap: 4, cursor: readOnly ? 'not-allowed' : 'pointer' }}>
@@ -96,7 +100,7 @@ export default function PermissionMatrix({
                         disabled={readOnly}
                         onChange={() => toggleApproval(p.key)}
                       />
-                      Ask me first
+                      {t('permissions.ask_me_first', 'Ask me first')}
                     </label>
                   )}
                 </div>

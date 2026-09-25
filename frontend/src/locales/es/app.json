@@ -44,7 +44,14 @@
     "ai_audit": "Auditoría de IA",
     "caption_writer": "Redactor de copys",
     "post_ideas": "Ideas de contenido",
-    "hashtags": "Hashtags"
+    "hashtags": "Hashtags",
+    "marketplace": "Mercado",
+    "marketplace_profile": "Perfil de mercado",
+    "agencies": "Agencias",
+    "agency": "Agencia",
+    "connections": "Conexiones",
+    "activity": "Registro de actividad",
+    "notifications": "Notificaciones"
   },
   "mobile_nav": {
     "home": "Inicio",

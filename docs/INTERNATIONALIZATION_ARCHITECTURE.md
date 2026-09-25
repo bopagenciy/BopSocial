@@ -913,6 +913,54 @@ Root cause investigation revealed a dual deployment / caching defect:
   - Retained backend image: `bopsocial-backend-local:bs-2.1.1`.
   - Recreated `agencyos-frontend-1` and verified live with HTTP 200 on `http://localhost:3010/admin/analytics/ai-studio`.
 
+## 23. Phase BS-2.6D — Agency Marketplace & Client Portal Internationalization
+
+### 23.1 Scope & Architecture
+- **Dedicated Namespace**: Registered `agency_portal` namespace in `frontend/src/i18n/config.js` (`resources.en.agency_portal`, `resources.es.agency_portal`, and `'agency_portal'` added to the `ns` array).
+- **Target Marketplace & Relationship Interfaces**:
+  - `/marketplace` & `/u/agency/find` (`MarketplacePage.jsx`): Public & client-facing agency directory with search, filter chips (industries, services, minimum rating, verified only), sorting, and agency preview cards.
+  - `/marketplace/:slug` (`AgencyProfilePage.jsx`): Detailed agency public profile, verified badge, services & pricing cards, case studies, team members, contact modal, and reviews list.
+  - `/agency/marketplace-profile` (`AgencyMarketplaceProfilePage.jsx`): Agency administrator profile editor with marketplace visibility toggle, basic info, services, pricing, and verification requests.
+  - `/invite/:token` (`ManageInvitePage.jsx`): Client invitation acceptance screen with platform list, permissions preview, and accept/reject actions.
+  - `/agency-invite/:token` (`AgencyInviteResponsePage.jsx`): Agency response page for client-initiated management requests.
+  - **Shared Marketplace Widgets**:
+    - `PermissionMatrix.jsx`: Interactive permission editor grouped by category (Content, Engagement, Campaigns, Ads, Settings, Critical), risk levels (low, medium, high, critical), and "Ask me first" approval toggles.
+    - `StarRating.jsx`: Accessible star rating component with aria-labels.
+    - `InviteAgencyModal.jsx`: 4-step agency invitation wizard (email, workspace selection, permission setup, review & send).
+    - `SendManageRequestModal.jsx`: 4-step proposal request wizard.
+    - `WriteReviewModal.jsx`: Rating and review editor with headline, body, pros/cons list, services used, and collaboration duration.
+- **Target End-User Portal (`/u/*`) Interfaces**:
+  - `/pending` (`PendingDashboard.jsx`): Post-registration onboarding screen offering Solo account activation or agency connection.
+  - `/u/*` (`EndUserShell.jsx`): End-user layout shell with navigation bar (Dashboard, My agency, Activity log, Approvals, Notifications, Connections) and personal account badge.
+  - `/u` (`EndUserDashboard.jsx`): Main client dashboard with workspace greeting, quick stats, pending approvals badge, and actionable cards.
+  - `/u/connections` (`MyConnectionsPage.jsx`): Client-owned social platform connection status, refresh actions, and empty states.
+  - `/u/agency` (`MyAgencyPage.jsx`): Relationship management hub, status pills (active, paused, pending, terminated), pause/resume actions, permission matrix editor, recent activity feed, and relationship termination modal.
+  - `/u/activity` (`ActivityLogPage.jsx`): Trust & audit feed with actor filters (You, Agency, AI, System), severity filters (info, notice, warning, critical), flagged-only toggle, CSV export, and revert/flag prompt actions.
+  - `/u/approvals` (`ApprovalsPage.jsx`): Sensitive action review queue with Pending/History tabs, expiration countdowns, editable post caption textarea, and approve/reject modals.
+  - `/u/notifications` (`NotificationPreferencesPage.jsx`): Event-by-channel matrix table (in-app, email, WhatsApp, push) with "coming soon" channel indicators.
+- **TopBar & Navigation Breadcrumbs**:
+  - Added routes to `app.json` (`marketplace`, `marketplace_profile`, `my_agency`, `activity`, `approvals`, `end_user_connections`, `pending`).
+- **Brand Residual Resolution**:
+  - Eradicated all residual `Social Stats` / `socialstats-` branding across client-facing modules, replaced with `Bop Social` and `bopsocial-activity-*.csv`.
+
+### 23.2 Invariants Preserved
+- **Zero Live Mutations & Email Triggers**: Tests and local verifications avoid triggering external emails, webhook deliveries, or live billing adjustments.
+- **Role Isolation & Zero Role Escalation**: Client users (`client_user`) strictly access `/u/*` and `/marketplace` without receiving agency administrator privileges.
+- **100% Translation Key Parity**:
+  - `agency_portal.json`: 497 symmetric keys in English and Spanish with zero missing keys.
+  - `app.json`: Synchronized breadcrumb mappings.
+
+### 23.3 Verification & Deployment
+- **Automated Test Suite**:
+  - Created `frontend/src/pages/__tests__/AgencyPortalTranslation.test.jsx`: **8 / 8 passing tests** covering catalog parity, branding eradication, MarketplacePage, PendingDashboard, EndUserShell, ApprovalsPage, ActivityLogPage, and PermissionMatrix in both English and Spanish.
+- **Full Frontend Suite**: **25 / 25 test suites passed, 186 / 186 tests passed**.
+- **Production Build**: `npm run build` executed cleanly (exit code 0).
+- **Local Docker Deployment**:
+  - Built frontend image: `bopsocial-frontend-local:bs-2.6d`.
+  - Retained backend image: `bopsocial-backend-local:bs-2.1.1`.
+  - Recreated `agencyos-frontend-1` and verified live with HTTP 200 on `http://localhost:3010/`, `http://localhost:3010/marketplace`, and `http://localhost:3010/u`.
+
+
 
 
 

@@ -44,7 +44,14 @@
     "ai_audit": "AI Audit",
     "caption_writer": "Caption Writer",
     "post_ideas": "Post Ideas",
-    "hashtags": "Hashtags"
+    "hashtags": "Hashtags",
+    "marketplace": "Marketplace",
+    "marketplace_profile": "Marketplace Profile",
+    "agencies": "Agencies",
+    "agency": "Agency",
+    "connections": "Connections",
+    "activity": "Activity Log",
+    "notifications": "Notifications"
   },
   "mobile_nav": {
     "home": "Home",

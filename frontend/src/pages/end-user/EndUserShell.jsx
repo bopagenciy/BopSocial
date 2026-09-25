@@ -13,8 +13,9 @@
  * and only the navigation that's relevant to a workspace owner. Pages that
  * are not yet built (later marketplace stages) are listed with `comingSoon`.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   LayoutDashboard, FileType, PenSquare, CalendarDays, Inbox, LineChart,
   Building2, Plug, ShieldCheck, ClipboardCheck, Search,
@@ -24,48 +25,49 @@ import {
 import { useAuth } from '../../hooks/useAuth';
 import { approvalAPI } from '../../services/api';
 
-const SECTIONS = [
-  {
-    title: 'My workspace',
-    items: [
-      { to: '/u',             label: 'Dashboard',  icon: LayoutDashboard, end: true },
-      { to: '/u/posts',       label: 'Posts',      icon: FileType,        comingSoon: true },
-      { to: '/u/composer',    label: 'Composer',   icon: PenSquare,       comingSoon: true },
-      { to: '/u/calendar',    label: 'Calendar',   icon: CalendarDays,    comingSoon: true },
-      { to: '/u/inbox',       label: 'Inbox',      icon: Inbox,           comingSoon: true },
-      { to: '/u/analytics',   label: 'Analytics',  icon: LineChart,       comingSoon: true },
-    ],
-  },
-  {
-    title: 'Manage',
-    items: [
-      { to: '/u/agency',      label: 'My agency',   icon: Building2 },
-      { to: '/u/connections', label: 'Connections', icon: Plug },
-      { to: '/u/approvals',   label: 'Approvals',   icon: ClipboardCheck, badgeKey: 'pendingApprovals' },
-      { to: '/u/activity',    label: 'Activity log', icon: ShieldCheck },
-    ],
-  },
-  {
-    title: 'Discover',
-    items: [
-      { to: '/u/agency/find', label: 'Find an agency', icon: Search },
-    ],
-  },
-  {
-    title: 'Account',
-    items: [
-      { to: '/u/settings',      label: 'Settings',      icon: Settings,    comingSoon: true },
-      { to: '/u/notifications', label: 'Notifications', icon: Bell },
-      { to: '/u/billing',       label: 'Billing',       icon: CreditCard },
-    ],
-  },
-];
-
 export default function EndUserShell() {
+  const { t } = useTranslation('agency_portal');
   const { user } = useAuth();
   const location = useLocation();
   const [badges, setBadges] = useState({ pendingApprovals: 0 });
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  const sections = useMemo(() => [
+    {
+      title: t('end_user.shell.sections.workspace', 'My workspace'),
+      items: [
+        { to: '/u',             label: t('end_user.shell.nav.dashboard', 'Dashboard'),    icon: LayoutDashboard, end: true },
+        { to: '/u/posts',       label: t('end_user.shell.nav.posts', 'Posts'),            icon: FileType,        comingSoon: true },
+        { to: '/u/composer',    label: t('end_user.shell.nav.composer', 'Composer'),      icon: PenSquare,       comingSoon: true },
+        { to: '/u/calendar',    label: t('end_user.shell.nav.calendar', 'Calendar'),      icon: CalendarDays,    comingSoon: true },
+        { to: '/u/inbox',       label: t('end_user.shell.nav.inbox', 'Inbox'),            icon: Inbox,           comingSoon: true },
+        { to: '/u/analytics',   label: t('end_user.shell.nav.analytics', 'Analytics'),    icon: LineChart,       comingSoon: true },
+      ],
+    },
+    {
+      title: t('end_user.shell.sections.manage', 'Manage'),
+      items: [
+        { to: '/u/agency',      label: t('end_user.shell.nav.my_agency', 'My agency'),       icon: Building2 },
+        { to: '/u/connections', label: t('end_user.shell.nav.connections', 'Connections'),   icon: Plug },
+        { to: '/u/approvals',   label: t('end_user.shell.nav.approvals', 'Approvals'),       icon: ClipboardCheck, badgeKey: 'pendingApprovals' },
+        { to: '/u/activity',    label: t('end_user.shell.nav.activity', 'Activity log'),     icon: ShieldCheck },
+      ],
+    },
+    {
+      title: t('end_user.shell.sections.discover', 'Discover'),
+      items: [
+        { to: '/u/agency/find', label: t('end_user.shell.nav.find_agency', 'Find an agency'), icon: Search },
+      ],
+    },
+    {
+      title: t('end_user.shell.sections.account', 'Account'),
+      items: [
+        { to: '/u/settings',      label: t('end_user.shell.nav.settings', 'Settings'),           icon: Settings,    comingSoon: true },
+        { to: '/u/notifications', label: t('end_user.shell.nav.notifications', 'Notifications'), icon: Bell },
+        { to: '/u/billing',       label: t('end_user.shell.nav.billing', 'Billing'),             icon: CreditCard },
+      ],
+    },
+  ], [t]);
 
   // Light poll of pending approvals so the sidebar badge stays current.
   // 60s is plenty — the page itself refetches on focus.
@@ -77,8 +79,8 @@ export default function EndUserShell() {
         .catch(() => {});
     }
     refresh();
-    const t = setInterval(refresh, 60_000);
-    return () => { cancelled = true; clearInterval(t); };
+    const tPoll = setInterval(refresh, 60_000);
+    return () => { cancelled = true; clearInterval(tPoll); };
   }, []);
 
   // Close mobile drawer on route change
@@ -96,7 +98,7 @@ export default function EndUserShell() {
         borderBottom: '1px solid var(--border-subtle)',
       }}>
         <button
-          type="button" onClick={() => setMobileOpen(true)} aria-label="Open menu"
+          type="button" onClick={() => setMobileOpen(true)} aria-label={t('end_user.shell.aria_open_menu', 'Open menu')}
           style={{
             width: 36, height: 36, padding: 0,
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
@@ -114,7 +116,7 @@ export default function EndUserShell() {
         }}>
           <Sparkles size={13} strokeWidth={2.4} />
         </span>
-        <strong style={{ fontSize: 14, color: 'var(--text-primary)' }}>Social Stats</strong>
+        <strong style={{ fontSize: 14, color: 'var(--text-primary)' }}>Bop Social</strong>
       </header>
 
       {/* Backdrop */}
@@ -132,7 +134,7 @@ export default function EndUserShell() {
       )}
 
       <aside
-        aria-label="End-user navigation"
+        aria-label={t('end_user.shell.aria_nav', 'End-user navigation')}
         className={mobileOpen ? 'eu-sidebar eu-sidebar-open' : 'eu-sidebar'}
         style={{
           width: 220,
@@ -146,7 +148,7 @@ export default function EndUserShell() {
         {/* Mobile-only close button */}
         <button
           type="button" onClick={() => setMobileOpen(false)}
-          aria-label="Close menu"
+          aria-label={t('end_user.shell.aria_close_menu', 'Close menu')}
           className="eu-sidebar-close"
           style={{
             display: 'none', position: 'absolute', top: 10, right: 10,
@@ -170,16 +172,16 @@ export default function EndUserShell() {
           </span>
           <div>
             <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>
-              Social Stats
+              Bop Social
             </div>
             <div style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>
-              Personal account
+              {t('end_user.shell.personal_account', 'Personal account')}
             </div>
           </div>
         </div>
 
         <nav style={{ display: 'flex', flexDirection: 'column', gap: 14, overflowY: 'auto', flex: 1 }}>
-          {SECTIONS.map((section) => (
+          {sections.map((section) => (
             <div key={section.title}>
               <div style={{
                 fontSize: 10, fontWeight: 600,
@@ -190,7 +192,7 @@ export default function EndUserShell() {
                 {section.title}
               </div>
               {section.items.map((item) => (
-                <NavRow key={item.to} {...item} badge={item.badgeKey ? badges[item.badgeKey] : 0} />
+                <NavRow key={item.to} {...item} badge={item.badgeKey ? badges[item.badgeKey] : 0} t={t} />
               ))}
             </div>
           ))}
@@ -240,7 +242,7 @@ export default function EndUserShell() {
   );
 }
 
-function NavRow({ to, label, icon: Icon, end, comingSoon, badge }) {
+function NavRow({ to, label, icon: Icon, end, comingSoon, badge, t }) {
   if (comingSoon) {
     return (
       <div style={{
@@ -262,7 +264,7 @@ function NavRow({ to, label, icon: Icon, end, comingSoon, badge }) {
           border: '1px solid var(--border-subtle)',
           borderRadius: 'var(--radius-pill)',
         }}>
-          Soon
+          {t ? t('end_user.shell.soon', 'Soon') : 'Soon'}
         </span>
       </div>
     );

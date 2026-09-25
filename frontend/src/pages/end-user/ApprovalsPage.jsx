@@ -21,6 +21,7 @@
  * failure of execution.
  */
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation, Trans } from 'react-i18next';
 import {
   ClipboardCheck, Check, X, ChevronDown, ChevronRight, Clock,
   AlertTriangle, Sparkles, FileText, Send, Plug,
@@ -57,6 +58,7 @@ const STATUS_PILL = {
 };
 
 export default function ApprovalsPage() {
+  const { t } = useTranslation('agency_portal');
   const [tab,     setTab]     = useState('pending');
   const [rows,    setRows]    = useState([]);
   const [loading, setLoading] = useState(true);
@@ -67,7 +69,7 @@ export default function ApprovalsPage() {
     const fn = which === 'pending' ? approvalAPI.pending : approvalAPI.history;
     fn()
       .then((r) => setRows(r.data?.rows || []))
-      .catch(() => toast.error('Could not load approvals'))
+      .catch(() => toast.error(t('end_user.approvals.err_load', 'Could not load approvals')))
       .finally(() => setLoading(false));
   }
 
@@ -93,33 +95,34 @@ export default function ApprovalsPage() {
         </span>
         <div style={{ flex: 1 }}>
           <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
-            Approvals
+            {t('end_user.approvals.title', 'Approvals')}
           </h1>
           <p style={{ margin: '4px 0 0', color: 'var(--text-secondary)', fontSize: 14 }}>
-            Sensitive actions your agency wants to do — approve, edit, or reject.
+            {t('end_user.approvals.subtitle', 'Sensitive actions your agency wants to do — approve, edit, or reject.')}
           </p>
         </div>
       </header>
 
       <div style={{ display: 'flex', gap: 6, borderBottom: '1px solid var(--border-subtle)' }}>
         <TabButton active={tab === 'pending'} onClick={() => setTab('pending')}>
-          Pending {pendingCount > 0 && <Badge n={pendingCount} />}
+          {t('end_user.approvals.tab_pending', 'Pending')} {pendingCount > 0 && <Badge n={pendingCount} />}
         </TabButton>
         <TabButton active={tab === 'history'} onClick={() => setTab('history')}>
-          History
+          {t('end_user.approvals.tab_history', 'History')}
         </TabButton>
       </div>
 
       {loading ? (
-        <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-tertiary)' }}>Loading…</div>
+        <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-tertiary)' }}>{t('common.loading', 'Loading…')}</div>
       ) : rows.length === 0 ? (
-        <EmptyState tab={tab} />
+        <EmptyState tab={tab} t={t} />
       ) : (
         <ul style={listStyle}>
           {rows.map((row) => (
             <ApprovalRow
               key={row.id}
               row={row}
+              t={t}
               expanded={openId === row.id}
               onToggle={() => setOpenId(openId === row.id ? null : row.id)}
               onActed={() => load(tab)}
@@ -162,7 +165,7 @@ function Badge({ n }) {
   );
 }
 
-function EmptyState({ tab }) {
+function EmptyState({ tab, t }) {
   return (
     <div style={{
       padding: 36,
@@ -175,14 +178,14 @@ function EmptyState({ tab }) {
       <ClipboardCheck size={28} strokeWidth={1.6} style={{ opacity: 0.4 }} />
       <div style={{ marginTop: 8, fontSize: 13 }}>
         {tab === 'pending'
-          ? 'No pending approvals — everything\'s caught up.'
-          : 'No past approvals yet.'}
+          ? (t ? t('end_user.approvals.empty_pending', "No pending approvals — everything's caught up.") : 'No pending approvals — everything\'s caught up.')
+          : (t ? t('end_user.approvals.empty_history', 'No past approvals yet.') : 'No past approvals yet.')}
       </div>
     </div>
   );
 }
 
-function ApprovalRow({ row, expanded, onToggle, onActed }) {
+function ApprovalRow({ row, expanded, onToggle, onActed, t }) {
   const [busy, setBusy] = useState(false);
   const [editor, setEditor] = useState(row.payload?.content || row.payload?.text || row.preview || '');
   const [rejectReason, setRejectReason] = useState('');
@@ -203,12 +206,12 @@ function ApprovalRow({ row, expanded, onToggle, onActed }) {
       if (editedContent) payload.edited_payload = editedContent;
       const r = await approvalAPI.approve(row.id, payload);
       const exec = r.data?.execution_result || {};
-      if (exec.success) toast.success('Approved and executed');
-      else if (exec.message) toast.error(`Approved, but execution failed: ${exec.message}`);
-      else toast.success('Approved');
+      if (exec.success) toast.success(t ? t('end_user.approvals.toast_approved', 'Approved and executed') : 'Approved and executed');
+      else if (exec.message) toast.error(`${t ? t('end_user.approvals.exec_failed', 'Execution failed:') : 'Approved, but execution failed:'} ${exec.message}`);
+      else toast.success(t ? t('end_user.approvals.toast_approved', 'Approved') : 'Approved');
       onActed?.();
     } catch (e) {
-      toast.error(e?.response?.data?.error || 'Could not approve');
+      toast.error(e?.response?.data?.error || (t ? t('end_user.approvals.err_action', 'Could not approve') : 'Could not approve'));
     } finally {
       setBusy(false);
     }
@@ -218,10 +221,10 @@ function ApprovalRow({ row, expanded, onToggle, onActed }) {
     setBusy(true);
     try {
       await approvalAPI.reject(row.id, rejectReason);
-      toast.success('Rejected');
+      toast.success(t ? t('end_user.approvals.toast_rejected', 'Rejected') : 'Rejected');
       onActed?.();
     } catch (e) {
-      toast.error(e?.response?.data?.error || 'Could not reject');
+      toast.error(e?.response?.data?.error || (t ? t('end_user.approvals.err_action', 'Could not reject') : 'Could not reject'));
     } finally {
       setBusy(false);
       setShowReject(false);
@@ -231,6 +234,9 @@ function ApprovalRow({ row, expanded, onToggle, onActed }) {
   const isPending = row.status === 'pending';
   const editable = isPending && (row.action_type === 'publish_post' || row.action_type.startsWith('reply_'));
 
+  const actionLabel = t ? t(`end_user.approvals.actions.${row.action_type}`, ACTION_LABEL[row.action_type] || row.action_type) : (ACTION_LABEL[row.action_type] || row.action_type);
+  const statusLabel = t ? t(`end_user.approvals.status.${row.status}`, row.status) : row.status;
+
   return (
     <li style={cardStyle}>
       <button type="button" onClick={onToggle} style={headerBtn} aria-expanded={expanded}>
@@ -238,17 +244,23 @@ function ApprovalRow({ row, expanded, onToggle, onActed }) {
         <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
-              {ACTION_LABEL[row.action_type] || row.action_type}
+              {actionLabel}
             </span>
-            <span style={{ ...pillStyle, background: status.bg, color: status.fg }}>{row.status}</span>
+            <span style={{ ...pillStyle, background: status.bg, color: status.fg }}>{statusLabel}</span>
             {isPending && expiresIn !== null && (
               <span style={{ fontSize: 11, color: expiresIn < 6 ? 'var(--warning)' : 'var(--text-tertiary)', display: 'inline-flex', alignItems: 'center', gap: 3 }}>
-                <Clock size={11} /> {expiresIn}h left
+                <Clock size={11} /> {t ? t('end_user.approvals.hours_left', { count: expiresIn, defaultValue: `${expiresIn}h left` }) : `${expiresIn}h left`}
               </span>
             )}
           </div>
           <div style={{ marginTop: 2, fontSize: 12, color: 'var(--text-tertiary)' }}>
-            From <strong style={{ color: 'var(--text-secondary)' }}>{row.agency_name}</strong> · {row.requested_by_name}
+            {t ? (
+              <Trans i18nKey="end_user.approvals.requested_from" t={t} values={{ agency: row.agency_name, requester: row.requested_by_name }}>
+                From <strong style={{ color: 'var(--text-secondary)' }}>{row.agency_name}</strong> · {row.requested_by_name}
+              </Trans>
+            ) : (
+              <>From <strong style={{ color: 'var(--text-secondary)' }}>{row.agency_name}</strong> · {row.requested_by_name}</>
+            )}
           </div>
           {!expanded && row.preview && (
             <div style={{ marginTop: 4, fontSize: 12, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -262,21 +274,27 @@ function ApprovalRow({ row, expanded, onToggle, onActed }) {
       {expanded && (
         <div style={bodyStyle}>
           {row.payload?.platforms && (
-            <Detail k="Platforms" v={row.payload.platforms.join(', ')} />
+            <Detail k={t ? t('end_user.approvals.details.platforms', 'Platforms') : 'Platforms'} v={row.payload.platforms.join(', ')} />
           )}
           {row.payload?.audience !== undefined && (
-            <Detail k="Audience" v={`${row.payload.audience} contacts`} />
+            <Detail k={t ? t('end_user.approvals.details.audience', 'Audience') : 'Audience'} v={t ? t('end_user.approvals.details.contacts', { count: row.payload.audience, defaultValue: `${row.payload.audience} contacts` }) : `${row.payload.audience} contacts`} />
           )}
           {row.payload?.template && (
-            <Detail k="Template" v={row.payload.template} />
+            <Detail k={t ? t('end_user.approvals.details.template', 'Template') : 'Template'} v={row.payload.template} />
           )}
           {row.payload?.platform && (
-            <Detail k="Platform" v={row.payload.platform} />
+            <Detail k={t ? t('end_user.approvals.details.platform', 'Platform') : 'Platform'} v={row.payload.platform} />
           )}
 
           {editable ? (
             <div>
-              <label style={fieldLabel}>{row.action_type === 'publish_post' ? 'Post content' : 'Reply text'} (you can edit before approving)</label>
+              <label style={fieldLabel}>
+                {(row.action_type === 'publish_post'
+                  ? (t ? t('end_user.approvals.post_content', 'Post content') : 'Post content')
+                  : (t ? t('end_user.approvals.reply_text', 'Reply text') : 'Reply text'))}
+                {' '}
+                {t ? t('end_user.approvals.can_edit_hint', '(you can edit before approving)') : '(you can edit before approving)'}
+              </label>
               <textarea
                 rows={4}
                 value={editor}
@@ -294,7 +312,7 @@ function ApprovalRow({ row, expanded, onToggle, onActed }) {
           )}
 
           {!isPending && row.user_response && (
-            <Detail k="Your response" v={row.user_response} />
+            <Detail k={t ? t('end_user.approvals.details.your_response', 'Your response') : 'Your response'} v={row.user_response} />
           )}
 
           {!isPending && row.execution_result && (
@@ -307,7 +325,9 @@ function ApprovalRow({ row, expanded, onToggle, onActed }) {
               borderRadius: 'var(--radius-sm)',
             }}>
               <strong style={{ marginRight: 4 }}>
-                {row.execution_result.success ? '✓ Executed:' : <><AlertTriangle size={11} style={{ verticalAlign: '-2px', marginRight: 3 }} />Execution failed:</>}
+                {row.execution_result.success
+                  ? (t ? `✓ ${t('end_user.approvals.executed', 'Executed:')}` : '✓ Executed:')
+                  : <><AlertTriangle size={11} style={{ verticalAlign: '-2px', marginRight: 3 }} />{t ? t('end_user.approvals.exec_failed', 'Execution failed:') : 'Execution failed:'}</>}
               </strong>
               {row.execution_result.message}
             </div>
@@ -316,17 +336,17 @@ function ApprovalRow({ row, expanded, onToggle, onActed }) {
           {isPending && (
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button type="button" onClick={() => setShowReject(true)} disabled={busy} style={btnGhost}>
-                <X size={14} /> Reject
+                <X size={14} /> {t ? t('end_user.approvals.reject_btn', 'Reject') : 'Reject'}
               </button>
               <button type="button" onClick={approve} disabled={busy} style={btnPrimary}>
-                <Check size={14} /> {busy ? 'Working…' : 'Approve'}
+                <Check size={14} /> {busy ? (t ? t('end_user.approvals.working', 'Working…') : 'Working…') : (t ? t('end_user.approvals.approve_btn', 'Approve') : 'Approve')}
               </button>
             </div>
           )}
 
           {showReject && (
             <div style={rejectBox}>
-              <label style={fieldLabel}>Why are you rejecting? (optional)</label>
+              <label style={fieldLabel}>{t ? t('end_user.approvals.reject_prompt', 'Why are you rejecting? (optional)') : 'Why are you rejecting? (optional)'}</label>
               <textarea
                 rows={2}
                 value={rejectReason}
@@ -334,8 +354,8 @@ function ApprovalRow({ row, expanded, onToggle, onActed }) {
                 style={textareaStyle}
               />
               <div style={{ display: 'flex', gap: 8, marginTop: 8, justifyContent: 'flex-end' }}>
-                <button type="button" onClick={() => setShowReject(false)} style={btnGhost}>Cancel</button>
-                <button type="button" onClick={reject} disabled={busy} style={btnDanger}>Reject</button>
+                <button type="button" onClick={() => setShowReject(false)} style={btnGhost}>{t ? t('end_user.approvals.cancel', 'Cancel') : 'Cancel'}</button>
+                <button type="button" onClick={reject} disabled={busy} style={btnDanger}>{t ? t('end_user.approvals.reject_btn', 'Reject') : 'Reject'}</button>
               </div>
             </div>
           )}

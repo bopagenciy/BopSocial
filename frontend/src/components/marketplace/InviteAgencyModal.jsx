@@ -21,6 +21,7 @@
  * sensible defaults (read + draft + brand voice on; everything else off).
  */
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ArrowLeft, ArrowRight, Send, X, Building2, Check } from 'lucide-react';
 
 import PermissionMatrix from './PermissionMatrix';
@@ -85,6 +86,7 @@ function defaultPerms() {
 }
 
 export default function InviteAgencyModal({ open, onClose, targetAgency = null, onSent }) {
+  const { t } = useTranslation('agency_portal');
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
@@ -105,7 +107,7 @@ export default function InviteAgencyModal({ open, onClose, targetAgency = null, 
 
   function next() {
     if (!targetAgency && step === 1 && !form.target_locator.trim()) {
-      return toast.error('Pick an agency or enter their email');
+      return toast.error(t('invitations.invite_modal.err_no_target', 'Pick an agency or enter their email'));
     }
     setStep((s) => Math.min(targetAgency ? 3 : 4, s + 1));
   }
@@ -127,11 +129,11 @@ export default function InviteAgencyModal({ open, onClose, targetAgency = null, 
         else                  payload.target_agency_slug  = v;
       }
       const r = await agencyInviteAPI.send(payload);
-      toast.success('Invitation sent');
+      toast.success(t('invitations.invite_modal.toast_sent', 'Invitation sent'));
       onSent?.(r.data);
       onClose?.();
     } catch (e) {
-      toast.error(e?.response?.data?.error || Object.values(e?.response?.data?.errors || {})[0] || 'Could not send invitation');
+      toast.error(e?.response?.data?.error || Object.values(e?.response?.data?.errors || {})[0] || t('invitations.invite_modal.err_send', 'Could not send invitation'));
     } finally {
       setLoading(false);
     }
@@ -140,7 +142,6 @@ export default function InviteAgencyModal({ open, onClose, targetAgency = null, 
   // step layout: 1: target (skipped when targetAgency) · 2: permissions · 3: pitch · 4 (or 3 with target): review
   const useFour = !targetAgency;
   const totalSteps = useFour ? 4 : 3;
-  const realStep = targetAgency ? step + 1 : step;  // map for permission/pitch when target is fixed
 
   function toggleService(value) {
     setForm((s) => {
@@ -151,18 +152,18 @@ export default function InviteAgencyModal({ open, onClose, targetAgency = null, 
   }
 
   return (
-    <div role="dialog" aria-modal="true" aria-label="Invite an agency" style={backdropStyle} onClick={(e) => { if (e.target === e.currentTarget) onClose?.(); }}>
+    <div role="dialog" aria-modal="true" aria-label={t('invitations.invite_modal.title', 'Invite an agency')} style={backdropStyle} onClick={(e) => { if (e.target === e.currentTarget) onClose?.(); }}>
       <div style={modalStyle}>
         <header style={headerStyle}>
           <div>
             <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-tertiary)' }}>
-              Step {step} of {totalSteps}
+              {t('invitations.invite_modal.step_indicator', 'Step {{step}} of {{total}}', { step, total: totalSteps })}
             </div>
             <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text-primary)' }}>
-              {targetAgency ? `Invite ${targetAgency.name}` : 'Invite an agency'}
+              {targetAgency ? t('invitations.invite_modal.invite_target', 'Invite {{agency}}', { agency: targetAgency.name }) : t('invitations.invite_modal.title', 'Invite an agency')}
             </div>
           </div>
-          <button type="button" onClick={onClose} aria-label="Close" style={iconBtn}><X size={16} /></button>
+          <button type="button" onClick={onClose} aria-label={t('common.close', 'Close')} style={iconBtn}><X size={16} /></button>
         </header>
 
         <Stepper current={step} total={totalSteps} />
@@ -181,7 +182,7 @@ export default function InviteAgencyModal({ open, onClose, targetAgency = null, 
           {/* Step 1 (only shown when no target) */}
           {!targetAgency && step === 1 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <Label>Agency email or slug</Label>
+              <Label>{t('invitations.invite_modal.target_label', 'Agency email or slug')}</Label>
               <input
                 type="text"
                 autoFocus
@@ -191,8 +192,7 @@ export default function InviteAgencyModal({ open, onClose, targetAgency = null, 
                 style={inputStyle}
               />
               <p style={hintText}>
-                If the agency is already on Social Stats, use their slug. Otherwise, their email — we'll send them
-                an invitation to join Social Stats and accept your request.
+                {t('invitations.invite_modal.target_help', "If the agency is already on Bop Social, use their slug. Otherwise, enter their email — we'll send them an invitation to join Bop Social and accept your request.")}
               </p>
             </div>
           )}
@@ -201,7 +201,7 @@ export default function InviteAgencyModal({ open, onClose, targetAgency = null, 
           {((targetAgency && step === 1) || (!targetAgency && step === 2)) && (
             <div>
               <p style={hintText}>
-                Pick what the agency should be allowed to do. They'll see your selection — and they can't widen it.
+                {t('invitations.invite_modal.permissions_desc', "Choose what the agency can do on your behalf. You can change these permissions or revoke access at any time.")}
               </p>
               <div style={{ marginTop: 8 }}>
                 <PermissionMatrix
@@ -218,17 +218,17 @@ export default function InviteAgencyModal({ open, onClose, targetAgency = null, 
           {((targetAgency && step === 2) || (!targetAgency && step === 3)) && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div>
-                <Label>Message</Label>
+                <Label>{t('invitations.invite_modal.message_label', 'Message for the agency')}</Label>
                 <textarea
                   rows={4}
                   value={form.message}
                   onChange={(e) => setForm((s) => ({ ...s, message: e.target.value }))}
-                  placeholder="Tell them about your business and what you'd like help with."
+                  placeholder={t('invitations.invite_modal.message_placeholder', "Tell them about your business goals, target platforms, and what you're looking for...")}
                   style={textareaStyle}
                 />
               </div>
               <div>
-                <Label>What do you need help with?</Label>
+                <Label>{t('invitations.invite_modal.desired_services', 'Desired services')}</Label>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                   {SERVICE_OPTIONS.map((opt) => {
                     const active = form.desired_services.includes(opt.value);
@@ -247,14 +247,14 @@ export default function InviteAgencyModal({ open, onClose, targetAgency = null, 
                           cursor: 'pointer', fontFamily: 'inherit',
                         }}
                       >
-                        {opt.label}
+                        {t(`agency_profile.services.${opt.value}`, opt.label)}
                       </button>
                     );
                   })}
                 </div>
               </div>
               <div>
-                <Label>Budget range (optional)</Label>
+                <Label>{t('invitations.invite_modal.budget_range', 'Budget range')}</Label>
                 <select
                   value={form.budget_range}
                   onChange={(e) => setForm((s) => ({ ...s, budget_range: e.target.value }))}
@@ -270,14 +270,14 @@ export default function InviteAgencyModal({ open, onClose, targetAgency = null, 
           {/* Review */}
           {((targetAgency && step === 3) || (!targetAgency && step === 4)) && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <Row k="To" v={targetAgency ? targetAgency.name : form.target_locator} />
-              <Row k="Permissions" v={`${granted} granted, ${Object.keys(SEED_CATALOG).length - granted} declined`} />
-              <Row k="Services" v={form.desired_services.length ? form.desired_services.join(', ') : '—'} />
-              {form.budget_range && <Row k="Budget" v={form.budget_range} />}
-              <Row k="Message" v={form.message || <em style={{ color: 'var(--text-tertiary)' }}>(none)</em>} multiline />
+              <Row k={t('invitations.invite_modal.review_agency', 'Target agency')} v={targetAgency ? targetAgency.name : form.target_locator} />
+              <Row k={t('invitations.invite_modal.review_perms', 'Permissions granted')} v={t('invitations.invite_modal.review_perms_detail', '{{granted}} granted, {{declined}} declined', { granted, declined: Object.keys(SEED_CATALOG).length - granted })} />
+              <Row k={t('invitations.invite_modal.desired_services', 'Desired services')} v={form.desired_services.length ? form.desired_services.map(s => t(`agency_profile.services.${s}`, s)).join(', ') : '—'} />
+              {form.budget_range && <Row k={t('invitations.invite_modal.review_budget', 'Budget')} v={form.budget_range} />}
+              <Row k={t('invitations.agency_invite.message', 'Message')} v={form.message || <em style={{ color: 'var(--text-tertiary)' }}>{t('common.none', '(none)')}</em>} multiline />
               <p style={{ ...hintText, marginTop: 8 }}>
                 <Check size={11} style={{ marginRight: 4, verticalAlign: 'middle', color: 'var(--success)' }} />
-                The agency receives an email + in-app notification. You'll be told as soon as they accept or decline.
+                {t('invitations.invite_modal.review_hint', "The agency receives an email + in-app notification. You'll be told as soon as they accept or decline.")}
               </p>
             </div>
           )}
@@ -286,16 +286,16 @@ export default function InviteAgencyModal({ open, onClose, targetAgency = null, 
         <footer style={footerStyle}>
           {step > 1 ? (
             <button type="button" onClick={() => setStep(step - 1)} style={btnGhost}>
-              <ArrowLeft size={14} /> Back
+              <ArrowLeft size={14} /> {t('invitations.invite_modal.back', 'Back')}
             </button>
           ) : <span />}
           {step < totalSteps ? (
             <button type="button" onClick={next} style={btnPrimary}>
-              Continue <ArrowRight size={14} />
+              {t('invitations.invite_modal.next', 'Next')} <ArrowRight size={14} />
             </button>
           ) : (
             <button type="button" onClick={send} disabled={loading} style={btnPrimary}>
-              {loading ? 'Sending…' : <>Send invitation <Send size={14} /></>}
+              {loading ? t('invitations.invite_modal.sending', 'Sending…') : <>{t('invitations.invite_modal.send', 'Send invitation')} <Send size={14} /></>}
             </button>
           )}
         </footer>
