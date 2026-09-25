@@ -1,0 +1,267 @@
+{
+  "client_settings": {
+    "title": "Settings",
+    "subtitle": "Manage your account and business profile.",
+    "badge": "Business Profile",
+    "hero_title": "Keep your settings aligned with onboarding",
+    "hero_text": "Everything here mirrors the information that powers your dashboard, content generation, and reporting experience.",
+    "profile_coverage": "Profile coverage",
+    "profile_coverage_completed": "Core profile areas completed",
+    "tabs": {
+      "accounts": "Connect Accounts",
+      "profile": "Business Profile"
+    },
+    "loading_profile": "Loading profile...",
+    "save_bar_text": "Changes here keep your settings aligned with onboarding.",
+    "save_changes": "Save Changes",
+    "saving": "Saving...",
+    "success": "Profile updated successfully!",
+    "error": "Failed to update profile. Please try again.",
+    "sections": {
+      "basics": {
+        "title": "Business Basics",
+        "copy": "The details that anchor your workspace and keep your business identity consistent."
+      },
+      "brand": {
+        "title": "Brand Profile",
+        "copy": "Define tone, category, and the story your content should always reinforce."
+      },
+      "audience": {
+        "title": "Target Audience",
+        "copy": "Keep your messaging focused on the people you actually want to reach."
+      },
+      "assets": {
+        "title": "Brand Assets",
+        "copy": "Use the same asset experience from onboarding so brand visuals stay organized."
+      }
+    }
+  },
+  "onboarding": {
+    "page_title": "Complete Your Profile",
+    "page_subtitle": "Set up your business profile to get the most out of Bop Social",
+    "badge": "Onboarding Flow",
+    "hero_title": "Build a dashboard that already feels tailored to your business",
+    "hero_text": "Move through the essentials once, and we’ll use them to personalize reports, social planning, ROI, and AI-powered content.",
+    "setup_progress": "Setup progress",
+    "step_counter": "Step {{current}} of {{total}}",
+    "steps": {
+      "business": {
+        "title": "Business Basics",
+        "description": "Tell us about your company",
+        "eyebrow": "Foundation"
+      },
+      "brand": {
+        "title": "Brand Profile",
+        "description": "Define your brand identity",
+        "eyebrow": "Voice"
+      },
+      "audience": {
+        "title": "Target Audience",
+        "description": "Who is your ideal customer?",
+        "eyebrow": "People"
+      },
+      "assets": {
+        "title": "Brand Assets",
+        "description": "Upload your visual assets",
+        "eyebrow": "Visuals"
+      },
+      "competitors": {
+        "title": "Competitors",
+        "description": "Who are your main competitors?",
+        "eyebrow": "Market"
+      },
+      "connect": {
+        "title": "Connect Accounts",
+        "description": "Link your social media accounts",
+        "eyebrow": "Launch"
+      }
+    },
+    "step_0": {
+      "eyebrow": "Profile Setup",
+      "heading": "Give your workspace a strong starting point",
+      "summary": "We’ll use these details across reporting, automations, and AI-generated content suggestions.",
+      "feature_identity_title": "Business identity",
+      "feature_identity_text": "Make your dashboard feel tailored from the first sync.",
+      "feature_contact_title": "Contact ready",
+      "feature_contact_text": "Keep the basics available for captions, campaigns, and team handoff.",
+      "panel_who": "Who you are",
+      "panel_contact": "Where people can reach you"
+    },
+    "step_1": {
+      "eyebrow": "Brand System",
+      "heading": "Shape the tone people should feel",
+      "summary": "These details guide the writing style, positioning, and creative direction across the platform.",
+      "panel_voice": "Category & voice",
+      "panel_story": "Brand story"
+    },
+    "step_2": {
+      "eyebrow": "Audience Map",
+      "heading": "Define who you want to attract",
+      "summary": "A little audience clarity helps the platform recommend better campaigns, content themes, and targeting ideas.",
+      "panel_snapshot": "Customer snapshot",
+      "panel_location": "Where they are"
+    },
+    "step_3": {
+      "eyebrow": "Visual Identity",
+      "heading": "Bring your brand to life visually",
+      "summary": "Upload a few assets now so your workspace, reports, and generated content feel unmistakably yours."
+    },
+    "step_5": {
+      "eyebrow": "Final Step",
+      "heading": "Connect your channels and go live",
+      "summary": "Link your accounts to start syncing data automatically. Facebook and Instagram can connect together, and YouTube can pair with Google My Business.",
+      "point_analytics": "Data sync for analytics and reports",
+      "point_ideas": "Better post ideas and recommendations",
+      "point_setup": "Faster setup once your dashboard opens",
+      "accounts_ready": "Accounts ready",
+      "connect_later_note": "You can still finish setup now and connect more later from Settings.",
+      "sync_note": "Once connected, click \"Sync Now\" in your dashboard to pull your first data."
+    },
+    "navigation": {
+      "skip": "Skip for now",
+      "back": "Back",
+      "next": "Next",
+      "complete": "Complete Setup",
+      "saving": "Saving..."
+    },
+    "validation": {
+      "company_required": "Business name is required.",
+      "email_invalid": "Enter a valid email address.",
+      "website_invalid": "Use a full website URL like https://example.com",
+      "gmb_url_invalid": "Use a valid Google Business profile URL.",
+      "category_required": "Choose the category that best matches your business.",
+      "description_required": "Add a short brand description.",
+      "usp_required": "Tell us what makes your business stand out.",
+      "audience_required": "Describe the audience you want to reach.",
+      "location_required": "Add your primary business location.",
+      "target_locations_required": "Select at least one target location.",
+      "profile_image_invalid": "Please choose a valid image file.",
+      "product_images_invalid": "One or more product images are invalid.",
+      "social_connection_required": "Connect at least one social media account before completing setup.",
+      "fix_highlighted": "Please fix the highlighted fields before finishing setup.",
+      "generic_error": "We could not save your onboarding details. Please review the highlighted sections and try again."
+    }
+  },
+  "fields": {
+    "your_name": "Your Name",
+    "your_name_placeholder": "Enter your full name",
+    "business_name": "Business Name",
+    "business_name_placeholder": "Your company name",
+    "email": "Email",
+    "email_placeholder": "business@email.com",
+    "phone": "Phone Number",
+    "phone_placeholder": "+1 (555) 123-4567",
+    "whatsapp": "WhatsApp Number",
+    "whatsapp_placeholder": "+1 (555) 123-4567",
+    "website": "Website",
+    "website_placeholder": "https://yourwebsite.com",
+    "gmb_url": "Google My Business URL",
+    "gmb_placeholder": "https://g.page/your-business",
+    "default_language": "Workspace Language",
+    "default_language_hint": "Workspace language preference when users have not set an individual choice.",
+    "lang_system": "System / Browser default",
+    "lang_en": "English",
+    "lang_es": "Español",
+    "business_category": "Business Category",
+    "select_category": "Select a category",
+    "select_category_short": "Select category",
+    "brand_tone": "Brand Tone",
+    "select_tone": "Select tone",
+    "subcategories": "Subcategories",
+    "subcategories_hint": "Subcategories (select all that apply)",
+    "brand_description": "Brand Description",
+    "brand_description_placeholder": "Describe your brand in 2-3 sentences...",
+    "usp": "Unique Selling Proposition (USP)",
+    "usp_placeholder": "What makes your business unique?",
+    "target_audience": "Target Audience Description",
+    "target_audience_placeholder": "Describe your ideal customers...",
+    "primary_gender": "Primary Gender",
+    "business_location": "Business Location",
+    "business_location_placeholder": "City, State/Country",
+    "target_locations": "Target Locations",
+    "profile_image": "Profile Image",
+    "profile_image_desc_settings": "Upload a logo or a strong profile mark for your brand.",
+    "profile_image_desc_onboarding": "Use your logo or a strong brand mark.",
+    "choose_profile_image": "Choose Profile Image",
+    "product_images": "Product Images",
+    "product_images_desc_settings": "Keep a few product or service visuals handy for creative generation later.",
+    "product_images_desc_onboarding": "Add up to 5 images to train future creative work.",
+    "choose_product_images": "Choose Product Images",
+    "remove_image": "Remove image"
+  },
+  "competitors": {
+    "title": "Competitors",
+    "title_landscape": "Competitive Landscape",
+    "subtitle_settings": "Keep your competitive set tidy and current so reports, ideas, and onboarding stay grounded in the right market context.",
+    "subtitle_onboarding": "Add the brands your audience compares you against so we can shape smarter positioning from day one.",
+    "subtitle_default": "Add a few key competitors so we can understand your market and shape smarter content.",
+    "empty_badge": "Competitive Snapshot",
+    "empty_title": "Start with one competitor",
+    "empty_text": "Add the brands your audience also watches so the onboarding and settings stay useful later.",
+    "add_competitor": "Add Competitor",
+    "add_another_competitor": "Add Another Competitor",
+    "profile_title": "Competitor Profile",
+    "profile_subtitle": "Track brand name and the channels they use most.",
+    "remove_competitor": "Remove competitor",
+    "name_label": "Competitor Name",
+    "name_placeholder": "Competitor company name",
+    "social_links_title": "Social Links",
+    "social_links_text": "Keep these neat and scannable. One row per channel works best.",
+    "add_link": "Add link",
+    "remove_link": "Remove link",
+    "platform": "Platform",
+    "profile_url": "Profile URL",
+    "profile_url_placeholder": "https://instagram.com/competitor"
+  },
+  "options": {
+    "genders": {
+      "all": "All",
+      "male": "Male",
+      "female": "Female",
+      "non_binary": "Non-binary",
+      "unspecified": "Unspecified"
+    },
+    "tones": {
+      "professional": "Professional",
+      "casual": "Casual",
+      "funny": "Funny",
+      "inspirational": "Inspirational",
+      "urgent": "Urgent",
+      "friendly": "Friendly"
+    },
+    "locations": {
+      "local": "Local (Same City)",
+      "regional": "Regional (Same State/Province)",
+      "national": "National",
+      "international": "International"
+    },
+    "categories": {
+      "electronics": "Electronics",
+      "retail": "Retail",
+      "services": "Services",
+      "food_beverage": "Food & Beverage",
+      "healthcare": "Healthcare",
+      "education": "Education",
+      "real_estate": "Real Estate",
+      "automotive": "Automotive",
+      "hospitality": "Hospitality",
+      "manufacturing": "Manufacturing",
+      "technology": "Technology",
+      "fashion": "Fashion",
+      "sports_recreation": "Sports & Recreation",
+      "beauty_wellness": "Beauty & Wellness",
+      "home_garden": "Home & Garden",
+      "professional_services": "Professional Services",
+      "entertainment": "Entertainment",
+      "transportation": "Transportation",
+      "agriculture": "Agriculture",
+      "financial_services": "Financial Services",
+      "legal_services": "Legal Services",
+      "construction": "Construction",
+      "media_communications": "Media & Communications",
+      "non_profit": "Non-Profit",
+      "government": "Government",
+      "other": "Other"
+    }
+  }
+}

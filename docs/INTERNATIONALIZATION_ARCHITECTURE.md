@@ -808,6 +808,65 @@ Root cause investigation revealed a dual deployment / caching defect:
   - `curl -i http://localhost:3010/sw.js` -> HTTP 200 with `Cache-Control: no-cache, no-store, must-revalidate` and `CACHE_NAME = 'bopsocial-v2.6b.2.1'`.
   - `curl -i http://localhost:3010/admin/account-settings` -> HTTP 200 with no-cache headers.
 
+---
+
+## 21. Phase BS-2.6B.3 — Client Onboarding & Workspace Configuration Internationalization
+
+### 21.1 Scope & Architecture
+- **Dedicated Namespace**: Registered `onboarding` namespace across `frontend/src/i18n/config.js` (`resources.en.onboarding`, `resources.es.onboarding`, and `'onboarding'` added to the `ns` array).
+- **Target Interfaces**:
+  - `/dashboard/onboarding` (`ClientOnboardingPage.jsx`): Multi-step client onboarding flow (Steps 0–5: Business Basics, Brand Profile, Target Audience, Brand Assets, Competitors, Connect Accounts), hero progress meter, step validations, navigation controls, and social connection status.
+  - `/admin/client/:clientId/settings` and `/dashboard/settings` (`SettingsPage.jsx`): Client workspace settings and business profile editor (5 sections: Basics, Brand, Audience, Assets, Competitors), profile coverage meter, segmented tabs, and floating save bar.
+  - Shared Competitor Management (`CompetitorSection.jsx`): Reusable competitor cards, platform selectors, social link lists, and empty states.
+- **Defect Resolution on Client Workspace Settings (`http://localhost:3010/admin/client/1/settings`)**:
+  - Resolved browser acceptance defect where client workspace settings rendered in English when Spanish was selected.
+  - Page header title now correctly renders `"Configuración"`, subtitle `"Administra tu cuenta y perfil empresarial."`.
+  - Hero banner renders `"Mantén tu configuración alineada con el proceso de incorporación"`.
+  - Profile coverage meter renders `"Información del perfil"` and `"Áreas principales del perfil completadas"`.
+  - Segmented tabs render `"Perfil empresarial"` and `"Conectar cuentas"`.
+  - Workspace Language selector (`default_language`) is available to configure client default language (`en`, `es`, system).
+- **Brand Residual Resolution**:
+  - Replaced visible upstream project branding string in `ClientOnboardingPage.jsx` (`"Set up your business profile to get the most out of Social Stats"` $\rightarrow$ `"Set up your business profile to get the most out of Bop Social"` / `"Configura tu perfil empresarial para aprovechar al máximo Bop Social"`).
+  - Preserved source code file header notices and MIT license comments without altering functionality.
+- **TopBar Breadcrumbs**:
+  - Added `"onboarding"` breadcrumb in `app.json` (`"Onboarding"` in English, `"Incorporación"` in Spanish).
+
+### 21.2 Invariants Preserved
+- **Data Model & Backend Invariants**:
+  - Changing the UI language never mutates `formData` values (`company`, `email`, `business_category`, `brand_tone`, `gender`, `target_locations`, URLs, or competitor data).
+  - Machine keys and canonical options remain intact when submitted to the backend API (`clientsAPI.create` / `clientsAPI.update`).
+  - Stored `Client.default_language` remains isolated from the active browser session locale until explicitly changed by an administrator.
+- **Social Connection Security**:
+  - Connected account management reused existing BS-2.6A components (`ConnectedAccounts.jsx`, `FacebookConnectModal.jsx`) without modifying OAuth scopes, client IDs, redirect URIs, or webhook handlers.
+- **100% Translation Key Parity**:
+  - `onboarding.json`: 178 keys in both English and Spanish (0 missing in ES, 0 missing in EN).
+  - `app.json`: 153 keys in both English and Spanish (0 missing in ES, 0 missing in EN).
+
+### 21.3 Verification & Deployment
+- **Automated Regression Suite**:
+  - Created `frontend/src/pages/__tests__/ClientOnboardingWorkspaceTranslation.test.jsx`: **11 / 11 passing tests** covering:
+    1. Key parity and structural symmetry between `en/onboarding.json` and `es/onboarding.json`.
+    2. Breadcrumb parity in `app.json`.
+    3. `onboarding` namespace registration in `i18n`.
+    4. `SettingsPage` full English rendering and structure.
+    5. `SettingsPage` Spanish rendering with exact required acceptance terms (`"Configuración"`, `"Mantén tu configuración alineada..."`, `"Información del perfil"`, `"Perfil empresarial"`, `"Conectar cuentas"`).
+    6. State and canonical form value preservation across language transitions.
+    7. `ClientOnboardingPage` English rendering with Bop Social brand residual replacement verified.
+    8. `ClientOnboardingPage` Spanish rendering across all onboarding steps and hero meter.
+    9. Step validation and localized error messaging in Spanish.
+    10. `CompetitorSection` empty state in English and Spanish.
+    11. `CompetitorSection` populated rows and field labels in Spanish.
+- **Full Frontend Suite**: **23 / 23 test suites passed, 171 / 171 tests passed**.
+- **Production Build**: `npm run build` executed cleanly (exit code 0, emitting bundle `main.08f249fe.js`).
+- **Local Docker Deployment**:
+  - Built frontend image: `bopsocial-frontend-local:bs-2.6b.3`.
+  - Retained backend image: `bopsocial-backend-local:bs-2.1.1`.
+  - Updated `docker-compose.local.yml` frontend image tag to `bopsocial-frontend-local:bs-2.6b.3`.
+  - Recreated `agencyos-frontend-1` and verified via HTTP inspection:
+    - `curl -i http://localhost:3010/` -> HTTP 200 OK (serving bundle `main.08f249fe.js`).
+    - `curl -i http://localhost:3010/admin/client/1/settings` -> HTTP 200 OK.
+
+
 
 
 
