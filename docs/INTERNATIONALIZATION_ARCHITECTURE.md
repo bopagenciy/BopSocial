@@ -758,6 +758,57 @@ Phase BS-2.6B.1 internationalized the authenticated User Settings, Account Secur
     - `http://localhost:3010/` -> HTTP 200 OK
     - `http://localhost:3010/login` -> HTTP 200 OK
 
+---
+
+## 20. Phase BS-2.6B.2.1 — Account Settings Breadcrumb Visual Acceptance Closure
+
+### 20.1 Root Cause & Defect Analysis
+During visual browser acceptance verification for Phase BS-2.6B.2 at `http://localhost:3010/admin/account-settings`, the page heading correctly displayed `"Configuración"` (via `settings.json`), but the TopBar breadcrumb continued displaying `"Account Settings"` in Spanish instead of `"Configuración de cuenta"`.
+
+Root cause investigation revealed a dual deployment / caching defect:
+1. **Aggressive PWA Service Worker Cache-First Strategy**:
+   - `frontend/public/sw.js` previously used `CACHE_NAME = 'socialstats-v1'` with a cache-first return strategy (`return cached || fetched;`).
+   - Browsers that previously loaded Bop Social under BS-2.6B.1 or earlier held cached copies of `index.html` referencing pre-BS-2.6B.2 compiled script bundles (`main.cffde830.js` or older).
+   - Because `request.mode === 'navigate'` served the cached `index.html` first, the browser never requested the updated bundle containing the breadcrumb translations.
+2. **Missing Nginx Cache Invalidation Headers**:
+   - In `frontend/docker/nginx.conf`, `/index.html`, `/sw.js`, and the SPA fallback `/` lacked explicit `Cache-Control` headers, permitting browser heuristic caching.
+
+### 20.2 Minimal Correct Fix
+1. **Service Worker (`frontend/public/sw.js`)**:
+   - Bumped `CACHE_NAME` to `'bopsocial-v2.6b.2.1'`.
+   - Upgraded navigation requests (`request.mode === 'navigate'`) to a **Network-First** strategy: fetches fresh HTML from the server first, updates the cache, and falls back to cached `index.html` only when offline.
+   - Preserved automated cleanup of legacy caches in the `activate` event and forced immediate takeover with `self.skipWaiting()` and `self.clients.claim()`.
+2. **Nginx Server Configuration (`frontend/docker/nginx.conf`)**:
+   - Added explicit location block for `= /sw.js` with `Cache-Control "no-cache, no-store, must-revalidate"`, `Pragma "no-cache"`, and `expires 0`.
+   - Added explicit location block for `= /index.html` and SPA fallback `/` with `Cache-Control "no-cache, no-store, must-revalidate"`.
+   - Retained 30-day immutable caching for hashed static assets in `/static/`.
+3. **TopBar Breadcrumb Defensive Resolution (`frontend/src/components/shell/TopBar.jsx`)**:
+   - Sanitized `pathname` in `buildBreadcrumbs` to strip query parameters (`?tab=...`), URL hashes (`#top`), and trailing slashes.
+   - Hardened `basePath` stripping against missing or empty values.
+   - Broadened fallback key lookup across `breadcrumbs.${key}`, `sidebar.items.${key}`, `modules.${key}.label`, `rail.${key}`, `mobile_nav.${key}`, `settings.${key}`, and `navigation.${key}`.
+4. **Locale Dictionaries (`en/app.json` & `es/app.json`)**:
+   - Added `"account_settings"` to `sidebar.items` as a secondary fallback.
+   - Added `"admin"` breadcrumb translation (`"Admin"` in EN, `"Administración"` in ES).
+
+### 20.3 Focused Regression Verification
+- **New Test Suite**: `frontend/src/components/shell/__tests__/TopBarBreadcrumb.test.jsx`:
+  - Verified pure function `buildBreadcrumbs` resolves `/admin/account-settings` and `/dashboard/account-settings` to `"Account Settings"` in EN and `"Configuración de cuenta"` in ES.
+  - Verified that Spanish resolution never falls back to `humanize("account-settings")`.
+  - Verified safe handling of query strings, hashes, trailing slashes, and missing `basePath`.
+  - Verified live `TopBar` component rendering in both languages and dynamic language switching without page reload.
+  - Result: **7 / 7 tests passed**.
+- **Full Frontend Suite**: **22 / 22 test suites passed, 160 / 160 tests passed**.
+- **Production Build**: `npm run build` executed successfully.
+
+### 20.4 Local Docker Deployment
+- **Built Frontend Image**: `bopsocial-frontend-local:bs-2.6b.2.1`.
+- **Compose Update**: Updated `docker-compose.local.yml` frontend image tag to `bopsocial-frontend-local:bs-2.6b.2.1`.
+- **Deployed Container**: Recreated `agencyos-frontend-1` and verified via HTTP inspection:
+  - `curl -i http://localhost:3010/` -> HTTP 200 with `Cache-Control: max-age=0, no-cache, no-store, must-revalidate` serving new bundle `main.ffd0d98b.js`.
+  - `curl -i http://localhost:3010/sw.js` -> HTTP 200 with `Cache-Control: no-cache, no-store, must-revalidate` and `CACHE_NAME = 'bopsocial-v2.6b.2.1'`.
+  - `curl -i http://localhost:3010/admin/account-settings` -> HTTP 200 with no-cache headers.
+
+
 
 
 

@@ -22,6 +22,7 @@
   },
   "breadcrumbs": {
     "home": "Home",
+    "admin": "Admin",
     "account_settings": "Account Settings",
     "clients": "Clients",
     "management": "Team Management",
@@ -130,6 +131,7 @@
       "ctwa_campaigns": "CTWA Campaigns",
       "bot_safety": "Bot Safety",
       "account": "Account",
+      "account_settings": "Account Settings",
       "webhooks": "Webhooks"
     }
   },

@@ -167,13 +167,22 @@ function NotificationBellWrapper() {
 }
 
 export function buildBreadcrumbs(pathname, basePath, t) {
-  // Strip basePath
-  const rest = pathname.startsWith(basePath) ? pathname.slice(basePath.length) : pathname;
+  if (!pathname) return [{ label: t ? t('topbar.breadcrumb_home', 'Home') : 'Home' }];
+
+  // Clean pathname (strip query strings, hashes, and trailing slashes)
+  const cleanPath = pathname.split('?')[0].split('#')[0].replace(/\/+$/, '');
+  const cleanBase = (basePath || '').replace(/\/+$/, '');
+
+  // Strip basePath safely
+  let rest = cleanPath;
+  if (cleanBase && rest.startsWith(cleanBase)) {
+    rest = rest.slice(cleanBase.length);
+  }
   const parts = rest.split('/').filter(Boolean);
   if (parts.length === 0) return [{ label: t ? t('topbar.breadcrumb_home', 'Home') : 'Home' }];
 
   const out = [];
-  let acc = basePath;
+  let acc = cleanBase;
   for (let i = 0; i < parts.length; i++) {
     acc += `/${parts[i]}`;
     const rawSeg = parts[i];
@@ -183,7 +192,9 @@ export function buildBreadcrumbs(pathname, basePath, t) {
       t(`sidebar.items.${key}`, '') ||
       t(`modules.${key}.label`, '') ||
       t(`rail.${key}`, '') ||
-      t(`mobile_nav.${key}`, '')
+      t(`mobile_nav.${key}`, '') ||
+      t(`settings.${key}`, '') ||
+      t(`navigation.${key}`, '')
     ) : '';
     out.push({
       label: translated || humanize(rawSeg),
