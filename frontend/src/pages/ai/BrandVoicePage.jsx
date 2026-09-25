@@ -17,6 +17,7 @@
  *   5. Test prompt input → calls /ai/v2/brand-voice/test/ to render a sample post
  */
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Sparkles, Wand2, RefreshCw, CheckCircle, AlertTriangle, Plus, Trash2,
   Mic, Smile, Hash, Users, Ban,
@@ -44,6 +45,7 @@ const EMOJI_LABEL = {
 };
 
 export default function BrandVoicePage({ clientId: propClientId = null }) {
+  const { t } = useTranslation('ai');
   const { user } = useAuth();
   const isAdmin = user?.role === 'superadmin' || user?.role === 'staff';
   const clientId = propClientId || user?.client_id || null;
@@ -92,11 +94,11 @@ export default function BrandVoicePage({ clientId: propClientId = null }) {
   async function handleTrain() {
     const cleaned = samples.map((s) => (s || '').trim()).filter(Boolean);
     if (cleaned.length < 3) {
-      toast.error('Add at least 3 sample posts (or paste one per row)');
+      toast.error(t('brand_voice.train_card.validation_min_samples', 'Add at least 3 sample posts (or paste one per row)'));
       return;
     }
     if (!clientId) {
-      toast.error('Pick a client first');
+      toast.error(t('assistant.chat.pick_client', 'Pick a client first'));
       return;
     }
     setTraining(true);
@@ -110,9 +112,9 @@ export default function BrandVoicePage({ clientId: propClientId = null }) {
       });
       setProfile(r.data);
       setExamplePosts(r.data?.example_posts || []);
-      toast.success('Brand voice trained');
+      toast.success(t('brand_voice.train_card.success_trained', 'Brand voice trained'));
     } catch (e) {
-      const msg = e?.response?.data?.error || 'Training failed';
+      const msg = e?.response?.data?.error || t('brand_voice.train_card.failed_train', 'Training failed');
       toast.error(msg);
     } finally {
       setTraining(false);
@@ -120,20 +122,20 @@ export default function BrandVoicePage({ clientId: propClientId = null }) {
   }
 
   async function handleTest() {
-    const t = testTopic.trim();
-    if (!t) { toast.error('Add a topic to test'); return; }
-    if (!clientId) { toast.error('Pick a client first'); return; }
+    const tTopic = testTopic.trim();
+    if (!tTopic) { toast.error(t('brand_voice.test_card.validation_topic', 'Add a topic to test')); return; }
+    if (!clientId) { toast.error(t('assistant.chat.pick_client', 'Pick a client first')); return; }
     setTesting(true);
     setTestResult(null);
     try {
       const r = await aiV2API.brandVoiceTest({
         client_id: clientId,
-        topic:     t,
+        topic:     tTopic,
         platform:  'instagram',
       });
       setTestResult(r.data);
     } catch (e) {
-      const msg = e?.response?.data?.error || 'Test failed';
+      const msg = e?.response?.data?.error || t('brand_voice.test_card.failed_test', 'Test failed');
       toast.error(msg);
     } finally {
       setTesting(false);
@@ -143,29 +145,31 @@ export default function BrandVoicePage({ clientId: propClientId = null }) {
   if (!clientId && isAdmin) {
     return (
       <div className="app-page app-page--lg">
-        <PageHeader title="Brand Voice" subtitle="Pick a client to train their brand voice" />
+        <PageHeader title={t('brand_voice.title', 'Brand Voice')} subtitle={t('brand_voice.pick_client_desc', 'Brand voice is per-client. Open a specific client to train its voice.')} />
         <Card padding="lg">
           <EmptyState
             icon={Mic}
-            title="Pick a client"
-            description="Brand voice is per-client. Open a specific client to train its voice."
+            title={t('brand_voice.pick_client_title', 'Pick a client')}
+            description={t('brand_voice.pick_client_desc', 'Brand voice is per-client. Open a specific client to train its voice.')}
           />
         </Card>
       </div>
     );
   }
 
-  const statusInfo = STATUS_VARIANT[profile?.training_status || 'pending'] || STATUS_VARIANT.pending;
+  const statusKey = profile?.training_status || 'pending';
+  const statusInfo = STATUS_VARIANT[statusKey] || STATUS_VARIANT.pending;
+  const statusLabel = t(`brand_voice.status.${statusKey}`, statusInfo.label);
   const trained = profile?.training_status === 'ready';
 
   return (
     <div className="app-page app-page--lg">
       <PageHeader
-        title="Brand Voice"
-        subtitle="Train Social Stats on your past posts so every generation sounds like you"
+        title={t('brand_voice.title', 'Brand Voice')}
+        subtitle={t('brand_voice.subtitle', 'Train Bop Social on your past posts so every generation sounds like you')}
         actions={(
           <Badge variant={statusInfo.variant} size="md" icon={trained ? CheckCircle : Sparkles}>
-            {statusInfo.label}
+            {statusLabel}
           </Badge>
         )}
       />
@@ -178,8 +182,8 @@ export default function BrandVoicePage({ clientId: propClientId = null }) {
         {/* ── LEFT — training inputs ─────────────────────────────────── */}
         <Card padding="md">
           <Card.Header
-            title="Train from sample posts"
-            subtitle="Paste 3-20 of your most-on-brand posts. Older + recent welcome."
+            title={t('brand_voice.train_card.title', 'Train from sample posts')}
+            subtitle={t('brand_voice.train_card.subtitle', 'Paste 3-20 of your most-on-brand posts. Older + recent welcome.')}
           />
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -188,7 +192,7 @@ export default function BrandVoicePage({ clientId: propClientId = null }) {
                 <textarea
                   value={s}
                   onChange={(e) => updateSample(i, e.target.value)}
-                  placeholder={`Sample post ${i + 1}…`}
+                  placeholder={t('brand_voice.train_card.sample_placeholder', { number: i + 1, defaultValue: `Sample post ${i + 1}…` })}
                   rows={3}
                   style={{
                     flex: 1, minHeight: 64,
@@ -205,7 +209,7 @@ export default function BrandVoicePage({ clientId: propClientId = null }) {
                 {samples.length > 3 && (
                   <Button
                     variant="ghost" size="sm" iconOnly icon={Trash2}
-                    aria-label="Remove sample"
+                    aria-label={t('brand_voice.train_card.remove_sample', 'Remove sample')}
                     onClick={() => removeSampleRow(i)}
                   />
                 )}
@@ -219,10 +223,10 @@ export default function BrandVoicePage({ clientId: propClientId = null }) {
               onClick={addSampleRow}
               disabled={samples.length >= 20}
             >
-              Add sample
+              {t('brand_voice.train_card.add_sample', 'Add sample')}
             </Button>
             <span style={{ alignSelf: 'center', fontSize: 12, color: 'var(--text-tertiary)' }}>
-              {samples.filter((s) => (s || '').trim()).length} / 20 samples
+              {t('brand_voice.train_card.sample_counter', { count: samples.filter((s) => (s || '').trim()).length, defaultValue: `${samples.filter((s) => (s || '').trim()).length} / 20 samples` })}
             </span>
           </div>
 
@@ -235,13 +239,13 @@ export default function BrandVoicePage({ clientId: propClientId = null }) {
             <input
               value={businessHint}
               onChange={(e) => setBusinessHint(e.target.value)}
-              placeholder="Business in 1 line (optional)"
+              placeholder={t('brand_voice.train_card.business_hint_placeholder', 'Business in 1 line (optional)')}
               style={inputStyle}
             />
             <input
               value={industry}
               onChange={(e) => setIndustry(e.target.value)}
-              placeholder="Industry (optional)"
+              placeholder={t('brand_voice.train_card.industry_placeholder', 'Industry (optional)')}
               style={inputStyle}
             />
           </div>
@@ -251,7 +255,7 @@ export default function BrandVoicePage({ clientId: propClientId = null }) {
             size="lg" icon={Wand2} fullWidth loading={training}
             style={{ marginTop: 16 }}
           >
-            {training ? 'Social Stats is studying your voice…' : (trained ? 'Re-train brand voice' : 'Train brand voice')}
+            {training ? t('brand_voice.studying', 'Bop Social is studying your voice…') : (trained ? t('brand_voice.train_card.btn_retrain', 'Re-train brand voice') : t('brand_voice.train_card.btn_train', 'Train brand voice'))}
           </Button>
 
           {profile?.training_status === 'failed' && profile.training_error && (
@@ -265,7 +269,7 @@ export default function BrandVoicePage({ clientId: propClientId = null }) {
             }}>
               <AlertTriangle size={14} style={{ marginTop: 1, flexShrink: 0 }} />
               <div>
-                <strong>Training failed:</strong> {profile.training_error}
+                <strong>{t('brand_voice.train_card.training_failed_prefix', 'Training failed:')}</strong> {profile.training_error}
               </div>
             </div>
           )}
@@ -274,10 +278,10 @@ export default function BrandVoicePage({ clientId: propClientId = null }) {
         {/* ── RIGHT — extracted profile ─────────────────────────────── */}
         <Card padding="md">
           <Card.Header
-            title="Extracted profile"
+            title={t('brand_voice.profile_card.title', 'Extracted profile')}
             subtitle={trained
-              ? `Last trained ${profile.last_trained_at ? new Date(profile.last_trained_at).toLocaleDateString() : ''}`
-              : 'Train above to see your voice profile'}
+              ? t('brand_voice.profile_card.subtitle_ready', { date: profile.last_trained_at ? new Date(profile.last_trained_at).toLocaleDateString() : '', defaultValue: `Last trained ${profile.last_trained_at ? new Date(profile.last_trained_at).toLocaleDateString() : ''}` })
+              : t('brand_voice.profile_card.subtitle_empty', 'Train above to see your voice profile')}
           />
 
           {loadingProfile ? (
@@ -287,39 +291,39 @@ export default function BrandVoicePage({ clientId: propClientId = null }) {
           ) : !trained ? (
             <EmptyState
               icon={Mic}
-              title="No trained voice yet"
-              description="Paste sample posts on the left and click Train. Your profile will appear here in seconds."
+              title={t('brand_voice.profile_card.empty_title', 'No trained voice yet')}
+              description={t('brand_voice.profile_card.empty_desc', 'Paste sample posts on the left and click Train. Your profile will appear here in seconds.')}
               compact
             />
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               {profile.voice_summary && (
-                <ProfileBlock label="Persona" body={profile.voice_summary} />
+                <ProfileBlock label={t('brand_voice.profile_card.persona', 'Persona')} body={profile.voice_summary} />
               )}
 
               {profile.tone_descriptors?.length > 0 && (
-                <ChipBlock icon={Sparkles} label="Tone" items={profile.tone_descriptors} />
+                <ChipBlock icon={Sparkles} label={t('brand_voice.profile_card.tone', 'Tone')} items={profile.tone_descriptors} />
               )}
 
               {profile.preferred_words?.length > 0 && (
-                <ChipBlock icon={Wand2} label="Vocabulary to favour" items={profile.preferred_words} />
+                <ChipBlock icon={Wand2} label={t('brand_voice.profile_card.vocabulary', 'Vocabulary to favour')} items={profile.preferred_words} />
               )}
 
               {profile.forbidden_words?.length > 0 && (
-                <ChipBlock icon={Ban} label="Avoid" items={profile.forbidden_words} accent="var(--danger)" />
+                <ChipBlock icon={Ban} label={t('brand_voice.profile_card.avoid', 'Avoid')} items={profile.forbidden_words} accent="var(--danger)" />
               )}
 
               {profile.target_audience && (
-                <ProfileBlock icon={Users} label="Target audience" body={profile.target_audience} />
+                <ProfileBlock icon={Users} label={t('brand_voice.profile_card.audience', 'Target audience')} body={profile.target_audience} />
               )}
 
               {profile.prohibited_topics?.length > 0 && (
-                <ChipBlock icon={Ban} label="Topics to avoid" items={profile.prohibited_topics} accent="var(--warning)" />
+                <ChipBlock icon={Ban} label={t('brand_voice.profile_card.topics_avoid', 'Topics to avoid')} items={profile.prohibited_topics} accent="var(--warning)" />
               )}
 
               {profile.style_rules?.length > 0 && (
                 <div>
-                  <BlockLabel icon={Wand2} label="Style rules" />
+                  <BlockLabel icon={Wand2} label={t('brand_voice.profile_card.style_rules', 'Style rules')} />
                   <ul style={{ margin: 0, paddingLeft: 22, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.55 }}>
                     {profile.style_rules.map((r, i) => <li key={i}>{r}</li>)}
                   </ul>
@@ -327,9 +331,9 @@ export default function BrandVoicePage({ clientId: propClientId = null }) {
               )}
 
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                <SmallTag icon={Smile} text={EMOJI_LABEL[profile.emoji_usage] || profile.emoji_usage} />
+                <SmallTag icon={Smile} text={t(`brand_voice.emoji.${profile.emoji_usage}`, EMOJI_LABEL[profile.emoji_usage] || profile.emoji_usage)} />
                 {profile.hashtag_style && (
-                  <SmallTag icon={Hash} text={`Hashtags: ${profile.hashtag_style}`} />
+                  <SmallTag icon={Hash} text={t('brand_voice.profile_card.hashtags', { style: profile.hashtag_style, defaultValue: `Hashtags: ${profile.hashtag_style}` })} />
                 )}
               </div>
             </div>
@@ -341,11 +345,11 @@ export default function BrandVoicePage({ clientId: propClientId = null }) {
       {examplePosts?.length > 0 && (
         <Card padding="md" style={{ marginTop: 20 }}>
           <Card.Header
-            title="Validation examples"
-            subtitle="Three short posts written in the just-trained voice — does this sound like you?"
+            title={t('brand_voice.validation_examples.title', 'Validation examples')}
+            subtitle={t('brand_voice.validation_examples.subtitle', 'Three short posts written in the just-trained voice — does this sound like you?')}
             action={(
               <Button variant="ghost" size="sm" icon={RefreshCw} onClick={handleTrain} loading={training}>
-                Regenerate
+                {t('brand_voice.validation_examples.regenerate', 'Regenerate')}
               </Button>
             )}
           />
@@ -371,19 +375,19 @@ export default function BrandVoicePage({ clientId: propClientId = null }) {
       {trained && (
         <Card padding="md" style={{ marginTop: 20 }}>
           <Card.Header
-            title="Test the voice"
-            subtitle="Generate a sample post on any topic to spot-check the trained voice."
+            title={t('brand_voice.test_card.title', 'Test the voice')}
+            subtitle={t('brand_voice.test_card.subtitle', 'Generate a sample post on any topic to spot-check the trained voice.')}
           />
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <input
               value={testTopic}
               onChange={(e) => setTestTopic(e.target.value)}
-              placeholder="e.g. New summer collection, Diwali greetings…"
+              placeholder={t('brand_voice.test_card.placeholder', 'e.g. New summer collection, Diwali greetings…')}
               style={{ ...inputStyle, flex: '1 1 240px' }}
               onKeyDown={(e) => { if (e.key === 'Enter') handleTest(); }}
             />
             <Button onClick={handleTest} loading={testing} icon={Sparkles}>
-              Generate sample post
+              {t('brand_voice.test_card.btn_generate', 'Generate sample post')}
             </Button>
           </div>
 
@@ -396,10 +400,10 @@ export default function BrandVoicePage({ clientId: propClientId = null }) {
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                 <Badge variant="brand" size="sm" icon={Sparkles}>
-                  {testResult.voice_used ? 'In your trained voice' : 'Default voice'}
+                  {testResult.voice_used ? t('brand_voice.test_card.badge_trained', 'In your trained voice') : t('brand_voice.test_card.badge_default', 'Default voice')}
                 </Badge>
                 <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
-                  {testResult.character_count} chars
+                  {t('brand_voice.test_card.chars', { count: testResult.character_count, defaultValue: `${testResult.character_count} chars` })}
                 </span>
               </div>
               <div style={{

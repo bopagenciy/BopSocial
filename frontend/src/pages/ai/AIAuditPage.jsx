@@ -15,6 +15,7 @@
  * audit trails.
  */
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Sparkles, Filter, RefreshCw, AlertTriangle, CheckCircle2,
 } from 'lucide-react';
@@ -38,6 +39,7 @@ const STATUS_VARIANT = {
 };
 
 export default function AIAuditPage({ clientId: propClientId = null }) {
+  const { t } = useTranslation('ai');
   const { user } = useAuth();
   const clientId = propClientId || user?.client_id || null;
 
@@ -52,7 +54,7 @@ export default function AIAuditPage({ clientId: propClientId = null }) {
     if (feature) params.feature = feature;
     aiV2API.audit(params)
       .then((r) => setData(r.data || null))
-      .catch(() => toast.error('Failed to load AI audit'))
+      .catch(() => toast.error(t('audit.failed_load', 'Failed to load AI audit')))
       .finally(() => setLoading(false));
   }
   useEffect(load, [clientId, feature]);
@@ -64,10 +66,10 @@ export default function AIAuditPage({ clientId: propClientId = null }) {
   return (
     <div className="app-page app-page--lg">
       <PageHeader
-        title="What did Bop Social do for me?"
-        subtitle="Every AI request on this client account — for transparency + compliance."
+        title={t('audit.title', 'What did Bop Social do for me?')}
+        subtitle={t('audit.subtitle', 'Every AI request on this client account — for transparency + compliance.')}
         actions={(
-          <Button variant="ghost" size="sm" icon={RefreshCw} onClick={load}>Refresh</Button>
+          <Button variant="ghost" size="sm" icon={RefreshCw} onClick={load}>{t('audit.refresh', 'Refresh')}</Button>
         )}
       />
 
@@ -80,16 +82,15 @@ export default function AIAuditPage({ clientId: propClientId = null }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <Sparkles size={14} style={{ color: 'var(--brand-primary-hover)' }} />
             <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
-              Today&apos;s AI quota
+              {t('audit.today_quota', "Today's AI quota")}
             </span>
           </div>
           <span style={{
             fontSize: 13, color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums',
           }}>
-            <strong style={{ color: 'var(--text-primary)' }}>{quota.used ?? 0}</strong>
-            {' / '}{quota.limit ?? 0} requests used
+            {t('audit.quota_used', { used: quota.used ?? 0, limit: quota.limit ?? 0, defaultValue: `${quota.used ?? 0} / ${quota.limit ?? 0} requests used` })}
             <span style={{ marginLeft: 12, color: 'var(--text-tertiary)' }}>
-              ({quota.remaining ?? 0} remaining)
+              {t('audit.quota_remaining', { remaining: quota.remaining ?? 0, defaultValue: `(${quota.remaining ?? 0} remaining)` })}
             </span>
           </span>
         </div>
@@ -110,13 +111,13 @@ export default function AIAuditPage({ clientId: propClientId = null }) {
         {/* Filter list */}
         <Card padding="none">
           <Card.Header
-            title="Filter by feature"
-            subtitle={feature ? 'Showing one feature' : 'All features'}
+            title={t('audit.filter_by_feature', 'Filter by feature')}
+            subtitle={feature ? t('audit.showing_one', 'Showing one feature') : t('audit.all_features', 'All features')}
             style={{ padding: '14px 16px', margin: 0 }}
           />
           <ul style={listStyle}>
             <FilterRow
-              label="All features"
+              label={t('audit.all_features', 'All features')}
               count={byFeature.reduce((s, f) => s + (f.count || 0), 0)}
               active={!feature}
               onClick={() => setFeature('')}
@@ -136,13 +137,13 @@ export default function AIAuditPage({ clientId: propClientId = null }) {
         {/* Activity feed */}
         <Card padding="none" style={{ minHeight: 320 }}>
           <Card.Header
-            title="Activity feed"
-            subtitle={`${rows.length} most recent — newest first`}
+            title={t('audit.activity_feed', 'Activity feed')}
+            subtitle={t('audit.recent_subtitle', { count: rows.length, defaultValue: `${rows.length} most recent — newest first` })}
             style={{ padding: '14px 16px', margin: 0 }}
           />
           {loading ? (
             <div style={{ padding: '20px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <AILoading variant="dots" label="Loading activity…" />
+              <AILoading variant="dots" label={t('audit.loading_activity', 'Loading activity…')} />
               {[0, 1, 2, 3].map((i) => (
                 <AILoading key={i} height={32} />
               ))}
@@ -150,20 +151,20 @@ export default function AIAuditPage({ clientId: propClientId = null }) {
           ) : rows.length === 0 ? (
             <EmptyState
               icon={Sparkles}
-              title="No AI activity yet"
-              description="As you use Bop Social features, every request shows up here."
+              title={t('audit.empty_title', 'No AI activity yet')}
+              description={t('audit.empty_desc', 'As you use Bop Social features, every request shows up here.')}
             />
           ) : (
             <div style={{ overflowX: 'auto' }}>
               <table style={tableStyle}>
                 <thead>
                   <tr>
-                    <th style={thStyle}>Feature</th>
-                    <th style={thStyle}>Status</th>
-                    <th style={thStyle}>Model</th>
-                    <th style={{ ...thStyle, textAlign: 'right' }}>In/out tokens</th>
-                    <th style={{ ...thStyle, textAlign: 'right' }}>Cost</th>
-                    <th style={thStyle}>When</th>
+                    <th style={thStyle}>{t('audit.columns.feature', 'Feature')}</th>
+                    <th style={thStyle}>{t('audit.columns.status', 'Status')}</th>
+                    <th style={thStyle}>{t('audit.columns.model', 'Model')}</th>
+                    <th style={{ ...thStyle, textAlign: 'right' }}>{t('audit.columns.tokens', 'In/out tokens')}</th>
+                    <th style={{ ...thStyle, textAlign: 'right' }}>{t('audit.columns.cost', 'Cost')}</th>
+                    <th style={thStyle}>{t('audit.columns.when', 'When')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -218,11 +219,7 @@ export default function AIAuditPage({ clientId: propClientId = null }) {
       }}>
         <Sparkles size={12} style={{ color: 'var(--brand-primary-hover)', verticalAlign: -1 }} />
         {' '}
-        SocialStats powers every request below. We log each call for compliance and
-        do not train on your data. AI-generated content is marked with a
-        <strong> ✨ AI-assisted</strong> badge in the UI. Sensitive verticals (medical,
-        legal, financial) include a regulatory disclaimer. Vendor-level disclosure is
-        in our <a href="/privacy">Privacy Policy</a>.
+        {t('audit.disclaimer', 'Bop Social powers every request below. We log each call for compliance and do not train on your data. AI-generated content is marked with a ✨ AI-assisted badge in the UI. Sensitive verticals (medical, legal, financial) include a regulatory disclaimer. Vendor-level disclosure is in our Privacy Policy.')}
       </p>
 
       <style>{`

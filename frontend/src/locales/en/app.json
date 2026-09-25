@@ -35,7 +35,16 @@
     "onboarding": "Onboarding",
     "analytics": "Analytics",
     "messaging": "Messaging",
-    "ads": "Ads"
+    "ads": "Ads",
+    "ai_studio": "AI Studio",
+    "brand_voice": "Brand Voice",
+    "insights": "AI Insights",
+    "ai_usage": "AI Usage",
+    "chat_history": "Chat History",
+    "ai_audit": "AI Audit",
+    "caption_writer": "Caption Writer",
+    "post_ideas": "Post Ideas",
+    "hashtags": "Hashtags"
   },
   "mobile_nav": {
     "home": "Home",

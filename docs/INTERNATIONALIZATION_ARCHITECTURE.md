@@ -866,6 +866,54 @@ Root cause investigation revealed a dual deployment / caching defect:
     - `curl -i http://localhost:3010/` -> HTTP 200 OK (serving bundle `main.08f249fe.js`).
     - `curl -i http://localhost:3010/admin/client/1/settings` -> HTTP 200 OK.
 
+---
+
+## 22. Phase BS-2.6C — AI Studio & Advanced Creation Tools Internationalization
+
+### 22.1 Scope & Architecture
+- **Dedicated Namespace**: Registered `ai` namespace across `frontend/src/i18n/config.js` (`resources.en.ai`, `resources.es.ai`, and `'ai'` added to the `ns` array).
+- **Target AI Studio & Advanced Creation Interfaces**:
+  - `/admin/analytics/ai-studio` (`AIStudio.jsx`): Central AI hub with category groups (Strategic Intelligence, Creative Automation, Operation & Governance), 7 navigation cards (`ai_insights`, `brand_voice`, `ai_usage`, `chat_history`, `ai_audit`, `caption_writer`, `post_ideas`), and localized keyboard shortcut banner.
+  - `/admin/analytics/brand-voice` (`BrandVoicePage.jsx`): Brand voice and persona training dashboard. Localized training parameters (tone, style guidelines, avoid terms), real-time profile chips, training sample counters, status badges (`Trained` / `Lista`, `Untrained` / `Sin entrenar`), and interactive test generator.
+  - `/admin/analytics/ai-insights` (`AIInsightsPage.jsx`): Predictive insights dashboard, KPI metric cards, recommendation chips, and automated action suggestions.
+  - `/admin/analytics/ai-usage` (`AIUsagePage.jsx`): Token consumption and cost telemetry, period filters, quota gauges, spend breakdown tables, and per-feature analytics.
+  - `/admin/analytics/chat-history` (`AIChatHistoryPage.jsx`): Conversational history, session list, thread inspection pane, message counts, tool call results, and delete confirmation dialogs.
+  - `/admin/analytics/ai-audit` (`AIAuditPage.jsx`): AI compliance and safety audit log, risk level badges, policy violation filters, quota meter, and regulatory disclaimer.
+  - `/admin/analytics/caption-writer` & `/admin/analytics/hashtags` (`CaptionWriterPage.jsx`): Multi-channel copy generator, tone selector, post type pills, platform toggles, hashtag generator, and sticky selection bar.
+  - `/admin/analytics/post-ideas` (`PostIdeasPage.jsx`): Content calendar generation suite, industry/niche selectors, loading state screens, mix visualizers, and card review workflows.
+  - **Shared AI Assistant Widgets**:
+    - `AIFloatingTrigger.jsx` & `AIChatPanel.jsx`: Floating AI launcher, chat panel drawer, quick prompts, response streaming states, copy-to-clipboard actions, and clear history dialogs.
+    - `AIBadge.jsx`, `AILoading.jsx`, `ChartAnnotations.jsx`, `TodayBriefing.jsx`: Localized micro-components, loading spinners, chart insight tooltips, and daily AI summary widget.
+- **TopBar Breadcrumbs**:
+  - Added AI tool route mappings to `app.json` (`ai_studio`, `brand_voice`, `ai_insights`, `ai_usage`, `chat_history`, `ai_audit`, `caption_writer`, `post_ideas`, `hashtags`).
+- **Brand Residual Resolution**:
+  - Replaced legacy residual branding (`Social Stats` / `SocialStats`) with `Bop Social` across `AIAuditPage.jsx`, `BrandVoicePage.jsx`, `TodayBriefing.jsx`, and `AIBadge.jsx`.
+
+### 22.2 Invariants Preserved
+- **Zero Live AI Inference Calls**: All tests and translation flows execute without calling live AI APIs or mutating persisted AI configurations.
+- **Data & Parameter Isolation**: Machine keys, platform identifiers, tone values, and prompt templates remain unchanged when switching languages.
+- **100% Translation Key Parity**:
+  - `ai.json`: Complete recursive key parity across all sub-objects between English and Spanish.
+  - `app.json`: Synchronized breadcrumb routes.
+
+### 22.3 Verification & Deployment
+- **Automated Test Suite**:
+  - Created `frontend/src/pages/__tests__/AIToolsTranslation.test.jsx`: **7 / 7 passing tests** covering:
+    1. Key parity and structural symmetry between `en/ai.json` and `es/ai.json`.
+    2. `ai` namespace registration in `frontend/src/i18n/config.js`.
+    3. `AIStudio` rendering in English and Spanish with accurate title and card translations.
+    4. `BrandVoicePage` localization and brand residual replacement.
+    5. `CaptionWriterPage` controls, platform filters, and tone selectors.
+    6. `AIChatPanel` quick prompts, message copy actions, and clearing states.
+    7. Breadcrumb key mappings in `app.json`.
+- **Full Frontend Suite**: **24 / 24 test suites passed, 178 / 178 tests passed**.
+- **Production Build**: `npm run build` executed cleanly (exit code 0).
+- **Local Docker Deployment**:
+  - Built frontend image: `bopsocial-frontend-local:bs-2.6c`.
+  - Retained backend image: `bopsocial-backend-local:bs-2.1.1`.
+  - Recreated `agencyos-frontend-1` and verified live with HTTP 200 on `http://localhost:3010/admin/analytics/ai-studio`.
+
+
 
 
 

@@ -8,6 +8,7 @@
  * ========================================================================== */
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   Sparkles, RefreshCw, ArrowRight, AlertTriangle, TrendingUp, Trophy, Loader2,
 } from 'lucide-react';
@@ -46,6 +47,7 @@ const TYPE_ICON = {
 
 
 export default function TodayBriefing({ clientId, basePath = '/dashboard' }) {
+  const { t } = useTranslation('ai');
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -70,10 +72,10 @@ export default function TodayBriefing({ clientId, basePath = '/dashboard' }) {
       const persisted = r.data?.persisted || 0;
       const note = r.data?.note;
       if (note) toast(note, { icon: 'ℹ️' });
-      else if (persisted) toast.success(`Social Stats surfaced ${persisted} new insight${persisted === 1 ? '' : 's'}`);
+      else if (persisted) toast.success(t('shared.today_briefing.surfaced_insights', { count: persisted, defaultValue: `Bop Social surfaced ${persisted} new insights` }));
       load();
     } catch (e) {
-      const msg = e?.response?.data?.error || 'AI is unavailable right now';
+      const msg = e?.response?.data?.error || t('shared.today_briefing.unavailable', 'AI is unavailable right now');
       toast.error(msg);
     } finally {
       setRefreshing(false);
@@ -99,10 +101,10 @@ export default function TodayBriefing({ clientId, basePath = '/dashboard' }) {
           </span>
           <div style={{ minWidth: 0 }}>
             <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
-              Today&apos;s briefing
+              {t('shared.today_briefing.title', "Today's briefing")}
             </div>
             <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
-              From Social Stats · most recent insights
+              {t('shared.today_briefing.subtitle', 'From Bop Social · most recent insights')}
             </div>
           </div>
         </div>
@@ -110,15 +112,15 @@ export default function TodayBriefing({ clientId, basePath = '/dashboard' }) {
           <Button
             size="xs" variant="ghost" icon={RefreshCw}
             onClick={refresh} loading={refreshing}
-            aria-label="Regenerate insights"
+            aria-label={t('insights.btn_regenerate', 'Regenerate')}
           >
-            Refresh
+            {t('shared.chart_annotations.refresh', 'Refresh')}
           </Button>
           <Button
             size="xs" variant="ghost" iconRight={ArrowRight}
             as={Link} to={`${basePath}/analytics/insights`}
           >
-            View all
+            {t('shared.today_briefing.view_all', 'View all')}
           </Button>
         </div>
       </div>
@@ -133,8 +135,8 @@ export default function TodayBriefing({ clientId, basePath = '/dashboard' }) {
           padding: '12px 4px', fontSize: 13, color: 'var(--text-secondary)',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
         }}>
-          <span>No insights yet — give Social Stats a moment to study your data.</span>
-          <Button size="xs" icon={Sparkles} onClick={refresh} loading={refreshing}>Generate</Button>
+          <span>{t('shared.today_briefing.empty', 'No insights yet — give Bop Social a moment to study your data.')}</span>
+          <Button size="xs" icon={Sparkles} onClick={refresh} loading={refreshing}>{t('shared.today_briefing.generate', 'Generate')}</Button>
         </div>
       ) : (
         <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -175,7 +177,7 @@ export default function TodayBriefing({ clientId, basePath = '/dashboard' }) {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
                       <Badge variant="default" size="sm" dot style={{ color: sev.fg }}>
-                        {sev.label}
+                        {t(`insights.severity.${it.severity}`, sev.label)}
                       </Badge>
                       <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
                         {it.insight_type?.replace(/_/g, ' ')}
@@ -199,7 +201,7 @@ export default function TodayBriefing({ clientId, basePath = '/dashboard' }) {
                             borderRadius: 'var(--radius-xs)',
                             color: 'var(--text-primary)',
                           }}>
-                            <strong style={{ color: 'var(--brand-primary-hover)' }}>Action: </strong>
+                            <strong style={{ color: 'var(--brand-primary-hover)' }}>{t('insights.action', 'Action')}: </strong>
                             {it.action_recommended}
                           </div>
                         )}

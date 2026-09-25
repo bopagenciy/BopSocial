@@ -17,6 +17,7 @@
  *   - Daily timeseries chart
  */
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Activity, AlertTriangle, CheckCircle2, Loader2, RefreshCw,
 } from 'lucide-react';
@@ -36,6 +37,7 @@ const PERIODS = [
 ];
 
 export default function AIUsagePage() {
+  const { t } = useTranslation('ai');
   const { user } = useAuth();
   const isAdmin = user?.role === 'superadmin' || user?.role === 'staff';
 
@@ -73,11 +75,11 @@ export default function AIUsagePage() {
   if (!isAdmin) {
     return (
       <div className="app-page app-page--lg">
-        <PageHeader title="AI Usage" />
+        <PageHeader title={t('usage.title', 'AI Usage')} />
         <EmptyState
           icon={AlertTriangle}
-          title="Admin access only"
-          description="The AI usage dashboard is visible to superadmins and staff."
+          title={t('usage.admin_only_title', 'Admin access only')}
+          description={t('usage.admin_only_desc', 'The AI usage dashboard is visible to superadmins and staff.')}
         />
       </div>
     );
@@ -86,8 +88,8 @@ export default function AIUsagePage() {
   return (
     <div className="app-page app-page--lg">
       <PageHeader
-        title="AI Usage"
-        subtitle="Cost, tokens, and request volume across every AI feature."
+        title={t('usage.title', 'AI Usage')}
+        subtitle={t('usage.subtitle', 'Cost, tokens, and request volume across every AI feature.')}
         actions={(
           <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
             {PERIODS.map((p) => (
@@ -106,10 +108,10 @@ export default function AIUsagePage() {
                   fontFamily: 'inherit',
                 }}
               >
-                {p.label}
+                {t(`usage.periods.${p.id}`, p.label)}
               </button>
             ))}
-            <Button size="sm" variant="ghost" icon={RefreshCw} onClick={load}>Refresh</Button>
+            <Button size="sm" variant="ghost" icon={RefreshCw} onClick={load}>{t('usage.refresh', 'Refresh')}</Button>
           </div>
         )}
       />
@@ -133,40 +135,40 @@ export default function AIUsagePage() {
         <>
           {/* Budget gauge */}
           <Card padding="md" style={{ marginBottom: 12 }}>
-            <BudgetGauge budget={budget} />
+            <BudgetGauge budget={budget} t={t} />
           </Card>
 
           {/* Totals strip */}
           <div style={statsRowStyle}>
-            <StatTile label="Requests"        value={fmtNum(totals.requests)} />
-            <StatTile label="Cost (this period)" value={`$${(totals.cost_usd || 0).toFixed(4)}`} highlight />
-            <StatTile label="Input tokens"   value={fmtNum(totals.input_tokens)} />
-            <StatTile label="Output tokens"  value={fmtNum(totals.output_tokens)} />
-            <StatTile label="Cache hit rate" value={`${(totals.cache_hit_rate || 0).toFixed(1)}%`} />
-            <StatTile label="Errors"         value={fmtNum(totals.errors)} accent={totals.errors ? 'var(--danger)' : 'var(--success)'} />
+            <StatTile label={t('usage.stats.requests', 'Requests')} value={fmtNum(totals.requests)} />
+            <StatTile label={t('usage.stats.cost', 'Cost (this period)')} value={`$${(totals.cost_usd || 0).toFixed(4)}`} highlight />
+            <StatTile label={t('usage.stats.input_tokens', 'Input tokens')} value={fmtNum(totals.input_tokens)} />
+            <StatTile label={t('usage.stats.output_tokens', 'Output tokens')} value={fmtNum(totals.output_tokens)} />
+            <StatTile label={t('usage.stats.cache_hit_rate', 'Cache hit rate')} value={`${(totals.cache_hit_rate || 0).toFixed(1)}%`} />
+            <StatTile label={t('usage.stats.errors', 'Errors')} value={fmtNum(totals.errors)} accent={totals.errors ? 'var(--danger)' : 'var(--success)'} />
           </div>
 
           {/* By feature */}
           <Card padding="none" style={{ marginTop: 16, marginBottom: 12 }}>
             <Card.Header
-              title="By feature"
-              subtitle="Top features by spend in the selected period"
+              title={t('usage.features.title', 'By feature')}
+              subtitle={t('usage.features.subtitle', 'Top features by spend in the selected period')}
               style={{ padding: '14px 16px', margin: 0 }}
             />
             {features.length === 0 ? (
               <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>
-                No AI usage in this period yet.
+                {t('usage.features.empty', 'No AI usage in this period yet.')}
               </div>
             ) : (
               <div style={{ overflowX: 'auto' }}>
                 <table style={tableStyle}>
                   <thead>
                     <tr>
-                      <th style={thStyle}>Feature</th>
-                      <th style={{ ...thStyle, textAlign: 'right' }}>Requests</th>
-                      <th style={{ ...thStyle, textAlign: 'right' }}>Input tokens</th>
-                      <th style={{ ...thStyle, textAlign: 'right' }}>Output tokens</th>
-                      <th style={{ ...thStyle, textAlign: 'right' }}>Cost</th>
+                      <th style={thStyle}>{t('usage.features.col_feature', 'Feature')}</th>
+                      <th style={{ ...thStyle, textAlign: 'right' }}>{t('usage.features.col_requests', 'Requests')}</th>
+                      <th style={{ ...thStyle, textAlign: 'right' }}>{t('usage.features.col_input_tokens', 'Input tokens')}</th>
+                      <th style={{ ...thStyle, textAlign: 'right' }}>{t('usage.features.col_output_tokens', 'Output tokens')}</th>
+                      <th style={{ ...thStyle, textAlign: 'right' }}>{t('usage.features.col_cost', 'Cost')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -188,9 +190,9 @@ export default function AIUsagePage() {
           {/* Per-client + per-user side by side on desktop, stacked on mobile */}
           <div style={twoColStyle} className="ai-usage-twocol">
             <Card padding="none">
-              <Card.Header title="Top clients" style={{ padding: '14px 16px', margin: 0 }} />
+              <Card.Header title={t('usage.top_clients.title', 'Top clients')} style={{ padding: '14px 16px', margin: 0 }} />
               {(byClient?.clients || []).length === 0 ? (
-                <div style={emptyCellStyle}>No client-scoped usage in this period.</div>
+                <div style={emptyCellStyle}>{t('usage.top_clients.empty', 'No client-scoped usage in this period.')}</div>
               ) : (
                 <ul style={listStyle}>
                   {(byClient?.clients || []).slice(0, 12).map((c) => (
@@ -211,9 +213,9 @@ export default function AIUsagePage() {
             </Card>
 
             <Card padding="none">
-              <Card.Header title="Top users" style={{ padding: '14px 16px', margin: 0 }} />
+              <Card.Header title={t('usage.top_users.title', 'Top users')} style={{ padding: '14px 16px', margin: 0 }} />
               {(byUser?.users || []).length === 0 ? (
-                <div style={emptyCellStyle}>No user-scoped usage in this period.</div>
+                <div style={emptyCellStyle}>{t('usage.top_users.empty', 'No user-scoped usage in this period.')}</div>
               ) : (
                 <ul style={listStyle}>
                   {(byUser?.users || []).slice(0, 12).map((u) => (
@@ -237,7 +239,7 @@ export default function AIUsagePage() {
           {/* Daily timeseries — small bar chart */}
           {(overview?.timeseries || []).length > 0 && (
             <Card padding="md" style={{ marginTop: 12 }}>
-              <Card.Header title="Daily activity" subtitle="Cost (USD) per day in the selected period" style={{ marginBottom: 12 }} />
+              <Card.Header title={t('usage.daily_activity.title', 'Daily activity')} subtitle={t('usage.daily_activity.subtitle', 'Cost (USD) per day in the selected period')} style={{ marginBottom: 12 }} />
               <DailyBars rows={overview.timeseries} />
             </Card>
           )}
@@ -253,7 +255,7 @@ export default function AIUsagePage() {
 
 // ── helpers ────────────────────────────────────────────────────────────
 
-function BudgetGauge({ budget }) {
+function BudgetGauge({ budget, t }) {
   const pct = Math.min(100, Number(budget.percent_used || 0));
   const cap = Number(budget.cap_usd || 0);
   const used = Number(budget.used_usd || 0);
@@ -271,7 +273,7 @@ function BudgetGauge({ budget }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
           <Activity size={14} style={{ color }} />
           <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
-            Monthly budget
+            {t ? t('usage.budget.monthly_budget', 'Monthly budget') : 'Monthly budget'}
           </span>
           <Badge
             variant={budget.alert_level === 'critical' ? 'danger' : budget.alert_level === 'warn' ? 'warning' : 'success'}
@@ -282,9 +284,9 @@ function BudgetGauge({ budget }) {
         </div>
         <div style={{ fontSize: 13, color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>
           <strong style={{ color: 'var(--text-primary)' }}>${used.toFixed(4)}</strong>
-          {' / '}${cap.toFixed(2)} used
+          {t ? ` / $${cap.toFixed(2)} ${t('usage.budget.used_of_cap', { used: '', cap: '', defaultValue: 'used' }).replace(/[{}\s/]/g, '')}` : ` / $${cap.toFixed(2)} used`}
           <span style={{ marginLeft: 12, color: 'var(--text-tertiary)' }}>
-            ${remaining.toFixed(4)} remaining
+            {t ? t('usage.budget.remaining', { remaining: `$${remaining.toFixed(4)}`, defaultValue: `$${remaining.toFixed(4)} remaining` }) : `$${remaining.toFixed(4)} remaining`}
           </span>
         </div>
       </div>

@@ -35,7 +35,16 @@
     "onboarding": "Incorporación",
     "analytics": "Analítica",
     "messaging": "Mensajería",
-    "ads": "Anuncios"
+    "ads": "Anuncios",
+    "ai_studio": "Estudio de IA",
+    "brand_voice": "Voz de marca",
+    "insights": "Hallazgos de IA",
+    "ai_usage": "Uso de IA",
+    "chat_history": "Historial de chat",
+    "ai_audit": "Auditoría de IA",
+    "caption_writer": "Redactor de copys",
+    "post_ideas": "Ideas de contenido",
+    "hashtags": "Hashtags"
   },
   "mobile_nav": {
     "home": "Inicio",

@@ -7,6 +7,7 @@
  *  Released under the MIT License — see LICENSE. Keep this notice.
  * ========================================================================== */
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Sparkles, RefreshCw, Loader2 } from 'lucide-react';
 
 import Button from '../ui/Button';
@@ -35,13 +36,14 @@ export default function ChartAnnotations({
   paragraphs = 2,
   compact = false,
 }) {
+  const { t } = useTranslation('ai');
   const [loading, setLoading] = useState(false);
   const [data, setData]       = useState(null);
   const [error, setError]     = useState('');
 
   async function explain() {
     if (!clientId) {
-      toast.error('Pick a client first');
+      toast.error(t('shared.chart_annotations.pick_client', 'Pick a client first'));
       return;
     }
     setLoading(true);
@@ -56,7 +58,7 @@ export default function ChartAnnotations({
       setData(r.data || null);
       if (r.data?.note) toast(r.data.note, { icon: 'ℹ️' });
     } catch (e) {
-      const msg = e?.response?.data?.error || 'AI narration unavailable';
+      const msg = e?.response?.data?.error || t('shared.chart_annotations.unavailable', 'AI narration unavailable');
       setError(msg);
     } finally {
       setLoading(false);
@@ -87,7 +89,7 @@ export default function ChartAnnotations({
           {loading
             ? <Loader2 size={11} style={{ animation: 'ca-spin 0.9s linear infinite' }} />
             : <Sparkles size={11} />}
-          {data ? 'Refresh' : 'Explain this'}
+          {data ? t('shared.chart_annotations.refresh', 'Refresh') : t('shared.chart_annotations.explain', 'Explain this')}
         </button>
         {error && (
           <span style={{ marginLeft: 8, fontSize: 11, color: 'var(--danger)' }}>{error}</span>
@@ -119,10 +121,10 @@ export default function ChartAnnotations({
           </span>
           <div>
             <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
-              What this data means
+              {t('shared.chart_annotations.title', 'What this data means')}
             </div>
             <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
-              From Social Stats
+              {t('shared.chart_annotations.from_bop', 'From Bop Social')}
             </div>
           </div>
         </div>
@@ -132,9 +134,9 @@ export default function ChartAnnotations({
           icon={data ? RefreshCw : Sparkles}
           onClick={explain}
           loading={loading}
-          aria-label={data ? 'Refresh narration' : 'Generate narration'}
+          aria-label={data ? t('shared.chart_annotations.refresh', 'Refresh') : t('shared.chart_annotations.explain_short', 'Explain')}
         >
-          {data ? 'Refresh' : 'Explain'}
+          {data ? t('shared.chart_annotations.refresh', 'Refresh') : t('shared.chart_annotations.explain_short', 'Explain')}
         </Button>
       </header>
 
@@ -142,7 +144,7 @@ export default function ChartAnnotations({
         <p style={{
           margin: 0, fontSize: 12, color: 'var(--text-tertiary)', lineHeight: 1.55,
         }}>
-          Click <strong style={{ color: 'var(--brand-primary-hover)' }}>Explain</strong> to have Social Stats translate this chart in plain English.
+          {t('shared.chart_annotations.prompt_desc', 'Click Explain to have Bop Social interpret this chart in plain language.')}
         </p>
       )}
 

@@ -7,6 +7,7 @@
  *  Released under the MIT License — see LICENSE. Keep this notice.
  * ========================================================================== */
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Sparkles, X, Send, Loader2, Plus, RefreshCw, ThumbsUp, ThumbsDown,
   Wrench, CheckCircle2, AlertTriangle, Copy, ChevronLeft,
@@ -18,7 +19,7 @@ import { useAuth } from '../../hooks/useAuth';
 import toast from '../ui/toast';
 
 /**
- * AIChatPanel — slide-in right-side panel for Social Stats chat.
+ * AIChatPanel — slide-in right-side panel for Bop Social chat.
  *
  * Props:
  *   open      bool — whether the panel is visible
@@ -34,14 +35,15 @@ import toast from '../ui/toast';
  * the full agentic loop response and renders the result. Tool runs render
  * inline as small "🔧 Used tool X" cards.
  */
-const QUICK_PROMPTS = [
-  'How did Instagram perform this week?',
-  'Draft 3 Instagram posts about our summer launch',
-  'What time should I post tomorrow?',
-  'Show me the latest unread inbox messages',
+const QUICK_PROMPT_KEYS = [
+  { key: 'instagram_perf', defaultText: 'How did Instagram perform this week?' },
+  { key: 'summer_launch', defaultText: 'Draft 3 Instagram posts about our summer launch' },
+  { key: 'best_time', defaultText: 'What time should I post tomorrow?' },
+  { key: 'unread_inbox', defaultText: 'Show me the latest unread inbox messages' },
 ];
 
 export default function AIChatPanel({ open, onClose, clientId }) {
+  const { t } = useTranslation('ai');
   const { user } = useAuth();
   const [conversations, setConversations] = useState([]);
   const [activeId, setActiveId] = useState(null);
@@ -73,8 +75,8 @@ export default function AIChatPanel({ open, onClose, clientId }) {
         setMessages(r.data?.messages || []);
         setPendingConfirmations([]);
       })
-      .catch(() => toast.error('Failed to load conversation'));
-  }, [activeId]);
+      .catch(() => toast.error(t('assistant.chat.failed_load', 'Failed to load conversation')));
+  }, [activeId, t]);
 
   // Auto-scroll on new messages
   useEffect(() => {
@@ -102,7 +104,7 @@ export default function AIChatPanel({ open, onClose, clientId }) {
     const message = (text || '').trim();
     if (!message && !confirm) return;
     if (!clientId) {
-      toast.error('Pick a client first');
+      toast.error(t('assistant.chat.pick_client', 'Pick a client first'));
       return;
     }
     setSending(true);
@@ -148,7 +150,7 @@ export default function AIChatPanel({ open, onClose, clientId }) {
         setConversations(list.data?.conversations || []);
       } catch {}
     } catch (e) {
-      const msg = e?.response?.data?.error || 'Social Stats is unavailable';
+      const msg = e?.response?.data?.error || t('assistant.chat.unavailable', 'Bop Social is unavailable');
       toast.error(msg);
     } finally {
       setSending(false);
@@ -156,13 +158,13 @@ export default function AIChatPanel({ open, onClose, clientId }) {
   }
 
   async function deleteConversation(id) {
-    if (!window.confirm('Delete this conversation?')) return;
+    if (!window.confirm(t('assistant.chat.confirm_delete', 'Delete this conversation?'))) return;
     try {
       await aiV2API.chatDeleteConversation(id);
       setConversations((cs) => cs.filter((c) => c.id !== id));
       if (activeId === id) newChat();
     } catch {
-      toast.error('Could not delete');
+      toast.error(t('assistant.chat.delete_failed', 'Could not delete'));
     }
   }
 
@@ -191,7 +193,7 @@ export default function AIChatPanel({ open, onClose, clientId }) {
 
       <aside
         role="dialog"
-        aria-label="Social Stats chat"
+        aria-label={t('assistant.chat.aria_label', 'Bop Social chat')}
         className="ai-chat-panel"
         style={{
           position: 'fixed',
@@ -208,7 +210,7 @@ export default function AIChatPanel({ open, onClose, clientId }) {
         {/* Header */}
         <header style={headerStyle}>
           {showHistory ? (
-            <Button variant="ghost" size="sm" iconOnly icon={ChevronLeft} aria-label="Back to chat" onClick={() => setShowHistory(false)} />
+            <Button variant="ghost" size="sm" iconOnly icon={ChevronLeft} aria-label={t('assistant.chat.back_to_chat', 'Back to chat')} onClick={() => setShowHistory(false)} />
           ) : (
             <span style={{
               display: 'inline-flex', alignItems: 'center', gap: 8,
@@ -223,17 +225,17 @@ export default function AIChatPanel({ open, onClose, clientId }) {
               }}>
                 <Sparkles size={13} strokeWidth={2.4} />
               </span>
-              Social Stats
+              {t('assistant.chat.title', 'Bop Social')}
             </span>
           )}
           <div style={{ flex: 1 }} />
           {!showHistory && (
             <>
-              <Button variant="ghost" size="sm" icon={Plus} onClick={newChat}>New</Button>
-              <Button variant="ghost" size="sm" onClick={() => setShowHistory(true)}>History</Button>
+              <Button variant="ghost" size="sm" icon={Plus} onClick={newChat}>{t('assistant.chat.new', 'New')}</Button>
+              <Button variant="ghost" size="sm" onClick={() => setShowHistory(true)}>{t('assistant.chat.history', 'History')}</Button>
             </>
           )}
-          <Button variant="ghost" size="sm" iconOnly icon={X} aria-label="Close" onClick={onClose} />
+          <Button variant="ghost" size="sm" iconOnly icon={X} aria-label={t('assistant.chat.close', 'Close')} onClick={onClose} />
         </header>
 
         {/* Body */}
@@ -243,15 +245,17 @@ export default function AIChatPanel({ open, onClose, clientId }) {
             activeId={activeId}
             onPick={(id) => { setActiveId(id); setShowHistory(false); }}
             onDelete={deleteConversation}
+            t={t}
           />
         ) : (
           <div ref={scrollRef} style={messagesContainerStyle}>
             {messages.length === 0 && !sending && (
               <EmptyChat
                 onPick={(text) => { setDraft(text); textareaRef.current?.focus(); }}
+                t={t}
               />
             )}
-            {messages.map((m, i) => <ChatMessage key={m.id || i} msg={m} />)}
+            {messages.map((m, i) => <ChatMessage key={m.id || i} msg={m} t={t} />)}
             {sending && <TypingIndicator />}
 
             {/* Pending confirmation cards */}
@@ -261,6 +265,7 @@ export default function AIChatPanel({ open, onClose, clientId }) {
                 confirmation={p}
                 onConfirm={() => send('', { tool_name: p.tool_name, tool_input: p.tool_input, tool_use_id: p.tool_use_id })}
                 onCancel={() => setPendingConfirmations((cs) => cs.filter((_, idx) => idx !== i))}
+                t={t}
               />
             ))}
           </div>
@@ -275,7 +280,7 @@ export default function AIChatPanel({ open, onClose, clientId }) {
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={onKey}
               rows={2}
-              placeholder="Ask anything — or type / for slash commands…"
+              placeholder={t('assistant.chat.input_placeholder', 'Ask anything — or type / for slash commands…')}
               disabled={sending}
               style={textareaStyle}
             />
@@ -284,7 +289,7 @@ export default function AIChatPanel({ open, onClose, clientId }) {
               iconOnly icon={sending ? Loader2 : Send}
               onClick={() => send(draft)}
               disabled={!draft.trim() || sending}
-              aria-label="Send"
+              aria-label={t('assistant.chat.send', 'Send')}
               style={{
                 alignSelf: 'flex-end',
                 color: '#fff',
@@ -312,7 +317,7 @@ export default function AIChatPanel({ open, onClose, clientId }) {
 // ─────────────────────────────────────────────────────────────────────────
 // Message rendering
 // ─────────────────────────────────────────────────────────────────────────
-function ChatMessage({ msg }) {
+function ChatMessage({ msg, t }) {
   const isUser = msg.role === 'user';
   const text = (msg.content || '').trim();
 
@@ -369,8 +374,15 @@ function ChatMessage({ msg }) {
             </div>
             <Button
               variant="ghost" size="sm" iconOnly icon={Copy}
-              aria-label="Copy"
-              onClick={() => { try { navigator.clipboard.writeText(text); toast.success('Copied'); } catch { toast.error('Copy failed'); } }}
+              aria-label={t ? t('assistant.chat.copy', 'Copy') : 'Copy'}
+              onClick={() => {
+                try {
+                  navigator.clipboard.writeText(text);
+                  toast.success(t ? t('assistant.chat.copied', 'Copied') : 'Copied');
+                } catch {
+                  toast.error(t ? t('assistant.chat.copy_failed', 'Copy failed') : 'Copy failed');
+                }
+              }}
             />
           </div>
         )
@@ -444,7 +456,7 @@ function TypingIndicator() {
   );
 }
 
-function ConfirmationCard({ confirmation, onConfirm, onCancel }) {
+function ConfirmationCard({ confirmation, onConfirm, onCancel, t }) {
   return (
     <div
       role="alert"
@@ -460,25 +472,25 @@ function ConfirmationCard({ confirmation, onConfirm, onCancel }) {
         <AlertTriangle size={16} style={{ color: 'var(--warning)', marginTop: 1 }} />
         <div style={{ minWidth: 0, flex: 1 }}>
           <div style={{ fontSize: 12, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--warning)' }}>
-            Confirm action
+            {t ? t('assistant.chat.confirm_action', 'Confirm action') : 'Confirm action'}
           </div>
           <div style={{ marginTop: 4, fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.55 }}>
             {confirmation.summary || confirmation.tool_name}
           </div>
           <div style={{ marginTop: 4, fontSize: 11, color: 'var(--text-tertiary)', fontFamily: 'var(--font-mono)' }}>
-            tool: {confirmation.tool_name}
+            {t ? t('assistant.chat.tool_label', { name: confirmation.tool_name, defaultValue: `tool: ${confirmation.tool_name}` }) : `tool: ${confirmation.tool_name}`}
           </div>
         </div>
       </div>
       <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
-        <Button size="sm" variant="ghost" onClick={onCancel}>Cancel</Button>
-        <Button size="sm" onClick={onConfirm} icon={CheckCircle2}>Confirm</Button>
+        <Button size="sm" variant="ghost" onClick={onCancel}>{t ? t('assistant.chat.cancel', 'Cancel') : 'Cancel'}</Button>
+        <Button size="sm" onClick={onConfirm} icon={CheckCircle2}>{t ? t('assistant.chat.confirm', 'Confirm') : 'Confirm'}</Button>
       </div>
     </div>
   );
 }
 
-function EmptyChat({ onPick }) {
+function EmptyChat({ onPick, t }) {
   return (
     <div style={{ padding: '24px 8px' }}>
       <div style={{
@@ -495,39 +507,42 @@ function EmptyChat({ onPick }) {
           <Sparkles size={22} strokeWidth={2} />
         </div>
         <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>
-          Hi, I&apos;m Social Stats
+          {t ? t('assistant.chat.welcome_title', "Hi, I'm Bop Social") : "Hi, I'm Bop Social"}
         </div>
         <p style={{ margin: '6px auto 0', maxWidth: 280, fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.55 }}>
-          Ask me about your data, draft posts, reply to your inbox, or get a daily briefing.
+          {t ? t('assistant.chat.welcome_subtitle', 'Ask me about your data, draft posts, reply to your inbox, or get a daily briefing.') : 'Ask me about your data, draft posts, reply to your inbox, or get a daily briefing.'}
         </p>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        {QUICK_PROMPTS.map((q) => (
-          <button
-            key={q}
-            type="button"
-            onClick={() => onPick(q)}
-            style={{
-              textAlign: 'left',
-              padding: '10px 12px',
-              background: 'var(--surface-sunken)',
-              border: '1px solid var(--border-subtle)',
-              borderRadius: 'var(--radius-md)',
-              fontSize: 12, color: 'var(--text-primary)',
-              cursor: 'pointer', fontFamily: 'inherit',
-              minHeight: 'auto', minWidth: 'auto',
-            }}
-          >
-            {q}
-          </button>
-        ))}
+        {QUICK_PROMPT_KEYS.map((item) => {
+          const promptText = t ? t(`assistant.chat.quick_prompts.${item.key}`, item.defaultText) : item.defaultText;
+          return (
+            <button
+              key={item.key}
+              type="button"
+              onClick={() => onPick(promptText)}
+              style={{
+                textAlign: 'left',
+                padding: '10px 12px',
+                background: 'var(--surface-sunken)',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: 'var(--radius-md)',
+                fontSize: 12, color: 'var(--text-primary)',
+                cursor: 'pointer', fontFamily: 'inherit',
+                minHeight: 'auto', minWidth: 'auto',
+              }}
+            >
+              {promptText}
+            </button>
+          );
+        })}
       </div>
     </div>
   );
 }
 
-function ConversationList({ list, activeId, onPick, onDelete }) {
+function ConversationList({ list, activeId, onPick, onDelete, t }) {
   return (
     <div style={{ flex: 1, overflowY: 'auto', padding: 10 }}>
       <div style={{
@@ -536,11 +551,11 @@ function ConversationList({ list, activeId, onPick, onDelete }) {
         color: 'var(--text-tertiary)',
         padding: '4px 8px 8px',
       }}>
-        Conversations
+        {t ? t('assistant.chat.conversations', 'Conversations') : 'Conversations'}
       </div>
       {list.length === 0 ? (
         <div style={{ padding: 12, fontSize: 12, color: 'var(--text-tertiary)', textAlign: 'center' }}>
-          No conversations yet — start chatting.
+          {t ? t('assistant.chat.empty_history', 'No conversations yet — start chatting.') : 'No conversations yet — start chatting.'}
         </div>
       ) : (
         list.map((c) => (
@@ -562,7 +577,7 @@ function ConversationList({ list, activeId, onPick, onDelete }) {
                 color: 'var(--text-primary)',
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
               }}>
-                {c.title || 'Untitled chat'}
+                {c.title || (t ? t('assistant.chat.untitled', 'Untitled chat') : 'Untitled chat')}
               </div>
               <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
                 {c.updated_at ? new Date(c.updated_at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
@@ -570,7 +585,7 @@ function ConversationList({ list, activeId, onPick, onDelete }) {
             </div>
             <Button
               variant="ghost" size="sm" iconOnly icon={X}
-              aria-label="Delete conversation"
+              aria-label={t ? t('assistant.chat.delete_conversation', 'Delete conversation') : 'Delete conversation'}
               onClick={(e) => { e.stopPropagation(); onDelete(c.id); }}
             />
           </div>
