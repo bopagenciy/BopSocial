@@ -249,6 +249,7 @@ def sync_campaign_spend(campaign: CTWACampaign) -> dict:
         'ok': True,
         'total_spent': total_spent,
         'total_clicks': total_clicks,
+        'currency': campaign.currency,
         'cpl': (total_spent / campaign.total_leads) if campaign.total_leads else None,
         'last_synced_at': campaign.last_synced_at.isoformat(),
     }
@@ -256,7 +257,7 @@ def sync_campaign_spend(campaign: CTWACampaign) -> dict:
 
 def fetch_per_ad_insights(campaign: CTWACampaign) -> dict:
     """break campaign performance down per ad. Returns
-    `{'ok': bool, 'ads': [{ad_id, ad_name, spend, clicks, ctr, cpc, impressions}, ...]}`.
+    `{'ok': bool, 'currency': str, 'ads': [{ad_id, ad_name, spend, clicks, ctr, cpc, impressions, currency}, ...]}`.
 
     The UI calls this lazily when the campaign detail page expands the
     per-ad section, so we don't block the main /analytics call.
@@ -267,7 +268,7 @@ def fetch_per_ad_insights(campaign: CTWACampaign) -> dict:
         ).first()
     )
     if not cred or not cred.access_token:
-        return {'ok': False, 'error': 'meta ads not connected'}
+        return {'ok': False, 'error': 'meta ads not connected', 'currency': campaign.currency}
 
     ok, body = _graph('GET', f'/{campaign.campaign_id}/insights',
                       token=cred.access_token, params={
@@ -277,7 +278,7 @@ def fetch_per_ad_insights(campaign: CTWACampaign) -> dict:
         'limit': 100,
     })
     if not ok:
-        return {'ok': False, 'error': body.get('error') or 'graph error'}
+        return {'ok': False, 'error': body.get('error') or 'graph error', 'currency': campaign.currency}
 
     rows = body.get('data') or []
     ads = []
@@ -290,7 +291,8 @@ def fetch_per_ad_insights(campaign: CTWACampaign) -> dict:
             'impressions': int(r.get('impressions') or 0),
             'ctr':         float(r.get('ctr') or 0),
             'cpc':         float(r.get('cpc') or 0),
+            'currency':    campaign.currency,
         })
     # Sort by spend desc — surface the heaviest spenders first.
     ads.sort(key=lambda a: a['spend'], reverse=True)
-    return {'ok': True, 'ads': ads}
+    return {'ok': True, 'currency': campaign.currency, 'ads': ads}

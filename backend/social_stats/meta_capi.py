@@ -69,6 +69,47 @@ def _resolve_pixel_and_token(lead) -> tuple[str | None, str | None, str | None]:
     return (pixel_id, cred.access_token, getattr(client, 'meta_capi_test_code', '') or None)
 
 
+def resolve_capi_currency(lead) -> str:
+    """
+    Resolve currency for CAPI conversion events following strict authority hierarchy:
+    1. related CTWA campaign currency (via source_campaign_id)
+    2. related lead/conversion explicit currency in custom_fields or lead attributes
+    3. client.currency fallback
+    4. 'USD' system fallback
+    Never defaults to INR unless canonical source is explicitly INR. Never derives from UI locale.
+    """
+    from .currencies import SUPPORTED_CURRENCIES
+
+    # 1. Related CTWA campaign
+    if lead and getattr(lead, 'source_campaign_id', None) and getattr(lead, 'client', None):
+        from .bot_models import CTWACampaign
+        camp = CTWACampaign.objects.filter(
+            client=lead.client, campaign_id=lead.source_campaign_id
+        ).first()
+        if camp and getattr(camp, 'currency', None):
+            code = camp.currency.strip().upper()
+            if code in SUPPORTED_CURRENCIES:
+                return code
+
+    # 2. Related lead/conversion explicit currency
+    if lead:
+        custom_fields = getattr(lead, 'custom_fields', {}) or {}
+        explicit_cur = custom_fields.get('currency') or getattr(lead, 'currency', None)
+        if explicit_cur and isinstance(explicit_cur, str):
+            code = explicit_cur.strip().upper()
+            if code in SUPPORTED_CURRENCIES:
+                return code
+
+    # 3. Client workspace currency
+    if lead and getattr(lead, 'client', None) and getattr(lead.client, 'currency', None):
+        code = lead.client.currency.strip().upper()
+        if code in SUPPORTED_CURRENCIES:
+            return code
+
+    # 4. Canonical fallback
+    return 'USD'
+
+
 def push_lead_event(lead) -> dict:
     """Fire a 'Lead' event to Meta for the given Lead. Returns a small status
     dict. Errors are logged; this never raises.
@@ -101,9 +142,9 @@ def push_lead_event(lead) -> dict:
         return {'sent': False, 'reason': 'no user identifiers available'}
 
     custom_data: dict = {}
-    if lead.conversion_value:
+    if lead.conversion_value is not None:
         custom_data['value']    = float(lead.conversion_value)
-        custom_data['currency'] = 'INR'
+        custom_data['currency'] = resolve_capi_currency(lead)
     if lead.source_campaign_name:
         custom_data['content_name'] = lead.source_campaign_name
 

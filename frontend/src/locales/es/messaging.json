@@ -291,7 +291,9 @@
       "conversations": "Conversaciones",
       "leads": "Prospectos",
       "spent": "Gasto",
-      "avg_cpl": "CPL promedio"
+      "avg_cpl": "CPL promedio",
+      "multiple_currencies": "Monedas múltiples",
+      "mixed_cpl_notice": "Monedas múltiples"
     },
     "loading": "Cargando…",
     "empty_title": "Aún no hay campañas CTWA",
@@ -313,6 +315,7 @@
       "name_placeholder": "ej. Captación Inmobiliaria Verano",
       "flow_label": "Flujo de bot",
       "flow_placeholder": "Selecciona un flujo activo…",
+      "currency_label": "Moneda",
       "ads_label": "Anuncios de Meta",
       "cancel_btn": "Cancelar",
       "create_btn": "Crear campaña",
@@ -350,7 +353,7 @@
       "ads_count_singular": "1 anuncio",
       "ads_count_plural": "{{count}} anuncios",
       "last_synced": "Última sincronización: {{date}}",
-      "synced_success": "Sincronizado desde Meta — invertido ₹{{amount}}",
+      "synced_success": "Sincronizado desde Meta — invertido {{amount}}",
       "sync_failed": "Falló la sincronización con Meta",
       "sync_error": "No se pudo sincronizar",
       "load_error": "No se pudo cargar la campaña",
@@ -393,7 +396,7 @@
       "clicks": "clics",
       "leads": "clientes potenciales",
       "cpl": "cpl",
-      "spent": "Invertido: ₹{{amount}}",
+      "spent": "Invertido: {{amount}}",
       "open": "Abrir"
     },
     "load_error": "No se pudieron cargar las campañas"

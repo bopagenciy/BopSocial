@@ -21,10 +21,11 @@ import {
 import { useTranslation } from 'react-i18next';
 
 import { ctwaAPI, botAPI, metaAdsAPI } from '../../services/api';
+import { formatCurrency, formatCompactCurrency } from '../../utils/formatters';
 import toast from '../../components/ui/toast';
 
 export default function CTWACampaignsPage() {
-  const { t } = useTranslation('messaging');
+  const { t, i18n } = useTranslation('messaging');
   const [camps,    setCamps]    = useState([]);
   const [loading,  setLoading]  = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
@@ -46,14 +47,33 @@ export default function CTWACampaignsPage() {
   }, []);
 
   const totals = useMemo(() => {
-    const total = { clicks: 0, conversations: 0, leads: 0, spent: 0 };
+    const total = { clicks: 0, conversations: 0, leads: 0 };
+    const spendByCurrency = {};
     camps.forEach((c) => {
       total.clicks += c.total_clicks || 0;
       total.conversations += c.total_conversations || 0;
       total.leads += c.total_leads || 0;
-      total.spent += Number(c.total_spent || 0);
+      const cur = (c.currency || 'USD').toUpperCase();
+      spendByCurrency[cur] = (spendByCurrency[cur] || 0) + Number(c.total_spent || 0);
     });
-    return total;
+
+    const currencies = Object.keys(spendByCurrency);
+    const isMixed = currencies.length > 1;
+    const singleCurrency = currencies.length === 1 ? currencies[0] : (currencies[0] || 'USD');
+    const singleSpent = isMixed ? null : (spendByCurrency[singleCurrency] || 0);
+    const singleAvgCpl = (!isMixed && total.leads && singleSpent) ? (singleSpent / total.leads) : null;
+
+    return {
+      clicks: total.clicks,
+      conversations: total.conversations,
+      leads: total.leads,
+      spendByCurrency,
+      currencies,
+      isMixed,
+      singleCurrency,
+      singleSpent,
+      singleAvgCpl,
+    };
   }, [camps]);
 
   return (
@@ -91,10 +111,41 @@ export default function CTWACampaignsPage() {
         <Stat label={t('ctwa.stats.clicks')}        n={totals.clicks.toLocaleString()} />
         <Stat label={t('ctwa.stats.conversations')} n={totals.conversations.toLocaleString()} />
         <Stat label={t('ctwa.stats.leads')}         n={totals.leads.toLocaleString()} color="var(--success)" />
-        <Stat label={t('ctwa.stats.spent')}         n={`₹${totals.spent.toLocaleString()}`} />
-        <Stat label={t('ctwa.stats.avg_cpl')}
-              n={totals.leads ? `₹${(totals.spent / totals.leads).toFixed(2)}` : '—'}
-              color="var(--brand-primary-hover)" />
+        <Stat
+          label={t('ctwa.stats.spent')}
+          n={
+            totals.isMixed ? (
+              <div data-testid="ctwa-mixed-currency-spent" style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {Object.entries(totals.spendByCurrency).map(([cur, amt]) => (
+                  <div key={cur} style={{ fontSize: 13, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+                    {formatCompactCurrency(amt, cur, i18n?.language)}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <span data-testid="ctwa-single-currency-spent">
+                {formatCompactCurrency(totals.singleSpent ?? 0, totals.singleCurrency, i18n?.language)}
+              </span>
+            )
+          }
+        />
+        <Stat
+          label={t('ctwa.stats.avg_cpl')}
+          n={
+            totals.isMixed ? (
+              <span data-testid="ctwa-mixed-cpl-notice" style={{ fontSize: 12, fontWeight: 600 }}>
+                {t('ctwa.stats.mixed_cpl_notice', 'Mixed currencies')}
+              </span>
+            ) : totals.singleAvgCpl ? (
+              <span data-testid="ctwa-single-cpl">
+                {formatCurrency(totals.singleAvgCpl, totals.singleCurrency, i18n?.language)}
+              </span>
+            ) : (
+              '—'
+            )
+          }
+          color={totals.isMixed ? 'var(--warning)' : 'var(--brand-primary-hover)'}
+        />
       </div>
 
       {loading ? (
@@ -115,7 +166,8 @@ export default function CTWACampaignsPage() {
 }
 
 function CampaignCard({ camp }) {
-  const { t } = useTranslation('messaging');
+  const { t, i18n } = useTranslation('messaging');
+  const currency = (camp.currency || 'USD').toUpperCase();
   const cpl = camp.total_leads && camp.total_spent
     ? Number(camp.total_spent) / camp.total_leads
     : null;
@@ -161,11 +213,14 @@ function CampaignCard({ camp }) {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
         <MiniStat n={camp.total_clicks} label={t('ctwa.card.clicks')} />
         <MiniStat n={camp.total_leads} label={t('ctwa.card.leads')} />
-        <MiniStat n={cpl ? `₹${cpl.toFixed(0)}` : '—'} label={t('ctwa.card.cpl')} />
+        <MiniStat
+          n={cpl != null ? formatCompactCurrency(cpl, currency, i18n?.language) : '—'}
+          label={t('ctwa.card.cpl')}
+        />
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>
-        <span>{t('ctwa.card.spent', { amount: Number(camp.total_spent || 0).toLocaleString() })}</span>
+        <span>{t('ctwa.card.spent', { amount: formatCompactCurrency(camp.total_spent || 0, currency, i18n?.language) })}</span>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, color: 'var(--brand-primary-hover)' }}>
           {t('ctwa.card.open')} <ChevronRight size={11} />
         </span>
@@ -326,15 +381,34 @@ function CreateModal({ onClose, onCreated }) {
   const [flowId, setFlowId] = useState('');
   const [adAccountId, setAdAccountId] = useState('');
   const [campaignId, setCampaignId] = useState('');
+  const [currency, setCurrency] = useState('USD');
   const [adIds, setAdIds] = useState('');
   const [flows, setFlows] = useState([]);
+  const [adAccounts, setAdAccounts] = useState([]);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     botAPI.list({ active: '1' })
       .then((r) => setFlows(r.data?.results || r.data || []))
       .catch(() => {});
+
+    metaAdsAPI.accounts()
+      .then((r) => {
+        if (r.data?.connected && Array.isArray(r.data.accounts)) {
+          setAdAccounts(r.data.accounts);
+        }
+      })
+      .catch(() => {});
   }, []);
+
+  function handleAccountSelect(e) {
+    const val = e.target.value;
+    setAdAccountId(val);
+    const found = adAccounts.find((a) => a.id === val);
+    if (found && found.currency) {
+      setCurrency(found.currency.toUpperCase());
+    }
+  }
 
   async function go() {
     if (!name.trim() || !flowId || !adAccountId.trim() || !campaignId.trim()) {
@@ -348,6 +422,7 @@ function CreateModal({ onClose, onCreated }) {
         flow: Number(flowId),
         ad_account_id: adAccountId.trim(),
         campaign_id: campaignId.trim(),
+        currency: (currency || 'USD').trim().toUpperCase(),
         ad_ids: ids,
         adset_ids: [],
         is_active: true,
@@ -380,8 +455,42 @@ function CreateModal({ onClose, onCreated }) {
           </div>
           <div>
             <label style={lbl}>{t('ctwa.create_modal.ad_account_label')}</label>
-            <input value={adAccountId} onChange={(e) => setAdAccountId(e.target.value)}
-                   placeholder={t('ctwa.create_modal.ad_account_placeholder')} style={inputStyle} />
+            {adAccounts.length > 0 ? (
+              <select
+                value={adAccountId}
+                onChange={handleAccountSelect}
+                style={inputStyle}
+                data-testid="ctwa-create-ad-account-select"
+              >
+                <option value="">{t('ctwa.pick_account', 'Pick an account…')}</option>
+                {adAccounts.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name || a.id} ({a.currency || 'USD'})
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                value={adAccountId}
+                onChange={(e) => setAdAccountId(e.target.value)}
+                placeholder={t('ctwa.create_modal.ad_account_placeholder')}
+                style={inputStyle}
+                data-testid="ctwa-create-ad-account-input"
+              />
+            )}
+          </div>
+          <div>
+            <label style={lbl}>{t('ctwa.create_modal.currency_label', 'Currency')}</label>
+            <select
+              value={currency}
+              onChange={(e) => setCurrency(e.target.value)}
+              style={inputStyle}
+              data-testid="ctwa-create-currency-select"
+            >
+              {['USD', 'COP', 'EUR', 'GBP', 'MXN', 'CAD', 'INR', 'BRL', 'ARS', 'CLP', 'PEN'].map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
           </div>
           <div>
             <label style={lbl}>{t('ctwa.create_modal.campaign_id_label')}</label>

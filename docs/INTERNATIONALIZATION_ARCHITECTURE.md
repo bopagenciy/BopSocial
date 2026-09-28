@@ -1389,3 +1389,135 @@ The canonical currency field supports 11 primary business currencies:
   - `frontend`: `bopsocial-frontend-local:bs-2.7b`
 - **Port Mapping**: `3010:80` (Frontend), `8000` (Backend API).
 
+---
+
+## 28. Phase BS-2.7C — CTWA & Meta Ads Multi-Currency Integration
+
+### 28.1 Scope & Mission
+Phase BS-2.7C implements canonical multi-currency authority and financial localization across Click-to-WhatsApp (CTWA) campaigns and Meta Ads integration:
+1. **Explicit Currency Authority on CTWA Campaigns**: Added ISO 4217 `currency` field directly on `CTWACampaign`, defaulting to `'USD'` and backfilling from `client.currency`.
+2. **Provider Currency Capture & API Transparency**: Captured actual Meta Ad Account currency during campaign creation and Meta Ads synchronization; exposed `currency` across CTWA list, detail, analytics, and per-ad breakdown endpoints.
+3. **Complete Visual Eradication of Rupee (`₹`)**: Eradicated all hardcoded `₹` symbols and Indian number formatting (`crore`/`lakh`) from CTWA pages and localization dictionaries.
+4. **Mixed-Currency Aggregation Protection**: Prevented mathematically invalid roll-ups of disparate currencies on the CTWA campaigns dashboard. When multiple currencies exist across campaigns, total spend is partitioned by currency code, and combined CPL calculation is suppressed in favor of a localized notice.
+5. **Meta CAPI Multi-Currency Correction**: Eliminated hardcoded `'INR'` currency payload in Meta Conversions API (`meta_capi.py`), introducing a deterministic 4-tier fallback hierarchy while guaranteeing zero forex conversion or numeric distortion of conversion values.
+
+### 28.2 Backend Currency Authority & Database Migration
+- **Shared Currency Constants** (`backend/social_stats/currencies.py`):
+  Centralized `CURRENCY_CHOICES`, `SUPPORTED_CURRENCIES`, and `DEFAULT_CURRENCY = 'USD'` in an isolated constants module to prevent circular imports between `models.py` and `bot_models.py`.
+- **Database Model Update** (`backend/social_stats/bot_models.py`):
+  Added `currency` field to `CTWACampaign`:
+  ```python
+  currency = models.CharField(
+      max_length=3,
+      choices=CURRENCY_CHOICES,
+      default=DEFAULT_CURRENCY,
+      help_text="Currency of campaign spend and ad account (ISO 4217 code)",
+  )
+  ```
+- **Non-Destructive Database Migration** (`backend/social_stats/migrations/0068_ctwacampaign_currency.py`):
+  Created and applied migration 0068:
+  - Adds `currency` column to `social_stats_ctwacampaign` with default `'USD'`.
+  - Backfills existing campaigns with the owning workspace client's `currency` (falling back to `'USD'` if unset).
+  - Applied cleanly in production container with zero data loss.
+- **Serializer & Validation** (`backend/social_stats/bot_serializers.py`):
+  `CTWACampaignSerializer` exposes `currency` with uppercase normalization and ISO code validation against supported currencies.
+- **Creation Flow & Fallback Hierarchy** (`backend/social_stats/bot_views.py`):
+  During `perform_create`, `CTWACampaignViewSet` resolves currency in hierarchical order:
+  1. Explicit `currency` passed in request data.
+  2. Ad account currency resolved from Meta Graph API (or synthetic mock).
+  3. Associated client's default workspace currency (`client.currency`).
+  4. Global fallback `'USD'`.
+- **Analytics & Breakdown Payloads** (`backend/social_stats/bot_views.py`, `backend/social_stats/meta_ads_views.py`):
+  - CTWA analytics payload exposes `totals.currency`.
+  - `sync-meta/` updates `campaign.currency` if Meta returns account-level currency.
+  - Per-ad insights breakdown exposes `currency` per ad item and in summary totals.
+- **Provider Value Preservation**:
+  All financial amounts (`total_spent`, `cpl`, `spend`, `cost_per_lead`) are stored and returned in raw numeric units without arbitrary currency conversions.
+
+### 28.3 Meta Conversions API (CAPI) Multi-Currency Resolution
+- **Elimination of Hardcoded Rupee**:
+  Removed hardcoded `custom_data['currency'] = 'INR'` in `backend/social_stats/meta_capi.py`.
+- **Deterministic 4-Tier Resolution Hierarchy**:
+  Implemented `resolve_capi_currency(lead)`:
+  1. `lead.campaign.currency` (CTWA Campaign currency authority).
+  2. `lead.currency` (lead-specific transaction currency, if set).
+  3. `lead.client.currency` (workspace default currency).
+  4. `'USD'` (canonical global fallback).
+- **Exact Numeric Preservation**:
+  Preserves `float(lead.conversion_value)` identically in `custom_data['value']` with zero forex multipliers or adjustments.
+
+### 28.4 Frontend & Internationalization Architecture
+- **Translation Catalogs (`messaging.json`)**:
+  - Removed all hardcoded `₹` symbols from `synced_success` and `card.spent` in both English (`frontend/src/locales/en/messaging.json`) and Spanish (`frontend/src/locales/es/messaging.json`).
+  - Added new keys for multi-currency presentation:
+    - `multiple_currencies`: `"Multiple currencies"` / `"Múltiples monedas"`
+    - `mixed_cpl_notice`: `"CPL cannot be aggregated across different currencies"` / `"El CPL no puede agregarse entre diferentes monedas"`
+    - `currency_label`: `"Currency"` / `"Moneda"`
+  - Verified 100% key symmetry and zero Rupee residual in CTWA keys.
+- **CTWA Campaigns Dashboard (`frontend/src/pages/ctwa/CTWACampaignsPage.jsx`)**:
+  - Integrated `formatCurrency` and `formatCompactCurrency` from `src/utils/formatters.js`.
+  - Replaced hardcoded currency strings with dynamic, locale-aware formatting.
+  - Added currency selector and ad account selection in `CreateModal`.
+- **CTWA Campaign Detail Page (`frontend/src/pages/ctwa/CTWACampaignDetailPage.jsx`)**:
+  - Formatted Total Spent and CPL KPI cards with `formatCurrency(val, currency, i18n?.language)`.
+  - Localized sync toast feedback to render with campaign's currency.
+  - Formatted per-ad spend and CPL breakdown table columns according to each ad's explicit currency.
+
+### 28.5 Mixed-Currency Aggregation Protection
+- **Mathematical Safety Rule**:
+  Adding disparate currency quantities (e.g., $100 USD + €100 EUR + ₹10,000 INR) without real-time exchange rates produces mathematically invalid totals.
+- **Grouped Total Spend**:
+  When all active campaigns share a single currency, a single compact aggregate is displayed (e.g., `$2,200.00`). When multiple distinct currencies are present:
+  - Spend KPI displays a stacked breakdown of subtotals per currency (e.g., `$1,400.00 USD`, `€800.00 EUR`, `R$ 2.400,00 BRL`).
+  - Overall CPL card displays the localized banner `"Multiple currencies"` with the tooltip `"CPL cannot be aggregated across different currencies"`, completely suppressing the nonsensical sum.
+  - Individual campaign cards and detail views retain their exact, unmixed metrics.
+
+### 28.6 Automated Test Coverage & Verification
+- **Backend Tests** (`backend/social_stats/tests/test_ctwa_meta_multicurrency.py`):
+  15 automated test cases verifying:
+  1. Default campaign currency is `'USD'`.
+  2. Migration 0068 backfill from `client.currency`.
+  3. Campaign serializer normalization and choice validation.
+  4. Campaign creation currency hierarchy.
+  5. Ad account currency extraction.
+  6. Campaign analytics payload currency transparency.
+  7. Per-ad insights currency inclusion.
+  8. Meta CAPI currency resolution from campaign.
+  9. Meta CAPI fallback to client currency.
+  10. Meta CAPI ultimate fallback to USD.
+  11. Meta CAPI conversion value preservation without alteration.
+  12. Meta CAPI absence of hardcoded 'INR'.
+  13. Tenant isolation in CTWA multi-currency queries.
+  14. Re-sync preserving existing currency when provider does not specify one.
+  15. Zero real Meta mutations performed (synthetic mocks only).
+  - **Result: 15 passed, 0 failed in 2.55s**.
+- **Backend Regression Suite**:
+  - `test_workspace_currency_foundation.py`, `test_language_preferences.py`, `test_backend_email_notification_i18n.py`: **32 passed, 0 failed**.
+- **Frontend Dedicated Test Suite** (`frontend/src/pages/ctwa/__tests__/CTWAMultiCurrency.test.jsx`):
+  7 automated test cases verifying:
+  1. USD campaign spend and CPL formatting.
+  2. COP campaign spend without Rupee residuals.
+  3. EUR campaign and per-ad breakdown with Euro notation.
+  4. Separate totals display and CPL suppression on mixed currencies.
+  5. Individual campaign metrics preservation in mixed environments.
+  6. UI language switch (EN <-> ES) preservation of campaign currencies.
+  7. Catalog parity and complete absence of hardcoded Rupee in CTWA keys.
+  - **Result: 7 passed, 7 total (100%)**.
+- **Full Frontend Regression Suite**:
+  - **29 test suites passed, 29 total**.
+  - **240 tests passed, 240 total** (100% pass rate).
+
+### 28.7 Build & Deployment State
+- **Production Build**: `npm run build` executed cleanly with zero errors.
+- **Docker Compose Configuration** (`docker-compose.local.yml`):
+  - `backend`: `bopsocial-backend-local:bs-2.7c`
+  - `worker`: `bopsocial-backend-local:bs-2.7c`
+  - `beat`: `bopsocial-backend-local:bs-2.7c`
+  - `frontend`: `bopsocial-frontend-local:bs-2.7c`
+- **Live Health Status**:
+  - `agencyos-backend-1`: Up (healthy)
+  - `agencyos-frontend-1`: Up (healthy, HTTP 200 OK)
+  - `agencyos-worker-1`: Up
+  - `agencyos-beat-1`: Up
+  - Backend services health API: 100% operational (`curl.exe http://localhost:8000/api/health/services/`).
+

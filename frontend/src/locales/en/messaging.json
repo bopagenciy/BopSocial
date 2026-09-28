@@ -291,7 +291,9 @@
       "conversations": "Conversations",
       "leads": "Leads",
       "spent": "Spent",
-      "avg_cpl": "Avg CPL"
+      "avg_cpl": "Avg CPL",
+      "multiple_currencies": "Multiple currencies",
+      "mixed_cpl_notice": "Mixed currencies"
     },
     "loading": "Loading…",
     "empty_title": "No CTWA campaigns yet",
@@ -313,6 +315,7 @@
       "name_placeholder": "e.g. Summer Real Estate Lead Gen",
       "flow_label": "Bot Flow",
       "flow_placeholder": "Select an active flow…",
+      "currency_label": "Currency",
       "ads_label": "Meta Ads",
       "cancel_btn": "Cancel",
       "create_btn": "Create Campaign",
@@ -350,7 +353,7 @@
       "ads_count_singular": "1 ad",
       "ads_count_plural": "{{count}} ads",
       "last_synced": "Last synced: {{date}}",
-      "synced_success": "Synced from Meta — spent ₹{{amount}}",
+      "synced_success": "Synced from Meta — spent {{amount}}",
       "sync_failed": "Meta sync failed",
       "sync_error": "Could not sync",
       "load_error": "Could not load campaign",
@@ -393,7 +396,7 @@
       "clicks": "clicks",
       "leads": "leads",
       "cpl": "cpl",
-      "spent": "Spent: ₹{{amount}}",
+      "spent": "Spent: {{amount}}",
       "open": "Open"
     },
     "load_error": "Could not load campaigns"

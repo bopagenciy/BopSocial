@@ -12,6 +12,7 @@ from django.db import transaction
 from django.contrib.auth.models import User
 from django.utils import timezone
 from datetime import timedelta
+from .currencies import CURRENCY_CHOICES
 from .fields import EncryptedTextField
 
 PLATFORM_CHOICES = [
@@ -106,19 +107,7 @@ class Client(models.Model):
     )
 
     # Canonical workspace/tenant default currency (ISO 4217).
-    CURRENCY_CHOICES = [
-        ('USD', 'US Dollar (USD)'),
-        ('COP', 'Colombian Peso (COP)'),
-        ('EUR', 'Euro (EUR)'),
-        ('GBP', 'British Pound (GBP)'),
-        ('MXN', 'Mexican Peso (MXN)'),
-        ('CAD', 'Canadian Dollar (CAD)'),
-        ('INR', 'Indian Rupee (INR)'),
-        ('BRL', 'Brazilian Real (BRL)'),
-        ('ARS', 'Argentine Peso (ARS)'),
-        ('CLP', 'Chilean Peso (CLP)'),
-        ('PEN', 'Peruvian Sol (PEN)'),
-    ]
+    CURRENCY_CHOICES = CURRENCY_CHOICES
     currency = models.CharField(
         max_length=3,
         choices=CURRENCY_CHOICES,

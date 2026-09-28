@@ -27,10 +27,11 @@ import {
 import { useTranslation } from 'react-i18next';
 
 import { ctwaAPI } from '../../services/api';
+import { formatCurrency } from '../../utils/formatters';
 import toast from '../../components/ui/toast';
 
 export default function CTWACampaignDetailPage() {
-  const { t } = useTranslation('messaging');
+  const { t, i18n } = useTranslation('messaging');
   const { id } = useParams();
   const [camp,    setCamp]    = useState(null);
   const [data,    setData]    = useState(null);
@@ -57,12 +58,14 @@ export default function CTWACampaignDetailPage() {
       .finally(() => setAdBusy(false));
   }
 
+  const currency = (camp?.currency || data?.totals?.currency || 'USD').toUpperCase();
+
   async function syncMeta() {
     setSyncing(true);
     try {
       const r = await ctwaAPI.syncMeta(id);
       if (r.data?.ok) {
-        toast.success(t('ctwa.detail.synced_success', { amount: (r.data.total_spent || 0).toLocaleString() }));
+        toast.success(t('ctwa.detail.synced_success', { amount: formatCurrency(r.data.total_spent || 0, currency, i18n?.language) }));
       } else {
         toast.error(r.data?.error || t('ctwa.detail.sync_failed'));
       }
@@ -140,9 +143,9 @@ export default function CTWACampaignDetailPage() {
         <KPI label={t('ctwa.stats.clicks')}        n={data.totals.clicks.toLocaleString()} />
         <KPI label={t('ctwa.stats.conversations')} n={data.totals.conversations.toLocaleString()} color="var(--brand-primary)" />
         <KPI label={t('ctwa.stats.leads')}         n={data.totals.leads.toLocaleString()}  color="var(--success)" />
-        <KPI label={t('ctwa.stats.spent')}         n={`₹${Number(data.totals.spent || 0).toLocaleString()}`} />
+        <KPI label={t('ctwa.stats.spent')}         n={formatCurrency(data.totals.spent || 0, currency, i18n?.language)} />
         <KPI label={t('ctwa.detail.cpl')}
-             n={data.totals.cpl != null ? `₹${data.totals.cpl}` : '—'}
+             n={data.totals.cpl != null ? formatCurrency(data.totals.cpl, currency, i18n?.language) : '—'}
              color={data.totals.cpl != null && data.totals.cpl < 200 ? 'var(--success)' : 'var(--warning)'} />
       </div>
 
@@ -235,10 +238,10 @@ export default function CTWACampaignDetailPage() {
                       {a.ctr ? `${a.ctr.toFixed(2)}%` : '—'}
                     </td>
                     <td style={{ ...td, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                      {a.cpc ? `₹${a.cpc.toFixed(2)}` : '—'}
+                      {a.cpc ? formatCurrency(a.cpc, a.currency || currency, i18n?.language) : '—'}
                     </td>
                     <td style={{ ...td, textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
-                      ₹{a.spend.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                      {formatCurrency(a.spend || 0, a.currency || currency, i18n?.language)}
                     </td>
                   </tr>
                 ))}
