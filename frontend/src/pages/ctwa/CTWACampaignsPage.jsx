@@ -18,11 +18,13 @@ import {
   Megaphone, Plus, RefreshCw, ExternalLink, Sparkles, ChevronRight,
   CheckCircle2, AlertTriangle,
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 import { ctwaAPI, botAPI, metaAdsAPI } from '../../services/api';
 import toast from '../../components/ui/toast';
 
 export default function CTWACampaignsPage() {
+  const { t } = useTranslation('messaging');
   const [camps,    setCamps]    = useState([]);
   const [loading,  setLoading]  = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
@@ -32,10 +34,10 @@ export default function CTWACampaignsPage() {
     setLoading(true);
     ctwaAPI.list({})
       .then((r) => setCamps(r.data?.results || r.data || []))
-      .catch(() => toast.error('Could not load campaigns'))
+      .catch(() => toast.error(t('ctwa.load_error')))
       .finally(() => setLoading(false));
   }
-  useEffect(load, []);
+  useEffect(load, []); // eslint-disable-line
 
   useEffect(() => {
     metaAdsAPI.health()
@@ -44,14 +46,14 @@ export default function CTWACampaignsPage() {
   }, []);
 
   const totals = useMemo(() => {
-    const t = { clicks: 0, conversations: 0, leads: 0, spent: 0 };
+    const total = { clicks: 0, conversations: 0, leads: 0, spent: 0 };
     camps.forEach((c) => {
-      t.clicks += c.total_clicks || 0;
-      t.conversations += c.total_conversations || 0;
-      t.leads += c.total_leads || 0;
-      t.spent += Number(c.total_spent || 0);
+      total.clicks += c.total_clicks || 0;
+      total.conversations += c.total_conversations || 0;
+      total.leads += c.total_leads || 0;
+      total.spent += Number(c.total_spent || 0);
     });
-    return t;
+    return total;
   }, [camps]);
 
   return (
@@ -67,17 +69,17 @@ export default function CTWACampaignsPage() {
         </span>
         <div style={{ flex: 1 }}>
           <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
-            CTWA campaigns
+            {t('ctwa.title')}
           </h1>
           <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-secondary)' }}>
-            Track each Meta ad → flow → leads. Spend is pulled daily from Meta Insights.
+            {t('ctwa.subtitle')}
           </p>
         </div>
-        <button type="button" onClick={load} aria-label="Refresh" style={iconBtn}>
+        <button type="button" onClick={load} aria-label={t('ctwa.refresh')} style={iconBtn}>
           <RefreshCw size={13} />
         </button>
         <button type="button" onClick={() => setCreateOpen(true)} style={btnPrimary}>
-          <Plus size={13} /> New campaign
+          <Plus size={13} /> {t('ctwa.new_campaign')}
         </button>
       </header>
 
@@ -86,17 +88,17 @@ export default function CTWACampaignsPage() {
 
       {/* Roll-up stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
-        <Stat label="Clicks"        n={totals.clicks.toLocaleString()} />
-        <Stat label="Conversations" n={totals.conversations.toLocaleString()} />
-        <Stat label="Leads"         n={totals.leads.toLocaleString()} color="var(--success)" />
-        <Stat label="Spent"         n={`₹${totals.spent.toLocaleString()}`} />
-        <Stat label="Avg CPL"
+        <Stat label={t('ctwa.stats.clicks')}        n={totals.clicks.toLocaleString()} />
+        <Stat label={t('ctwa.stats.conversations')} n={totals.conversations.toLocaleString()} />
+        <Stat label={t('ctwa.stats.leads')}         n={totals.leads.toLocaleString()} color="var(--success)" />
+        <Stat label={t('ctwa.stats.spent')}         n={`₹${totals.spent.toLocaleString()}`} />
+        <Stat label={t('ctwa.stats.avg_cpl')}
               n={totals.leads ? `₹${(totals.spent / totals.leads).toFixed(2)}` : '—'}
               color="var(--brand-primary-hover)" />
       </div>
 
       {loading ? (
-        <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-tertiary)' }}>Loading…</div>
+        <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-tertiary)' }}>{t('ctwa.loading')}</div>
       ) : camps.length === 0 ? (
         <Empty onCreate={() => setCreateOpen(true)} />
       ) : (
@@ -113,9 +115,14 @@ export default function CTWACampaignsPage() {
 }
 
 function CampaignCard({ camp }) {
+  const { t } = useTranslation('messaging');
   const cpl = camp.total_leads && camp.total_spent
     ? Number(camp.total_spent) / camp.total_leads
     : null;
+
+  const adsCountText = (camp.ad_ids || []).length === 1
+    ? t('ctwa.card.ad_singular')
+    : t('ctwa.card.ad_plural', { count: (camp.ad_ids || []).length });
 
   return (
     <Link to={`/admin/ctwa/${camp.id}`} style={{
@@ -139,7 +146,7 @@ function CampaignCard({ camp }) {
             {camp.name}
           </div>
           <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
-            {camp.flow_name} · {(camp.ad_ids || []).length} ad{(camp.ad_ids || []).length === 1 ? '' : 's'}
+            {camp.flow_name} · {adsCountText}
           </div>
         </div>
         <span style={{
@@ -148,19 +155,19 @@ function CampaignCard({ camp }) {
           color: camp.is_active ? 'var(--success)' : 'var(--text-tertiary)',
           background: camp.is_active ? 'var(--success-bg)' : 'var(--surface-sunken)',
           border: '1px solid currentColor', borderRadius: 'var(--radius-pill)',
-        }}>{camp.is_active ? 'Active' : 'Paused'}</span>
+        }}>{camp.is_active ? t('ctwa.card.active') : t('ctwa.card.paused')}</span>
       </header>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
-        <MiniStat n={camp.total_clicks} label="clicks" />
-        <MiniStat n={camp.total_leads} label="leads" />
-        <MiniStat n={cpl ? `₹${cpl.toFixed(0)}` : '—'} label="cpl" />
+        <MiniStat n={camp.total_clicks} label={t('ctwa.card.clicks')} />
+        <MiniStat n={camp.total_leads} label={t('ctwa.card.leads')} />
+        <MiniStat n={cpl ? `₹${cpl.toFixed(0)}` : '—'} label={t('ctwa.card.cpl')} />
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>
-        <span>Spent: ₹{Number(camp.total_spent || 0).toLocaleString()}</span>
+        <span>{t('ctwa.card.spent', { amount: Number(camp.total_spent || 0).toLocaleString() })}</span>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, color: 'var(--brand-primary-hover)' }}>
-          Open <ChevronRight size={11} />
+          {t('ctwa.card.open')} <ChevronRight size={11} />
         </span>
       </div>
     </Link>
@@ -168,15 +175,16 @@ function CampaignCard({ camp }) {
 }
 
 function MetaHealthBanner({ health }) {
+  const { t } = useTranslation('messaging');
   // 4 states: not connected, expired, expiring soon (<7d), connected ok
   if (!health.connected) {
     return (
       <Banner
         tone="warning"
         icon={<AlertTriangle size={14} />}
-        title="Meta Ads not connected"
-        message={health.error || 'Connect a Facebook account to sync ad spend and route CTWA leads.'}
-        action={{ label: 'Connect Facebook', href: '/admin/connections' }}
+        title={t('ctwa.health_banner.not_connected_title')}
+        message={health.error || t('ctwa.health_banner.not_connected_msg')}
+        action={{ label: t('ctwa.health_banner.connect_fb'), href: '/admin/connections' }}
       />
     );
   }
@@ -185,9 +193,9 @@ function MetaHealthBanner({ health }) {
       <Banner
         tone="danger"
         icon={<AlertTriangle size={14} />}
-        title="Meta token expired"
-        message="Reconnect Facebook so spend keeps syncing."
-        action={{ label: 'Reconnect', href: '/admin/connections' }}
+        title={t('ctwa.health_banner.token_expired_title')}
+        message={t('ctwa.health_banner.token_expired_msg')}
+        action={{ label: t('ctwa.health_banner.reconnect'), href: '/admin/connections' }}
       />
     );
   }
@@ -196,9 +204,9 @@ function MetaHealthBanner({ health }) {
       <Banner
         tone="warning"
         icon={<AlertTriangle size={14} />}
-        title={`Meta token expires in ${health.days_left} day${health.days_left === 1 ? '' : 's'}`}
-        message="Reconnect now to avoid sync interruptions."
-        action={{ label: 'Reconnect', href: '/admin/connections' }}
+        title={t('ctwa.health_banner.token_expiring_title', { days: health.days_left })}
+        message={t('ctwa.health_banner.token_expiring_msg')}
+        action={{ label: t('ctwa.health_banner.reconnect'), href: '/admin/connections' }}
       />
     );
   }
@@ -207,9 +215,9 @@ function MetaHealthBanner({ health }) {
       <Banner
         tone="info"
         icon={<Sparkles size={14} />}
-        title="Add a Meta Pixel for better ad optimization"
-        message="When configured, lead captures fire Conversions API events back to Meta — ads optimize on real conversions, not just clicks."
-        action={{ label: 'Add Pixel ID', href: '/admin/settings/integrations' }}
+        title={t('ctwa.health_banner.pixel_title')}
+        message={t('ctwa.health_banner.pixel_msg')}
+        action={{ label: t('ctwa.health_banner.add_pixel_btn'), href: '/admin/settings/integrations' }}
       />
     );
   }
@@ -217,8 +225,8 @@ function MetaHealthBanner({ health }) {
     <Banner
       tone="success"
       icon={<CheckCircle2 size={14} />}
-      title={`Connected as ${health.fb_user?.name || 'Meta user'}`}
-      message="Ad spend syncs daily. Lead captures push to your Meta Pixel."
+      title={t('ctwa.health_banner.connected_title', { name: health.fb_user?.name || 'Meta user' })}
+      message={t('ctwa.health_banner.connected_msg')}
       compact
     />
   );
@@ -282,6 +290,7 @@ function Stat({ label, n, color }) {
 }
 
 function Empty({ onCreate }) {
+  const { t } = useTranslation('messaging');
   return (
     <div style={{
       padding: 36, textAlign: 'center',
@@ -291,19 +300,20 @@ function Empty({ onCreate }) {
     }}>
       <Megaphone size={32} strokeWidth={1.5} style={{ opacity: 0.4 }} />
       <h2 style={{ margin: '12px 0 6px', fontSize: 17, fontWeight: 700, color: 'var(--text-primary)' }}>
-        No CTWA campaigns yet
+        {t('ctwa.empty_title')}
       </h2>
       <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--text-secondary)' }}>
-        Link a bot flow to one or more Meta ads to start tracking CPL.
+        {t('ctwa.empty_desc')}
       </p>
       <button type="button" onClick={onCreate} style={btnPrimary}>
-        <Plus size={13} /> New campaign
+        <Plus size={13} /> {t('ctwa.create_first')}
       </button>
     </div>
   );
 }
 
 function CreateModal({ onClose, onCreated }) {
+  const { t } = useTranslation('messaging');
   const [name, setName] = useState('');
   const [flowId, setFlowId] = useState('');
   const [adAccountId, setAdAccountId] = useState('');
@@ -320,7 +330,7 @@ function CreateModal({ onClose, onCreated }) {
 
   async function go() {
     if (!name.trim() || !flowId || !adAccountId.trim() || !campaignId.trim()) {
-      return toast.error('Fill in name, flow, ad account, and campaign');
+      return toast.error(t('ctwa.create_modal.validation_error'));
     }
     setBusy(true);
     try {
@@ -334,10 +344,10 @@ function CreateModal({ onClose, onCreated }) {
         adset_ids: [],
         is_active: true,
       });
-      toast.success('Campaign created');
+      toast.success(t('ctwa.create_modal.created_success'));
       onCreated(r.data);
     } catch (e) {
-      toast.error(e?.response?.data?.error || 'Could not create campaign');
+      toast.error(e?.response?.data?.error || t('ctwa.create_modal.create_error'));
     } finally { setBusy(false); }
   }
 
@@ -345,44 +355,44 @@ function CreateModal({ onClose, onCreated }) {
     <div style={backdrop} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div style={modal}>
         <header style={{ padding: '14px 18px' }}>
-          <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>New CTWA campaign</h2>
+          <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>{t('ctwa.create_modal.title')}</h2>
         </header>
         <div style={{ padding: '0 18px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div>
-            <label style={lbl}>Name</label>
+            <label style={lbl}>{t('ctwa.create_modal.name_label')}</label>
             <input value={name} onChange={(e) => setName(e.target.value)}
-                   placeholder="Real-estate launch · Diwali" style={inputStyle} />
+                   placeholder={t('ctwa.create_modal.name_placeholder')} style={inputStyle} />
           </div>
           <div>
-            <label style={lbl}>Bot flow</label>
+            <label style={lbl}>{t('ctwa.create_modal.flow_label')}</label>
             <select value={flowId} onChange={(e) => setFlowId(e.target.value)} style={inputStyle}>
-              <option value="">Pick an active flow…</option>
+              <option value="">{t('ctwa.create_modal.flow_placeholder')}</option>
               {flows.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
             </select>
           </div>
           <div>
-            <label style={lbl}>Ad account ID</label>
+            <label style={lbl}>{t('ctwa.create_modal.ad_account_label')}</label>
             <input value={adAccountId} onChange={(e) => setAdAccountId(e.target.value)}
-                   placeholder="act_999999999" style={inputStyle} />
+                   placeholder={t('ctwa.create_modal.ad_account_placeholder')} style={inputStyle} />
           </div>
           <div>
-            <label style={lbl}>Meta campaign ID</label>
+            <label style={lbl}>{t('ctwa.create_modal.campaign_id_label')}</label>
             <input value={campaignId} onChange={(e) => setCampaignId(e.target.value)}
-                   placeholder="120209xxxxxxx" style={inputStyle} />
+                   placeholder={t('ctwa.create_modal.campaign_id_placeholder')} style={inputStyle} />
           </div>
           <div>
-            <label style={lbl}>Ad IDs (comma-separated)</label>
+            <label style={lbl}>{t('ctwa.create_modal.ad_ids_label')}</label>
             <input value={adIds} onChange={(e) => setAdIds(e.target.value)}
-                   placeholder="120209…, 120209…" style={inputStyle} />
+                   placeholder={t('ctwa.create_modal.ad_ids_placeholder')} style={inputStyle} />
             <div style={{ marginTop: 4, fontSize: 11, color: 'var(--text-tertiary)' }}>
-              Find these in Meta Ads Manager — only CTWA ads (with WhatsApp destination) trigger this campaign.
+              {t('ctwa.create_modal.ad_ids_help')}
             </div>
           </div>
         </div>
         <footer style={{ padding: '12px 18px', borderTop: '1px solid var(--border-subtle)', display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <button type="button" onClick={onClose} style={btnGhost}>Cancel</button>
+          <button type="button" onClick={onClose} style={btnGhost}>{t('ctwa.create_modal.cancel_btn')}</button>
           <button type="button" onClick={go} disabled={busy} style={btnPrimary}>
-            <Sparkles size={13} /> {busy ? 'Creating…' : 'Create'}
+            <Sparkles size={13} /> {busy ? t('ctwa.create_modal.creating') : t('ctwa.create_modal.create_btn')}
           </button>
         </footer>
       </div>

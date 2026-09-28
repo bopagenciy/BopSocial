@@ -15,22 +15,27 @@
  * is_active flag to flip its UI.
  */
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { X, Plus, Sparkles, ArrowRight, AlertTriangle } from 'lucide-react';
 
 import { botAPI } from '../../services/api';
 import toast from '../ui/toast';
 import MetaAdsPicker from './MetaAdsPicker';
 
-const TRIGGER_TYPES = [
-  { value: 'ctwa_ad',       label: 'Click-to-WhatsApp ad',  desc: 'Triggered when someone clicks a Meta CTWA ad.' },
-  { value: 'keyword',       label: 'Keyword in message',     desc: 'Triggered when an inbound message matches a keyword.' },
-  { value: 'first_message', label: 'First message ever',     desc: 'Runs once for any new contact.' },
-  { value: 'referral_link', label: 'WhatsApp link referral', desc: 'Triggered when wa.me link includes a known referral code.' },
-  { value: 'button_reply',  label: 'Button / list reply',    desc: 'Triggered by a specific interactive-message reply id.' },
-  { value: 'manual',        label: 'Manual',                 desc: 'No automatic trigger. Use the test endpoint or jump_to_flow.' },
-];
+function getTriggerTypes(t) {
+  return [
+    { value: 'ctwa_ad',       label: t('bot_editor.trigger_modal.ctwa_ad', 'Click-to-WhatsApp ad'),  desc: t('bot_editor.trigger_modal.ctwa_ad_desc', 'Triggered when someone clicks a Meta CTWA ad.') },
+    { value: 'keyword',       label: t('bot_editor.trigger_modal.keyword', 'Keyword in message'),     desc: t('bot_editor.trigger_modal.keyword_desc', 'Triggered when an inbound message matches a keyword.') },
+    { value: 'first_message', label: t('bot_editor.trigger_modal.first_message', 'First message ever'),     desc: t('bot_editor.trigger_modal.first_message_desc', 'Runs once for any new contact.') },
+    { value: 'referral_link', label: t('bot_editor.trigger_modal.referral_link', 'WhatsApp link referral'), desc: t('bot_editor.trigger_modal.referral_link_desc', 'Triggered when wa.me link includes a known referral code.') },
+    { value: 'button_reply',  label: t('bot_editor.trigger_modal.button_reply', 'Button / list reply'),    desc: t('bot_editor.trigger_modal.button_reply_desc', 'Triggered by a specific interactive-message reply id.') },
+    { value: 'manual',        label: t('bot_editor.trigger_modal.manual', 'Manual'),                 desc: t('bot_editor.trigger_modal.manual_desc', 'No automatic trigger. Use the test endpoint or jump_to_flow.') },
+  ];
+}
 
 export default function TriggerConfigModal({ flow, onClose, onPublished }) {
+  const { t } = useTranslation('messaging');
+  const triggerTypes = getTriggerTypes(t);
   const [triggerType, setTriggerType]   = useState(flow.trigger_type || 'ctwa_ad');
   const [config,      setConfig]        = useState(flow.trigger_config || {});
   const [busy,        setBusy]          = useState(false);
@@ -66,7 +71,7 @@ export default function TriggerConfigModal({ flow, onClose, onPublished }) {
         <header style={headerStyle}>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--brand-primary-hover)' }}>
-              Publish flow
+              {t('bot_editor.trigger_modal.title', 'Publish flow')}
             </div>
             <h2 style={{ margin: '2px 0 0', fontSize: 16, fontWeight: 700 }}>
               {flow.name}
@@ -78,10 +83,10 @@ export default function TriggerConfigModal({ flow, onClose, onPublished }) {
         <div style={{ padding: '0 20px 18px', flex: 1, overflowY: 'auto' }}>
           {/* Trigger type picker */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 8, marginBottom: 18 }}>
-            {TRIGGER_TYPES.map((t) => {
-              const selected = triggerType === t.value;
+            {triggerTypes.map((tItem) => {
+              const selected = triggerType === tItem.value;
               return (
-                <button key={t.value} type="button" onClick={() => setTriggerType(t.value)}
+                <button key={tItem.value} type="button" onClick={() => setTriggerType(tItem.value)}
                         style={{
                           padding: 12, textAlign: 'left',
                           background: selected ? 'var(--brand-primary-soft)' : 'var(--surface-card)',
@@ -90,10 +95,10 @@ export default function TriggerConfigModal({ flow, onClose, onPublished }) {
                           cursor: 'pointer', fontFamily: 'inherit',
                         }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
-                    {t.label}
+                    {tItem.label}
                   </div>
                   <div style={{ marginTop: 2, fontSize: 11, color: 'var(--text-tertiary)', lineHeight: 1.4 }}>
-                    {t.desc}
+                    {tItem.desc}
                   </div>
                 </button>
               );
@@ -106,22 +111,22 @@ export default function TriggerConfigModal({ flow, onClose, onPublished }) {
           )}
 
           {triggerType === 'keyword' && (
-            <KeywordConfig value={config} onChange={setConfig} />
+            <KeywordConfig value={config} onChange={setConfig} t={t} />
           )}
 
           {triggerType === 'referral_link' && (
-            <ReferralLinkConfig value={config} onChange={setConfig} />
+            <ReferralLinkConfig value={config} onChange={setConfig} t={t} />
           )}
 
           {triggerType === 'button_reply' && (
-            <ButtonReplyConfig value={config} onChange={setConfig} />
+            <ButtonReplyConfig value={config} onChange={setConfig} t={t} />
           )}
 
           {(triggerType === 'first_message' || triggerType === 'manual') && (
             <Hint>
-              No additional config needed. {triggerType === 'first_message'
-                ? 'This flow will run for every new contact who has never had a conversation with you before.'
-                : 'You\'ll need to use the test endpoint or jump_to_flow to enter this flow.'}
+              {triggerType === 'first_message'
+                ? t('bot_editor.trigger_modal.hint_first_message', 'No additional config needed. This flow will run for every new contact who has never had a conversation with you before.')
+                : t('bot_editor.trigger_modal.hint_manual', 'No additional config needed. You\'ll need to use the test endpoint or jump_to_flow to enter this flow.')}
             </Hint>
           )}
 
@@ -129,7 +134,7 @@ export default function TriggerConfigModal({ flow, onClose, onPublished }) {
             <div style={errBox}>
               <AlertTriangle size={16} />
               <div>
-                <strong>Validation failed</strong>
+                <strong>{t('bot_editor.validation.failed', 'Validation failed')}</strong>
                 <ul style={{ margin: '4px 0 0', paddingLeft: 18, fontSize: 12 }}>
                   {validation.issues.map((iss, i) => <li key={i}>{iss}</li>)}
                 </ul>
@@ -141,12 +146,12 @@ export default function TriggerConfigModal({ flow, onClose, onPublished }) {
         <footer style={footerStyle}>
           <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
             <Sparkles size={11} style={{ verticalAlign: '-1px', marginRight: 4 }} />
-            We'll re-validate before going live.
+            {t('bot_editor.trigger_modal.revalidate_hint', "We'll re-validate before going live.")}
           </span>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button type="button" onClick={onClose} style={btnGhost}>Cancel</button>
+            <button type="button" onClick={onClose} style={btnGhost}>{t('bot_editor.trigger_modal.cancel', 'Cancel')}</button>
             <button type="button" onClick={go} disabled={busy} style={btnPrimary}>
-              {busy ? 'Publishing…' : <>Publish <ArrowRight size={13} /></>}
+              {busy ? t('bot_editor.trigger_modal.publishing', 'Publishing…') : <>{t('bot_editor.trigger_modal.publish_btn', 'Publish')} <ArrowRight size={13} /></>}
             </button>
           </div>
         </footer>
@@ -158,7 +163,7 @@ export default function TriggerConfigModal({ flow, onClose, onPublished }) {
 // ─────────────────────────────────────────────────────────
 // Per-trigger config widgets
 // ─────────────────────────────────────────────────────────
-function KeywordConfig({ value, onChange }) {
+function KeywordConfig({ value, onChange, t }) {
   const keywords = value?.keywords || [];
   const [draft, setDraft] = useState('');
 
@@ -174,7 +179,7 @@ function KeywordConfig({ value, onChange }) {
 
   return (
     <>
-      <Field label="Keywords">
+      <Field label={t('bot_editor.trigger_modal.keywords_label', 'Keywords')}>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 6 }}>
           {keywords.map((k, i) => (
             <span key={i} style={kwChip}>
@@ -191,33 +196,33 @@ function KeywordConfig({ value, onChange }) {
                  placeholder="hi, hello, interested"
                  style={inputStyle} />
           <button type="button" onClick={add} style={addBtn}>
-            <Plus size={12} /> Add
+            <Plus size={12} /> {t('bot_editor.trigger_modal.add', 'Add')}
           </button>
         </div>
       </Field>
-      <Field label="Match type">
+      <Field label={t('bot_editor.trigger_modal.match_type_label', 'Match type')}>
         <select value={value?.match_type || 'contains'}
                 onChange={(e) => onChange({ ...value, match_type: e.target.value })}
                 style={inputStyle}>
-          <option value="exact">Exact match (whole message equals one of the keywords)</option>
-          <option value="contains">Contains (any keyword appears anywhere)</option>
-          <option value="regex">Regex (each keyword treated as a pattern)</option>
+          <option value="exact">{t('bot_editor.trigger_modal.match_exact', 'Exact match (whole message equals one of the keywords)')}</option>
+          <option value="contains">{t('bot_editor.trigger_modal.match_contains', 'Contains (any keyword appears anywhere)')}</option>
+          <option value="regex">{t('bot_editor.trigger_modal.match_regex', 'Regex (each keyword treated as a pattern)')}</option>
         </select>
       </Field>
       <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-secondary)' }}>
         <input type="checkbox" checked={!!value?.case_sensitive}
                onChange={(e) => onChange({ ...value, case_sensitive: e.target.checked })} />
-        Case-sensitive
+        {t('bot_editor.trigger_modal.case_sensitive', 'Case-sensitive')}
       </label>
     </>
   );
 }
 
-function ReferralLinkConfig({ value, onChange }) {
+function ReferralLinkConfig({ value, onChange, t }) {
   const codes = value?.referral_codes || [];
   const [draft, setDraft] = useState('');
   return (
-    <Field label="Referral codes">
+    <Field label={t('bot_editor.trigger_modal.referral_codes_label', 'Referral codes')}>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 6 }}>
         {codes.map((c, i) => (
           <span key={i} style={kwChip}>
@@ -243,17 +248,17 @@ function ReferralLinkConfig({ value, onChange }) {
                style={inputStyle} />
       </div>
       <p style={{ marginTop: 6, fontSize: 12, color: 'var(--text-tertiary)' }}>
-        Use these codes in your <code>wa.me/&lt;number&gt;?text=…</code> tracking URLs. The bot triggers when an inbound message carries the referral code.
+        {t('bot_editor.trigger_modal.referral_codes_desc', 'Use these codes in your wa.me/<number>?text=… tracking URLs. The bot triggers when an inbound message carries the referral code.')}
       </p>
     </Field>
   );
 }
 
-function ButtonReplyConfig({ value, onChange }) {
+function ButtonReplyConfig({ value, onChange, t }) {
   const payloads = value?.button_payloads || [];
   const [draft, setDraft] = useState('');
   return (
-    <Field label="Button / list reply ids that trigger this flow">
+    <Field label={t('bot_editor.trigger_modal.button_reply_label', 'Button / list reply ids that trigger this flow')}>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 6 }}>
         {payloads.map((p, i) => (
           <span key={i} style={kwChip}>

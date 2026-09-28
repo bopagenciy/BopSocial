@@ -38,6 +38,8 @@ import enAi from '../locales/en/ai.json';
 import esAi from '../locales/es/ai.json';
 import enAgencyPortal from '../locales/en/agency_portal.json';
 import esAgencyPortal from '../locales/es/agency_portal.json';
+import enMessaging from '../locales/en/messaging.json';
+import esMessaging from '../locales/es/messaging.json';
 
 export const LANGUAGE_STORAGE_KEY = 'bop_social_language';
 export const SUPPORTED_LANGUAGES = [
@@ -89,6 +91,7 @@ const resources = {
     onboarding: enOnboarding,
     ai: enAi,
     agency_portal: enAgencyPortal,
+    messaging: enMessaging,
   },
   es: {
     common: esCommon,
@@ -107,6 +110,7 @@ const resources = {
     onboarding: esOnboarding,
     ai: esAi,
     agency_portal: esAgencyPortal,
+    messaging: esMessaging,
   },
 };
 
@@ -117,7 +121,7 @@ i18n
     lng: getInitialLanguage(),
     fallbackLng: 'en',
     supportedLngs: ['en', 'es'],
-    ns: ['common', 'navigation', 'auth', 'marketing', 'app', 'dashboard', 'settings', 'analytics', 'reports', 'content', 'engagement', 'connections', 'management', 'onboarding', 'ai', 'agency_portal'],
+    ns: ['common', 'navigation', 'auth', 'marketing', 'app', 'dashboard', 'settings', 'analytics', 'reports', 'content', 'engagement', 'connections', 'management', 'onboarding', 'ai', 'agency_portal', 'messaging'],
     defaultNS: 'common',
     interpolation: {
       escapeValue: false, // React already escapes values safely

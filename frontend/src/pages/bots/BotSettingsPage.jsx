@@ -22,11 +22,13 @@ import { useEffect, useState } from 'react';
 import {
   ShieldCheck, ShieldOff, Save, AlertTriangle, Sparkles,
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 import { botSettingsAPI } from '../../services/api';
 import toast from '../../components/ui/toast';
 
 export default function BotSettingsPage() {
+  const { t } = useTranslation('messaging');
   const [loading, setLoading] = useState(true);
   const [saving,  setSaving]  = useState(false);
   const [s, setS] = useState({
@@ -40,9 +42,9 @@ export default function BotSettingsPage() {
   useEffect(() => {
     botSettingsAPI.get()
       .then((r) => setS(r.data))
-      .catch(() => toast.error('Could not load bot settings'))
+      .catch(() => toast.error(t('bot_settings.load_error')))
       .finally(() => setLoading(false));
-  }, []);
+  }, [t]);
 
   function patch(p) {
     setS((prev) => ({ ...prev, ...p }));
@@ -55,14 +57,14 @@ export default function BotSettingsPage() {
       const r = await botSettingsAPI.update(s);
       setS(r.data);
       setDirty(false);
-      toast.success('Saved');
+      toast.success(t('bot_settings.saved'));
     } catch (e) {
-      toast.error(e?.response?.data?.error || 'Could not save');
+      toast.error(e?.response?.data?.error || t('bot_settings.save_error'));
     } finally { setSaving(false); }
   }
 
   if (loading) {
-    return <div style={{ padding: 32, color: 'var(--text-tertiary)' }}>Loading…</div>;
+    return <div style={{ padding: 32, color: 'var(--text-tertiary)' }}>{t('bot_settings.loading')}</div>;
   }
 
   return (
@@ -78,10 +80,10 @@ export default function BotSettingsPage() {
         </span>
         <div>
           <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
-            Bot safety
+            {t('bot_settings.title')}
           </h1>
           <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-secondary)' }}>
-            Workspace-wide guardrails. Changes take effect immediately.
+            {t('bot_settings.subtitle')}
           </p>
         </div>
       </header>
@@ -101,12 +103,12 @@ export default function BotSettingsPage() {
           </span>
           <div style={{ flex: 1 }}>
             <h2 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>
-              {s.bot_enabled ? 'Bot is running' : 'Bot is paused'}
+              {s.bot_enabled ? t('bot_settings.bot_running') : t('bot_settings.bot_paused')}
             </h2>
             <p style={{ margin: '3px 0 0', fontSize: 12, color: 'var(--text-secondary)' }}>
               {s.bot_enabled
-                ? 'Inbound messages route to your active flows.'
-                : 'All inbound messages skip the engine and go to your inbox.'}
+                ? t('bot_settings.running_desc')
+                : t('bot_settings.paused_desc')}
             </p>
           </div>
           <Toggle on={s.bot_enabled} onChange={(v) => patch({ bot_enabled: v })} />
@@ -115,11 +117,11 @@ export default function BotSettingsPage() {
 
       {/* Limits */}
       <section style={card}>
-        <h2 style={sectionTitle}>Anti-abuse limits</h2>
+        <h2 style={sectionTitle}>{t('bot_settings.anti_abuse_title')}</h2>
 
         <Row
-          label="Messages per minute, per contact"
-          help="Drops bursts where a single number floods the bot. Counted in a 60-second sliding window."
+          label={t('bot_settings.rate_limit_label')}
+          help={t('bot_settings.rate_limit_help')}
         >
           <NumberInput value={s.bot_max_msgs_per_minute}
                        min={1} max={600}
@@ -127,8 +129,8 @@ export default function BotSettingsPage() {
         </Row>
 
         <Row
-          label="Messages per conversation"
-          help="Hard cap that breaks runaway loops. Conversations are auto-ended when they cross this number of inbound messages."
+          label={t('bot_settings.max_conv_label')}
+          help={t('bot_settings.max_conv_help')}
         >
           <NumberInput value={s.bot_max_msgs_per_conv}
                        min={10} max={10000} step={10}
@@ -136,8 +138,8 @@ export default function BotSettingsPage() {
         </Row>
 
         <Row
-          label="Spam threshold"
-          help="Each inbound message earns a heuristic score (URLs, repeated chars, length). At this total, the conversation is auto-ended and flagged as spam."
+          label={t('bot_settings.spam_threshold_label')}
+          help={t('bot_settings.spam_threshold_help')}
         >
           <NumberInput value={s.bot_spam_threshold}
                        min={1} max={50}
@@ -157,10 +159,7 @@ export default function BotSettingsPage() {
       }}>
         <Sparkles size={14} style={{ flexShrink: 0, marginTop: 1 }} />
         <div>
-          <strong>How safety stacks:</strong> rate limit drops bursts before
-          the engine runs. Per-conversation cap catches long-running loops.
-          Spam threshold targets clearly malicious content. All three fail
-          open — if anything misbehaves, the bot keeps working.
+          <strong>{t('bot_settings.safety_strong')}</strong> {t('bot_settings.safety_desc')}
         </div>
       </div>
 
@@ -173,7 +172,7 @@ export default function BotSettingsPage() {
             color: 'var(--warning)', background: 'var(--warning-bg)',
             border: '1px solid var(--warning)', borderRadius: 'var(--radius-pill)',
           }}>
-            <AlertTriangle size={11} /> Unsaved changes
+            <AlertTriangle size={11} /> {t('bot_settings.unsaved_changes')}
           </span>
         )}
         <button type="button" onClick={save} disabled={!dirty || saving} style={{
@@ -181,7 +180,7 @@ export default function BotSettingsPage() {
           opacity: !dirty || saving ? 0.6 : 1,
           cursor: !dirty || saving ? 'not-allowed' : 'pointer',
         }}>
-          <Save size={13} /> {saving ? 'Saving…' : 'Save changes'}
+          <Save size={13} /> {saving ? t('bot_settings.saving') : t('bot_settings.save')}
         </button>
       </div>
     </div>

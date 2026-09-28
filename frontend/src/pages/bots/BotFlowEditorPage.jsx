@@ -17,6 +17,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import ReactFlow, {
   ReactFlowProvider, Background, Controls, MiniMap,
   addEdge, applyEdgeChanges, applyNodeChanges, useReactFlow,
@@ -36,7 +37,7 @@ import CanvasNode from '../../components/bot/CanvasNode';
 import NodeInspector from '../../components/bot/NodeInspector';
 import TestModeDrawer from '../../components/bot/TestModeDrawer';
 import TriggerConfigModal from '../../components/bot/TriggerConfigModal';
-import { NODE_CATALOG, CATEGORIES, getNodeMeta } from '../../components/bot/nodeCatalog';
+import { NODE_CATALOG, CATEGORIES, getNodeMeta, getNodeLabel, getCategoryLabel } from '../../components/bot/nodeCatalog';
 
 // ─────────────────────────────────────────────────────────
 // Auto-layout via Dagre
@@ -71,6 +72,7 @@ export default function BotFlowEditorPage() {
 }
 
 function Editor() {
+  const { t } = useTranslation('messaging');
   const { id } = useParams();
   const navigate = useNavigate();
   const reactFlow = useReactFlow();
@@ -308,7 +310,7 @@ function Editor() {
         display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px',
         background: 'var(--surface-card)', borderBottom: '1px solid var(--border-subtle)',
       }}>
-        <button type="button" onClick={() => navigate('/admin/bot-flows')} aria-label="Back" style={iconBtn}>
+        <button type="button" onClick={() => navigate('/admin/bot-flows')} aria-label={t('bot_editor.back', 'Back')} style={iconBtn}>
           <ArrowLeft size={14} />
         </button>
         {flow && (
@@ -328,48 +330,48 @@ function Editor() {
         )}
 
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <button type="button" onClick={undo} aria-label="Undo (Cmd+Z)"
+          <button type="button" onClick={undo} aria-label={t('bot_editor.undo', 'Undo (Cmd+Z)')}
                   disabled={historyRef.current.past.length === 0}
-                  style={iconBtn} title="Undo (Cmd/Ctrl+Z)">
+                  style={iconBtn} title={t('bot_editor.undo', 'Undo (Cmd/Ctrl+Z)')}>
             <Undo2 size={14} />
           </button>
-          <button type="button" onClick={redo} aria-label="Redo (Cmd+Shift+Z)"
+          <button type="button" onClick={redo} aria-label={t('bot_editor.redo', 'Redo (Cmd+Shift+Z)')}
                   disabled={historyRef.current.future.length === 0}
-                  style={iconBtn} title="Redo (Cmd/Ctrl+Shift+Z)">
+                  style={iconBtn} title={t('bot_editor.redo', 'Redo (Cmd/Ctrl+Shift+Z)')}>
             <Redo2 size={14} />
           </button>
-          <button type="button" onClick={applyAutoLayout} aria-label="Auto-layout"
-                  style={iconBtn} title="Auto-layout (Dagre)">
+          <button type="button" onClick={applyAutoLayout} aria-label={t('bot_editor.auto_layout', 'Auto-layout')}
+                  style={iconBtn} title={t('bot_editor.auto_layout', 'Auto-layout (Dagre)')}>
             <LayoutGrid size={14} />
           </button>
           <span style={{ fontSize: 12, color: dirty ? 'var(--warning)' : 'var(--text-tertiary)' }}>
-            {saving ? 'Saving…' :
-             dirty ? 'Unsaved' :
-             savedAt ? `Saved ${savedAt.toLocaleTimeString()}` : ''}
+            {saving ? t('bot_editor.saving', 'Saving…') :
+             dirty ? t('bot_editor.unsaved', 'Unsaved') :
+             savedAt ? t('bot_editor.saved', { time: savedAt.toLocaleTimeString(), defaultValue: `Saved ${savedAt.toLocaleTimeString()}` }) : ''}
           </span>
           <button type="button" onClick={save} disabled={!dirty || saving} style={btnGhost}>
-            <Save size={13} /> Save
+            <Save size={13} /> {t('bot_editor.save', 'Save')}
           </button>
-          <button type="button" onClick={validateNow} style={btnGhost}>Validate</button>
+          <button type="button" onClick={validateNow} style={btnGhost}>{t('bot_editor.validate', 'Validate')}</button>
           <button type="button" onClick={() => setTestOpen(true)} style={btnGhost}>
-            <FlaskConical size={13} /> Test
+            <FlaskConical size={13} /> {t('bot_editor.test', 'Test')}
           </button>
           {flow?.is_active && (
-            <button type="button" onClick={unpublish} style={btnGhost}>Unpublish</button>
+            <button type="button" onClick={unpublish} style={btnGhost}>{t('bot_editor.unpublish', 'Unpublish')}</button>
           )}
           <button type="button" onClick={openPublishModal} style={btnPrimary} disabled={saving}>
-            <PlayCircle size={13} /> {flow?.is_active ? 'Re-publish' : 'Publish'}
+            <PlayCircle size={13} /> {flow?.is_active ? t('bot_editor.republish', 'Re-publish') : t('bot_editor.publish', 'Publish')}
           </button>
         </div>
       </header>
 
       {validation && (
-        <ValidationBanner result={validation} onClose={() => setValidation(null)} />
+        <ValidationBanner result={validation} onClose={() => setValidation(null)} t={t} />
       )}
 
       {/* 3-column body */}
       <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
-        <Palette />
+        <Palette t={t} />
 
         <div ref={wrapperRef} onDragOver={onDragOver} onDrop={onDrop}
              style={{ flex: 1, position: 'relative' }}>
@@ -430,7 +432,7 @@ function Editor() {
 // ─────────────────────────────────────────────────────────
 // Palette
 // ─────────────────────────────────────────────────────────
-function Palette() {
+function Palette({ t }) {
   function onDragStart(e, type) {
     e.dataTransfer.setData('application/x-bot-node', type);
     e.dataTransfer.effectAllowed = 'move';
@@ -442,7 +444,7 @@ function Palette() {
       overflowY: 'auto', padding: 12,
     }}>
       <h3 style={{ margin: '0 0 12px', fontSize: 12, color: 'var(--text-tertiary)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-        Drag onto canvas
+        {t('bot_editor.palette_title', 'Drag onto canvas')}
       </h3>
       {CATEGORIES.map((cat) => (
         <div key={cat} style={{ marginBottom: 12 }}>
@@ -450,12 +452,13 @@ function Palette() {
             fontSize: 10, fontWeight: 600, color: 'var(--text-tertiary)',
             letterSpacing: '0.06em', textTransform: 'uppercase',
             padding: '2px 6px', marginBottom: 4,
-          }}>{cat}</div>
+          }}>{getCategoryLabel(cat, t)}</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             {Object.entries(NODE_CATALOG)
               .filter(([, m]) => m.category === cat)
               .map(([type, m]) => {
                 const Icon = m.icon;
+                const label = getNodeLabel(type, t);
                 return (
                   <div
                     key={type}
@@ -469,7 +472,7 @@ function Palette() {
                       borderRadius: 'var(--radius-sm)',
                       fontSize: 12, color: 'var(--text-primary)',
                     }}
-                    title={`Drag to add ${m.label}`}
+                    title={`Drag to add ${label}`}
                   >
                     <span style={{
                       width: 22, height: 22, borderRadius: 'var(--radius-sm)',
@@ -478,7 +481,7 @@ function Palette() {
                     }}>
                       <Icon size={12} strokeWidth={2.2} />
                     </span>
-                    {m.label}
+                    {label}
                   </div>
                 );
               })}
@@ -489,7 +492,7 @@ function Palette() {
   );
 }
 
-function ValidationBanner({ result, onClose }) {
+function ValidationBanner({ result, onClose, t }) {
   return (
     <div style={{
       padding: '10px 14px',
@@ -501,7 +504,7 @@ function ValidationBanner({ result, onClose }) {
     }}>
       {result.ok ? <CheckCircle2 size={14} /> : <AlertTriangle size={14} />}
       {result.ok
-        ? `Flow looks good — ${result.node_count} nodes, ${result.edge_count} edges.`
+        ? t('bot_editor.validation.success', { nodes: result.node_count, edges: result.edge_count, defaultValue: `Flow looks good — ${result.node_count} nodes, ${result.edge_count} edges.` })
         : <>Issues: <strong>{result.issues?.[0]}</strong>{result.issues?.length > 1 && ` (+${result.issues.length - 1} more)`}</>
       }
       <button type="button" onClick={onClose} style={{

@@ -17,6 +17,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
 } from 'recharts';
@@ -29,6 +30,7 @@ import { getNodeMeta } from '../../components/bot/nodeCatalog';
 import toast from '../../components/ui/toast';
 
 export default function BotAnalyticsPage() {
+  const { t } = useTranslation('messaging');
   const { id } = useParams();
   const navigate = useNavigate();
   const [params] = useSearchParams();
@@ -103,7 +105,7 @@ export default function BotAnalyticsPage() {
         display: 'inline-flex', alignItems: 'center', gap: 4,
         fontSize: 13, color: 'var(--text-secondary)', textDecoration: 'none', alignSelf: 'flex-start',
       }}>
-        <ArrowLeft size={14} /> All flows
+        <ArrowLeft size={14} /> {t('bot_flows.analytics.back_all', 'All flows')}
       </Link>
 
       {/* Header + flow picker */}
@@ -118,10 +120,10 @@ export default function BotAnalyticsPage() {
         </span>
         <div style={{ flex: 1 }}>
           <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
-            Flow analytics
+            {t('bot_flows.analytics.title', 'Flow analytics')}
           </h1>
           <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-secondary)' }}>
-            How users move through your flow — and where they drop off.
+            {t('bot_flows.analytics.subtitle', 'How users move through your flow — and where they drop off.')}
           </p>
         </div>
         <select value={id || ''} onChange={(e) => navigate(`/admin/bot-flows/${e.target.value}/analytics`)}
@@ -131,31 +133,31 @@ export default function BotAnalyticsPage() {
                   border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)',
                   fontSize: 13, fontFamily: 'inherit',
                 }}>
-          {flows.map((f) => <option key={f.id} value={f.id}>{f.name} {f.is_active ? '· active' : ''}</option>)}
+          {flows.map((f) => <option key={f.id} value={f.id}>{f.name} {f.is_active ? `· ${t('statuses.active', 'active')}` : ''}</option>)}
         </select>
       </header>
 
       {loading ? (
-        <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-tertiary)' }}>Loading…</div>
+        <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-tertiary)' }}>{t('campaigns.loading', 'Loading…')}</div>
       ) : !data || !flow ? (
         <Empty />
       ) : (
         <>
           {/* KPI cards */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
-            <KPI label="Triggered"      n={data.totals.triggered} color="var(--brand-primary)" />
-            <KPI label="Completed"      n={data.totals.completed} color="var(--success)" />
-            <KPI label="Abandoned"      n={data.totals.abandoned} color="var(--text-tertiary)" />
-            <KPI label="Handed off"     n={data.totals.handed_off} color="var(--info)" />
-            <KPI label="Leads captured" n={data.totals.leads_captured} color="var(--brand-primary-hover)" />
-            <KPI label="Completion rate" n={`${data.completion_rate}%`}    color={data.completion_rate >= 50 ? 'var(--success)' : 'var(--warning)'} />
-            <KPI label="Lead-capture rate" n={`${data.lead_capture_rate}%`} color={data.lead_capture_rate >= 30 ? 'var(--success)' : 'var(--warning)'} />
+            <KPI label={t('bot_flows.analytics.kpi_triggered', 'Triggered')}      n={data.totals.triggered} color="var(--brand-primary)" />
+            <KPI label={t('bot_flows.analytics.kpi_completed', 'Completed')}      n={data.totals.completed} color="var(--success)" />
+            <KPI label={t('conversations.stats.abandoned', 'Abandoned')}      n={data.totals.abandoned} color="var(--text-tertiary)" />
+            <KPI label={t('bot_flows.analytics.kpi_handed_off', 'Handed off')}     n={data.totals.handed_off} color="var(--info)" />
+            <KPI label={t('bot_flows.analytics.kpi_leads', 'Leads captured')} n={data.totals.leads_captured} color="var(--brand-primary-hover)" />
+            <KPI label={t('bot_flows.analytics.kpi_completion_rate', 'Completion rate')} n={`${data.completion_rate}%`}    color={data.completion_rate >= 50 ? 'var(--success)' : 'var(--warning)'} />
+            <KPI label={t('leads.title', 'Leads')} n={`${data.lead_capture_rate}%`} color={data.lead_capture_rate >= 30 ? 'var(--success)' : 'var(--warning)'} />
           </div>
 
           {/* Funnel chart */}
-          <Section title="Success funnel" subtitle="How many completed conversations passed through each node">
+          <Section title={t('bot_flows.analytics.funnel_title', 'Success funnel')} subtitle={t('bot_flows.analytics.funnel_visits', 'How many completed conversations passed through each node')}>
             {funnelRows.length === 0 ? (
-              <Empty subtle>No completed conversations yet.</Empty>
+              <Empty subtle>{t('bot_flows.analytics.empty_data', 'No completed conversations yet.')}</Empty>
             ) : (
               <div style={{ height: Math.max(220, funnelRows.length * 32) }}>
                 <ResponsiveContainer width="100%" height="100%">
@@ -184,16 +186,16 @@ export default function BotAnalyticsPage() {
           </Section>
 
           {/* Drop-off table */}
-          <Section title="Top drop-off nodes" subtitle="Where conversations stalled or failed">
+          <Section title={t('bot_flows.analytics.dropoff_title', 'Top drop-off nodes')} subtitle={t('bot_flows.analytics.dropoff_subtitle', 'Where conversations stalled or failed')}>
             {dropOffRows.length === 0 ? (
-              <Empty subtle>No drop-offs yet — every conversation completed successfully.</Empty>
+              <Empty subtle>{t('bot_flows.analytics.empty_data', 'No drop-offs yet — every conversation completed successfully.')}</Empty>
             ) : (
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                    <th style={th}>Node</th>
-                    <th style={th}>Type</th>
-                    <th style={{ ...th, textAlign: 'right' }}>Conversations stalled</th>
+                    <th style={th}>{t('bot_flows.analytics.th_node', 'Node')}</th>
+                    <th style={th}>{t('bot_flows.analytics.th_type', 'Type')}</th>
+                    <th style={{ ...th, textAlign: 'right' }}>{t('bot_flows.analytics.th_dropoffs', 'Conversations stalled')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -230,7 +232,7 @@ export default function BotAnalyticsPage() {
               border: 'none', borderRadius: 'var(--radius-md)',
               fontSize: 13, fontWeight: 600, fontFamily: 'inherit', textDecoration: 'none',
             }}>
-              Open in editor <ChevronRight size={13} />
+              {t('bot_flows.card.edit', 'Open in editor')} <ChevronRight size={13} />
             </Link>
           </div>
         </>

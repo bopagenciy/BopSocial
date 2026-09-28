@@ -22,6 +22,7 @@ const COLORS = {
 const WEBHOOK_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:8000/api'}/whatsapp/webhook/`;
 
 export default function WhatsAppSettingsPage() {
+  const { t } = useTranslation('messaging');
   const { account, loading, refetch } = useWhatsAppAccount();
 
   const [form, setForm] = useState({
@@ -90,7 +91,8 @@ export default function WhatsAppSettingsPage() {
 
   async function disconnect() {
     if (!account) return;
-    if (!window.confirm('Disconnect WhatsApp? Your contacts and templates will remain, but no messages can be sent or received until reconnected.')) return;
+    const msg = t('settings.disconnect_confirm', 'Disconnect WhatsApp? Your contacts and templates will remain, but no messages can be sent or received until reconnected.');
+    if (!window.confirm(msg)) return;
     await whatsappAPI.account.delete(account.id);
     await refetch();
     setForm({ waba_id: '', phone_number_id: '', phone_number: '', display_name: '', api_key: '' });
@@ -99,8 +101,8 @@ export default function WhatsAppSettingsPage() {
   return (
     <div style={{ paddingBottom: 32 }}>
       <PageHeader
-        title="WhatsApp Settings"
-        subtitle="Connect your Pinbot Partners API account"
+        title={t('settings.title', 'WhatsApp Settings')}
+        subtitle={t('settings.subtitle', 'Pinbot Cloud API connection credentials and webhook endpoint')}
       />
 
       <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 720 }}>
@@ -108,26 +110,26 @@ export default function WhatsAppSettingsPage() {
         {/* Account form */}
         <section style={card}>
           <header style={cardHeader}>
-            <h3 style={cardTitle}>Pinbot WABA</h3>
+            <h3 style={cardTitle}>{t('settings.account_details', 'Account Details')}</h3>
             {account && (
               <span style={{ ...pill, background: '#dcfce7', color: '#15803d' }}>
-                <CheckCircle2 size={12} /> Connected
+                <CheckCircle2 size={12} /> {t('settings.connected_badge', 'Connected')}
               </span>
             )}
           </header>
 
           <div style={cardBody}>
-            <Field label="WABA ID" value={form.waba_id} onChange={onChange('waba_id')} placeholder="e.g. 123456789012345" />
-            <Field label="Phone Number ID" value={form.phone_number_id} onChange={onChange('phone_number_id')} placeholder="e.g. 987654321098765" />
-            <Field label="Phone Number" value={form.phone_number} onChange={onChange('phone_number')} placeholder="+91XXXXXXXXXX" />
-            <Field label="Display Name" value={form.display_name} onChange={onChange('display_name')} placeholder="My Brand" />
+            <Field label={t('settings.waba_id', 'WABA ID')} value={form.waba_id} onChange={onChange('waba_id')} placeholder="e.g. 123456789012345" />
+            <Field label={t('settings.phone_number_id', 'Phone Number ID')} value={form.phone_number_id} onChange={onChange('phone_number_id')} placeholder="e.g. 987654321098765" />
+            <Field label={t('settings.phone_number', 'Phone Number')} value={form.phone_number} onChange={onChange('phone_number')} placeholder="+91XXXXXXXXXX" />
+            <Field label={t('settings.display_name', 'Display Name')} value={form.display_name} onChange={onChange('display_name')} placeholder="My Brand" />
             <Field
-              label={account ? 'API Key (leave blank to keep current)' : 'API Key'}
+              label={t('settings.api_key', 'API Key')}
               value={form.api_key}
               onChange={onChange('api_key')}
-              placeholder="Pinbot apikey"
+              placeholder={account ? t('settings.api_key_placeholder', 'Leave blank to keep current') : 'Pinbot apikey'}
               type="password"
-              helper={account ? 'For security, the existing api_key is never shown.' : null}
+              helper={account ? t('settings.api_key_placeholder', 'For security, the existing api_key is never shown.') : null}
             />
 
             {error && (
@@ -139,16 +141,16 @@ export default function WhatsAppSettingsPage() {
             <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
               <button onClick={save} disabled={saving} style={btnPrimary}>
                 {saving ? <Loader2 size={14} className="spin" /> : null}
-                {saving ? 'Saving…' : (account ? 'Update' : 'Connect')}
+                {saving ? t('settings.saving', 'Saving…') : t('settings.save_btn', 'Save Settings')}
               </button>
               {account && (
                 <>
                   <button onClick={test} disabled={testing} style={btnSecondary}>
                     {testing ? <Loader2 size={14} className="spin" /> : null}
-                    {testing ? 'Testing…' : 'Test Connection'}
+                    {testing ? t('settings.testing', 'Testing…') : t('settings.test_connection', 'Test Connection')}
                   </button>
                   <button onClick={disconnect} style={{ ...btnSecondary, color: COLORS.danger, borderColor: '#fecaca' }}>
-                    <Trash2 size={14} /> Disconnect
+                    <Trash2 size={14} /> {t('settings.disconnect', 'Disconnect')}
                   </button>
                 </>
               )}
@@ -162,7 +164,7 @@ export default function WhatsAppSettingsPage() {
                 borderColor: testResult.ok ? '#bbf7d0' : '#fecaca',
               }}>
                 {testResult.ok ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
-                <span>{testResult.ok ? 'Connection OK' : `Failed: ${testResult.detail}`}</span>
+                <span>{testResult.ok ? t('settings.test_success', 'Connection test successful!') : t('settings.test_failed', { detail: testResult.detail, defaultValue: `Failed: ${testResult.detail}` })}</span>
               </div>
             )}
           </div>
@@ -171,12 +173,11 @@ export default function WhatsAppSettingsPage() {
         {/* Webhook URL */}
         <section style={card}>
           <header style={cardHeader}>
-            <h3 style={cardTitle}>Webhook URL</h3>
+            <h3 style={cardTitle}>{t('settings.webhook_title', 'Webhook Configuration')}</h3>
           </header>
           <div style={cardBody}>
             <p style={{ margin: '0 0 12px', color: COLORS.muted, fontSize: 13 }}>
-              Configure this URL in your Pinbot dashboard. Set the secret header
-              <code style={code}>X-Webhook-Secret</code> to your <code style={code}>WHATSAPP_WEBHOOK_SECRET</code>.
+              {t('settings.webhook_desc', 'Configure this URL in your Pinbot or Meta developer portal to receive inbound messages.')}
             </p>
             <div style={{ display: 'flex', gap: 8 }}>
               <input
@@ -185,7 +186,7 @@ export default function WhatsAppSettingsPage() {
                 style={{ ...input, fontFamily: 'monospace', fontSize: 12 }}
               />
               <button onClick={copyWebhook} style={btnSecondary}>
-                <Copy size={14} /> {copied ? 'Copied' : 'Copy'}
+                <Copy size={14} /> {copied ? t('settings.copied', 'Copied') : t('settings.copy_webhook', 'Copy Webhook URL')}
               </button>
             </div>
           </div>
@@ -195,7 +196,7 @@ export default function WhatsAppSettingsPage() {
         {account && (
           <section style={card}>
             <header style={cardHeader}>
-              <h3 style={cardTitle}>Account status</h3>
+              <h3 style={cardTitle}>{t('settings.status_title', 'Connection Status')}</h3>
             </header>
             <div style={cardBody}>
               <KV label="Quality rating" value={account.quality_rating} />

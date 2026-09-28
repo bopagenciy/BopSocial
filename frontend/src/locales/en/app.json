@@ -51,7 +51,19 @@
     "agency": "Agency",
     "connections": "Connections",
     "activity": "Activity Log",
-    "notifications": "Notifications"
+    "notifications": "Notifications",
+    "campaigns": "Campaigns",
+    "templates": "Templates",
+    "contacts": "Contacts",
+    "lists": "Lists",
+    "account": "Account",
+    "bot_flows": "Bot Flows",
+    "conversations": "Conversations",
+    "handoff": "Handoff Queue",
+    "bot_settings": "Bot Settings",
+    "bot_templates": "Bot Templates",
+    "ctwa": "CTWA Campaigns",
+    "leads": "Leads"
   },
   "mobile_nav": {
     "home": "Home",

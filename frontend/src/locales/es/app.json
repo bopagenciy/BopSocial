@@ -51,7 +51,19 @@
     "agency": "Agencia",
     "connections": "Conexiones",
     "activity": "Registro de actividad",
-    "notifications": "Notificaciones"
+    "notifications": "Notificaciones",
+    "campaigns": "Campañas",
+    "templates": "Plantillas",
+    "contacts": "Contactos",
+    "lists": "Listas",
+    "account": "Cuenta",
+    "bot_flows": "Flujos de Bot",
+    "conversations": "Conversaciones",
+    "handoff": "Cola de Derivación",
+    "bot_settings": "Configuración de Bot",
+    "bot_templates": "Plantillas de Bot",
+    "ctwa": "Campañas CTWA",
+    "leads": "Prospectos"
   },
   "mobile_nav": {
     "home": "Inicio",

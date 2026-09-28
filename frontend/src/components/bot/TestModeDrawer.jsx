@@ -20,6 +20,7 @@
  *      tap "Restart" to fire a fresh run.
  */
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   X, PlayCircle, RefreshCw, StopCircle, Sparkles, User, Bot,
   ArrowDown,
@@ -32,6 +33,7 @@ const POLL_INTERVAL_MS = 1500;
 const ABANDON_AFTER_MS = 5 * 60 * 1000;  // stop polling after 5min idle
 
 export default function TestModeDrawer({ flow, onClose }) {
+  const { t } = useTranslation('messaging');
   const [phone, setPhone]           = useState(localStorage.getItem('bot_test_phone') || '');
   const [conv,  setConv]            = useState(null);
   const [steps, setSteps]           = useState([]);
@@ -121,7 +123,7 @@ export default function TestModeDrawer({ flow, onClose }) {
         </span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-            Test mode
+            {t('bot_editor.test_drawer.title', 'Test mode')}
           </div>
           <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {flow?.name || 'Flow'}
@@ -134,23 +136,23 @@ export default function TestModeDrawer({ flow, onClose }) {
 
       {/* Phone + start */}
       <div style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-subtle)' }}>
-        <label style={lbl}>Tester phone (E.164)</label>
+        <label style={lbl}>{t('bot_editor.test_drawer.phone_label', 'Tester phone (E.164)')}</label>
         <div style={{ display: 'flex', gap: 6 }}>
           <input value={phone} onChange={(e) => setPhone(e.target.value)}
-                 placeholder="+91 9876543210" style={inputStyle} />
+                 placeholder={t('bot_editor.test_drawer.phone_placeholder', '+91 9876543210')} style={inputStyle} />
           {!running ? (
             <button type="button" onClick={start} disabled={busy} style={btnPrimary}>
-              {busy ? '…' : <>{steps.length ? <><RefreshCw size={13} /> Restart</> : <><PlayCircle size={13} /> Run</>}</>}
+              {busy ? '…' : <>{steps.length ? <><RefreshCw size={13} /> {t('bot_editor.test_drawer.restart', 'Restart')}</> : <><PlayCircle size={13} /> {t('bot_editor.test_drawer.start', 'Run')}</>}</>}
             </button>
           ) : (
             <button type="button" onClick={stop} style={btnDanger}>
-              <StopCircle size={13} /> Stop
+              <StopCircle size={13} /> {t('bot_editor.test_drawer.stop', 'Stop')}
             </button>
           )}
         </div>
         {conv && (
           <div style={{ marginTop: 8, fontSize: 11, color: 'var(--text-tertiary)' }}>
-            Conversation #{conv.id} · status:{' '}
+            {t('bot_editor.test_drawer.conv_prefix', 'Conversation #')}{conv.id} {t('bot_editor.test_drawer.status_prefix', '· status:')}{' '}
             <strong style={{
               color: running ? 'var(--success)' :
                      conv.status === 'completed' ? 'var(--success)' :
@@ -164,12 +166,12 @@ export default function TestModeDrawer({ flow, onClose }) {
       {/* Audit trail */}
       <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: 14, background: 'var(--surface-sunken)' }}>
         {steps.length === 0 && !running && (
-          <Empty />
+          <Empty t={t} />
         )}
         {steps.map((s, i) => <StepRow key={s.id || i} step={s} />)}
         {running && (
           <div style={{ display: 'flex', gap: 6, padding: '8px 12px', color: 'var(--text-tertiary)', fontSize: 12 }}>
-            <Sparkles size={11} className="ai-loading-pulse" /> Bot is thinking…
+            <Sparkles size={11} className="ai-loading-pulse" /> {t('bot_editor.test_drawer.thinking', 'Bot is thinking…')}
             <style>{`@keyframes ai-loading-pulse{0%,100%{opacity:.6}50%{opacity:1}} .ai-loading-pulse{animation:ai-loading-pulse 1.4s ease-in-out infinite}`}</style>
           </div>
         )}
@@ -179,7 +181,7 @@ export default function TestModeDrawer({ flow, onClose }) {
       {conv?.variables && Object.keys(conv.variables).filter((k) => !k.startsWith('_')).length > 0 && (
         <div style={{ padding: '10px 14px', borderTop: '1px solid var(--border-subtle)', background: 'var(--surface-card)' }}>
           <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-tertiary)', marginBottom: 4 }}>
-            Variables collected
+            {t('bot_editor.test_drawer.vars_collected', 'Variables collected')}
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
             {Object.entries(conv.variables)
@@ -261,13 +263,13 @@ function stepText(s) {
   return '';
 }
 
-function Empty() {
+function Empty({ t }) {
   return (
     <div style={{ padding: 28, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>
       <ArrowDown size={20} style={{ opacity: 0.4, marginBottom: 8 }} />
-      <div>Enter a phone number above and click Run.</div>
+      <div>{t('bot_editor.test_drawer.empty_hint', 'Enter a phone number above and click Run.')}</div>
       <p style={{ margin: '8px 0 0', fontSize: 11 }}>
-        Use a real WhatsApp number you control — the bot will message it via your Pinbot account.
+        {t('bot_editor.test_drawer.empty_subhint', 'Use a real WhatsApp number you control — the bot will message it via your Pinbot account.')}
       </p>
     </div>
   );

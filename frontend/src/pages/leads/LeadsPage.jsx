@@ -23,25 +23,32 @@ import {
   Users2, Search, Filter, Layers, Table as TableIcon, Download, Upload,
   Sparkles, ChevronRight, Star, Trash2, RefreshCw, X,
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 import { leadAPI } from '../../services/api';
 import toast from '../../components/ui/toast';
 
-const STATUSES = [
-  { key: 'new',       label: 'New',       color: 'var(--brand-primary)' },
-  { key: 'contacted', label: 'Contacted', color: 'var(--info)' },
-  { key: 'qualified', label: 'Qualified', color: 'var(--warning)' },
-  { key: 'converted', label: 'Converted', color: 'var(--success)' },
-  { key: 'lost',      label: 'Lost',      color: 'var(--text-tertiary)' },
+const STATUS_KEYS = [
+  { key: 'new',       color: 'var(--brand-primary)' },
+  { key: 'contacted', color: 'var(--info)' },
+  { key: 'qualified', color: 'var(--warning)' },
+  { key: 'converted', color: 'var(--success)' },
+  { key: 'lost',      color: 'var(--text-tertiary)' },
 ];
 
 export default function LeadsPage() {
+  const { t } = useTranslation('messaging');
   const [leads,    setLeads]    = useState([]);
   const [loading,  setLoading]  = useState(true);
   const [view,     setView]     = useState(localStorage.getItem('leads_view') || 'table');
   const [filters,  setFilters]  = useState({ status: '', q: '', source_flow: '' });
   const [selected, setSelected] = useState(new Set());
   const [importOpen, setImportOpen] = useState(false);
+
+  const statuses = useMemo(() => STATUS_KEYS.map((s) => ({
+    ...s,
+    label: t(`leads.statuses.${s.key}`, s.key),
+  })), [t]);
 
   function load() {
     setLoading(true);
@@ -51,15 +58,15 @@ export default function LeadsPage() {
     if (filters.source_flow) params.source_flow = filters.source_flow;
     leadAPI.list(params)
       .then((r) => setLeads(r.data?.results || r.data || []))
-      .catch(() => toast.error('Could not load leads'))
+      .catch(() => toast.error(t('leads.load_error')))
       .finally(() => setLoading(false));
   }
   useEffect(load, [filters.status, filters.source_flow]); // eslint-disable-line
 
   // Search debounce
   useEffect(() => {
-    const t = setTimeout(load, 250);
-    return () => clearTimeout(t);
+    const timer = setTimeout(load, 250);
+    return () => clearTimeout(timer);
   }, [filters.q]); // eslint-disable-line
 
   function setView2(v) { setView(v); localStorage.setItem('leads_view', v); }
@@ -80,17 +87,17 @@ export default function LeadsPage() {
     if (selected.size === 0) return;
     try {
       await Promise.all(Array.from(selected).map((id) => leadAPI.status(id, { status })));
-      toast.success(`Updated ${selected.size} leads`);
+      toast.success(t('leads.bulk.updated_success', { count: selected.size }));
       setSelected(new Set());
       load();
-    } catch { toast.error('Could not update leads'); }
+    } catch { toast.error(t('leads.bulk.update_error')); }
   }
 
   async function changeStatus(leadId, newStatus) {
     // optimistic
     setLeads((ls) => ls.map((l) => l.id === leadId ? { ...l, status: newStatus } : l));
     try { await leadAPI.status(leadId, { status: newStatus }); }
-    catch { toast.error('Could not change status'); load(); }
+    catch { toast.error(t('leads.status_change_error')); load(); }
   }
 
   function downloadCsv() {
@@ -109,12 +116,12 @@ export default function LeadsPage() {
         document.body.appendChild(a); a.click(); a.remove();
         URL.revokeObjectURL(url);
       })
-      .catch(() => toast.error('Could not download CSV'));
+      .catch(() => toast.error(t('leads.export_error')));
   }
 
   const total = leads.length;
   const byStatus = useMemo(() => {
-    const out = Object.fromEntries(STATUSES.map((s) => [s.key, []]));
+    const out = Object.fromEntries(STATUS_KEYS.map((s) => [s.key, []]));
     leads.forEach((l) => { (out[l.status] ||= []).push(l); });
     return out;
   }, [leads]);
@@ -132,17 +139,17 @@ export default function LeadsPage() {
         </span>
         <div style={{ flex: 1 }}>
           <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
-            Leads <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-tertiary)' }}>· {total}</span>
+            {t('leads.title')} <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-tertiary)' }}>· {total}</span>
           </h1>
           <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-secondary)' }}>
-            Every lead captured from your bot flows.
+            {t('leads.subtitle')}
           </p>
         </div>
         <button type="button" onClick={() => setImportOpen(true)} style={btnGhost}>
-          <Upload size={13} /> Import CSV
+          <Upload size={13} /> {t('leads.import_csv')}
         </button>
         <button type="button" onClick={downloadCsv} style={btnGhost}>
-          <Download size={13} /> Export CSV
+          <Download size={13} /> {t('leads.export_csv')}
         </button>
       </header>
 
@@ -156,23 +163,23 @@ export default function LeadsPage() {
         <div style={{ position: 'relative', flex: 1, minWidth: 220 }}>
           <Search size={13} style={{ position: 'absolute', top: 10, left: 10, color: 'var(--text-tertiary)' }} />
           <input value={filters.q} onChange={(e) => setFilters({ ...filters, q: e.target.value })}
-                 placeholder="Search name, phone, email, interest…"
+                 placeholder={t('leads.search_placeholder_full')}
                  style={{ ...inputStyle, paddingLeft: 30 }} />
         </div>
         <select value={filters.status} onChange={(e) => setFilters({ ...filters, status: e.target.value })}
                 style={inputStyle}>
-          <option value="">All statuses</option>
-          {STATUSES.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
+          <option value="">{t('leads.filter_status')}</option>
+          {statuses.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
         </select>
-        <button type="button" onClick={load} aria-label="Refresh" style={iconBtn}>
+        <button type="button" onClick={load} aria-label={t('ctwa.refresh')} style={iconBtn}>
           <RefreshCw size={13} />
         </button>
         <div style={{ display: 'flex', borderLeft: '1px solid var(--border-default)', paddingLeft: 8, gap: 4 }}>
-          <button type="button" onClick={() => setView2('table')} aria-label="Table view"
+          <button type="button" onClick={() => setView2('table')} aria-label={t('leads.table_view')}
                   style={{ ...iconBtn, background: view === 'table' ? 'var(--brand-primary-soft)' : 'transparent' }}>
             <TableIcon size={13} />
           </button>
-          <button type="button" onClick={() => setView2('kanban')} aria-label="Kanban view"
+          <button type="button" onClick={() => setView2('kanban')} aria-label={t('leads.kanban_view')}
                   style={{ ...iconBtn, background: view === 'kanban' ? 'var(--brand-primary-soft)' : 'transparent' }}>
             <Layers size={13} />
           </button>
@@ -189,24 +196,24 @@ export default function LeadsPage() {
           borderRadius: 'var(--radius-md)',
         }}>
           <strong style={{ fontSize: 13, color: 'var(--text-primary)' }}>
-            {selected.size} selected
+            {t('leads.bulk.selected_count', { count: selected.size })}
           </strong>
-          <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>· Bulk update status:</span>
-          {STATUSES.map((s) => (
+          <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{t('leads.bulk.update_status')}</span>
+          {statuses.map((s) => (
             <button key={s.key} type="button" onClick={() => bulkStatus(s.key)}
                     style={{ ...miniBtn, color: s.color, borderColor: s.color }}>
               {s.label}
             </button>
           ))}
           <button type="button" onClick={() => setSelected(new Set())} style={miniBtn}>
-            <X size={11} /> Clear
+            <X size={11} /> {t('leads.bulk.clear')}
           </button>
         </div>
       )}
 
       {/* View body */}
       {loading ? (
-        <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-tertiary)' }}>Loading…</div>
+        <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-tertiary)' }}>{t('leads.loading', 'Loading…')}</div>
       ) : leads.length === 0 ? (
         <Empty />
       ) : view === 'kanban' ? (
@@ -224,6 +231,7 @@ export default function LeadsPage() {
 }
 
 function Empty() {
+  const { t } = useTranslation('messaging');
   return (
     <div style={{
       padding: 36, textAlign: 'center',
@@ -233,9 +241,9 @@ function Empty() {
       color: 'var(--text-tertiary)',
     }}>
       <Users2 size={28} strokeWidth={1.5} style={{ opacity: 0.4 }} />
-      <div style={{ marginTop: 8, fontSize: 14, color: 'var(--text-secondary)' }}>No leads yet.</div>
+      <div style={{ marginTop: 8, fontSize: 14, color: 'var(--text-secondary)' }}>{t('leads.empty_title')}</div>
       <p style={{ margin: '6px 0 0', fontSize: 12 }}>
-        Once your bot flows start running, captured leads appear here.
+        {t('leads.empty_desc')}
       </p>
     </div>
   );
@@ -245,6 +253,7 @@ function Empty() {
 // Table view
 // ─────────────────────────────────────────────────────────
 function Table({ leads, selected, onToggleRow, onToggleAll }) {
+  const { t } = useTranslation('messaging');
   const allSelected = selected.size === leads.length && leads.length > 0;
   return (
     <div style={{ background: 'var(--surface-card)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', overflowX: 'auto' }}>
@@ -253,37 +262,38 @@ function Table({ leads, selected, onToggleRow, onToggleAll }) {
           <tr style={{ borderBottom: '1px solid var(--border-subtle)' }}>
             <th style={{ ...th, width: 32 }}>
               <input type="checkbox" checked={allSelected} onChange={onToggleAll}
-                     aria-label="Select all" />
+                     aria-label={t('leads.table.th_select_all')} />
             </th>
-            <th style={th}>Name</th>
-            <th style={th}>Phone</th>
-            <th style={th}>Status</th>
-            <th style={{ ...th, textAlign: 'right' }}>Score</th>
-            <th style={th}>Source</th>
-            <th style={th}>Assigned</th>
-            <th style={th}>Created</th>
+            <th style={th}>{t('leads.table.th_name')}</th>
+            <th style={th}>{t('leads.table.th_phone')}</th>
+            <th style={th}>{t('leads.table.th_status')}</th>
+            <th style={{ ...th, textAlign: 'right' }}>{t('leads.table.th_score')}</th>
+            <th style={th}>{t('leads.table.th_source')}</th>
+            <th style={th}>{t('leads.table.th_assigned')}</th>
+            <th style={th}>{t('leads.table.th_created')}</th>
             <th style={{ ...th, width: 32 }}></th>
           </tr>
         </thead>
         <tbody>
           {leads.map((l) => {
-            const status = STATUSES.find((s) => s.key === l.status) || STATUSES[0];
+            const statusConfig = STATUS_KEYS.find((s) => s.key === l.status) || STATUS_KEYS[0];
+            const statusLabel = t(`leads.statuses.${l.status}`, l.status);
             return (
               <tr key={l.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
                 <td style={td}>
                   <input type="checkbox" checked={selected.has(l.id)} onChange={() => onToggleRow(l.id)}
-                         aria-label={`Select ${l.name || l.phone}`} />
+                         aria-label={t('leads.table.select_row', { name: l.name || l.phone })} />
                 </td>
                 <td style={td}>
                   <Link to={`/admin/leads/${l.id}`} style={{ fontWeight: 600, color: 'var(--text-primary)', textDecoration: 'none' }}>
-                    {l.name || <em style={{ color: 'var(--text-tertiary)' }}>(no name)</em>}
+                    {l.name || <em style={{ color: 'var(--text-tertiary)' }}>{t('leads.table.no_name')}</em>}
                   </Link>
                   {l.email && <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{l.email}</div>}
                 </td>
                 <td style={td}><code style={{ fontSize: 12 }}>{l.phone}</code></td>
                 <td style={td}>
-                  <span style={{ ...statusPill, color: status.color, borderColor: status.color }}>
-                    {status.label}
+                  <span style={{ ...statusPill, color: statusConfig.color, borderColor: statusConfig.color }}>
+                    {statusLabel}
                   </span>
                 </td>
                 <td style={{ ...td, textAlign: 'right' }}>
@@ -320,6 +330,7 @@ function Table({ leads, selected, onToggleRow, onToggleAll }) {
 // Kanban view
 // ─────────────────────────────────────────────────────────
 function KanbanBoard({ byStatus, onChangeStatus }) {
+  const { t } = useTranslation('messaging');
   const [draggingId, setDraggingId] = useState(null);
   function onDragStart(e, id) {
     e.dataTransfer.setData('text/plain', String(id));
@@ -335,9 +346,10 @@ function KanbanBoard({ byStatus, onChangeStatus }) {
   function onDragOver(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${STATUSES.length}, minmax(200px, 1fr))`, gap: 10 }}>
-      {STATUSES.map((s) => {
+    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${STATUS_KEYS.length}, minmax(200px, 1fr))`, gap: 10 }}>
+      {STATUS_KEYS.map((s) => {
         const items = byStatus[s.key] || [];
+        const label = t(`leads.statuses.${s.key}`, s.key);
         return (
           <div key={s.key}
                onDragOver={onDragOver}
@@ -352,7 +364,7 @@ function KanbanBoard({ byStatus, onChangeStatus }) {
                }}>
             <header style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
               <span style={{ width: 8, height: 8, borderRadius: '50%', background: s.color }} />
-              <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>{s.label}</span>
+              <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>{label}</span>
               <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-tertiary)' }}>{items.length}</span>
             </header>
             {items.map((l) => (
@@ -391,7 +403,7 @@ function KanbanBoard({ byStatus, onChangeStatus }) {
             ))}
             {items.length === 0 && (
               <div style={{ padding: 12, textAlign: 'center', fontSize: 11, color: 'var(--text-tertiary)' }}>
-                Drop here
+                {t('leads.kanban.drop_here')}
               </div>
             )}
           </div>
@@ -424,40 +436,41 @@ function ScoreBadge({ score, small }) {
 }
 
 function ImportModal({ onClose, onImported }) {
+  const { t } = useTranslation('messaging');
   const [file, setFile] = useState(null);
   const [busy, setBusy] = useState(false);
   async function go() {
-    if (!file) return toast.error('Pick a CSV file');
+    if (!file) return toast.error(t('leads.import_modal.pick_file'));
     setBusy(true);
     try {
       const fd = new FormData(); fd.append('file', file);
       const r = await leadAPI.importCsv(fd);
-      toast.success(`Imported ${r.data?.created || 0} leads (${r.data?.skipped || 0} skipped)`);
+      toast.success(t('leads.import_modal.success', { created: r.data?.created || 0, skipped: r.data?.skipped || 0 }));
       onImported();
     } catch (e) {
-      toast.error(e?.response?.data?.error || 'Import failed');
+      toast.error(e?.response?.data?.error || t('leads.import_modal.error'));
     } finally { setBusy(false); }
   }
   return (
     <div style={backdrop} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div style={modal}>
         <header style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 10 }}>
-          <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Import leads (CSV)</h2>
+          <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>{t('leads.import_modal.title')}</h2>
           <button type="button" onClick={onClose} aria-label="Close" style={{ ...iconBtn, marginLeft: 'auto' }}>
             <X size={14} />
           </button>
         </header>
         <div style={{ padding: '0 18px 14px' }}>
           <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--text-secondary)' }}>
-            Required column: <code>phone</code>. Optional: <code>name, email, interest, budget, location, notes, tags</code> (tags comma-separated).
+            {t('leads.import_modal.help')}
           </p>
           <input type="file" accept=".csv,text/csv" onChange={(e) => setFile(e.target.files?.[0] || null)}
                  style={{ width: '100%', fontSize: 13 }} />
         </div>
         <footer style={{ padding: '12px 18px', borderTop: '1px solid var(--border-subtle)', display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <button type="button" onClick={onClose} style={btnGhost}>Cancel</button>
+          <button type="button" onClick={onClose} style={btnGhost}>{t('leads.import_modal.cancel')}</button>
           <button type="button" onClick={go} disabled={busy || !file} style={btnPrimary}>
-            <Upload size={13} /> {busy ? 'Importing…' : 'Import'}
+            <Upload size={13} /> {busy ? t('leads.import_modal.importing') : t('leads.import_modal.import_btn')}
           </button>
         </footer>
       </div>

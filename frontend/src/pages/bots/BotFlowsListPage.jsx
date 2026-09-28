@@ -15,6 +15,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   Bot, Plus, Sparkles, Copy, Trash2, BarChart3, MoreHorizontal, X,
   Wand2, AlertTriangle,
@@ -24,12 +25,13 @@ import { botAPI, botTemplateAPI } from '../../services/api';
 import toast from '../../components/ui/toast';
 
 const FILTERS = [
-  { key: 'all',    label: 'All' },
-  { key: 'active', label: 'Active' },
-  { key: 'draft',  label: 'Draft' },
+  { key: 'all',    labelKey: 'all',    defaultLabel: 'All' },
+  { key: 'active', labelKey: 'active', defaultLabel: 'Active' },
+  { key: 'draft',  labelKey: 'draft',  defaultLabel: 'Draft' },
 ];
 
 export default function BotFlowsListPage() {
+  const { t } = useTranslation('messaging');
   const navigate = useNavigate();
   const [flows,    setFlows]    = useState([]);
   const [loading,  setLoading]  = useState(true);
@@ -67,7 +69,7 @@ export default function BotFlowsListPage() {
     } catch { toast.error('Could not duplicate'); }
   }
   async function destroy(id) {
-    if (!window.confirm('Delete this flow? This cannot be undone.')) return;
+    if (!window.confirm(t('bot_flows.card.confirm_delete', 'Delete this flow? This cannot be undone.'))) return;
     try {
       await botAPI.delete(id);
       setFlows((fs) => fs.filter((f) => f.id !== id));
@@ -88,17 +90,17 @@ export default function BotFlowsListPage() {
         </span>
         <div style={{ flex: 1 }}>
           <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
-            Bot flows
+            {t('bot_flows.title', 'Bot flows')}
           </h1>
           <p style={{ margin: '4px 0 0', fontSize: 14, color: 'var(--text-secondary)' }}>
-            Build CTWA chatbots that capture leads and qualify them on WhatsApp.
+            {t('bot_flows.subtitle', 'Build CTWA chatbots that capture leads and qualify them on WhatsApp.')}
           </p>
         </div>
         <Link to="/admin/bot-templates" style={btnGhost}>
-          <Sparkles size={13} /> Browse templates
+          <Sparkles size={13} /> {t('bot_flows.browse_templates', 'Browse templates')}
         </Link>
         <button type="button" onClick={() => setCreateOpen(true)} style={btnPrimary}>
-          <Plus size={13} /> Create flow
+          <Plus size={13} /> {t('bot_flows.create_flow', 'Create flow')}
         </button>
       </header>
 
@@ -116,32 +118,32 @@ export default function BotFlowsListPage() {
               cursor: 'pointer', fontFamily: 'inherit',
             }}
           >
-            {f.label}
+            {t(`bot_flows.filters.${f.labelKey}`, f.defaultLabel)}
             {f.key === 'all' && ` · ${flows.length}`}
           </button>
         ))}
       </nav>
 
       {loading ? (
-        <div style={{ padding: 36, textAlign: 'center', color: 'var(--text-tertiary)' }}>Loading…</div>
+        <div style={{ padding: 36, textAlign: 'center', color: 'var(--text-tertiary)' }}>{t('campaigns.loading', 'Loading…')}</div>
       ) : visible.length === 0 ? (
-        <Empty templates={templates} onCreate={() => setCreateOpen(true)} />
+        <Empty templates={templates} onCreate={() => setCreateOpen(true)} t={t} />
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 14 }}>
           {visible.map((f) => (
-            <FlowCard key={f.id} flow={f} onDuplicate={() => duplicate(f.id)} onDelete={() => destroy(f.id)} />
+            <FlowCard key={f.id} flow={f} onDuplicate={() => duplicate(f.id)} onDelete={() => destroy(f.id)} t={t} />
           ))}
         </div>
       )}
 
       {createOpen && (
-        <CreateModal onClose={() => setCreateOpen(false)} onCreated={(id) => navigate(`/admin/bot-flows/${id}/edit`)} />
+        <CreateModal onClose={() => setCreateOpen(false)} onCreated={(id) => navigate(`/admin/bot-flows/${id}/edit`)} t={t} />
       )}
     </div>
   );
 }
 
-function FlowCard({ flow, onDuplicate, onDelete }) {
+function FlowCard({ flow, onDuplicate, onDelete, t }) {
   const [menu, setMenu] = useState(false);
   return (
     <article style={{
@@ -166,7 +168,7 @@ function FlowCard({ flow, onDuplicate, onDelete }) {
           background: flow.is_active ? 'var(--success-bg)' : 'var(--surface-sunken)',
           border: '1px solid currentColor', borderRadius: 'var(--radius-pill)',
         }}>
-          {flow.is_active ? 'Active' : 'Draft'}
+          {flow.is_active ? t('bot_flows.card.active_badge', 'Active') : t('bot_flows.card.draft_badge', 'Draft')}
         </span>
       </header>
 
@@ -181,13 +183,13 @@ function FlowCard({ flow, onDuplicate, onDelete }) {
       }}>{flow.trigger_type.replace(/_/g, ' ')}</div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginTop: 4 }}>
-        <Stat n={flow.total_triggered}      label="triggered" />
-        <Stat n={flow.total_leads_captured} label="leads" />
-        <Stat n={`${flow.completion_rate || 0}%`} label="complete" />
+        <Stat n={flow.total_triggered}      label={t('bot_flows.stats.executions', 'triggered')} />
+        <Stat n={flow.total_leads_captured} label={t('bot_flows.stats.leads', 'leads')} />
+        <Stat n={`${flow.completion_rate || 0}%`} label={t('bot_flows.analytics.kpi_completion_rate', 'complete')} />
       </div>
 
       <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-tertiary)' }}>
-        Updated {flow.updated_at ? new Date(flow.updated_at).toLocaleDateString() : '—'}
+        {t('bot_flows.card.updated', { date: flow.updated_at ? new Date(flow.updated_at).toLocaleDateString() : '—' })}
         <div style={{ marginLeft: 'auto', position: 'relative' }}>
           <button type="button" onClick={() => setMenu(v => !v)} aria-label="Actions" style={iconBtn}>
             <MoreHorizontal size={14} />
@@ -202,15 +204,15 @@ function FlowCard({ flow, onDuplicate, onDelete }) {
                 border: '1px solid var(--border-default)',
                 borderRadius: 'var(--radius-sm)', boxShadow: 'var(--shadow-lg)',
               }}>
-                <Link to={`/admin/bot-flows/${flow.id}/edit`} style={menuItem}>Edit</Link>
+                <Link to={`/admin/bot-flows/${flow.id}/edit`} style={menuItem}>{t('bot_flows.card.edit', 'Edit')}</Link>
                 <Link to={`/admin/bot-flows/${flow.id}/analytics`} style={menuItem}>
-                  <BarChart3 size={12} /> Analytics
+                  <BarChart3 size={12} /> {t('bot_flows.card.analytics', 'Analytics')}
                 </Link>
                 <button type="button" onClick={onDuplicate} style={menuItem}>
-                  <Copy size={12} /> Duplicate
+                  <Copy size={12} /> {t('bot_flows.card.duplicate', 'Duplicate')}
                 </button>
                 <button type="button" onClick={onDelete} style={{ ...menuItem, color: 'var(--danger)' }}>
-                  <Trash2 size={12} /> Delete
+                  <Trash2 size={12} /> {t('bot_flows.card.delete', 'Delete')}
                 </button>
               </div>
             </>
@@ -230,7 +232,7 @@ function Stat({ n, label }) {
   );
 }
 
-function Empty({ templates, onCreate }) {
+function Empty({ templates, onCreate, t }) {
   return (
     <div style={{
       padding: 36, textAlign: 'center',
@@ -240,28 +242,28 @@ function Empty({ templates, onCreate }) {
     }}>
       <Bot size={32} strokeWidth={1.5} style={{ opacity: 0.4 }} />
       <h2 style={{ margin: '12px 0 6px', fontSize: 17, fontWeight: 700, color: 'var(--text-primary)' }}>
-        Create your first bot flow
+        {t('bot_flows.empty_title', 'Create your first bot flow')}
       </h2>
       <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--text-secondary)' }}>
-        Build it from scratch — or start from a template.
+        {t('bot_flows.empty_desc', 'Build it from scratch — or start from a template.')}
       </p>
       <button type="button" onClick={onCreate} style={btnPrimary}>
-        <Plus size={13} /> Create flow
+        <Plus size={13} /> {t('bot_flows.create_flow', 'Create flow')}
       </button>
       {templates.length > 0 && (
         <div style={{ marginTop: 24 }}>
           <div style={{ fontSize: 11, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
-            Featured templates
+            {t('bot_flows.featured_templates', 'Featured templates')}
           </div>
           <div style={{ display: 'flex', justifyContent: 'center', gap: 8, flexWrap: 'wrap' }}>
-            {templates.slice(0, 3).map((t) => (
-              <Link key={t.id} to={`/admin/bot-templates/${t.id}`} style={{
+            {templates.slice(0, 3).map((tpl) => (
+              <Link key={tpl.id} to={`/admin/bot-templates/${tpl.id}`} style={{
                 padding: '6px 12px',
                 background: 'var(--brand-primary-soft)', color: 'var(--brand-primary-hover)',
                 border: '1px solid var(--brand-primary-glow)',
                 borderRadius: 'var(--radius-pill)',
                 fontSize: 12, fontWeight: 600, textDecoration: 'none',
-              }}>{t.name}</Link>
+              }}>{tpl.name}</Link>
             ))}
           </div>
         </div>
@@ -270,7 +272,7 @@ function Empty({ templates, onCreate }) {
   );
 }
 
-function CreateModal({ onClose, onCreated }) {
+function CreateModal({ onClose, onCreated, t }) {
   const [mode, setMode] = useState('blank'); // 'blank' | 'ai'
 
   // Blank-flow state
@@ -331,7 +333,7 @@ function CreateModal({ onClose, onCreated }) {
     <div onClick={(e) => { if (e.target === e.currentTarget) onClose(); }} style={backdrop}>
       <div style={modal}>
         <header style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 20px 8px' }}>
-          <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Create a flow</h2>
+          <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>{t('bot_flows.create_modal.title', 'Create a flow')}</h2>
           <button type="button" onClick={onClose} aria-label="Close" style={{ ...iconBtn, marginLeft: 'auto' }}>
             <X size={14} />
           </button>
@@ -342,23 +344,23 @@ function CreateModal({ onClose, onCreated }) {
           display: 'flex', gap: 4, padding: '0 20px 12px',
         }}>
           <button type="button" onClick={() => setMode('blank')} style={modeTab(mode === 'blank')}>
-            From scratch
+            {t('bot_flows.create_modal.tab_blank', 'From scratch')}
           </button>
           <button type="button" onClick={() => setMode('ai')} style={modeTab(mode === 'ai')}>
-            <Wand2 size={12} /> Generate with AI
+            <Wand2 size={12} /> {t('bot_flows.create_modal.tab_ai', 'Generate with AI')}
           </button>
         </div>
 
         {mode === 'blank' ? (
           <div style={{ padding: '0 20px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div>
-              <label style={lbl}>Name</label>
+              <label style={lbl}>{t('bot_flows.create_modal.flow_name', 'Name')}</label>
               <input value={name} onChange={(e) => setName(e.target.value)}
                      autoFocus placeholder="Real-estate lead capture"
                      style={inputBig} />
             </div>
             <div>
-              <label style={lbl}>Trigger</label>
+              <label style={lbl}>{t('bot_flows.create_modal.trigger_type', 'Trigger')}</label>
               <select value={triggerType} onChange={(e) => setTriggerType(e.target.value)} style={inputBig}>
                 <option value="ctwa_ad">Click-to-WhatsApp ad</option>
                 <option value="keyword">Keyword in message</option>
@@ -374,7 +376,7 @@ function CreateModal({ onClose, onCreated }) {
         ) : (
           <div style={{ padding: '0 20px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div>
-              <label style={lbl}>Describe what your bot should do</label>
+              <label style={lbl}>{t('bot_flows.create_modal.ai_prompt', 'Describe what your bot should do')}</label>
               <textarea
                 value={prompt} onChange={(e) => setPrompt(e.target.value)}
                 autoFocus rows={4}
@@ -384,7 +386,7 @@ function CreateModal({ onClose, onCreated }) {
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <div style={{ flex: 1 }}>
-                <label style={lbl}>Industry (optional)</label>
+                <label style={lbl}>{t('bot_flows.create_modal.industry', 'Industry (optional)')}</label>
                 <select value={industry} onChange={(e) => setIndustry(e.target.value)} style={inputBig}>
                   <option value="">Any</option>
                   <option value="real-estate">Real estate</option>
@@ -397,7 +399,7 @@ function CreateModal({ onClose, onCreated }) {
                 </select>
               </div>
               <div style={{ flex: 1 }}>
-                <label style={lbl}>Name (optional)</label>
+                <label style={lbl}>{t('bot_flows.create_modal.flow_name', 'Name')} (optional)</label>
                 <input value={aiName} onChange={(e) => setAiName(e.target.value)}
                        placeholder="Auto-named if empty"
                        style={inputBig} />
@@ -411,7 +413,7 @@ function CreateModal({ onClose, onCreated }) {
               borderRadius: 'var(--radius-sm)',
               display: 'flex', alignItems: 'center', gap: 6,
             }}>
-              <Sparkles size={12} /> Social Stats drafts the flow. You can edit every step in the visual editor.
+              <Sparkles size={12} /> {t('bot_flows.create_modal.ai_disclaimer', 'Bop Social drafts the flow. You can edit every step in the visual editor.')}
             </p>
             {aiWarning && (
               <p style={{
@@ -433,14 +435,14 @@ function CreateModal({ onClose, onCreated }) {
           background: 'var(--surface-card)',
           display: 'flex', justifyContent: 'flex-end', gap: 8,
         }}>
-          <button type="button" onClick={onClose} style={btnGhost}>Cancel</button>
+          <button type="button" onClick={onClose} style={btnGhost}>{t('bot_flows.create_modal.cancel', 'Cancel')}</button>
           {mode === 'blank' ? (
             <button type="button" onClick={goBlank} disabled={busy} style={btnPrimary}>
-              {busy ? 'Creating…' : 'Create + open editor'}
+              {busy ? t('bot_flows.create_modal.generating', 'Creating…') : t('bot_flows.create_modal.create', 'Create + open editor')}
             </button>
           ) : (
             <button type="button" onClick={goAI} disabled={busy} style={btnPrimary}>
-              {busy ? <><Wand2 size={13} /> Generating…</> : <><Wand2 size={13} /> Generate</>}
+              {busy ? <><Wand2 size={13} /> {t('bot_flows.create_modal.generating', 'Generating…')}</> : <><Wand2 size={13} /> {t('bot_flows.create_modal.generate', 'Generate')}</>}
             </button>
           )}
         </footer>

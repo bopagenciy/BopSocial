@@ -194,6 +194,31 @@ export const NODE_CATALOG = {
 
 export const CATEGORIES = ['Flow', 'Send', 'Ask', 'Logic', 'Action', 'Smart'];
 
-export function getNodeMeta(type) {
-  return NODE_CATALOG[type] || { label: type, icon: Sparkles, category: 'Flow', color: 'var(--text-tertiary)', defaultData: {} };
+export function getNodeLabel(type, t) {
+  if (t) {
+    const val = t(`bot_editor.nodes.${type}.label`, { defaultValue: '' });
+    if (val) return val;
+  }
+  return NODE_CATALOG[type]?.label || type;
+}
+
+export function getCategoryLabel(category, t) {
+  if (t) {
+    const key = String(category).toLowerCase();
+    const val = t(`bot_editor.categories.${key}`, { defaultValue: '' });
+    if (val) return val;
+  }
+  return category;
+}
+
+export function getNodeMeta(type, t) {
+  const base = NODE_CATALOG[type] || { label: type, icon: Sparkles, category: 'Flow', color: 'var(--text-tertiary)', defaultData: {} };
+  if (t) {
+    return {
+      ...base,
+      label: getNodeLabel(type, t),
+      category: getCategoryLabel(base.category, t),
+    };
+  }
+  return base;
 }

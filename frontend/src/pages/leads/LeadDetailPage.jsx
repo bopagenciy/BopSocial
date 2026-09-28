@@ -19,20 +19,22 @@ import {
   ArrowLeft, Star, Sparkles, MessageSquare, CheckCircle2, Trash2,
   User, Bot, Clock, Phone, Mail, MapPin, Building2,
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 import { leadAPI } from '../../services/api';
 import toast from '../../components/ui/toast';
 
-const STATUSES = [
-  { key: 'new',       label: 'New',       color: 'var(--brand-primary)' },
-  { key: 'contacted', label: 'Contacted', color: 'var(--info)' },
-  { key: 'qualified', label: 'Qualified', color: 'var(--warning)' },
-  { key: 'converted', label: 'Converted', color: 'var(--success)' },
-  { key: 'lost',      label: 'Lost',      color: 'var(--text-tertiary)' },
-  { key: 'spam',      label: 'Spam',      color: 'var(--danger)' },
+const STATUS_KEYS = [
+  { key: 'new',       color: 'var(--brand-primary)' },
+  { key: 'contacted', color: 'var(--info)' },
+  { key: 'qualified', color: 'var(--warning)' },
+  { key: 'converted', color: 'var(--success)' },
+  { key: 'lost',      color: 'var(--text-tertiary)' },
+  { key: 'spam',      color: 'var(--danger)' },
 ];
 
 export default function LeadDetailPage() {
+  const { t } = useTranslation('messaging');
   const { id } = useParams();
   const navigate = useNavigate();
   const [lead,    setLead]    = useState(null);
@@ -41,30 +43,35 @@ export default function LeadDetailPage() {
   const [scoring, setScoring] = useState(false);
   const [convertOpen, setConvertOpen] = useState(false);
 
+  const statuses = useMemo(() => STATUS_KEYS.map((s) => ({
+    ...s,
+    label: t(`leads.statuses.${s.key}`, s.key),
+  })), [t]);
+
   function load() {
     setLoading(true);
     leadAPI.get(id)
       .then((r) => setLead(r.data))
-      .catch(() => toast.error('Could not load lead'))
+      .catch(() => toast.error(t('leads.detail.load_error')))
       .finally(() => setLoading(false));
   }
-  useEffect(load, [id]);
+  useEffect(load, [id]); // eslint-disable-line
 
   async function changeStatus(status) {
     try {
       const r = await leadAPI.status(id, { status });
       setLead(r.data);
-      toast.success(`Status: ${status}`);
-    } catch { toast.error('Could not update'); }
+      toast.success(t('leads.detail.status_updated', { status: t(`leads.statuses.${status}`, status) }));
+    } catch { toast.error(t('leads.detail.update_error')); }
   }
 
   async function scoreWithAI() {
     setScoring(true);
     try {
       await leadAPI.scoreWithAI(id);
-      toast.success('AI scored this lead');
+      toast.success(t('leads.detail.scored_success'));
       load();
-    } catch (e) { toast.error(e?.response?.data?.error || 'Scoring failed'); }
+    } catch (e) { toast.error(e?.response?.data?.error || t('leads.detail.scoring_error')); }
     finally { setScoring(false); }
   }
 
@@ -72,16 +79,16 @@ export default function LeadDetailPage() {
     if (!content.trim()) return;
     try {
       await leadAPI.activity(id, { activity_type: 'note', content });
-      toast.success('Note added');
+      toast.success(t('leads.detail.note_added'));
       load();
-    } catch { toast.error('Could not add note'); }
+    } catch { toast.error(t('leads.detail.note_error')); }
   }
 
   if (loading || !lead) {
-    return <div style={{ padding: 32, color: 'var(--text-tertiary)' }}>Loading…</div>;
+    return <div style={{ padding: 32, color: 'var(--text-tertiary)' }}>{t('leads.loading', 'Loading…')}</div>;
   }
 
-  const status = STATUSES.find((s) => s.key === lead.status) || STATUSES[0];
+  const currentStatus = STATUS_KEYS.find((s) => s.key === lead.status) || STATUS_KEYS[0];
   const customFieldKeys = Object.keys(lead.custom_fields || {});
 
   return (
@@ -90,7 +97,7 @@ export default function LeadDetailPage() {
         display: 'inline-flex', alignItems: 'center', gap: 4,
         fontSize: 13, color: 'var(--text-secondary)', textDecoration: 'none', alignSelf: 'flex-start',
       }}>
-        <ArrowLeft size={14} /> All leads
+        <ArrowLeft size={14} /> {t('leads.detail.back')}
       </Link>
 
       {/* Hero */}
@@ -111,7 +118,7 @@ export default function LeadDetailPage() {
         </span>
         <div style={{ flex: 1, minWidth: 200 }}>
           <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
-            {lead.name || <em style={{ color: 'var(--text-tertiary)' }}>(no name)</em>}
+            {lead.name || <em style={{ color: 'var(--text-tertiary)' }}>{t('leads.table.no_name')}</em>}
           </h1>
           <div style={{ marginTop: 6, display: 'flex', gap: 12, flexWrap: 'wrap', fontSize: 13, color: 'var(--text-secondary)' }}>
             {lead.phone && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Phone size={12} /> {lead.phone}</span>}
@@ -126,11 +133,11 @@ export default function LeadDetailPage() {
                   onChange={(e) => changeStatus(e.target.value)}
                   style={{
                     padding: '6px 10px',
-                    background: 'transparent', color: status.color,
-                    border: `1px solid ${status.color}`, borderRadius: 'var(--radius-pill)',
+                    background: 'transparent', color: currentStatus.color,
+                    border: `1px solid ${currentStatus.color}`, borderRadius: 'var(--radius-pill)',
                     fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer',
                   }}>
-            {STATUSES.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
+            {statuses.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
           </select>
           <ScoreBadge score={lead.quality_score} reason={lead.quality_reason} />
         </div>
@@ -139,10 +146,10 @@ export default function LeadDetailPage() {
       {/* Quick action bar */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         <button type="button" onClick={scoreWithAI} disabled={scoring} style={btnGhost}>
-          <Sparkles size={13} /> {scoring ? 'Scoring…' : 'Score with AI'}
+          <Sparkles size={13} /> {scoring ? t('leads.detail.scoring') : t('leads.detail.score_ai')}
         </button>
         <button type="button" onClick={() => setConvertOpen(true)} disabled={lead.status === 'converted'} style={btnPrimary}>
-          <CheckCircle2 size={13} /> Convert
+          <CheckCircle2 size={13} /> {t('leads.detail.convert')}
         </button>
       </div>
 
@@ -158,10 +165,10 @@ export default function LeadDetailPage() {
             fontSize: 13, fontWeight: tab === k ? 600 : 500, fontFamily: 'inherit',
             cursor: 'pointer', marginBottom: -1,
           }}>
-            {k === 'overview' ? 'Overview' :
-             k === 'activity' ? `Activity (${lead.activities?.length || 0})` :
-             k === 'conversation' ? 'Conversation' :
-             `Custom fields (${customFieldKeys.length})`}
+            {k === 'overview' ? t('leads.detail.overview_tab') :
+             k === 'activity' ? t('leads.detail.activity_tab_count', { count: lead.activities?.length || 0 }) :
+             k === 'conversation' ? t('leads.detail.conversation_tab') :
+             t('leads.detail.custom_fields_tab_count', { count: customFieldKeys.length })}
           </button>
         ))}
       </nav>
@@ -183,20 +190,21 @@ export default function LeadDetailPage() {
 // Tab: Overview
 // ─────────────────────────────────────────────────────────
 function Overview({ lead }) {
+  const { t } = useTranslation('messaging');
   const rows = [
-    ['Interest', lead.interest],
-    ['Budget',   lead.budget],
-    ['Location', lead.location],
-    ['Tags',     (lead.tags || []).join(', ')],
+    [t('leads.fields.interest'), lead.interest],
+    [t('leads.fields.budget'),   lead.budget],
+    [t('leads.fields.location'), lead.location],
+    [t('leads.fields.tags'),     (lead.tags || []).join(', ')],
     [],
-    ['Source flow',     lead.source_flow_name],
-    ['Source ad',       lead.source_ad_name || lead.source_ad_id],
-    ['Source campaign', lead.source_campaign_name || lead.source_campaign_id],
+    [t('leads.fields.source_flow'),     lead.source_flow_name],
+    [t('leads.fields.source_ad'),       lead.source_ad_name || lead.source_ad_id],
+    [t('leads.fields.source_campaign'), lead.source_campaign_name || lead.source_campaign_id],
     [],
-    ['Created',  lead.created_at && new Date(lead.created_at).toLocaleString()],
-    ['Updated',  lead.updated_at && new Date(lead.updated_at).toLocaleString()],
-    ['Converted at', lead.converted_at && new Date(lead.converted_at).toLocaleString()],
-    ['Conversion value', lead.conversion_value && `₹${Number(lead.conversion_value).toLocaleString()}`],
+    [t('leads.fields.created'),  lead.created_at && new Date(lead.created_at).toLocaleString()],
+    [t('leads.fields.updated'),  lead.updated_at && new Date(lead.updated_at).toLocaleString()],
+    [t('leads.fields.converted_at'), lead.converted_at && new Date(lead.converted_at).toLocaleString()],
+    [t('leads.fields.conversion_value'), lead.conversion_value && `₹${Number(lead.conversion_value).toLocaleString()}`],
   ];
   return (
     <section style={card}>
@@ -227,13 +235,14 @@ function Row({ k, v }) {
 // Tab: Activity (timeline + add note)
 // ─────────────────────────────────────────────────────────
 function Activity({ lead, onAddNote }) {
+  const { t } = useTranslation('messaging');
   const [draft, setDraft] = useState('');
   const acts = lead.activities || [];
   return (
     <section>
       <div style={{ ...card, marginBottom: 12 }}>
         <textarea value={draft} onChange={(e) => setDraft(e.target.value)}
-                  rows={2} placeholder="Add a note (visible to your team)…"
+                  rows={2} placeholder={t('leads.detail.note_placeholder')}
                   style={{
                     width: '100%', padding: 10,
                     background: 'var(--surface-sunken)',
@@ -246,14 +255,14 @@ function Activity({ lead, onAddNote }) {
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
           <button type="button" onClick={() => { onAddNote(draft); setDraft(''); }}
                   disabled={!draft.trim()} style={btnPrimary}>
-            Add note
+            {t('leads.detail.add_note')}
           </button>
         </div>
       </div>
 
       {acts.length === 0 ? (
         <div style={{ ...card, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>
-          No activity yet.
+          {t('leads.detail.no_activity')}
         </div>
       ) : (
         <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -279,6 +288,7 @@ function Activity({ lead, onAddNote }) {
 // Tab: Conversation (calls /timeline/ for bot_steps)
 // ─────────────────────────────────────────────────────────
 function ConversationTab({ lead }) {
+  const { t } = useTranslation('messaging');
   const [steps, setSteps] = useState(null);
   useEffect(() => {
     leadAPI.timeline(lead.id)
@@ -287,11 +297,11 @@ function ConversationTab({ lead }) {
   }, [lead.id]);
 
   if (steps === null) {
-    return <div style={{ ...card, color: 'var(--text-tertiary)' }}>Loading conversation…</div>;
+    return <div style={{ ...card, color: 'var(--text-tertiary)' }}>{t('leads.detail.loading_conv')}</div>;
   }
   if (steps.length === 0) {
     return <div style={{ ...card, color: 'var(--text-tertiary)', textAlign: 'center', fontSize: 13 }}>
-      No bot conversation linked to this lead.
+      {t('leads.detail.no_conv')}
     </div>;
   }
   // The timeline returns newest-first; render oldest-first for chat readability
@@ -341,10 +351,11 @@ function ConversationTab({ lead }) {
 // Tab: Custom Fields
 // ─────────────────────────────────────────────────────────
 function CustomTab({ lead }) {
+  const { t } = useTranslation('messaging');
   const entries = Object.entries(lead.custom_fields || {});
   if (entries.length === 0) {
     return <div style={{ ...card, color: 'var(--text-tertiary)', textAlign: 'center', fontSize: 13 }}>
-      No custom fields collected.
+      {t('leads.detail.no_custom_fields')}
     </div>;
   }
   return (
@@ -388,36 +399,37 @@ function ScoreBadge({ score, reason }) {
 }
 
 function ConvertModal({ lead, onClose, onConverted }) {
+  const { t } = useTranslation('messaging');
   const [value, setValue] = useState('');
   const [busy, setBusy] = useState(false);
   async function go() {
     setBusy(true);
     try {
       await leadAPI.convert(lead.id, Number(value || 0));
-      toast.success(`Converted (₹${Number(value || 0).toLocaleString()})`);
+      toast.success(t('leads.convert_modal.success', { value: Number(value || 0).toLocaleString() }));
       onConverted();
-    } catch (e) { toast.error(e?.response?.data?.error || 'Could not convert'); }
+    } catch (e) { toast.error(e?.response?.data?.error || t('leads.convert_modal.error')); }
     finally { setBusy(false); }
   }
   return (
     <div style={backdrop} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div style={modal}>
         <header style={{ padding: '14px 18px' }}>
-          <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Convert lead</h2>
+          <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>{t('leads.convert_modal.title')}</h2>
         </header>
         <div style={{ padding: '0 18px 14px' }}>
           <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--text-secondary)' }}>
-            Mark <strong>{lead.name || lead.phone}</strong> as converted. Optional: enter the deal value.
+            {t('leads.convert_modal.text', { name: lead.name || lead.phone })}
           </p>
-          <label style={lbl}>Conversion value (₹)</label>
+          <label style={lbl}>{t('leads.convert_modal.value_label')}</label>
           <input type="number" value={value} onChange={(e) => setValue(e.target.value)}
                  placeholder="50000" autoFocus
                  style={{ ...inputStyle, width: '100%' }} />
         </div>
         <footer style={{ padding: '12px 18px', borderTop: '1px solid var(--border-subtle)', display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <button type="button" onClick={onClose} style={btnGhost}>Cancel</button>
+          <button type="button" onClick={onClose} style={btnGhost}>{t('leads.convert_modal.cancel')}</button>
           <button type="button" onClick={go} disabled={busy} style={btnPrimary}>
-            <CheckCircle2 size={13} /> {busy ? 'Saving…' : 'Convert'}
+            <CheckCircle2 size={13} /> {busy ? t('leads.convert_modal.converting') : t('leads.convert_modal.convert_btn')}
           </button>
         </footer>
       </div>

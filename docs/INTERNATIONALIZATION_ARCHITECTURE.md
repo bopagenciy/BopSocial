@@ -958,7 +958,67 @@ Root cause investigation revealed a dual deployment / caching defect:
 - **Local Docker Deployment**:
   - Built frontend image: `bopsocial-frontend-local:bs-2.6d`.
   - Retained backend image: `bopsocial-backend-local:bs-2.1.1`.
-  - Recreated `agencyos-frontend-1` and verified live with HTTP 200 on `http://localhost:3010/`, `http://localhost:3010/marketplace`, and `http://localhost:3010/u`.
+
+---
+
+## 24. Phase BS-2.6E — WhatsApp Campaigns, CTWA & Bot Builder Internationalization
+
+### 24.1 Architecture Overview
+Phase BS-2.6E completed the localized operational surfaces for WhatsApp campaigns, Click-to-WhatsApp (CTWA) ad attribution flows, Bot Builder visual canvas & flow management, CRM lead pipeline, and conversation handoff queues in English (`en`) and Spanish (`es`).
+
+- **Namespace Architecture**:
+  - Dedicated namespace: `messaging` (`frontend/src/locales/en/messaging.json` and `frontend/src/locales/es/messaging.json`).
+  - Registered in `frontend/src/i18n/config.js` with fallback to `en`.
+- **Target Surfaces & Components Localized**:
+  - **WhatsApp Core & Campaigns**:
+    - `WhatsAppDashboard.jsx`: Metric cards, quality rating indicators, tier limits, recent campaign table, delivery & read rate charts.
+    - `WhatsAppCampaignsPage.jsx`: Broadcast campaigns table, wizard, status filters, scheduling, message preview drawer.
+    - `messaging/CampaignDetailPage.jsx`: Per-campaign delivery funnel, failure logs, recipient drilldown, and retry mechanisms.
+    - `WhatsAppTemplatesPage.jsx`: Template manager, category filtering, variable mapping, and Meta template sync status.
+    - `WhatsAppContactsPage.jsx`: Contact table, opt-in/opt-out toggles, CSV import/export modals, and list assignment.
+    - `messaging/ListsPage.jsx`: Audience segmentation lists, dynamic contact count tags, and list creation modal.
+    - `WhatsAppSettingsPage.jsx`: WABA credentials, phone number ID, Pinbot webhook verification, and connection status.
+  - **Bot Builder & Visual Canvas**:
+    - `components/bot/nodeCatalog.js`: Dynamic localized node labels and category titles via `getNodeLabel`, `getCategoryLabel`, and `getNodeMeta(type, t)` across all flow control, send, ask, logic, action, and smart node types.
+    - `components/bot/CanvasNode.jsx`: Visual canvas node header, labels, badges, and configured variable summaries.
+    - `components/bot/NodeInspector.jsx`: Node configuration inspector panel, input parameters, condition operators, and PersonaWizard AI draft disclaimer with Bop Social branding.
+    - `components/bot/TriggerConfigModal.jsx`: Trigger configuration modal supporting keyword, payload, referral, and button reply triggers.
+    - `components/bot/TestModeDrawer.jsx`: Interactive real-time bot flow simulator drawer with mock message feed and variable inspector.
+    - `components/bot/MetaAdsPicker.jsx`: Ad account, campaign, and ad selection picker with sync status.
+    - `components/bot/VariableInserter.jsx`: Visual variable token insertion dropdown.
+    - `pages/bots/BotFlowsListPage.jsx`: Bot flow directory, status tabs (all, active, draft), clone/delete actions, and create flow modal.
+    - `pages/bots/BotFlowEditorPage.jsx`: Visual flow canvas top bar, palette drawer, undo/redo, auto-layout, validation alerts, and publish/unpublish workflow.
+    - `pages/bots/BotAnalyticsPage.jsx`: Flow performance analytics, funnel drops, step-by-step drop-off analysis.
+    - `pages/bots/BotConversationsPage.jsx`: Session browser, conversation state filters (active, completed, handed_off, abandoned), and duration metrics.
+    - `pages/bots/BotConversationDetailPage.jsx`: Session audit timeline, transcript viewer, captured variables list, and force-end/handoff controls.
+    - `pages/bots/HandoffQueuePage.jsx`: Escalated human handoff queue, unassigned toggle, SLA timers, and agent assignment.
+    - `pages/bots/BotSettingsPage.jsx`: Workspace-level safety controls, global kill switch, message rate limits, max conversation length, and spam heuristic thresholds.
+    - `pages/bots/TemplatesGalleryPage.jsx`: Pre-built bot flow template catalog with industry and use-case filters, preview drawer, and 1-click clone.
+  - **CTWA (Click-to-WhatsApp) & Lead Management**:
+    - `pages/ctwa/CTWACampaignsPage.jsx`: Meta Click-to-WhatsApp campaign dashboard, ad spend integration banner, aggregated conversion stats.
+    - `pages/ctwa/CTWACampaignDetailPage.jsx`: Campaign performance breakdown, daily conversation/lead charts, linked Meta ads table, and Meta Insights synchronization.
+    - `pages/leads/LeadsPage.jsx`: CRM pipeline view with Table and Kanban views, status stages (new, contacted, qualified, converted, lost, spam), bulk status update bar, and CSV import/export.
+    - `pages/leads/LeadDetailPage.jsx`: Lead dossier, AI qualification score & reason, activity timeline, custom fields, and deal conversion modal.
+- **Brand Residual Resolution**:
+  - Eradicated all residual `Social Stats` / `SocialStats` branding from user-facing messaging strings and templates, adopting `Bop Social`.
+- **Architectural Boundary Adherence**:
+  - Maintained clear architectural separation: no ad-hoc conversational engine was implemented; external Chatwoot / Bop Chatbot integrations remained untouched; no live WhatsApp API messages or Meta ads were dispatched.
+
+### 24.2 Invariants Preserved
+- **Zero Live Mutations & WhatsApp Messages**: Verifications strictly used mock API responses; no live Meta ads or WhatsApp API calls were dispatched.
+- **100% Translation Key Parity**:
+  - `messaging.json`: 744 symmetric keys in English and Spanish with zero missing keys and 100% non-empty translated strings.
+  - `app.json`: Updated breadcrumb mappings for messaging and bot builder surfaces.
+
+### 24.3 Verification & Deployment
+- **Automated Test Suite**:
+  - Created `frontend/src/pages/__tests__/WhatsAppBotCampaignsTranslation.test.jsx`: **12 / 12 passing tests** covering catalog parity, non-empty validation, branding eradication, WhatsAppDashboard, BotSettingsPage, TemplatesGalleryPage, CTWACampaignsPage, CTWACampaignDetailPage, LeadsPage, LeadDetailPage, getNodeMeta localized dynamic lookup, and BotFlowsListPage in both English and Spanish.
+- **Full Test Suite**: **12 / 12 test suites passed, 110 / 110 tests passed** across all translation and core tests.
+- **Production Build**: `npm run build` executed cleanly (exit code 0).
+- **Local Docker Deployment**:
+  - Built frontend image: `bopsocial-frontend-local:bs-2.6e`.
+  - Retained backend image: `bopsocial-backend-local:bs-2.1.1`.
+  - Recreated `agencyos-frontend-1` and verified live with HTTP 200 via `curl.exe -I http://localhost:3010`.
 
 
 

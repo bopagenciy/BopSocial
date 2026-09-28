@@ -13,6 +13,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   MessageSquare, Search, RefreshCw, ChevronRight, Bot, Sparkles,
   CheckCircle2, AlertTriangle, UserCheck, Clock,
@@ -31,6 +32,7 @@ const STATUS_META = {
 };
 
 export default function BotConversationsPage() {
+  const { t } = useTranslation('messaging');
   const [convs,    setConvs]    = useState([]);
   const [flows,    setFlows]    = useState([]);
   const [loading,  setLoading]  = useState(true);
@@ -80,21 +82,21 @@ export default function BotConversationsPage() {
         </span>
         <div style={{ flex: 1 }}>
           <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
-            Bot conversations
+            {t('conversations.title', 'Bot conversations')}
           </h1>
           <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-secondary)' }}>
-            Every session that's run through your bot flows.
+            {t('conversations.subtitle', "Every session that's run through your bot flows.")}
           </p>
         </div>
       </header>
 
       {/* Stats strip */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 8 }}>
-        <Stat label="Active"     n={stats.active}     color="var(--success)" />
-        <Stat label="Completed"  n={stats.completed}  color="var(--success)" />
-        <Stat label="Abandoned"  n={stats.abandoned}  color="var(--text-tertiary)" />
-        <Stat label="Handed off" n={stats.handed_off} color="var(--info)" />
-        <Stat label="With lead"  n={stats.leads}      color="var(--brand-primary-hover)" />
+        <Stat label={t('conversations.stats.active', 'Active')}     n={stats.active}     color="var(--success)" />
+        <Stat label={t('conversations.stats.completed', 'Completed')}  n={stats.completed}  color="var(--success)" />
+        <Stat label={t('conversations.stats.abandoned', 'Abandoned')}  n={stats.abandoned}  color="var(--text-tertiary)" />
+        <Stat label={t('conversations.stats.handed_off', 'Handed off')} n={stats.handed_off} color="var(--info)" />
+        <Stat label={t('conversations.stats.with_lead', 'With lead')}  n={stats.leads}      color="var(--brand-primary-hover)" />
       </div>
 
       {/* Filters */}
@@ -107,25 +109,25 @@ export default function BotConversationsPage() {
         <div style={{ position: 'relative', flex: 1, minWidth: 220 }}>
           <Search size={13} style={{ position: 'absolute', top: 10, left: 10, color: 'var(--text-tertiary)' }} />
           <input value={filters.q} onChange={(e) => setFilters({ ...filters, q: e.target.value })}
-                 placeholder="Search by contact name…"
+                 placeholder={t('conversations.filters.search_placeholder', 'Search by contact name…')}
                  style={{ ...inputStyle, paddingLeft: 30 }} />
         </div>
         <select value={filters.status} onChange={(e) => setFilters({ ...filters, status: e.target.value })}
                 style={inputStyle}>
-          <option value="">All statuses</option>
+          <option value="">{t('conversations.filters.status_all', 'All statuses')}</option>
           {Object.keys(STATUS_META).map((k) => (
-            <option key={k} value={k}>{STATUS_META[k].label}</option>
+            <option key={k} value={k}>{t(`statuses.${k}`, STATUS_META[k].label)}</option>
           ))}
         </select>
         <select value={filters.flow} onChange={(e) => setFilters({ ...filters, flow: e.target.value })}
                 style={inputStyle}>
-          <option value="">All flows</option>
+          <option value="">{t('conversations.filters.flow_all', 'All flows')}</option>
           {flows.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
         </select>
         <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-secondary)' }}>
           <input type="checkbox" checked={filters.lead_captured}
                  onChange={(e) => setFilters({ ...filters, lead_captured: e.target.checked })} />
-          Lead captured
+          {t('conversations.filters.lead_captured', 'Lead captured')}
         </label>
         <button type="button" onClick={load} aria-label="Refresh" style={iconBtn}>
           <RefreshCw size={13} />
@@ -134,9 +136,9 @@ export default function BotConversationsPage() {
 
       {/* List */}
       {loading ? (
-        <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-tertiary)' }}>Loading…</div>
+        <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-tertiary)' }}>{t('campaigns.loading', 'Loading…')}</div>
       ) : convs.length === 0 ? (
-        <Empty />
+        <Empty t={t} />
       ) : (
         <div style={{
           background: 'var(--surface-card)',
@@ -147,12 +149,12 @@ export default function BotConversationsPage() {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                <th style={th}>Contact</th>
-                <th style={th}>Flow</th>
-                <th style={th}>Triggered</th>
-                <th style={th}>Status</th>
-                <th style={th}>Lead</th>
-                <th style={th}>Started</th>
+                <th style={th}>{t('conversations.th_contact', 'Contact')}</th>
+                <th style={th}>{t('conversations.th_flow', 'Flow')}</th>
+                <th style={th}>{t('bot_flows.stats.executions', 'Triggered')}</th>
+                <th style={th}>{t('conversations.th_status', 'Status')}</th>
+                <th style={th}>{t('leads.title', 'Lead')}</th>
+                <th style={th}>{t('conversations.th_started', 'Started')}</th>
                 <th style={{ ...th, width: 32 }}></th>
               </tr>
             </thead>
@@ -183,7 +185,7 @@ export default function BotConversationsPage() {
                         color: meta.color, border: `1px solid ${meta.color}`,
                         borderRadius: 'var(--radius-pill)', background: 'transparent',
                       }}>
-                        <Icon size={10} /> {meta.label}
+                        <Icon size={10} /> {t(`statuses.${c.status}`, meta.label)}
                       </span>
                       {c.ai_takeover_active && (
                         <span style={{
@@ -197,7 +199,7 @@ export default function BotConversationsPage() {
                     <td style={td}>
                       {c.lead_captured ? (
                         <Link to={`/admin/leads/${c.lead}`} style={{ color: 'var(--success)', textDecoration: 'none', fontSize: 12, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
-                          <Bot size={11} /> Captured
+                          <Bot size={11} /> {t('conversations.detail.lead_badge', 'Captured')}
                         </Link>
                       ) : (
                         <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>—</span>
@@ -238,7 +240,7 @@ function Stat({ label, n, color }) {
   );
 }
 
-function Empty() {
+function Empty({ t }) {
   return (
     <div style={{
       padding: 36, textAlign: 'center',
@@ -248,9 +250,9 @@ function Empty() {
       color: 'var(--text-tertiary)',
     }}>
       <MessageSquare size={28} strokeWidth={1.5} style={{ opacity: 0.4 }} />
-      <div style={{ marginTop: 8, fontSize: 14, color: 'var(--text-secondary)' }}>No conversations yet.</div>
+      <div style={{ marginTop: 8, fontSize: 14, color: 'var(--text-secondary)' }}>{t('conversations.empty', 'No conversations match the current filter.')}</div>
       <p style={{ margin: '6px 0 0', fontSize: 12 }}>
-        Once your bot flows trigger, every session shows up here.
+        {t('conversations.subtitle', "Every session that's run through your bot flows.")}
       </p>
     </div>
   );

@@ -33,7 +33,7 @@ services:
     environment: *local-backend-env
 
   frontend:
-    image: bopsocial-frontend-local:bs-2.6d
+    image: bopsocial-frontend-local:bs-2.6e
     build:
       context: .
       dockerfile: Dockerfile.bopsocial-local

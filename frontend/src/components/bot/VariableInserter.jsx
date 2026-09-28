@@ -17,6 +17,7 @@
  * nodes upstream).
  */
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Variable, ChevronDown } from 'lucide-react';
 
 
@@ -26,6 +27,7 @@ const STANDARD = [
 
 
 export default function VariableInserter({ variables = [], onPick }) {
+  const { t } = useTranslation('messaging');
   const [open, setOpen] = useState(false);
   const all = [...STANDARD, ...variables.filter((v) => !STANDARD.includes(v))];
 
@@ -43,7 +45,7 @@ export default function VariableInserter({ variables = [], onPick }) {
           fontSize: 11, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer',
         }}
       >
-        <Variable size={11} /> Insert variable <ChevronDown size={10} />
+        <Variable size={11} /> {t('bot_editor.insert_variable', 'Insert variable')} <ChevronDown size={10} />
       </button>
       {open && (
         <>
@@ -77,7 +79,7 @@ export default function VariableInserter({ variables = [], onPick }) {
             ))}
             {all.length === 0 && (
               <li style={{ padding: 10, color: 'var(--text-tertiary)', fontSize: 12 }}>
-                No variables yet — earlier ask_* / set_variable nodes will appear here.
+                {t('bot_editor.no_variables_yet', 'No variables yet — earlier ask_* / set_variable nodes will appear here.')}
               </li>
             )}
           </ul>

@@ -8,6 +8,7 @@
  * ========================================================================== */
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid,
 } from 'recharts';
@@ -32,17 +33,17 @@ const COLORS = {
 };
 
 const QUALITY_BADGE = {
-  GREEN:   { color: '#10b981', bg: '#dcfce7', label: 'Healthy' },
-  YELLOW:  { color: '#f59e0b', bg: '#fef3c7', label: 'Caution' },
-  RED:     { color: '#dc2626', bg: '#fee2e2', label: 'Flagged' },
-  UNKNOWN: { color: 'var(--text-secondary)', bg: 'var(--surface-sunken)', label: 'Unknown' },
+  GREEN:   { color: '#10b981', bg: '#dcfce7', key: 'healthy', fallback: 'Healthy' },
+  YELLOW:  { color: '#f59e0b', bg: '#fef3c7', key: 'caution', fallback: 'Caution' },
+  RED:     { color: '#dc2626', bg: '#fee2e2', key: 'flagged', fallback: 'Flagged' },
+  UNKNOWN: { color: 'var(--text-secondary)', bg: 'var(--surface-sunken)', key: 'unknown', fallback: 'Unknown' },
 };
 
-const TIER_LABEL = {
-  TIER_1K:        '1K / 24h',
-  TIER_10K:       '10K / 24h',
-  TIER_100K:      '100K / 24h',
-  TIER_UNLIMITED: 'Unlimited',
+const TIER_KEYS = {
+  TIER_1K:        { key: 'tier_1k', fallback: '1K / 24h' },
+  TIER_10K:       { key: 'tier_10k', fallback: '10K / 24h' },
+  TIER_100K:      { key: 'tier_100k', fallback: '100K / 24h' },
+  TIER_UNLIMITED: { key: 'tier_unlimited', fallback: 'Unlimited' },
 };
 
 function basePath(role) {
@@ -50,6 +51,7 @@ function basePath(role) {
 }
 
 export default function WhatsAppDashboard() {
+  const { t } = useTranslation('messaging');
   const { user } = useAuth();
   const { data, loading } = useWhatsAppDashboard();
   const { account } = useWhatsAppAccount();
@@ -65,23 +67,25 @@ export default function WhatsAppDashboard() {
   if (!account && !loading) {
     return (
       <div>
-        <PageHeader title="WhatsApp" subtitle="Pinbot Cloud API integration" />
-        <EmptyState root={root} />
+        <PageHeader title={t('dashboard.title', 'WhatsApp')} subtitle={t('dashboard.subtitle', 'Pinbot Cloud API integration')} />
+        <EmptyState root={root} t={t} />
       </div>
     );
   }
 
-  const quality = QUALITY_BADGE[account?.quality_rating || 'UNKNOWN'];
-  const tier    = TIER_LABEL[account?.messaging_tier || 'TIER_1K'];
+  const qualityEntry = QUALITY_BADGE[account?.quality_rating || 'UNKNOWN'] || QUALITY_BADGE.UNKNOWN;
+  const qualityLabel = t(`dashboard.quality.${qualityEntry.key}`, qualityEntry.fallback);
+  const tierEntry    = TIER_KEYS[account?.messaging_tier || 'TIER_1K'] || TIER_KEYS.TIER_1K;
+  const tierLabel    = t(`dashboard.tiers.${tierEntry.key}`, tierEntry.fallback);
 
   return (
     <div style={{ paddingBottom: 32 }}>
       <PageHeader
-        title="WhatsApp"
-        subtitle={account?.phone_number || account?.display_name || 'Cloud API integration'}
+        title={t('dashboard.title', 'WhatsApp')}
+        subtitle={account?.phone_number || account?.display_name || t('dashboard.default_subtitle', 'Cloud API integration')}
         action={
-          <Link to={`${root}/whatsapp/settings`} style={btnSecondary}>
-            <Settings size={14} /> Settings
+          <Link to={`${root}/messaging/account`} style={btnSecondary}>
+            <Settings size={14} /> {t('dashboard.settings_btn', 'Settings')}
           </Link>
         }
       />
@@ -89,33 +93,33 @@ export default function WhatsAppDashboard() {
       {/* Account status row */}
       {account && (
         <div style={{ padding: '0 16px', marginBottom: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <span style={{ ...badge, background: quality.bg, color: quality.color }}>
-            ● Quality: {quality.label}
+          <span style={{ ...badge, background: qualityEntry.bg, color: qualityEntry.color }}>
+            ● {t('dashboard.quality_label', { quality: qualityLabel, defaultValue: `Quality: ${qualityLabel}` })}
           </span>
           <span style={{ ...badge, background: '#eef2ff', color: '#4338ca' }}>
-            Tier: {tier}
+            {t('dashboard.tier_label', { tier: tierLabel, defaultValue: `Tier: ${tierLabel}` })}
           </span>
         </div>
       )}
 
       {/* Stat cards */}
       <div style={statRow}>
-        <StatCard label="Today"        value={data?.messages_today || 0}  icon={Send}        color="#0891b2" />
-        <StatCard label="Last 7 days"  value={data?.messages_week || 0}   icon={MessageCircle} color="#2563eb" />
-        <StatCard label="Last 30 days" value={data?.messages_month || 0}  icon={Send}        color="#6366f1" />
-        <StatCard label="Active campaigns" value={data?.active_campaigns || 0} icon={Send}    color="#22c55e" />
+        <StatCard label={t('dashboard.stats.today', 'Today')} value={data?.messages_today || 0} icon={Send} color="#0891b2" />
+        <StatCard label={t('dashboard.stats.last_7_days', 'Last 7 days')} value={data?.messages_week || 0} icon={MessageCircle} color="#2563eb" />
+        <StatCard label={t('dashboard.stats.last_30_days', 'Last 30 days')} value={data?.messages_month || 0} icon={Send} color="#6366f1" />
+        <StatCard label={t('dashboard.stats.active_campaigns', 'Active campaigns')} value={data?.active_campaigns || 0} icon={Send} color="#22c55e" />
       </div>
 
       {/* Rates */}
       <div style={statRow}>
-        <RateCard label="Delivery Rate" value={data?.delivery_rate || 0} icon={CheckCheck} color={COLORS.success} />
-        <RateCard label="Read Rate"     value={data?.read_rate || 0}     icon={Eye}        color="#0891b2" />
+        <RateCard label={t('dashboard.stats.delivery_rate', 'Delivery Rate')} value={data?.delivery_rate || 0} icon={CheckCheck} color={COLORS.success} />
+        <RateCard label={t('dashboard.stats.read_rate', 'Read Rate')} value={data?.read_rate || 0} icon={Eye} color="#0891b2" />
       </div>
 
       {/* Time series chart */}
       <div style={{ ...card, margin: '0 16px 16px' }}>
         <div style={cardHeader}>
-          <h3 style={cardTitle}>Outbound messages — last 30 days</h3>
+          <h3 style={cardTitle}>{t('dashboard.chart.title', 'Outbound messages — last 30 days')}</h3>
         </div>
         <div style={{ height: 280, padding: '8px 12px 12px' }}>
           <ResponsiveContainer width="100%" height="100%">
@@ -134,30 +138,30 @@ export default function WhatsAppDashboard() {
       {/* Recent campaigns */}
       <div style={{ ...card, margin: '0 16px 16px' }}>
         <div style={cardHeader}>
-          <h3 style={cardTitle}>Recent campaigns</h3>
-          <Link to={`${root}/whatsapp/campaigns`} style={linkChip}>
-            View all <ArrowRight size={12} />
+          <h3 style={cardTitle}>{t('dashboard.recent_campaigns.title', 'Recent campaigns')}</h3>
+          <Link to={`${root}/messaging/campaigns`} style={linkChip}>
+            {t('dashboard.recent_campaigns.view_all', 'View all')} <ArrowRight size={12} />
           </Link>
         </div>
         {(campaigns || []).length === 0 ? (
-          <div style={emptyRow}>No campaigns yet. Create one from the Campaigns page.</div>
+          <div style={emptyRow}>{t('dashboard.recent_campaigns.empty', 'No campaigns yet. Create one from the Campaigns page.')}</div>
         ) : (
           <table style={table}>
             <thead>
               <tr>
-                <th style={th}>Name</th>
-                <th style={th}>Status</th>
-                <th style={th}>Total</th>
-                <th style={th}>Delivered</th>
-                <th style={th}>Read</th>
-                <th style={th}>Failed</th>
+                <th style={th}>{t('dashboard.recent_campaigns.th_name', 'Name')}</th>
+                <th style={th}>{t('dashboard.recent_campaigns.th_status', 'Status')}</th>
+                <th style={th}>{t('dashboard.recent_campaigns.th_total', 'Total')}</th>
+                <th style={th}>{t('dashboard.recent_campaigns.th_delivered', 'Delivered')}</th>
+                <th style={th}>{t('dashboard.recent_campaigns.th_read', 'Read')}</th>
+                <th style={th}>{t('dashboard.recent_campaigns.th_failed', 'Failed')}</th>
               </tr>
             </thead>
             <tbody>
               {campaigns.slice(0, 8).map((c) => (
                 <tr key={c.id}>
                   <td style={td}>{c.name}</td>
-                  <td style={td}><StatusPill status={c.status} /></td>
+                  <td style={td}><StatusPill status={c.status} t={t} /></td>
                   <td style={td}>{c.total_count}</td>
                   <td style={td}>{c.delivered_count}</td>
                   <td style={td}>{c.read_count}</td>
@@ -190,7 +194,7 @@ function RateCard({ label, value, icon: Icon, color }) {
   );
 }
 
-function StatusPill({ status }) {
+function StatusPill({ status, t }) {
   const map = {
     draft:     { bg: 'var(--surface-sunken)', color: 'var(--text-secondary)' },
     scheduled: { bg: '#dbeafe', color: '#1d4ed8' },
@@ -201,10 +205,11 @@ function StatusPill({ status }) {
     paused:    { bg: '#fef3c7', color: '#a16207' },
   };
   const { bg, color } = map[status] || map.draft;
-  return <span style={{ ...badge, background: bg, color, fontSize: 11 }}>{status}</span>;
+  const label = t ? t(`statuses.${status}`, status) : status;
+  return <span style={{ ...badge, background: bg, color, fontSize: 11 }}>{label}</span>;
 }
 
-function EmptyState({ root }) {
+function EmptyState({ root, t }) {
   return (
     <div style={{ padding: '40px 16px', display: 'flex', justifyContent: 'center' }}>
       <div style={{ ...card, maxWidth: 480, padding: 32, textAlign: 'center' }}>
@@ -216,12 +221,12 @@ function EmptyState({ root }) {
         }}>
           <MessageCircle size={28} color="#fff" />
         </div>
-        <h3 style={{ margin: '0 0 8px', fontSize: 18, color: COLORS.text }}>Connect your WhatsApp Business account</h3>
+        <h3 style={{ margin: '0 0 8px', fontSize: 18, color: COLORS.text }}>{t('dashboard.empty.title', 'Connect your WhatsApp Business account')}</h3>
         <p style={{ margin: '0 0 16px', color: COLORS.muted, fontSize: 13 }}>
-          You'll need a Pinbot Partners apikey, your WABA ID, and the phone number ID.
+          {t('dashboard.empty.description', "You'll need a Pinbot Partners apikey, your WABA ID, and the phone number ID.")}
         </p>
-        <Link to={`${root}/whatsapp/settings`} style={btnPrimary}>
-          Set up WhatsApp <ArrowRight size={14} />
+        <Link to={`${root}/messaging/account`} style={btnPrimary}>
+          {t('dashboard.empty.setup_btn', 'Set up WhatsApp')} <ArrowRight size={14} />
         </Link>
       </div>
     </div>

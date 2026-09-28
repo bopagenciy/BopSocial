@@ -8,6 +8,7 @@
  * ========================================================================== */
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip,
 } from 'recharts';
@@ -35,6 +36,7 @@ const PIE_COLORS = {
 };
 
 export default function CampaignDetailPage() {
+  const { t } = useTranslation('messaging');
   const { id } = useParams();
   const navigate = useNavigate();
 
@@ -76,10 +78,10 @@ export default function CampaignDetailPage() {
     : messages.filter((m) => m.status === filter);
 
   const pie = [
-    { name: 'Sent',      value: stats?.sent      || 0, color: PIE_COLORS.sent      },
-    { name: 'Delivered', value: stats?.delivered || 0, color: PIE_COLORS.delivered },
-    { name: 'Read',      value: stats?.read      || 0, color: PIE_COLORS.read      },
-    { name: 'Failed',    value: stats?.failed    || 0, color: PIE_COLORS.failed    },
+    { name: t('campaign_detail.stats.sent', 'Sent'),           key: 'sent',      value: stats?.sent      || 0, color: PIE_COLORS.sent      },
+    { name: t('campaign_detail.stats.delivered', 'Delivered'), key: 'delivered', value: stats?.delivered || 0, color: PIE_COLORS.delivered },
+    { name: t('campaign_detail.stats.read', 'Read'),           key: 'read',      value: stats?.read      || 0, color: PIE_COLORS.read      },
+    { name: t('campaign_detail.stats.failed', 'Failed'),       key: 'failed',    value: stats?.failed    || 0, color: PIE_COLORS.failed    },
   ].filter((p) => p.value > 0);
 
   return (
@@ -93,23 +95,23 @@ export default function CampaignDetailPage() {
             {campaign.status === 'running' && (
               <Button variant="secondary" icon={PauseCircle}
                       onClick={async () => { await whatsappAPI.campaigns.pause(campaign.id); load(); }}>
-                Pause
+                {t('campaign_detail.pause', 'Pause')}
               </Button>
             )}
             {!['completed', 'canceled'].includes(campaign.status) && (
               <Button variant="secondary" icon={X}
                       onClick={async () => {
-                        if (window.confirm('Cancel this campaign?')) {
+                        if (window.confirm(t('campaign_detail.confirm_cancel', 'Cancel this campaign? Pending messages will not be sent.'))) {
                           await whatsappAPI.campaigns.cancel(campaign.id); load();
                         }
                       }}>
-                Cancel
+                {t('campaign_detail.cancel', 'Cancel')}
               </Button>
             )}
             {(stats?.failed || 0) > 0 && (
               <Button variant="secondary" icon={RefreshCw}
                       onClick={async () => { await whatsappAPI.campaigns.retryFailed(campaign.id); load(); }}>
-                Retry failed
+                {t('campaigns.retry_failed', 'Retry failed')}
               </Button>
             )}
           </div>
@@ -153,26 +155,32 @@ export default function CampaignDetailPage() {
 
         <Card padding="md">
           <Card.Header title="Meta" />
-          <KV label="Status"   value={<Badge variant={STATUS_VARIANT[campaign.status]} dot>{campaign.status}</Badge>} />
-          <KV label="Total"    value={campaign.total_count} />
-          <KV label="Progress" value={`${campaign.progress_percent}%`} />
-          <KV label="Scheduled" value={campaign.scheduled_at ? new Date(campaign.scheduled_at).toLocaleString() : '—'} />
-          <KV label="Started"   value={campaign.started_at   ? new Date(campaign.started_at).toLocaleString()   : '—'} />
-          <KV label="Completed" value={campaign.completed_at ? new Date(campaign.completed_at).toLocaleString() : '—'} />
+          <KV label={t('dashboard.recent_campaigns.th_status', 'Status')} value={<Badge variant={STATUS_VARIANT[campaign.status]} dot>{t(`statuses.${campaign.status}`, campaign.status)}</Badge>} />
+          <KV label={t('dashboard.recent_campaigns.th_total', 'Total')} value={campaign.total_count} />
+          <KV label={t('campaigns.th_progress', 'Progress')} value={`${campaign.progress_percent}%`} />
+          <KV label={t('campaigns.wizard.send_time_label', 'Scheduled')} value={campaign.scheduled_at ? new Date(campaign.scheduled_at).toLocaleString() : '—'} />
+          <KV label={t('conversations.th_started', 'Started')} value={campaign.started_at ? new Date(campaign.started_at).toLocaleString() : '—'} />
+          <KV label={t('statuses.completed', 'Completed')} value={campaign.completed_at ? new Date(campaign.completed_at).toLocaleString() : '—'} />
         </Card>
       </div>
 
       <div style={{ padding: '16px 24px 0', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-        {['all', 'sent', 'delivered', 'read', 'failed'].map((s) => (
+        {[
+          { key: 'all', label: t('campaign_detail.filter_all', { count: messages.length, defaultValue: `All (${messages.length})` }) },
+          { key: 'sent', label: t('campaign_detail.filter_sent', { count: stats?.sent || 0, defaultValue: `Sent (${stats?.sent || 0})` }) },
+          { key: 'delivered', label: t('campaign_detail.filter_delivered', { count: stats?.delivered || 0, defaultValue: `Delivered (${stats?.delivered || 0})` }) },
+          { key: 'read', label: t('campaign_detail.filter_read', { count: stats?.read || 0, defaultValue: `Read (${stats?.read || 0})` }) },
+          { key: 'failed', label: t('campaign_detail.filter_failed', { count: stats?.failed || 0, defaultValue: `Failed (${stats?.failed || 0})` }) },
+        ].map((s) => (
           <button
-            key={s}
+            key={s.key}
             type="button"
-            onClick={() => setFilter(s)}
+            onClick={() => setFilter(s.key)}
             style={{
               padding: '6px 12px',
-              background: filter === s ? 'var(--brand-primary-glow)' : 'var(--surface-card)',
-              color: filter === s ? 'var(--text-primary)' : 'var(--text-secondary)',
-              border: `1px solid ${filter === s ? 'transparent' : 'var(--border-subtle)'}`,
+              background: filter === s.key ? 'var(--brand-primary-glow)' : 'var(--surface-card)',
+              color: filter === s.key ? 'var(--text-primary)' : 'var(--text-secondary)',
+              border: `1px solid ${filter === s.key ? 'transparent' : 'var(--border-subtle)'}`,
               borderRadius: 'var(--radius-pill)',
               fontSize: 12, fontWeight: 600,
               cursor: 'pointer',
@@ -180,7 +188,7 @@ export default function CampaignDetailPage() {
               transition: 'var(--transition-fast)',
             }}
           >
-            {s.charAt(0).toUpperCase() + s.slice(1)}
+            {s.label}
           </button>
         ))}
       </div>
@@ -190,7 +198,7 @@ export default function CampaignDetailPage() {
           columns={[
             {
               key: 'phone',
-              header: 'Contact',
+              header: t('campaign_detail.table.th_recipient', 'Recipient'),
               accessor: (m) => m.contact?.phone,
               render: (m) => (
                 <div>
@@ -203,14 +211,14 @@ export default function CampaignDetailPage() {
             },
             {
               key: 'status',
-              header: 'Status',
+              header: t('campaign_detail.table.th_status', 'Status'),
               accessor: (m) => m.status,
-              render: (m) => <Badge variant={STATUS_VARIANT[m.status] || 'default'} dot>{m.status}</Badge>,
+              render: (m) => <Badge variant={STATUS_VARIANT[m.status] || 'default'} dot>{t(`statuses.${m.status}`, m.status)}</Badge>,
               width: 120,
             },
             {
               key: 'created_at',
-              header: 'Sent',
+              header: t('campaign_detail.table.th_sent_at', 'Sent At'),
               accessor: (m) => m.created_at,
               render: (m) => (
                 <span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>
@@ -221,7 +229,7 @@ export default function CampaignDetailPage() {
             },
             {
               key: 'error',
-              header: 'Error',
+              header: t('campaign_detail.table.th_error', 'Error'),
               render: (m) => m.error_message
                 ? <span style={{ fontSize: 12, color: 'var(--danger)' }}>{m.error_message}</span>
                 : <span style={{ color: 'var(--text-tertiary)' }}>—</span>,
@@ -232,8 +240,8 @@ export default function CampaignDetailPage() {
           pageSize={50}
           emptyState={{
             icon: Send,
-            title: 'No messages match this filter',
-            description: 'Switch filter or wait for delivery receipts.',
+            title: t('campaign_detail.table.empty', 'No messages in this filter.'),
+            description: '',
           }}
         />
       </div>
