@@ -209,11 +209,14 @@ def approve_approval(request, approval_id):
         metadata={'agency_id': a.relation.agency_id, 'success': success, 'message': msg, 'action_type': a.action_type},
     )
 
+    from .locale_helpers import resolve_user_language, get_notification_copy
     from .notification_dispatcher import dispatch as _dispatch
+    recip_lang = resolve_user_language(a.requested_by)
+    notif_copy = get_notification_copy('approval_approved', lang=recip_lang, company=a.client.company)
     _dispatch(
         a.requested_by,
         event_type='approval_decided',
-        title=f'{a.client.company} approved your request',
+        title=notif_copy['title'],
         body=msg,
         data={
             'kind':         'approval_approved',
@@ -262,12 +265,15 @@ def reject_approval(request, approval_id):
         metadata={'agency_id': a.relation.agency_id, 'reason': reason, 'action_type': a.action_type},
     )
 
+    from .locale_helpers import resolve_user_language, get_notification_copy
     from .notification_dispatcher import dispatch as _dispatch
+    recip_lang = resolve_user_language(a.requested_by)
+    notif_copy = get_notification_copy('approval_rejected', lang=recip_lang, company=a.client.company)
     _dispatch(
         a.requested_by,
         event_type='approval_decided',
-        title=f'{a.client.company} rejected your request',
-        body=reason or '(no reason given)',
+        title=notif_copy['title'],
+        body=reason or ('(sin motivo especificado)' if recip_lang == 'es' else '(no reason given)'),
         data={
             'kind':        'approval_rejected',
             'approval_id': a.id,

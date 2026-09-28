@@ -30,67 +30,64 @@ FROM_EMAIL   = getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@socialstats.app'
 
 def _send_invitation_email(invitation, client_user):
     """Send styled HTML invitation email to client."""
+    from .locale_helpers import resolve_user_language, get_email_copy
+
     agency_name = invitation.invited_by.get_full_name() or invitation.invited_by.email
+    lang = resolve_user_language(client_user, getattr(invitation, 'client', None) or getattr(invitation, 'client_record', None))
 
     if client_user:
         link        = f"{FRONTEND_URL}/invitation/{invitation.token}"
-        subject     = f"{agency_name} wants to manage your Social Stats account"
         client_name = client_user.get_full_name() or client_user.email.split('@')[0]
-        greeting    = (
-            f'Hi <strong style="color:#0f172a;">{client_name}</strong>, '
-            f'<strong style="color:#0f172a;">{agency_name}</strong> has invited you to let '
-            f'them manage your social media analytics on Social Stats.'
+        copy = get_email_copy(
+            'invitation_existing_user', lang=lang,
+            agency_name=agency_name,
+            client_name=client_name,
+            message=invitation.message or "(No message provided.)",
+            link=link,
         )
         body_html = (
             f'<div style="background:linear-gradient(135deg,#f0f9ff,#f8faff);border:1px solid rgba(0,215,255,0.18);'
             f'border-radius:14px;padding:20px 24px;margin:0 0 24px;">'
-            f'<p style="margin:0 0 4px;font-size:11px;font-weight:700;color:#00b8d9;text-transform:uppercase;letter-spacing:0.08em;">Message from {agency_name}</p>'
+            f'<p style="margin:0 0 4px;font-size:11px;font-weight:700;color:#00b8d9;text-transform:uppercase;letter-spacing:0.08em;">{copy["msg_box_title"]}</p>'
             f'<p style="margin:0;font-size:15px;color:#1e293b;line-height:1.7;">{invitation.message or "No message provided."}</p>'
             f'</div>'
         )
-        cta_label   = 'Accept Invitation'
-        expiry_note = '&#9203; This invitation expires in <strong>7 days</strong>. If you did not expect this, you can safely ignore this email.'
-        plain = (
-            f"Hi {client_name},\n\n"
-            f"{agency_name} has invited you to let them manage your social media analytics on Social Stats.\n\n"
-            f"Message: {invitation.message}\n\n"
-            f"Accept or reject here: {link}\n\n"
-            f"This invitation expires in 7 days.\n"
-        )
+        cta_label   = copy['cta_label']
+        expiry_note = copy['expiry_note']
+        subject     = copy['subject']
+        greeting    = copy['greeting']
+        plain       = copy['plain']
     else:
         link        = f"{FRONTEND_URL}/signup?invite={invitation.token}"
-        subject     = f"You've been invited to Social Stats by {agency_name}"
-        greeting    = (
-            f'<strong style="color:#0f172a;">{agency_name}</strong> has invited you to join '
-            f'<strong style="color:#0f172a;">Social Stats</strong> — the social media analytics platform.'
+        copy = get_email_copy(
+            'invitation_new_user', lang=lang,
+            agency_name=agency_name,
+            message=invitation.message or "(No message provided.)",
+            link=link,
         )
         body_html = (
             f'<div style="background:linear-gradient(135deg,#f0f9ff,#f8faff);border:1px solid rgba(0,215,255,0.18);'
             f'border-radius:14px;padding:20px 24px;margin:0 0 24px;">'
-            f'<p style="margin:0 0 4px;font-size:11px;font-weight:700;color:#00b8d9;text-transform:uppercase;letter-spacing:0.08em;">Message from {agency_name}</p>'
+            f'<p style="margin:0 0 4px;font-size:11px;font-weight:700;color:#00b8d9;text-transform:uppercase;letter-spacing:0.08em;">{copy["msg_box_title"]}</p>'
             f'<p style="margin:0;font-size:15px;color:#1e293b;line-height:1.7;">{invitation.message or "No message provided."}</p>'
             f'</div>'
-            f'<p style="font-size:14px;color:#64748b;line-height:1.7;margin:0 0 4px;">'
-            f'Click the button below to create your account and connect with {agency_name}.</p>'
+            f'<p style="font-size:14px;color:#64748b;line-height:1.7;margin:0 0 4px;">{copy["body_text"]}</p>'
         )
-        cta_label   = 'Create Your Account'
-        expiry_note = '&#9203; This invitation expires in <strong>7 days</strong>. If you did not expect this, you can safely ignore this email.'
-        plain = (
-            f"Hi,\n\n"
-            f"{agency_name} has invited you to join Social Stats for social media analytics.\n\n"
-            f"Message: {invitation.message}\n\n"
-            f"Sign up here: {link}\n\n"
-            f"This invitation expires in 7 days.\n"
-        )
+        cta_label   = copy['cta_label']
+        expiry_note = copy['expiry_note']
+        subject     = copy['subject']
+        greeting    = copy['greeting']
+        plain       = copy['plain']
 
     html = _email_html(
-        title        = 'You have a new invitation',
+        title        = copy['title'],
         greeting     = greeting,
         body_html    = body_html,
         cta_url      = link,
         cta_label    = cta_label,
         expiry_note  = expiry_note,
         frontend_url = FRONTEND_URL,
+        lang         = lang,
     )
 
     try:
@@ -156,12 +153,15 @@ def send_invitation(request):
     # Notify existing user
     if client_user:
         agency_name = request.user.get_full_name() or request.user.email
+        from .locale_helpers import resolve_user_language, get_notification_copy
         from .notification_dispatcher import dispatch as _dispatch
+        recip_lang = resolve_user_language(client_user)
+        notif_copy = get_notification_copy('invitation_received', lang=recip_lang, agency_name=agency_name)
         _dispatch(
             client_user,
             event_type='invitation_received',
             notif_type='invitation_received',
-            title=f"{agency_name} wants to manage your account",
+            title=notif_copy['title'],
             body=message,
             data={
                 'token':       str(invitation.token),
@@ -250,12 +250,16 @@ def respond_invitation(request, token):
             data__token=str(inv.token),
         ).update(is_read=True)
 
+        from .locale_helpers import resolve_user_language, get_notification_copy
         from .notification_dispatcher import dispatch as _dispatch
+        recip_lang = resolve_user_language(inv.invited_by)
+        user_display = request.user.get_full_name() or request.user.email
+        notif_copy = get_notification_copy('invitation_accepted', lang=recip_lang, user_name=user_display)
         _dispatch(
             inv.invited_by,
             event_type='invitation_accepted',
             notif_type='invitation_accepted',
-            title=f"{request.user.get_full_name() or request.user.email} accepted your invitation",
+            title=notif_copy['title'],
             data={
                 'client_id':    inv.client_record.id if inv.client_record else None,
                 'client_email': inv.client_email,
@@ -281,12 +285,16 @@ def respond_invitation(request, token):
         inv.status = 'rejected'
         inv.save()
 
+        from .locale_helpers import resolve_user_language, get_notification_copy
         from .notification_dispatcher import dispatch as _dispatch
+        recip_lang = resolve_user_language(inv.invited_by)
+        user_display = request.user.get_full_name() or request.user.email
+        notif_copy = get_notification_copy('invitation_rejected', lang=recip_lang, user_name=user_display)
         _dispatch(
             inv.invited_by,
             event_type='invitation_rejected',
             notif_type='invitation_rejected',
-            title=f"{request.user.get_full_name() or request.user.email} rejected your invitation",
+            title=notif_copy['title'],
             data={'client_email': inv.client_email},
         )
         return Response({'status': 'rejected'})
@@ -359,12 +367,15 @@ def cancel_invitation(request, pk):
 
     if inv.client_user:
         agency_name = request.user.get_full_name() or request.user.email
+        from .locale_helpers import resolve_user_language, get_notification_copy
         from .notification_dispatcher import dispatch as _dispatch
+        recip_lang = resolve_user_language(inv.client_user)
+        notif_copy = get_notification_copy('invitation_cancelled', lang=recip_lang, agency_name=agency_name)
         _dispatch(
             inv.client_user,
             event_type='invitation_cancelled',
             notif_type='invitation_cancelled',
-            title=f"{agency_name} cancelled their invitation",
+            title=notif_copy['title'],
             data={'agency_email': request.user.email},
         )
 

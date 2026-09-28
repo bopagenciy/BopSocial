@@ -265,8 +265,9 @@ def password_reset_confirm(request):
 
 # ── Email helpers ─────────────────────────────────────────────────────────────
 
-def _email_html(title, greeting, body_html, cta_url, cta_label, expiry_note, frontend_url):
+def _email_html(title, greeting, body_html, cta_url, cta_label, expiry_note, frontend_url, lang='en'):
     """Shared light-background email template matching app card style."""
+    copy_link_text = "O copia este enlace en tu navegador:" if lang == 'es' else "Or copy this link into your browser:"
     return f"""<!DOCTYPE html>
 <html>
 <head>
@@ -334,7 +335,7 @@ def _email_html(title, greeting, body_html, cta_url, cta_label, expiry_note, fro
 
             <!-- Plain URL fallback -->
             <p style="margin:0;font-size:12px;color:#94a3b8;line-height:1.6;">
-              Or copy this link into your browser:<br>
+              {copy_link_text}<br>
               <a href="{cta_url}" style="color:#D48806;word-break:break-all;text-decoration:none;">{cta_url}</a>
             </p>
           </td>
@@ -359,50 +360,53 @@ def _email_html(title, greeting, body_html, cta_url, cta_label, expiry_note, fro
 
 def _send_client_joined_email(agency_user, client_user):
     """Notify agency when their invited client signs up and verifies email."""
+    from .locale_helpers import resolve_user_language, get_email_copy
+
     agency_name  = agency_user.first_name or agency_user.email.split('@')[0]
     client_name  = client_user.get_full_name() or client_user.email
     client_email = client_user.email
+    lang = resolve_user_language(agency_user)
 
-    subject = f"{client_name} joined Bop Social — send a dashboard access request"
-    html = _email_html(
-        title        = 'Your client joined Bop Social! 🎉',
-        greeting     = (
-            f'Hi <strong style="color:#0f172a;">{agency_name}</strong>, '
-            f'great news! <strong style="color:#0f172a;">{client_name}</strong> '
-            f'({client_email}) has just verified their email and joined Bop Social.'
-        ),
-        body_html    = (
-            f'<div style="background:linear-gradient(135deg,#f0fdf4,#ecfdf5);border:1px solid rgba(22,163,74,0.2);'
-            f'border-radius:14px;padding:20px 24px;margin:0 0 24px;">'
-            f'<p style="margin:0 0 4px;font-size:11px;font-weight:700;color:#16a34a;text-transform:uppercase;letter-spacing:0.08em;">Client Joined</p>'
-            f'<p style="margin:0;font-size:18px;font-weight:700;color:#0f172a;">{client_name}</p>'
-            f'<p style="margin:4px 0 0;font-size:13px;color:#64748b;">{client_email}</p>'
-            f'</div>'
-            f'<p style="font-size:14px;color:#64748b;line-height:1.7;margin:0 0 4px;">'
-            f'You can now go to your Clients page and send them a dashboard access request to connect their account to your agency.</p>'
-        ),
-        cta_url      = f'{FRONTEND_URL}/admin/clients',
-        cta_label    = 'Go to Clients Page',
-        expiry_note  = 'The client will need to accept your access request to connect their account to your agency.',
-        frontend_url = FRONTEND_URL,
+    copy = get_email_copy(
+        'client_joined', lang=lang,
+        agency_name=agency_name,
+        client_name=client_name,
+        client_email=client_email,
+        frontend_url=FRONTEND_URL,
     )
-    plain = (
-        f"Hi {agency_name},\n\n"
-        f"{client_name} ({client_email}) has joined Bop Social!\n\n"
-        f"You can now send them a dashboard access request from your Clients page:\n"
-        f"{FRONTEND_URL}/admin/clients\n"
+
+    body_html = (
+        f'<div style="background:linear-gradient(135deg,#f0fdf4,#ecfdf5);border:1px solid rgba(22,163,74,0.2);'
+        f'border-radius:14px;padding:20px 24px;margin:0 0 24px;">'
+        f'<p style="margin:0 0 4px;font-size:11px;font-weight:700;color:#16a34a;text-transform:uppercase;letter-spacing:0.08em;">{copy["badge"]}</p>'
+        f'<p style="margin:0;font-size:18px;font-weight:700;color:#0f172a;">{client_name}</p>'
+        f'<p style="margin:4px 0 0;font-size:13px;color:#64748b;">{client_email}</p>'
+        f'</div>'
+        f'<p style="font-size:14px;color:#64748b;line-height:1.7;margin:0 0 4px;">{copy["body"]}</p>'
+    )
+
+    html = _email_html(
+        title        = copy['title'],
+        greeting     = copy['greeting'],
+        body_html    = body_html,
+        cta_url      = f'{FRONTEND_URL}/admin/clients',
+        cta_label    = copy['cta_label'],
+        expiry_note  = copy['expiry_note'],
+        frontend_url = FRONTEND_URL,
+        lang         = lang,
     )
     try:
-        send_mail(subject, plain, FROM_EMAIL, [agency_user.email], html_message=html, fail_silently=True)
+        send_mail(copy['subject'], copy['plain'], FROM_EMAIL, [agency_user.email], html_message=html, fail_silently=True)
     except Exception:
         pass
 
 
 def _send_verification_email(user, token):
+    from .locale_helpers import resolve_user_language
+
     verify_url = f"{FRONTEND_URL}/verify-email?token={token}"
     name       = user.first_name or user.email.split('@')[0]
-    profile    = getattr(user, 'profile', None)
-    lang       = getattr(profile, 'language', None) or (getattr(profile.client, 'default_language', None) if (profile and profile.client) else None)
+    lang       = resolve_user_language(user)
 
     if lang == 'es':
         subject = 'Verifica tu cuenta de Bop Social'
@@ -427,6 +431,7 @@ def _send_verification_email(user, token):
         cta_label  = cta_label,
         expiry_note= expiry_note,
         frontend_url = FRONTEND_URL,
+        lang       = lang,
     )
 
     try:
@@ -436,10 +441,11 @@ def _send_verification_email(user, token):
 
 
 def _send_reset_email(user, token):
+    from .locale_helpers import resolve_user_language
+
     reset_url = f"{FRONTEND_URL}/reset-password?token={token}"
     name      = user.first_name or user.email.split('@')[0]
-    profile   = getattr(user, 'profile', None)
-    lang      = getattr(profile, 'language', None) or (getattr(profile.client, 'default_language', None) if (profile and profile.client) else None)
+    lang      = resolve_user_language(user)
 
     if lang == 'es':
         subject = 'Restablece tu contraseña de Bop Social'
@@ -464,9 +470,11 @@ def _send_reset_email(user, token):
         cta_label  = cta_label,
         expiry_note= expiry_note,
         frontend_url = FRONTEND_URL,
+        lang       = lang,
     )
 
     try:
         send_mail(subject, plain, FROM_EMAIL, [user.email], html_message=html, fail_silently=False)
     except Exception:
         pass
+

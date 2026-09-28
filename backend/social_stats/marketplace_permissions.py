@@ -183,15 +183,19 @@ def check_action(
         )
         if client.owner_user_id:
             from django.conf import settings
+            from .locale_helpers import resolve_user_language, get_notification_copy
             from .notification_dispatcher import dispatch as dispatch_notification
             frontend = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
+            recip_lang = resolve_user_language(client.owner_user, client)
+            notif_copy = get_notification_copy('approval_requested', lang=recip_lang, agency_name=relation.agency.name)
+            body_text = preview or (f'Desean realizar: {action_type or action_key}' if recip_lang == 'es' else f'They want to: {action_type or action_key}')
             dispatch_notification(
                 client.owner_user,
                 event_type='approval_requested',
-                title=f'{relation.agency.name} needs your approval',
-                body=(preview or f'They want to: {action_type or action_key}')[:300],
+                title=notif_copy['title'],
+                body=body_text[:300],
                 cta_url=f'{frontend}/u/approvals',
-                cta_label='Review approval',
+                cta_label=notif_copy['cta_label'],
                 data={
                     'kind':         'approval_requested',
                     'approval_id':  ar.id,

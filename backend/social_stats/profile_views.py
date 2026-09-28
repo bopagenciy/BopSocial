@@ -247,7 +247,7 @@ def _get_agency_since(profile):
     return None
 
 
-def _email_template(title, greeting, body_html, cta_url, cta_label, note, info_card_html=''):
+def _email_template(title, greeting, body_html, cta_url, cta_label, note, info_card_html='', lang='en'):
     return f"""<!DOCTYPE html>
 <html>
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
@@ -255,17 +255,17 @@ def _email_template(title, greeting, body_html, cta_url, cta_label, note, info_c
   <table width="100%" cellpadding="0" cellspacing="0" style="padding:48px 20px 40px;">
     <tr><td align="center">
       <table width="520" cellpadding="0" cellspacing="0"
-             style="background:#ffffff;border-radius:24px;border:1px solid rgba(0,215,255,0.18);
-                    box-shadow:0 8px 40px rgba(15,23,42,0.10);overflow:hidden;">
-        <tr><td style="background:linear-gradient(90deg,#00d7ff,#0099bb);height:4px;font-size:0;">&nbsp;</td></tr>
+             style="background:#ffffff;border-radius:24px;border:1px solid rgba(245,166,35,0.22);
+                    box-shadow:0 8px 40px rgba(30,32,42,0.10);overflow:hidden;">
+        <tr><td style="background:linear-gradient(90deg,#F5A623,#E09612);height:4px;font-size:0;">&nbsp;</td></tr>
         <tr>
           <td style="padding:32px 40px 24px;text-align:center;background:#ffffff;">
-            <img src="{FRONTEND_URL}/favicon.png" alt="Social Stats" width="52" height="52"
-                 style="border-radius:14px;display:inline-block;box-shadow:0 4px 16px rgba(0,215,255,0.25);margin-bottom:14px;" /><br>
-            <span style="font-size:22px;font-weight:800;color:#0f172a;letter-spacing:-0.04em;">Social Stats</span><span style="font-size:22px;font-weight:800;color:#00b8d9;letter-spacing:-0.04em;">.ai</span>
+            <img src="{FRONTEND_URL}/favicon.png" alt="Bop Social" width="52" height="52"
+                 style="border-radius:14px;display:inline-block;box-shadow:0 4px 16px rgba(245,166,35,0.25);margin-bottom:14px;" /><br>
+            <span style="font-size:22px;font-weight:800;color:#1E202A;letter-spacing:-0.04em;">Bop</span><span style="font-size:22px;font-weight:800;color:#F5A623;letter-spacing:-0.04em;"> Social</span>
           </td>
         </tr>
-        <tr><td style="padding:0 40px;"><div style="height:1px;background:linear-gradient(90deg,transparent,rgba(0,215,255,0.2),transparent);"></div></td></tr>
+        <tr><td style="padding:0 40px;"><div style="height:1px;background:linear-gradient(90deg,transparent,rgba(245,166,35,0.2),transparent);"></div></td></tr>
         <tr>
           <td style="padding:36px 40px 32px;">
             <h1 style="margin:0 0 8px;font-size:24px;font-weight:700;color:#0f172a;letter-spacing:-0.03em;">{title}</h1>
@@ -273,16 +273,16 @@ def _email_template(title, greeting, body_html, cta_url, cta_label, note, info_c
             {info_card_html}
             {body_html}
             {"" if not cta_url else f'''<div style="text-align:center;margin:28px 0;">
-              <a href="{cta_url}" style="display:inline-block;background:linear-gradient(135deg,#00d7ff,#00b0d0);color:#021418;font-weight:800;font-size:15px;padding:15px 40px;border-radius:14px;text-decoration:none;box-shadow:0 8px 24px rgba(0,215,255,0.3);">{cta_label}</a>
+              <a href="{cta_url}" style="display:inline-block;background:linear-gradient(135deg,#F5A623,#E09612);color:#1E202A;font-weight:800;font-size:15px;padding:15px 40px;border-radius:14px;text-decoration:none;box-shadow:0 8px 24px rgba(245,166,35,0.3);">{cta_label}</a>
             </div>'''}
-            <div style="background:linear-gradient(135deg,#f0f9ff,#f8faff);border:1px solid rgba(0,215,255,0.15);border-radius:12px;padding:14px 18px;">
+            <div style="background:linear-gradient(135deg,#FFF8EC,#f8faff);border:1px solid rgba(245,166,35,0.18);border-radius:12px;padding:14px 18px;">
               <p style="margin:0;font-size:13px;color:#64748b;line-height:1.6;">{note}</p>
             </div>
           </td>
         </tr>
         <tr>
-          <td style="background:linear-gradient(135deg,#f8fafc,#f0f9ff);padding:20px 40px;text-align:center;border-top:1px solid rgba(0,215,255,0.1);">
-            <p style="margin:0;font-size:12px;color:#94a3b8;">&copy; 2026 <strong style="color:#64748b;">Social Stats.ai</strong> &mdash; Automation Intelligence Platform</p>
+          <td style="background:linear-gradient(135deg,#f8fafc,#FFF8EC);padding:20px 40px;text-align:center;border-top:1px solid rgba(245,166,35,0.15);">
+            <p style="margin:0;font-size:12px;color:#94a3b8;">&copy; 2026 <strong style="color:#64748b;">Bop Social</strong> &mdash; Marketing Platform</p>
           </td>
         </tr>
       </table>
@@ -294,26 +294,39 @@ def _email_template(title, greeting, body_html, cta_url, cta_label, note, info_c
 
 def send_invitation_accepted_email(client_user, agency_name, agency_email):
     """Email to client confirming they are now connected to agency."""
+    from .locale_helpers import resolve_user_language, get_email_copy
+
     name = client_user.first_name or client_user.email.split('@')[0]
+    lang = resolve_user_language(client_user)
+
+    copy = get_email_copy(
+        'connected_client', lang=lang,
+        name=name,
+        agency_name=agency_name,
+        agency_email=agency_email,
+        frontend_url=FRONTEND_URL,
+    )
+
     info = f"""<div style="background:linear-gradient(135deg,#f5f3ff,#faf0ff);border:1px solid rgba(124,58,237,0.15);border-radius:14px;padding:20px 24px;margin:0 0 24px;">
-      <p style="margin:0 0 4px;font-size:11px;font-weight:700;color:#7c3aed;text-transform:uppercase;letter-spacing:0.08em;">Connected Agency</p>
+      <p style="margin:0 0 4px;font-size:11px;font-weight:700;color:#7c3aed;text-transform:uppercase;letter-spacing:0.08em;">{copy["badge"]}</p>
       <p style="margin:0;font-size:18px;font-weight:700;color:#0f172a;">{agency_name}</p>
       <p style="margin:4px 0 0;font-size:13px;color:#64748b;">{agency_email}</p>
     </div>"""
+
     html = _email_template(
-        title        = 'You\'re connected!',
-        greeting     = f'Hi <strong style="color:#0f172a;">{name}</strong>, your account is now connected to <strong style="color:#0f172a;">{agency_name}</strong> on SocialStats. They can now manage your analytics and reports.',
+        title        = copy['title'],
+        greeting     = copy['greeting'],
         body_html    = '',
         cta_url      = f'{FRONTEND_URL}/dashboard',
-        cta_label    = 'Go to Dashboard',
-        note         = 'You can disconnect from your agency at any time from your Account Settings.',
+        cta_label    = copy['cta_label'],
+        note         = copy['note'],
         info_card_html = info,
+        lang         = lang,
     )
-    plain = f"Hi {name},\n\nYour Social Stats account is now connected to {agency_name} ({agency_email}).\n\nGo to your dashboard: {FRONTEND_URL}/dashboard"
     try:
         send_mail(
-            f'You\'re now connected to {agency_name} on Social Stats',
-            plain, FROM_EMAIL, [client_user.email],
+            copy['subject'],
+            copy['plain'], FROM_EMAIL, [client_user.email],
             html_message=html, fail_silently=True,
         )
     except Exception:
@@ -321,29 +334,43 @@ def send_invitation_accepted_email(client_user, agency_name, agency_email):
 
 
 def _send_account_deleted_email_to_agency(agency_user, agency_name, client_name, client_email, reason):
-    """Email to agency when their client deletes their Social Stats account."""
+    """Email to agency when their client deletes their Bop Social account."""
+    from .locale_helpers import resolve_user_language, get_email_copy
+
     name = agency_user.first_name or agency_user.email.split('@')[0]
-    reason_html = f'<p style="margin:8px 0 0;font-size:13px;color:#64748b;"><strong>Reason:</strong> {reason}</p>' if reason else ''
+    lang = resolve_user_language(agency_user)
+
+    copy = get_email_copy(
+        'account_deleted', lang=lang,
+        name=name,
+        client_name=client_name,
+        client_email=client_email,
+        reason=reason or ('No especificado' if lang == 'es' else 'Not provided'),
+        frontend_url=FRONTEND_URL,
+    )
+
+    reason_html = f'<p style="margin:8px 0 0;font-size:13px;color:#64748b;"><strong>{copy["reason_label"]}</strong> {reason}</p>' if reason else ''
     info = f"""<div style="background:linear-gradient(135deg,#fff5f5,#fff0f0);border:1px solid rgba(220,38,38,0.15);border-radius:14px;padding:20px 24px;margin:0 0 24px;">
-      <p style="margin:0 0 4px;font-size:11px;font-weight:700;color:#dc2626;text-transform:uppercase;letter-spacing:0.08em;">Account Deleted</p>
+      <p style="margin:0 0 4px;font-size:11px;font-weight:700;color:#dc2626;text-transform:uppercase;letter-spacing:0.08em;">{copy["badge"]}</p>
       <p style="margin:0;font-size:18px;font-weight:700;color:#0f172a;">{client_name}</p>
       <p style="margin:4px 0 0;font-size:13px;color:#64748b;">{client_email}</p>
       {reason_html}
     </div>"""
+
     html = _email_template(
-        title        = 'A client deleted their account',
-        greeting     = f'Hi <strong style="color:#0f172a;">{name}</strong>, we\'re letting you know that a client has permanently deleted their Social Stats account.',
-        body_html    = '<p style="font-size:14px;color:#64748b;line-height:1.7;margin:0 0 20px;">Their account and all associated data have been permanently removed from Social Stats. You can no longer access their analytics or reports.</p>',
+        title        = copy['title'],
+        greeting     = copy['greeting'],
+        body_html    = f'<p style="font-size:14px;color:#64748b;line-height:1.7;margin:0 0 20px;">{copy["body"]}</p>',
         cta_url      = f'{FRONTEND_URL}/admin/clients',
-        cta_label    = 'View Clients',
-        note         = 'This action is permanent and cannot be undone.',
+        cta_label    = copy['cta_label'],
+        note         = copy['note'],
         info_card_html = info,
+        lang         = lang,
     )
-    plain = f"Hi {name},\n\n{client_name} ({client_email}) has permanently deleted their Social Stats account.\n\nReason: {reason or 'Not provided'}\n\nAll their data has been removed."
     try:
         send_mail(
-            f'{client_name} deleted their SocialStats account',
-            plain, FROM_EMAIL, [agency_user.email],
+            copy['subject'],
+            copy['plain'], FROM_EMAIL, [agency_user.email],
             html_message=html, fail_silently=True,
         )
     except Exception:
@@ -352,26 +379,39 @@ def _send_account_deleted_email_to_agency(agency_user, agency_name, client_name,
 
 def _send_disconnect_email_to_agency(agency_user, agency_name, client_name, client_email):
     """Email to agency when client disconnects."""
+    from .locale_helpers import resolve_user_language, get_email_copy
+
     name = agency_user.first_name or agency_user.email.split('@')[0]
+    lang = resolve_user_language(agency_user)
+
+    copy = get_email_copy(
+        'disconnected_client', lang=lang,
+        name=name,
+        client_name=client_name,
+        client_email=client_email,
+        frontend_url=FRONTEND_URL,
+    )
+
     info = f"""<div style="background:linear-gradient(135deg,#fff5f5,#fff0f0);border:1px solid rgba(220,38,38,0.15);border-radius:14px;padding:20px 24px;margin:0 0 24px;">
-      <p style="margin:0 0 4px;font-size:11px;font-weight:700;color:#dc2626;text-transform:uppercase;letter-spacing:0.08em;">Client Disconnected</p>
+      <p style="margin:0 0 4px;font-size:11px;font-weight:700;color:#dc2626;text-transform:uppercase;letter-spacing:0.08em;">{copy["badge"]}</p>
       <p style="margin:0;font-size:18px;font-weight:700;color:#0f172a;">{client_name}</p>
       <p style="margin:4px 0 0;font-size:13px;color:#64748b;">{client_email}</p>
     </div>"""
+
     html = _email_template(
-        title        = 'A client has disconnected',
-        greeting     = f'Hi <strong style="color:#0f172a;">{name}</strong>, we\'re letting you know that a client has removed your agency\'s access to their Social Stats account.',
-        body_html    = '<p style="font-size:14px;color:#64748b;line-height:1.7;margin:0 0 20px;">Their data and connected accounts are no longer accessible to your agency. You can send them a new invitation if needed.</p>',
+        title        = copy['title'],
+        greeting     = copy['greeting'],
+        body_html    = f'<p style="font-size:14px;color:#64748b;line-height:1.7;margin:0 0 20px;">{copy["body"]}</p>',
         cta_url      = f'{FRONTEND_URL}/admin/clients',
-        cta_label    = 'View Clients',
-        note         = 'If you believe this was a mistake, you can reach out to the client directly and send a new invitation from your dashboard.',
+        cta_label    = copy['cta_label'],
+        note         = copy['note'],
         info_card_html = info,
+        lang         = lang,
     )
-    plain = f"Hi {name},\n\n{client_name} ({client_email}) has disconnected from your agency on Social Stats.\n\nYou can send them a new invitation from your dashboard: {FRONTEND_URL}/admin/clients"
     try:
         send_mail(
-            f'{client_name} has disconnected from your agency',
-            plain, FROM_EMAIL, [agency_user.email],
+            copy['subject'],
+            copy['plain'], FROM_EMAIL, [agency_user.email],
             html_message=html, fail_silently=True,
         )
     except Exception:

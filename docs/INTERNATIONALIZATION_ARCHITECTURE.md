@@ -1191,20 +1191,90 @@ All 17 application namespaces achieve 100% key parity with 0 missing keys, 0 orp
   - `http://localhost:3010/admin/analytics` → HTTP 200 OK
   - `http://localhost:3010/u/dashboard` → HTTP 200 OK
 
+---
 
+## 26. Phase BS-2.6F.1 — Backend Email & Notification Localization Closure
 
+### 26.1 Scope & Mission
+Phase BS-2.6F.1 closed the remaining backend internationalization gap for user-facing transactional emails and notification content in Bop Social. It eradicated legacy branding residuals (`Social Stats` / `SocialStats` / `Social Stats.ai`), implemented a unified locale resolution hierarchy, localized all transactional email templates (HTML and plain text) without sending live emails, localized newly dispatched in-app notifications while preserving machine-readable metadata and links, and fully maintained database backwards compatibility without destructive schema migrations.
 
+### 26.2 Unified Locale Resolution Hierarchy
+Locale determination for backend-generated communications is centralized in `backend/social_stats/locale_helpers.py`:
+```python
+def resolve_user_language(user=None, client=None) -> str:
+    # 1. Recipient user's explicit preference
+    if user and hasattr(user, 'profile') and user.profile and getattr(user.profile, 'language', None):
+        return user.profile.language  # 'es' or 'en'
+    # 2. Client / workspace default language
+    if client and getattr(client, 'default_language', None):
+        return client.default_language
+    if user and hasattr(user, 'profile') and user.profile and getattr(user.profile, 'client', None):
+        client_obj = getattr(user.profile, 'client', None)
+        if client_obj and getattr(client_obj, 'default_language', None):
+            return client_obj.default_language
+    # 3. Canonical fallback
+    return 'en'
+```
 
+### 26.3 Localized Email Pathways & Copy Templates
+All transactional emails provide bilingual (`en` and `es`) templates with structured HTML layouts, plain-text equivalents, and official Bop Social branding (`Bop Social <noreply@bopsocial.com>`):
+1. **Account Verification & Password Reset** (`auth_views.py`):
+   - Localized browser fallback prompt ("O copia este enlace en tu navegador:" / "Or copy this link into your browser:").
+2. **Client Joined Notification** (`auth_views.py`):
+   - Localized subject (`[Bop Social] Nuevo cliente unido: ...` / `[Bop Social] New client joined: ...`) and body text.
+3. **Workspace & Client Invitations** (`invitation_views.py`):
+   - Localized invitation emails for existing users and new signups (`invitation_existing_user`, `invitation_new_user`).
+   - Clean Bop Social design, localized action buttons ("Aceptar o rechazar invitación" / "Accept or Decline Invitation"), and expiry indicators.
+4. **Agency Workspace Invitations** (`agency_invite_views.py`):
+   - Localized invitations to manage client workspaces with localized CTAs and branding.
+5. **Manage Client Requests** (`manage_request_views.py`):
+   - Localized management permission requests sent to client account owners.
+6. **Account Disconnect & Deletion Notices** (`profile_views.py`):
+   - Localized notices sent to agency administrators when client profiles disconnect or delete accounts.
+7. **Security Login Alerts** (`security/login_monitor.py`):
+   - Immediate security notification on new/suspicious browser or IP combo in the user's preferred language.
+8. **GDPR / Privacy Data Export Ready** (`security/privacy_tasks.py`):
+   - Bilingual notification with secure download links and expiration timelines.
+9. **Event Dispatcher & Generic Notifications** (`notification_dispatcher.py`):
+   - Localized CTA labels ("Abrir Bop Social" / "Open Bop Social") and default fallback sender.
 
+### 26.4 In-App Notification Localization & Historical Compatibility
+- **Newly Dispatched Notifications**:
+  - `invitation_views.py`, `agency_invite_views.py`, `manage_request_views.py`, `marketplace_permissions.py`, `approval_views.py`, and `events/handlers/notifications.py` construct user-facing titles and message bodies in the recipient's preferred language.
+  - Event types (`invitation_received`, `manage_request_accepted`, `approval_requested`), numeric IDs, URL routes, and JSON metadata dictionaries are preserved identically across languages.
+- **Historical Notification Records**:
+  - Historical rows in the `social_stats_notification` table are stored as rendered text. Converting the schema to raw template IDs and JSON context would introduce high risk of breakage for past records. In accordance with architectural guidelines, existing records remain unchanged and readable, while all newly generated notifications follow the resolved recipient locale.
 
+### 26.5 Automated Test Coverage & Verification
+- **Backend Test Suite**:
+  - Dedicated test suite `social_stats.tests.test_backend_email_notification_i18n` with 10 test specs:
+    1. `test_locale_resolution_hierarchy`: Verifies user preference > client default > fallback 'en'.
+    2. `test_auth_verification_and_reset_email_copy`: Verifies auth email copy and browser links.
+    3. `test_client_joined_email_es_and_en`: Verifies agency notification in Spanish and English.
+    4. `test_invitation_email_existing_and_new_user`: Verifies existing and new user invitation copy.
+    5. `test_agency_invite_and_manage_request_emails`: Verifies agency invite and manage request copy.
+    6. `test_profile_agency_disconnect_and_deletion_emails`: Verifies profile lifecycle notices.
+    7. `test_security_login_and_data_export`: Verifies suspicious login alerts and data export links.
+    8. `test_in_app_notification_creation_localized`: Verifies localized in-app creation and payload preservation.
+    9. `test_token_and_url_preservation_between_en_and_es`: Verifies security tokens and routes match across languages.
+    10. `test_no_external_smtp_calls`: Verifies locmem backend is used with zero external network socket calls.
+  - Test result: **10 passed, 0 failed** in 3.40s.
+  - Regression suite `social_stats.tests.test_language_preferences`: **10 passed, 0 failed** in 1.26s.
+- **Frontend Test Suite**:
+  - Test command: `cmd.exe /c "set CI=true && npm test -- --watchAll=false"`
+  - Test result: **27 passed, 27 total test suites (224 passed, 224 total tests)** (100% pass rate).
 
-
-
-
-
-
-
-
-
-
+### 26.6 Build & Deployment State
+- **Docker Compose Configuration**: `docker-compose.local.yml` updated:
+  - `backend`: `bopsocial-backend-local:bs-2.6f.1`
+  - `worker`: `bopsocial-backend-local:bs-2.6f.1`
+  - `beat`: `bopsocial-backend-local:bs-2.6f.1`
+  - `frontend`: `bopsocial-frontend-local:bs-2.6f`
+- **Container Health**:
+  - `agencyos-backend-1`: Up (healthy)
+  - `agencyos-worker-1`: Up
+  - `agencyos-beat-1`: Up
+  - `agencyos-frontend-1`: Up (healthy)
+- **Local Runtime Check**:
+  - `http://localhost:3010/` returns `HTTP/1.1 200 OK`.
 

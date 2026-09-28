@@ -127,12 +127,15 @@ def _serialize_invite(inv: AgencyInviteFromUser, *, perspective: str = 'user',
 
 
 def _send_invite_email(inv: AgencyInviteFromUser):
+    from .locale_helpers import resolve_user_language, get_email_copy
+
     target_email = (inv.target_agency.owner_user.email if inv.target_agency else inv.target_agency_email)
     if not target_email:
         return
     inviter_name = inv.inviter_user.get_full_name() or inv.inviter_user.email
     link = f"{FRONTEND_URL}/agency-invite/{inv.token}"
-    subject = f"{inviter_name} ({inv.client.company}) wants you to manage their social on Social Stats"
+    target_user = inv.target_agency.owner_user if inv.target_agency else None
+    lang = resolve_user_language(target_user, inv.client)
 
     granted = sorted([k for k, v in (inv.proposed_permissions or {}).items() if v])
     perm_chips = ''.join(
@@ -143,38 +146,36 @@ def _send_invite_email(inv: AgencyInviteFromUser):
     if len(granted) > 8:
         perm_chips += f'<span style="font-size:12px;color:#64748b;">+{len(granted) - 8} more</span>'
 
-    greeting = (
-        f'<strong style="color:#0f172a;">{inviter_name}</strong> from '
-        f'<strong style="color:#0f172a;">{inv.client.company}</strong> would like '
-        f'your agency to manage their social media on Social Stats.'
+    copy = get_email_copy(
+        'agency_invite', lang=lang,
+        inviter_name=inviter_name,
+        company_name=inv.client.company,
+        message=inv.message or "(none)",
+        link=link,
     )
+
     body_html = (
         f'<div style="background:linear-gradient(135deg,#f0f9ff,#f8faff);border:1px solid rgba(0,215,255,0.18);'
         f'border-radius:14px;padding:20px 24px;margin:0 0 16px;">'
-        f'<p style="margin:0 0 4px;font-size:11px;font-weight:700;color:#00b8d9;text-transform:uppercase;letter-spacing:0.08em;">Message</p>'
+        f'<p style="margin:0 0 4px;font-size:11px;font-weight:700;color:#00b8d9;text-transform:uppercase;letter-spacing:0.08em;">{copy["msg_label"]}</p>'
         f'<p style="margin:0;font-size:15px;color:#1e293b;line-height:1.7;">{inv.message or "(no message)"}</p>'
         f'</div>'
         f'<div style="margin:0 0 16px;font-size:13px;color:#64748b;">'
-        f'<strong style="color:#0f172a;">Proposed access:</strong><br>{perm_chips or "—"}'
+        f'<strong style="color:#0f172a;">{copy["proposed_access_label"]}</strong><br>{perm_chips or "—"}'
         f'</div>'
     )
-    plain = (
-        f'{inviter_name} from {inv.client.company} would like your agency to manage their social on SocialStats.\n\n'
-        f'Message: {inv.message or "(none)"}\n\n'
-        f'Review and respond: {link}\n\n'
-        f'This invitation expires in 7 days.\n'
-    )
     html = _email_html(
-        title='Manage-account request',
-        greeting=greeting,
+        title=copy['title'],
+        greeting=copy['greeting'],
         body_html=body_html,
         cta_url=link,
-        cta_label='Review the request',
-        expiry_note='&#9203; This invitation expires in <strong>7 days</strong>.',
+        cta_label=copy['cta_label'],
+        expiry_note=copy['expiry_note'],
         frontend_url=FRONTEND_URL,
+        lang=lang,
     )
     try:
-        send_mail(subject, plain, FROM_EMAIL, [target_email],
+        send_mail(copy['subject'], copy['plain'], FROM_EMAIL, [target_email],
                   html_message=html, fail_silently=True)
     except Exception:
         logger.exception('agency_invite: failed to send email to %s', target_email)
@@ -223,11 +224,15 @@ def send_agency_invite(request):
         if agency and agency.owner_user:
             # In-app only — `_send_invite_email` below sends a richer email
             # with perm chips and we don't want a duplicate.
+            from .locale_helpers import resolve_user_language, get_notification_copy
             from .notification_dispatcher import dispatch as dispatch_notification
+            recip_lang = resolve_user_language(agency.owner_user)
+            user_display = request.user.get_full_name() or request.user.email
+            notif_copy = get_notification_copy('agency_invite_received', lang=recip_lang, user_name=user_display)
             dispatch_notification(
                 agency.owner_user,
                 event_type='agency_invite_received',
-                title=f'{request.user.get_full_name() or request.user.email} wants you to manage their account',
+                title=notif_copy['title'],
                 body=inv.message or '(no message)',
                 channels=['in_app'],
                 data={
@@ -359,12 +364,19 @@ def accept_agency_invite(request, token):
             metadata={'agency_id': agency.id, 'invite_id': inv.id, 'initiated_by': 'end_user'},
         )
 
+    from .locale_helpers import resolve_user_language, get_notification_copy
     from .notification_dispatcher import dispatch as _dispatch
+    recip_lang = resolve_user_language(inv.inviter_user)
+    notif_copy = get_notification_copy(
+        'agency_invite_accepted', lang=recip_lang,
+        agency_name=agency.name,
+        company=inv.client.company,
+    )
     _dispatch(
         inv.inviter_user,
         event_type='agency_invite_accepted',
-        title=f'{agency.name} accepted your invitation',
-        body=f'They can now manage {inv.client.company}.',
+        title=notif_copy['title'],
+        body=notif_copy['body'],
         data={
             'kind':         'agency_invite_accepted',
             'invite_id':    inv.id,
@@ -413,11 +425,15 @@ def decline_agency_invite(request, token):
     inv.decided_at = timezone.now()
     inv.save(update_fields=['status', 'decided_at'])
 
+    from .locale_helpers import resolve_user_language, get_notification_copy
     from .notification_dispatcher import dispatch as _dispatch
+    recip_lang = resolve_user_language(inv.inviter_user)
+    agency_display = (agency.name if agency else inv.target_agency_email) or ("Una agencia" if recip_lang == 'es' else "An agency")
+    notif_copy = get_notification_copy('agency_invite_declined', lang=recip_lang, agency_name=agency_display)
     _dispatch(
         inv.inviter_user,
         event_type='agency_invite_declined',
-        title=f'{(agency.name if agency else inv.target_agency_email) or "An agency"} declined your invitation',
+        title=notif_copy['title'],
         data={
             'kind': 'agency_invite_declined',
             'invite_id': inv.id,
