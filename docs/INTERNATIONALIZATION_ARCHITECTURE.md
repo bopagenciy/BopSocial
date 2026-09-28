@@ -1017,8 +1017,62 @@ Phase BS-2.6E completed the localized operational surfaces for WhatsApp campaign
 - **Production Build**: `npm run build` executed cleanly (exit code 0).
 - **Local Docker Deployment**:
   - Built frontend image: `bopsocial-frontend-local:bs-2.6e`.
-  - Retained backend image: `bopsocial-backend-local:bs-2.1.1`.
-  - Recreated `agencyos-frontend-1` and verified live with HTTP 200 via `curl.exe -I http://localhost:3010`.
+
+---
+
+### 24.4 Phase BS-2.6E.1 — Messaging Visual Residuals & Full Regression Verification
+
+#### 24.4.1 Mission Overview & Visual Closure
+Phase BS-2.6E.1 implemented a narrow visual closure resolving residual unlocalized system strings identified during browser acceptance testing on `/admin/bot-flows` and `/admin/ctwa`, conducted an architectural currency trace, and resolved the full regression count discrepancy.
+
+#### 24.4.2 Bot Flow Template Label Localization
+- **Residual Identified**: Built-in template cards and empty-state recommendations displayed canonical English seed names (`General lead magnet`, `Restaurant reservation`, `Healthcare appointment booking`).
+- **Architectural Solution**:
+  - Implemented `getTemplateDisplayName(name, t)` and `getTemplateDisplayDescription(name, fallbackDesc, t)` in `frontend/src/components/bot/templateUtils.js` (re-exported via `nodeCatalog.js`).
+  - Added localized `bot_templates.built_in.*` dictionary to `messaging.json` (761 symmetric keys in EN and ES):
+    - `general_lead_magnet` → EN: "General lead magnet", ES: "Imán de prospectos general".
+    - `restaurant_reservation` → EN: "Restaurant reservation", ES: "Reserva en restaurante".
+    - `healthcare_appointment_booking` → EN: "Healthcare appointment booking", ES: "Reserva de cita médica".
+    - Additional built-in templates (`real_estate_lead_capture`, `fitness_gym_lead_capture`, `e_commerce_product_inquiry`, `education_course_inquiry`, `customer_support_triage`).
+  - **Canonical Data Preservation**: Template slugs, numeric IDs (`/admin/bot-templates/:id`), database records, and API clone payloads remain completely untouched. Custom agency-created templates fallback safely to their stored database names.
+
+#### 24.4.3 CTWA Error-State Localization
+- **Residual Identified**: On `/admin/ctwa`, when a superadmin or unassigned user navigates without an active client selected, the backend Meta Ads endpoint returns `{'connected': False, 'error': 'no client context'}`. The component previously rendered `health.error` directly.
+- **Architectural Solution**:
+  - Mapped `no client context` to `t('ctwa.health_banner.no_client_context')`:
+    - English: *"No client or workspace is currently selected."*
+    - Spanish: *"No hay un cliente seleccionado."*
+  - Preserved technical diagnostic observability by emitting `console.debug('[CTWA] Meta Ads health status:', health.error)`.
+  - Also mapped `adBreakdown.error === 'no client context'` in `CTWACampaignDetailPage.jsx`.
+  - Raw technical backend error strings are never exposed directly to end users.
+
+#### 24.4.4 Currency Source Audit Trace (Read-Only)
+- **Investigation Finding**:
+  1. The `₹` (Indian Rupee) symbol displayed for CTWA spend (`₹0`) originates from hardcoded JSX template literals in `frontend/src/pages/ctwa/CTWACampaignsPage.jsx` (`n={'₹' + totals.spent.toLocaleString()}`) and `frontend/src/pages/ctwa/CTWACampaignDetailPage.jsx`.
+  2. In the backend, `ClientROISettings` stores `currency` ('USD') and `currency_symbol` ('$'), whereas `marketplace_models.py` (`AgencyProfile`, `AgencyClientRelation`, `MarketplaceSubscription`) and `meta_capi.py` default to `'INR'`.
+  3. Meta Ads API returns the account's configured currency code (`fields: currency`).
+  4. Switching UI language (EN ↔ ES) has zero effect on the currency symbol because it is statically hardcoded in frontend JSX and locale format labels.
+  5. **Architectural Invariant**: UI language must never dictate business currency. As specified by protocol, currency architecture modifications are strictly deferred to future specialized billing/multi-currency phases.
+
+#### 24.4.5 Full Frontend Regression Discrepancy Resolution
+- **Investigation Finding**:
+  - In Phase BS-2.6D, the full suite ran across all test directories (25 suites, 186 tests).
+  - In Phase BS-2.6E, the test execution command was scoped to `powershell -Command "$env:CI='true'; npm test -- --watchAll=false src/pages/__tests__"`. This path filter limited Jest discovery exclusively to test suites in `src/pages/__tests__` (12 suites, 110 tests).
+  - No test files were deleted, renamed, excluded, or skipped.
+  - Running the true unrestricted suite `npm test -- --watchAll=false` discovers all 26 test suites across `frontend/src/`.
+- **True Full Frontend Regression Results**:
+  - Command: `powershell -Command "$env:CI='true'; npm test -- --watchAll=false"`
+  - Results: **26 / 26 test suites passed, 200 / 200 tests passed** (including 14 tests in `WhatsAppBotCampaignsTranslation.test.jsx`).
+
+#### 24.4.6 Deployment Verification
+- **Production Build**: `npm run build` executed cleanly (code 0).
+- **Docker Frontend Image**: Built and tagged `bopsocial-frontend-local:bs-2.6e.1`.
+- **Backend Baseline**: Preserved on approved image `bopsocial-backend-local:bs-2.1.1`.
+- **HTTP Verification**:
+  - `http://localhost:3010/` → HTTP 200 OK
+  - `http://localhost:3010/admin/bot-flows` → HTTP 200 OK
+  - `http://localhost:3010/admin/ctwa` → HTTP 200 OK
+
 
 
 

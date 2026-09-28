@@ -199,7 +199,9 @@ export default function CTWACampaignDetailPage() {
           <Empty>
             {adBreakdown.error === 'meta ads not connected'
               ? t('ctwa.detail.not_connected_fb')
-              : t('ctwa.detail.could_not_load', { error: adBreakdown.error })}
+              : adBreakdown.error === 'no client context'
+                ? t('ctwa.health_banner.no_client_context')
+                : t('ctwa.detail.could_not_load', { error: adBreakdown.error })}
           </Empty>
         ) : (adBreakdown.ads || []).length === 0 ? (
           <Empty>{t('ctwa.detail.no_ad_data')}</Empty>

@@ -273,6 +273,7 @@
       "connect_link": "Configuración de plataforma",
       "not_connected_title": "Meta Ads no conectado",
       "not_connected_msg": "Conecta una cuenta de Facebook para sincronizar la inversión publicitaria y enrutar prospectos de CTWA.",
+      "no_client_context": "No hay un cliente seleccionado.",
       "connect_fb": "Conectar Facebook",
       "token_expired_title": "Token de Meta caducado",
       "token_expired_msg": "Vuelve a conectar Facebook para que la inversión se siga sincronizando.",
@@ -799,7 +800,41 @@
     "loading": "Cargando…",
     "empty": "Ninguna plantilla coincide con estos filtros.",
     "load_error": "No se pudieron cargar las plantillas",
-    "used_count": "Usada {{count}}× por agencias"
+    "used_count": "Usada {{count}}× por agencias",
+    "built_in": {
+      "general_lead_magnet": {
+        "name": "Imán de prospectos general",
+        "description": "Correo + nombre → guarda el prospecto. Úsalo con un anuncio CTWA de \"guía gratuita\"."
+      },
+      "restaurant_reservation": {
+        "name": "Reserva en restaurante",
+        "description": "Número de comensales → fecha → hora → ubicación de mesa → nombre → teléfono → guarda el prospecto."
+      },
+      "healthcare_appointment_booking": {
+        "name": "Reserva de cita médica",
+        "description": "El paciente elige departamento, comparte motivo + fecha/hora preferida → guarda el prospecto."
+      },
+      "real_estate_lead_capture": {
+        "name": "Captura de prospectos inmobiliarios",
+        "description": "Saludo → nombre → intención de compra/alquiler/venta → presupuesto → ubicación → plazos → teléfono → guarda el prospecto."
+      },
+      "fitness_gym_lead_capture": {
+        "name": "Captura de prospectos de fitness y gimnasio",
+        "description": "Objetivo → nivel de condición física → duración del plan → nombre → teléfono → guarda el prospecto."
+      },
+      "e_commerce_product_inquiry": {
+        "name": "Consulta de productos de comercio electrónico",
+        "description": "Saludo → producto → acción → nombre → teléfono → guarda el prospecto."
+      },
+      "education_course_inquiry": {
+        "name": "Consulta de cursos y educación",
+        "description": "Nombre → curso → nivel académico → modalidad → teléfono → guarda el prospecto."
+      },
+      "customer_support_triage": {
+        "name": "Triaje de soporte al cliente",
+        "description": "El chat con IA resuelve dudas habituales; escribir \"agente\" deriva la conversación a un humano."
+      }
+    }
   },
   "leads": {
     "title": "Prospectos",

@@ -148,13 +148,33 @@ describe('Phase BS-2.6E — WhatsApp Campaigns, CTWA & Bot Builder International
       data: [
         {
           id: 1,
-          name: 'Real Estate Qualifier',
-          description: 'Qualify buyer leads with automated questions',
-          industry: 'real_estate',
-          use_case: 'lead_capture',
+          name: 'General lead magnet',
+          description: 'Email + name → save lead. Use this with a "free guide" CTWA ad.',
+          industry: 'general',
+          use_case: 'lead_magnet',
           is_featured: true,
           nodes: [{ id: 'n1', type: 'message_text' }],
           use_count: 42,
+        },
+        {
+          id: 2,
+          name: 'Restaurant reservation',
+          description: 'Guest count → date → time → seating → name → phone → save lead.',
+          industry: 'restaurant',
+          use_case: 'appointment_booking',
+          is_featured: true,
+          nodes: [{ id: 'n1', type: 'message_text' }],
+          use_count: 35,
+        },
+        {
+          id: 3,
+          name: 'Healthcare appointment booking',
+          description: 'Patient picks department, shares reason + preferred time → save lead.',
+          industry: 'healthcare',
+          use_case: 'appointment_booking',
+          is_featured: true,
+          nodes: [{ id: 'n1', type: 'message_text' }],
+          use_count: 28,
         },
       ],
     });
@@ -559,4 +579,84 @@ describe('Phase BS-2.6E — WhatsApp Campaigns, CTWA & Bot Builder International
       expect(screen.getByText('Crear flujo')).toBeInTheDocument();
     });
   });
+
+  // 11. Bot Template Residuals Localization (BS-2.6E.1)
+  it('13. renders built-in bot template labels in English and Spanish on BotFlowsListPage without altering canonical data', async () => {
+    botAPI.list.mockResolvedValueOnce({ data: [] }); // empty flows triggers the empty-state with featured templates
+
+    const { rerender } = render(
+      <MemoryRouter>
+        <BotFlowsListPage />
+      </MemoryRouter>
+    );
+
+    // English assertions
+    await waitFor(() => {
+      expect(screen.getByText('General lead magnet')).toBeInTheDocument();
+      expect(screen.getByText('Restaurant reservation')).toBeInTheDocument();
+      expect(screen.getByText('Healthcare appointment booking')).toBeInTheDocument();
+    });
+
+    // Verify canonical links and IDs are preserved
+    const link1 = screen.getByText('General lead magnet').closest('a');
+    expect(link1).toHaveAttribute('href', '/admin/bot-templates/1');
+
+    await act(async () => {
+      await changePlatformLanguage('es');
+    });
+
+    rerender(
+      <MemoryRouter>
+        <BotFlowsListPage />
+      </MemoryRouter>
+    );
+
+    // Spanish assertions
+    await waitFor(() => {
+      expect(screen.getByText('Imán de prospectos general')).toBeInTheDocument();
+      expect(screen.getByText('Reserva en restaurante')).toBeInTheDocument();
+      expect(screen.getByText('Reserva de cita médica')).toBeInTheDocument();
+    });
+
+    // Canonical link href intact in Spanish
+    const linkEs = screen.getByText('Imán de prospectos general').closest('a');
+    expect(linkEs).toHaveAttribute('href', '/admin/bot-templates/1');
+  });
+
+  // 12. CTWA Raw Error Localization (BS-2.6E.1)
+  it('14. renders localized message for "no client context" in English and Spanish and hides raw error', async () => {
+    metaAdsAPI.health.mockResolvedValue({
+      data: { connected: false, error: 'no client context' },
+    });
+
+    const { rerender } = render(
+      <MemoryRouter>
+        <CTWACampaignsPage />
+      </MemoryRouter>
+    );
+
+    // English assertions
+    await waitFor(() => {
+      expect(screen.getByText('No client or workspace is currently selected.')).toBeInTheDocument();
+    });
+
+    await act(async () => {
+      await changePlatformLanguage('es');
+    });
+
+    rerender(
+      <MemoryRouter>
+        <CTWACampaignsPage />
+      </MemoryRouter>
+    );
+
+    // Spanish assertions
+    await waitFor(() => {
+      expect(screen.getByText('No hay un cliente seleccionado.')).toBeInTheDocument();
+    });
+
+    // Ensure raw technical string 'no client context' is completely absent
+    expect(screen.queryByText('no client context')).not.toBeInTheDocument();
+  });
 });
+

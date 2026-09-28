@@ -222,3 +222,5 @@ export function getNodeMeta(type, t) {
   }
   return base;
 }
+
+export { getTemplateDisplayName, getTemplateDisplayDescription } from './templateUtils';

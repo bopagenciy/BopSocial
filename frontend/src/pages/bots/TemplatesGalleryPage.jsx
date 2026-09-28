@@ -24,6 +24,7 @@ import { useTranslation } from 'react-i18next';
 
 import { botTemplateAPI } from '../../services/api';
 import { getNodeMeta } from '../../components/bot/nodeCatalog';
+import { getTemplateDisplayName, getTemplateDisplayDescription } from '../../components/bot/templateUtils';
 import toast from '../../components/ui/toast';
 
 export default function TemplatesGalleryPage() {
@@ -163,7 +164,7 @@ function Card({ template, onPreview, featured }) {
         </span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {template.name}
+            {getTemplateDisplayName(template.name, t)}
           </div>
           <div style={{ marginTop: 2, fontSize: 11, color: 'var(--text-tertiary)' }}>
             {t(`bot_templates.industries.${template.industry}`, template.industry)} · {t(`bot_templates.use_cases.${template.use_case}`, template.use_case)}
@@ -177,7 +178,7 @@ function Card({ template, onPreview, featured }) {
         margin: 0, fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.4,
         display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
         overflow: 'hidden', minHeight: '2.8em',
-      }}>{template.description}</p>
+      }}>{getTemplateDisplayDescription(template.name, template.description, t)}</p>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', fontSize: 11, color: 'var(--text-tertiary)' }}>
         <span>{t('bot_templates.nodes_count', { count: (template.nodes || []).length })}</span>
         {template.use_count > 0 && <span>{t('bot_templates.used_count', { count: template.use_count })}</span>}
@@ -235,7 +236,7 @@ function Empty() {
 function PreviewModal({ template, onClose }) {
   const { t } = useTranslation('messaging');
   const navigate = useNavigate();
-  const [name, setName] = useState(template.name);
+  const [name, setName] = useState(getTemplateDisplayName(template.name, t));
   const [busy, setBusy] = useState(false);
 
   // Build a one-line preview of the node sequence
@@ -267,7 +268,7 @@ function PreviewModal({ template, onClose }) {
             <Bot size={15} />
           </span>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>{template.name}</h2>
+            <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>{getTemplateDisplayName(template.name, t)}</h2>
             <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
               {t(`bot_templates.industries.${template.industry}`, template.industry)} · {t(`bot_templates.use_cases.${template.use_case}`, template.use_case)}
             </div>
@@ -279,7 +280,7 @@ function PreviewModal({ template, onClose }) {
 
         <div style={{ flex: 1, overflowY: 'auto', padding: 20 }}>
           <p style={{ margin: '0 0 16px', fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-            {template.description}
+            {getTemplateDisplayDescription(template.name, template.description, t)}
           </p>
 
           <div style={{ marginBottom: 16 }}>

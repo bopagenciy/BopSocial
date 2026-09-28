@@ -178,12 +178,20 @@ function MetaHealthBanner({ health }) {
   const { t } = useTranslation('messaging');
   // 4 states: not connected, expired, expiring soon (<7d), connected ok
   if (!health.connected) {
+    if (health.error) {
+      console.debug('[CTWA] Meta Ads health status:', health.error);
+    }
+    const isNoClient = typeof health.error === 'string' &&
+      health.error.trim().toLowerCase() === 'no client context';
+    const message = isNoClient
+      ? t('ctwa.health_banner.no_client_context')
+      : t('ctwa.health_banner.not_connected_msg');
     return (
       <Banner
         tone="warning"
         icon={<AlertTriangle size={14} />}
         title={t('ctwa.health_banner.not_connected_title')}
-        message={health.error || t('ctwa.health_banner.not_connected_msg')}
+        message={message}
         action={{ label: t('ctwa.health_banner.connect_fb'), href: '/admin/connections' }}
       />
     );

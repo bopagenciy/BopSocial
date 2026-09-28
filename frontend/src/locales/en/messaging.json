@@ -273,6 +273,7 @@
       "connect_link": "Platform Settings",
       "not_connected_title": "Meta Ads not connected",
       "not_connected_msg": "Connect a Facebook account to sync ad spend and route CTWA leads.",
+      "no_client_context": "No client or workspace is currently selected.",
       "connect_fb": "Connect Facebook",
       "token_expired_title": "Meta token expired",
       "token_expired_msg": "Reconnect Facebook so spend keeps syncing.",
@@ -799,7 +800,41 @@
     "loading": "Loading…",
     "empty": "No templates match these filters.",
     "load_error": "Could not load templates",
-    "used_count": "Used {{count}}× by agencies"
+    "used_count": "Used {{count}}× by agencies",
+    "built_in": {
+      "general_lead_magnet": {
+        "name": "General lead magnet",
+        "description": "Email + name → save lead. Use this with a \"free guide\" CTWA ad."
+      },
+      "restaurant_reservation": {
+        "name": "Restaurant reservation",
+        "description": "Guest count → date → time → seating → name → phone → save lead."
+      },
+      "healthcare_appointment_booking": {
+        "name": "Healthcare appointment booking",
+        "description": "Patient picks department, shares reason + preferred time → save lead."
+      },
+      "real_estate_lead_capture": {
+        "name": "Real-estate lead capture",
+        "description": "Greet → name → buy/rent/sell intent → budget → location → timeline → phone → save lead."
+      },
+      "fitness_gym_lead_capture": {
+        "name": "Fitness / gym lead capture",
+        "description": "Goal → fitness level → plan length → name → phone → save lead."
+      },
+      "e_commerce_product_inquiry": {
+        "name": "E-commerce product inquiry",
+        "description": "Greet → product → action → name → phone → save lead."
+      },
+      "education_course_inquiry": {
+        "name": "Education / course inquiry",
+        "description": "Name → course → current level → mode → phone → save lead."
+      },
+      "customer_support_triage": {
+        "name": "Customer support triage",
+        "description": "AI chat handles common questions; user-typed \"agent\" hands off to a human."
+      }
+    }
   },
   "leads": {
     "title": "Leads",

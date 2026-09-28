@@ -23,6 +23,7 @@ import {
 
 import { botAPI, botTemplateAPI } from '../../services/api';
 import toast from '../../components/ui/toast';
+import { getTemplateDisplayName } from '../../components/bot/templateUtils';
 
 const FILTERS = [
   { key: 'all',    labelKey: 'all',    defaultLabel: 'All' },
@@ -263,7 +264,7 @@ function Empty({ templates, onCreate, t }) {
                 border: '1px solid var(--brand-primary-glow)',
                 borderRadius: 'var(--radius-pill)',
                 fontSize: 12, fontWeight: 600, textDecoration: 'none',
-              }}>{tpl.name}</Link>
+              }}>{getTemplateDisplayName(tpl.name, t)}</Link>
             ))}
           </div>
         </div>
