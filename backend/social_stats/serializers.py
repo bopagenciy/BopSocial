@@ -26,13 +26,35 @@ class ClientSerializer(serializers.ModelSerializer):
     logo = serializers.ImageField(required=False)
     profile_image = serializers.ImageField(required=False)
     competitors = serializers.SerializerMethodField()
+    currency = serializers.CharField(required=False, max_length=10)
 
     class Meta:
         model = Client
         fields = '__all__'
 
+    def to_internal_value(self, data):
+        if hasattr(data, 'copy'):
+            data = data.copy()
+            if 'currency' in data and isinstance(data['currency'], str):
+                data['currency'] = data['currency'].strip().upper()
+        elif isinstance(data, dict) and 'currency' in data and isinstance(data['currency'], str):
+            data = dict(data)
+            data['currency'] = data['currency'].strip().upper()
+        return super().to_internal_value(data)
+
     def get_competitors(self, obj):
         return CompetitorSerializer(obj.competitors.all(), many=True).data
+
+    def validate_currency(self, value):
+        if not value:
+            return 'USD'
+        normalized = value.strip().upper()
+        valid_currencies = [code for code, _ in Client.CURRENCY_CHOICES]
+        if normalized not in valid_currencies:
+            raise serializers.ValidationError(
+                f"Invalid currency '{value}'. Supported currencies are: {', '.join(valid_currencies)}."
+            )
+        return normalized
 
 
 class CompetitorSerializer(serializers.ModelSerializer):

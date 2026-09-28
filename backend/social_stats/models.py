@@ -105,6 +105,27 @@ class Client(models.Model):
         help_text="Tenant default language ('en' or 'es'). Unset/None falls back to browser/system fallback.",
     )
 
+    # Canonical workspace/tenant default currency (ISO 4217).
+    CURRENCY_CHOICES = [
+        ('USD', 'US Dollar (USD)'),
+        ('COP', 'Colombian Peso (COP)'),
+        ('EUR', 'Euro (EUR)'),
+        ('GBP', 'British Pound (GBP)'),
+        ('MXN', 'Mexican Peso (MXN)'),
+        ('CAD', 'Canadian Dollar (CAD)'),
+        ('INR', 'Indian Rupee (INR)'),
+        ('BRL', 'Brazilian Real (BRL)'),
+        ('ARS', 'Argentine Peso (ARS)'),
+        ('CLP', 'Chilean Peso (CLP)'),
+        ('PEN', 'Peruvian Sol (PEN)'),
+    ]
+    currency = models.CharField(
+        max_length=3,
+        choices=CURRENCY_CHOICES,
+        default='USD',
+        help_text="Workspace canonical currency code (ISO 4217).",
+    )
+
     # ── Marketplace ownership ────────────────────────────────────
     # Who owns this workspace? Existing rows backfill to 'agency_owned' so the
     # legacy agency-managed flow stays untouched. End-user self-signups create

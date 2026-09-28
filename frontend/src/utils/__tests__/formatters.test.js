@@ -6,6 +6,7 @@ import {
   formatNumber,
   formatPercent,
   formatCurrency,
+  formatCompactCurrency,
   getResolvedLocale,
   parseDateSafe,
 } from '../formatters';
@@ -72,6 +73,46 @@ describe('Bop Social Locale Formatting Utilities Suite', () => {
     // EUR in Spanish
     const eurInEs = formatCurrency(2500, 'EUR', 'es');
     expect(eurInEs).toMatch(/(2500,00|2[.\s]500,00)\s?€/);
+
+    // COP in Spanish and English
+    const copInEs = formatCurrency(500000, 'COP', 'es');
+    expect(copInEs).toMatch(/500[.\s]000/);
+
+    const copInEn = formatCurrency(500000, 'COP', 'en');
+    expect(copInEn).toMatch(/500,000/);
+
+    // Zero-decimal currencies (CLP, JPY) respect ISO zero-decimal behavior
+    const clpInEn = formatCurrency(15000, 'CLP', 'en');
+    expect(clpInEn).toMatch(/15,000/);
+    expect(clpInEn).not.toContain('.00');
+  });
+
+  test('formats compact currency correctly across locales', () => {
+    // USD compact in English
+    const usdCompactEn = formatCompactCurrency(1500000, 'USD', 'en');
+    expect(usdCompactEn).toMatch(/\$1\.5M|\$1\.50M/);
+
+    // USD compact in Spanish
+    const usdCompactEs = formatCompactCurrency(1500000, 'USD', 'es');
+    expect(usdCompactEs).toMatch(/1,5\s?M/);
+
+    // COP compact
+    const copCompactEs = formatCompactCurrency(25000000, 'COP', 'es');
+    expect(copCompactEs).toMatch(/25\s?M/);
+
+    // Empty/null compact currency
+    expect(formatCompactCurrency(null)).toBe('—');
+    expect(formatCompactCurrency(undefined)).toBe('—');
+  });
+
+  test('handles invalid currency codes gracefully without throwing', () => {
+    const fallback = formatCurrency(2500, 'NONEXISTENT', 'en');
+    expect(fallback).toContain('NONEXISTENT');
+    expect(fallback).toContain('2,500');
+
+    const compactFallback = formatCompactCurrency(2500000, 'XYZ', 'en');
+    expect(compactFallback).toContain('XYZ');
+    expect(compactFallback).toContain('2.5M');
   });
 
   test('handles invalid or empty inputs gracefully', () => {

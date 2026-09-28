@@ -159,6 +159,8 @@
     "gmb_placeholder": "https://g.page/tu-negocio",
     "default_language": "Idioma del espacio de trabajo",
     "default_language_hint": "Preferencia de idioma del espacio de trabajo cuando los usuarios no tienen una elección individual.",
+    "currency": "Moneda del espacio de trabajo",
+    "currency_hint": "Moneda canónica de la empresa para métricas, presupuestos e informes.",
     "lang_system": "Predeterminado del sistema",
     "lang_en": "English",
     "lang_es": "Español",

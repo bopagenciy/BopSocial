@@ -196,6 +196,8 @@
     "website_invalid": "Usa una URL completa como https://example.com",
     "default_language": "Idioma predeterminado",
     "default_language_hint": "Preferencia de idioma del espacio de trabajo cuando los usuarios no han configurado una opción individual.",
+    "currency": "Moneda del espacio de trabajo",
+    "currency_hint": "Moneda canónica de la empresa para métricas, presupuestos e informes.",
     "lang_en": "Inglés",
     "lang_es": "Español",
     "lang_system": "Predeterminado del sistema",

@@ -159,6 +159,8 @@
     "gmb_placeholder": "https://g.page/your-business",
     "default_language": "Workspace Language",
     "default_language_hint": "Workspace language preference when users have not set an individual choice.",
+    "currency": "Workspace currency",
+    "currency_hint": "Canonical business currency for metrics, budgets, and reporting.",
     "lang_system": "System / Browser default",
     "lang_en": "English",
     "lang_es": "Español",

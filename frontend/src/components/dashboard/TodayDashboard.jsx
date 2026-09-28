@@ -12,11 +12,11 @@ import {
   TrendingUp, TrendingDown, ArrowRight, Activity,
   ClipboardCheck, AlertCircle,
 } from 'lucide-react';
-import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-} from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { useTranslation } from 'react-i18next';
 
 import useDashboardToday from '../../hooks/useDashboardToday';
+import { formatCompactCurrency } from '../../utils/formatters';
 
 /**
  *
@@ -60,7 +60,7 @@ export default function TodayDashboard() {
       <div style={S.metricRow}>
         <PostsTile  posts={data.posts} />
         <InboxTile  inbox={data.inbox} />
-        <LeadsTile  leads={data.leads} />
+        <LeadsTile  leads={data.leads} currency={data.leads?.currency || data.client_currency} />
         <CampaignsTile campaigns={data.campaigns} />
       </div>
 
@@ -145,7 +145,9 @@ function InboxTile({ inbox = {} }) {
   );
 }
 
-function LeadsTile({ leads = {} }) {
+function LeadsTile({ leads = {}, currency }) {
+  const { i18n } = useTranslation();
+  const cur = currency || leads.currency || 'USD';
   return (
     <Tile
       icon={UserSquare}
@@ -157,7 +159,7 @@ function LeadsTile({ leads = {} }) {
         </>
       }
       footer={leads.pipeline_value > 0 ? (
-        <span style={S.tinyLine}>Pipeline {fmtCurrency(leads.pipeline_value)}</span>
+        <span style={S.tinyLine}>Pipeline {formatCompactCurrency(leads.pipeline_value, cur, i18n?.language)}</span>
       ) : null}
     />
   );
@@ -471,13 +473,6 @@ const S = {
 
 
 // ── Formatters ────────────────────────────────────────────────────────
-function fmtCurrency(n) {
-  if (n == null) return '—';
-  if (n >= 1_00_000) return `₹${(n / 1_00_000).toFixed(1)}L`;
-  if (n >= 1_000)    return `₹${(n / 1_000).toFixed(1)}K`;
-  return `₹${Math.round(n)}`;
-}
-
 function fmtMinutes(m) {
   if (m == null) return '—';
   if (m < 60)  return `${Math.round(m)}m`;

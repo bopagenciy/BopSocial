@@ -191,21 +191,62 @@ export function formatPercent(value, digits = 1, locale) {
  * Format currency strictly decoupled from language locale
  * e.g. formatCurrency(1250, 'USD', 'es') -> "1250,00 US$"
  * e.g. formatCurrency(1250, 'EUR', 'en') -> "€1,250.00"
- * @param {number} value
+ * @param {number|null|undefined} value
  * @param {string} [currencyCode='USD']
  * @param {string} [locale]
+ * @param {object} [options]
  * @returns {string}
  */
-export function formatCurrency(value, currencyCode = 'USD', locale) {
-  if (value === null || value === undefined || isNaN(Number(value))) return '$0.00';
+export function formatCurrency(value, currencyCode = 'USD', locale, options = {}) {
+  const code = (currencyCode || 'USD').toUpperCase();
+  const resolved = getResolvedLocale(locale);
+  if (value === null || value === undefined || isNaN(Number(value))) {
+    if (code === 'USD' && resolved.startsWith('en')) {
+      return '$0.00';
+    }
+    try {
+      return new Intl.NumberFormat(resolved, {
+        style: 'currency',
+        currency: code,
+        ...options,
+      }).format(0);
+    } catch {
+      return `${code} 0`;
+    }
+  }
+  try {
+    return new Intl.NumberFormat(resolved, {
+      style: 'currency',
+      currency: code,
+      ...options,
+    }).format(Number(value));
+  } catch (err) {
+    // If currencyCode is unrecognized, format as generic number with code prefix
+    return `${code} ${formatNumber(value, { minimumFractionDigits: 0, maximumFractionDigits: 2 }, locale)}`;
+  }
+}
+
+/**
+ * Format compact currency strictly decoupled from language locale
+ * e.g. formatCompactCurrency(1250000, 'USD', 'en') -> "$1.3M"
+ * @param {number|null|undefined} value
+ * @param {string} [currencyCode='USD']
+ * @param {string} [locale]
+ * @param {object} [options]
+ * @returns {string}
+ */
+export function formatCompactCurrency(value, currencyCode = 'USD', locale, options = {}) {
+  if (value === null || value === undefined || isNaN(Number(value))) return '—';
+  const code = (currencyCode || 'USD').toUpperCase();
   const resolved = getResolvedLocale(locale);
   try {
     return new Intl.NumberFormat(resolved, {
       style: 'currency',
-      currency: currencyCode,
+      currency: code,
+      notation: 'compact',
+      ...options,
     }).format(Number(value));
   } catch (err) {
-    // If currencyCode is unrecognized, format as generic number with code prefix
-    return `${currencyCode} ${formatNumber(value, { minimumFractionDigits: 2, maximumFractionDigits: 2 }, locale)}`;
+    return `${code} ${formatCompactNumber(Number(value), 1, locale)}`;
   }
 }

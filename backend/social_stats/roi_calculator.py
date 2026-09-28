@@ -77,7 +77,7 @@ def calculate_roi(client_id, month, year, settings_override=None):
             'avg_sale_value':     settings_override.get('avg_sale_value',     getattr(settings, 'avg_sale_value',     0)),
             'conversion_rate':    settings_override.get('conversion_rate',    getattr(settings, 'conversion_rate',    2.5)),
             'lead_to_sale_rate':  settings_override.get('lead_to_sale_rate',  getattr(settings, 'lead_to_sale_rate',  20.0)),
-            'currency':           settings_override.get('currency',           getattr(settings, 'currency',           'USD')),
+            'currency':           settings_override.get('currency',           getattr(settings, 'currency',           getattr(client, 'currency', 'USD'))),
             'currency_symbol':    settings_override.get('currency_symbol',    getattr(settings, 'currency_symbol',    '$')),
             'monthly_revenue_goal': settings_override.get('monthly_revenue_goal', getattr(settings, 'monthly_revenue_goal', 0)),
             'monthly_leads_goal': settings_override.get('monthly_leads_goal', getattr(settings, 'monthly_leads_goal', 0)),

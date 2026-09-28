@@ -40,6 +40,12 @@ class ROISettingsView(APIView):
             settings = ROISettings.objects.get(client_id=client_id)
             return Response(ROISettingsSerializer(settings).data)
         except ROISettings.DoesNotExist:
+            client_currency = 'USD'
+            try:
+                c = Client.objects.get(id=client_id)
+                client_currency = getattr(c, 'currency', 'USD')
+            except Client.DoesNotExist:
+                pass
             # Return empty defaults
             return Response({
                 'client':              client_id,
@@ -52,7 +58,7 @@ class ROISettingsView(APIView):
                 'avg_sale_value':      '0.00',
                 'conversion_rate':     '2.50',
                 'lead_to_sale_rate':   '20.00',
-                'currency':            'USD',
+                'currency':            client_currency,
                 'currency_symbol':     '$',
                 'monthly_revenue_goal':'0.00',
                 'monthly_leads_goal':  0,
@@ -69,7 +75,10 @@ class ROISettingsView(APIView):
         except Client.DoesNotExist:
             return Response({'error': 'Client not found.'}, status=404)
 
-        settings, _ = ROISettings.objects.get_or_create(client=client)
+        settings, _ = ROISettings.objects.get_or_create(
+            client=client,
+            defaults={'currency': getattr(client, 'currency', 'USD')},
+        )
         serializer  = ROISettingsSerializer(settings, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()

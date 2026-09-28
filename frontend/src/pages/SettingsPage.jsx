@@ -81,6 +81,7 @@ export default function SettingsPage({ clientId: propClientId }) {
     website: '',
     gmb_url: '',
     default_language: '',
+    currency: 'USD',
 
     // Brand Profile
     business_category: '',
@@ -118,6 +119,7 @@ export default function SettingsPage({ clientId: propClientId }) {
           website: client.website || '',
           gmb_url: client.gmb_url || '',
           default_language: client.default_language || '',
+          currency: client.currency || 'USD',
           business_category: client.business_category || '',
           business_subcategories: client.business_subcategories || [],
           brand_description: client.brand_description || '',
@@ -571,6 +573,30 @@ export default function SettingsPage({ clientId: propClientId }) {
                     </select>
                     <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 4 }}>
                       {t('fields.default_language_hint', 'Workspace language preference when users have not set an individual choice.')}
+                    </div>
+                  </div>
+                  <div style={fieldStyle}>
+                    <label style={labelStyle}>{t('fields.currency', 'Workspace currency')}</label>
+                    <select
+                      value={formData.currency || 'USD'}
+                      onChange={(e) => handleInputChange('currency', e.target.value)}
+                      style={inputStyle}
+                      data-testid="workspace-currency-select"
+                    >
+                      <option value="USD">USD — US Dollar ($)</option>
+                      <option value="COP">COP — Peso colombiano ($)</option>
+                      <option value="EUR">EUR — Euro (€)</option>
+                      <option value="GBP">GBP — British Pound (£)</option>
+                      <option value="MXN">MXN — Peso mexicano ($)</option>
+                      <option value="CAD">CAD — Canadian Dollar ($)</option>
+                      <option value="INR">INR — Indian Rupee (₹)</option>
+                      <option value="BRL">BRL — Real brasileño (R$)</option>
+                      <option value="ARS">ARS — Peso argentino ($)</option>
+                      <option value="CLP">CLP — Peso chileno ($)</option>
+                      <option value="PEN">PEN — Sol peruano (S/)</option>
+                    </select>
+                    <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 4 }}>
+                      {t('fields.currency_hint', 'Canonical business currency for metrics, budgets, and reporting.')}
                     </div>
                   </div>
                 </div>

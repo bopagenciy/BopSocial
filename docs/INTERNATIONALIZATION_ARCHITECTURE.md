@@ -1278,3 +1278,114 @@ All transactional emails provide bilingual (`en` and `es`) templates with struct
 - **Local Runtime Check**:
   - `http://localhost:3010/` returns `HTTP/1.1 200 OK`.
 
+---
+
+## 27. Phase BS-2.7B — Canonical Workspace Currency & Formatter Foundation
+
+### 27.1 Scope & Mission
+Phase BS-2.7B establishes the canonical workspace currency authority and centralized frontend formatting foundation for Bop Social, addressing the critical multi-currency architecture requirements identified during the BS-2.7A audit:
+1. **Explicit Currency Authority on Client Model**: Added `currency` (ISO 4217 code, 3 chars, default `'USD'`) to `social_stats.Client`.
+2. **Safe API Exposure & Validation**: Exposed `currency` in `ClientSerializer` with uppercase normalization, choice validation against supported ISO currencies, and included `client_currency` and `leads.currency` in dashboard payloads.
+3. **Centralized Frontend Formatters**: Centralized all currency display in `frontend/src/utils/formatters.js` with `formatCurrency` and `formatCompactCurrency` leveraging `Intl.NumberFormat`, supporting zero-decimal currencies (e.g. CLP, JPY), and avoiding unhandled exceptions for unusual/invalid codes.
+4. **Hardcoded Rupee (₹) Eradication**: Removed hardcoded `₹` symbol and Indian numbering (lakh/crore) from `TodayDashboard.jsx`, adopting `formatCompactCurrency(leads.pipeline_value, clientCurrency, language)`.
+5. **ROI Settings Alignment**: Aligned `ROISettings` creation to default its `currency` from `client.currency` (preserving backward compatibility with `currency_symbol`).
+6. **Workspace Settings UI Integration**: Provided workspace currency selection in both `SettingsPage.jsx` (Business Profile tab) and `EditClientPage.jsx`.
+7. **Strict Independence of Language and Currency**: Ensured switching between English and Spanish UI does not alter workspace currency, and changing workspace currency does not affect UI localization.
+
+### 27.2 Supported Canonical Currencies
+The canonical currency field supports 11 primary business currencies:
+| ISO Code | Currency Name | Symbol / Display | Decimal Precision |
+|:---:|:---|:---:|:---:|
+| `USD` | US Dollar (Default) | `$` | 2 |
+| `COP` | Colombian Peso | `$` / `COP` | 2 |
+| `EUR` | Euro | `€` | 2 |
+| `GBP` | British Pound | `£` | 2 |
+| `MXN` | Mexican Peso | `$` / `MXN` | 2 |
+| `CAD` | Canadian Dollar | `$` / `CA$` | 2 |
+| `INR` | Indian Rupee | `₹` | 2 |
+| `BRL` | Brazilian Real | `R$` | 2 |
+| `ARS` | Argentine Peso | `$` | 2 |
+| `CLP` | Chilean Peso | `$` / `CLP` | 0 (Zero-decimal) |
+| `PEN` | Peruvian Sol | `S/` | 2 |
+
+### 27.3 Backend Architecture & Migrations
+- **Model Definition** (`backend/social_stats/models.py`):
+  ```python
+  CURRENCY_CHOICES = [
+      ('USD', 'USD - US Dollar'),
+      ('COP', 'COP - Colombian Peso'),
+      ('EUR', 'EUR - Euro'),
+      ('GBP', 'GBP - British Pound'),
+      ('MXN', 'MXN - Mexican Peso'),
+      ('CAD', 'CAD - Canadian Dollar'),
+      ('INR', 'INR - Indian Rupee'),
+      ('BRL', 'BRL - Brazilian Real'),
+      ('ARS', 'ARS - Argentine Peso'),
+      ('CLP', 'CLP - Chilean Peso'),
+      ('PEN', 'PEN - Peruvian Sol'),
+  ]
+  currency = models.CharField(
+      max_length=3,
+      choices=CURRENCY_CHOICES,
+      default='USD',
+      help_text="Canonical workspace default currency (ISO 4217 code)",
+  )
+  ```
+- **Database Migration**: `0067_client_currency.py` safely adds column `currency` to table `social_stats_client` with default `'USD'` without rewriting existing records or causing locking issues.
+- **Serializer Normalization & Validation** (`backend/social_stats/serializers.py`):
+  ```python
+  currency = serializers.CharField(
+      max_length=10,
+      required=False,
+      help_text="Canonical workspace currency (ISO 4217 code, e.g. USD, COP, EUR)",
+  )
+  def to_internal_value(self, data):
+      ret = super().to_internal_value(data)
+      if 'currency' in ret and isinstance(ret['currency'], str):
+          ret['currency'] = ret['currency'].strip().upper()
+      return ret
+  ```
+- **Dashboard APIs** (`backend/social_stats/dashboard_views.py`):
+  Exposes `client_currency` at the root and `currency` inside the `leads` dictionary for `TodayDashboard`.
+- **ROI Calculations & Fallbacks** (`backend/social_stats/roi_calculator.py`, `backend/social_stats/roi_views.py`):
+  Defaults unconfigured client ROI settings to the client's canonical workspace currency.
+
+### 27.4 Centralized Frontend Formatters
+- **`formatCurrency(amount, currencyCode, locale, options)`** (`frontend/src/utils/formatters.js`):
+  Formats full financial amounts with currency notation using standard browser `Intl.NumberFormat(locale, { style: 'currency', currency })`. Fallbacks gracefully to `<CODE> <amount>` if an invalid code is supplied.
+- **`formatCompactCurrency(amount, currencyCode, locale, options)`** (`frontend/src/utils/formatters.js`):
+  Formats compact KPI metrics (e.g., `$1.2M`, `COP 4.5M`, `250 mil US$`) utilizing `notation: 'compact'` and `compactDisplay: 'short'`. Respects zero-decimal rules for currencies like CLP.
+- **`TodayDashboard.jsx` Eradication**:
+  Removed private `fmtCurrency` and hardcoded `₹` symbol. Leads pipeline value is formatted dynamically via `formatCompactCurrency(leads.pipeline_value, client_currency, i18n?.language)`.
+
+### 27.5 UI Configuration Surfaces
+- **Workspace Settings** (`frontend/src/pages/SettingsPage.jsx`):
+  Configured in the "Business Profile" section via selector `<select data-testid="workspace-currency-select">`.
+- **Edit Client** (`frontend/src/pages/EditClientPage.jsx`):
+  Configured via selector `<select data-testid="edit-client-currency-select">`.
+- **Translation Catalogs**:
+  Added `"currency"` and `"currency_hint"` to `onboarding.json` and `management.json` in both English and Spanish catalogs.
+
+### 27.6 Multi-Currency Disclaimer & Known Limitations
+- When lead pipelines contain transactions or estimated values from disparate platforms across different currencies without real-time exchange conversion rates, the raw sum is an approximation. A currency conversion engine with historical rate caching is planned for BS-2.7C/D.
+- Third-party connectors (Meta CAPI, WhatsApp CTWA campaigns, Stripe / Razorpay marketplace checkout) retain their external currency requirements in this foundation phase.
+
+### 27.7 Automated Test Coverage & Verification
+- **Backend Tests** (`social_stats/tests/test_workspace_currency_foundation.py`):
+  12 automated tests covering default assignment, choice validation, lowercase normalization, serializer CRUD, dashboard response payloads, ROI creation defaults, tenant isolation, and language independence.
+  - **12 passed, 0 failed**.
+- **Frontend Tests** (`src/pages/__tests__/WorkspaceCurrencyFoundation.test.jsx`, `src/utils/__tests__/formatters.test.js`):
+  16 automated tests covering full formatting across USD, COP, EUR, CLP, compact KPI formatting, Today Dashboard rendering without `₹`, SettingsPage currency select, EditClientPage update, and UI language switching resilience.
+  - **16 passed, 0 failed**.
+- **Full Frontend Regression**:
+  - **28 suites passed, 28 total**.
+  - **233 tests passed, 233 total** (100% pass rate).
+
+### 27.8 Build & Deployment State
+- **Docker Compose Configuration**: `docker-compose.local.yml`:
+  - `backend`: `bopsocial-backend-local:bs-2.7b`
+  - `worker`: `bopsocial-backend-local:bs-2.7b`
+  - `beat`: `bopsocial-backend-local:bs-2.7b`
+  - `frontend`: `bopsocial-frontend-local:bs-2.7b`
+- **Port Mapping**: `3010:80` (Frontend), `8000` (Backend API).
+

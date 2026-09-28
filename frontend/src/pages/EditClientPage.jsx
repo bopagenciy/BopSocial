@@ -16,7 +16,7 @@ import PageHeader from '../components/layout/PageHeader';
 export default function EditClientPage({ clientId, onSelectClient }) {
   const { t }          = useTranslation(['management', 'common']);
   const navigate       = useNavigate();
-  const [form, setForm]= useState({ company: '', name: '', email: '', phone: '', website: '', default_language: '' });
+  const [form, setForm]= useState({ company: '', name: '', email: '', phone: '', website: '', default_language: '', currency: 'USD' });
   const [errors, setErrors]   = useState({});
   const [saving, setSaving]   = useState(false);
   const [loading, setLoading] = useState(true);
@@ -32,6 +32,7 @@ export default function EditClientPage({ clientId, onSelectClient }) {
         phone:            c.phone   || '',
         website:          c.website || '',
         default_language: c.default_language || '',
+        currency:         c.currency || 'USD',
       });
       setLoading(false);
     }).catch(() => {
@@ -82,6 +83,7 @@ export default function EditClientPage({ clientId, onSelectClient }) {
         phone:            form.phone,
         website:          form.website,
         default_language: form.default_language || null,
+        currency:         form.currency || 'USD',
       };
       const res = await clientsAPI.update(clientId, payload);
       onSelectClient?.(res.data);
@@ -170,6 +172,30 @@ export default function EditClientPage({ clientId, onSelectClient }) {
             </select>
             <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>
               {t('edit_client.default_language_hint', 'Workspace language preference when users have not set an individual choice.')}
+            </div>
+          </div>
+          <div style={styles.row}>
+            <label style={styles.label}>{t('edit_client.currency', 'Workspace currency')}</label>
+            <select
+              value={form.currency || 'USD'}
+              onChange={e => handleFieldChange('currency', e.target.value)}
+              style={styles.input}
+              data-testid="edit-client-currency-select"
+            >
+              <option value="USD">USD — US Dollar ($)</option>
+              <option value="COP">COP — Peso colombiano ($)</option>
+              <option value="EUR">EUR — Euro (€)</option>
+              <option value="GBP">GBP — British Pound (£)</option>
+              <option value="MXN">MXN — Peso mexicano ($)</option>
+              <option value="CAD">CAD — Canadian Dollar ($)</option>
+              <option value="INR">INR — Indian Rupee (₹)</option>
+              <option value="BRL">BRL — Real brasileño (R$)</option>
+              <option value="ARS">ARS — Peso argentino ($)</option>
+              <option value="CLP">CLP — Peso chileno ($)</option>
+              <option value="PEN">PEN — Sol peruano (S/)</option>
+            </select>
+            <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>
+              {t('edit_client.currency_hint', 'Canonical business currency for metrics, budgets, and reporting.')}
             </div>
           </div>
 

@@ -368,6 +368,7 @@ def dashboard_today(request):
             status='converted', converted_at__gte=today_start,
         ).count(),
         'pipeline_value':   float(pipeline_total),
+        'currency':         getattr(client, 'currency', 'USD'),
     }
 
     # ── Campaigns ───────────────────────────────────────────────────
@@ -441,6 +442,7 @@ def dashboard_today(request):
     return Response({
         'client_id':         client.id,
         'client_name':       client.company,
+        'client_currency':   getattr(client, 'currency', 'USD'),
         'as_of':             now.isoformat(),
         'briefing':          briefing,
         'posts':             posts,
@@ -460,9 +462,10 @@ def _today_zeros() -> dict:
     """Empty-state payload for admins with no client picked yet."""
     return {
         'briefing': '',
+        'client_currency': 'USD',
         'posts':    {'published_today': 0, 'scheduled': 0, 'queued': 0, 'reach_change_pct': None},
         'inbox':    {'unread': 0, 'priority': 0, 'replied_today': 0, 'avg_reply_minutes': None},
-        'leads':    {'new_today': 0, 'qualified': 0, 'converted_today': 0, 'pipeline_value': 0.0},
+        'leads':    {'new_today': 0, 'qualified': 0, 'converted_today': 0, 'pipeline_value': 0.0, 'currency': 'USD'},
         'campaigns':{'running': 0, 'sent_today': 0, 'avg_delivery_rate_pct': None},
         'recent_activity':   [],
         'pending_approvals': [],

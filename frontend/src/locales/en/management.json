@@ -196,6 +196,8 @@
     "website_invalid": "Use a full website URL like https://example.com",
     "default_language": "Default Language",
     "default_language_hint": "Workspace language preference when users have not set an individual choice.",
+    "currency": "Workspace currency",
+    "currency_hint": "Canonical business currency for metrics, budgets, and reporting.",
     "lang_en": "English",
     "lang_es": "Español",
     "lang_system": "System / Browser default",
