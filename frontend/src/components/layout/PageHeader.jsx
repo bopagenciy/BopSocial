@@ -35,10 +35,11 @@ export default function PageHeader({ title, subtitle, action, actions, backHref,
         alignItems: 'flex-start',
         justifyContent: 'space-between',
         gap: 16,
-        background: 'transparent',
+        flexWrap: 'wrap',
+        background: pinned ? 'var(--surface-page)' : 'transparent',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, flex: 1, minWidth: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, flex: '1 1 320px', minWidth: 0 }}>
         {backHref && (
           <button
             onClick={() => navigate(backHref)}

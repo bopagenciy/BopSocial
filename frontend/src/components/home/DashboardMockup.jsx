@@ -139,7 +139,7 @@ function PanelHeader() {
           textTransform: 'uppercase',
         }}
       >
-        socialstats.app/dashboard
+        bopsocial.app/dashboard
       </div>
     </div>
   );

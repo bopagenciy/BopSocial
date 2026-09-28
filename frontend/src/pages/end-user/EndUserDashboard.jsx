@@ -71,7 +71,9 @@ export default function EndUserDashboard() {
             display: 'inline-flex', alignItems: 'center', gap: 4,
           }}>
             <Sparkles size={11} strokeWidth={2.4} />
-            {t('end_user.dashboard.plan_badge', '{{plan}} plan', { plan: workspace.subscription_plan })}
+            {t('end_user.dashboard.plan_badge', '{{plan}} plan', {
+              plan: t(`end_user.plans.${(workspace.subscription_plan || '').toLowerCase()}`, workspace.subscription_plan),
+            })}
           </span>
         )}
       </header>

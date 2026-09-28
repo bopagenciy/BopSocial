@@ -734,7 +734,7 @@ function EmptyChart({ height = 200, message }) {
 const selectStyle = {
   padding: '8px 12px', borderRadius: 10, border: '1.5px solid var(--border-default)',
   background: 'var(--surface-card)', fontSize: 13, fontWeight: 600, color: 'var(--text-primary)',
-  cursor: 'pointer', outline: 'none',
+  cursor: 'pointer', outline: 'none', maxWidth: 220, textOverflow: 'ellipsis',
 };
 
 const btnSecondary = {

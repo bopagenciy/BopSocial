@@ -60,18 +60,19 @@
    pins to viewport top on desktop. */
 .page-header-sticky {
   position: sticky;
-  top: 0;
+  top: var(--topbar-height, 56px);
   z-index: 10;
   margin-left: -36px;
   margin-right: -36px;
   padding-left: 36px !important;
   padding-right: 36px !important;
   border-bottom: 1px solid transparent;
-  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
 }
 
 .page-header-sticky.is-pinned {
-  border-bottom-color: #e2e8f0;
+  background: var(--surface-page, #ffffff) !important;
+  border-bottom-color: var(--border-subtle, #e2e8f0);
   box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
 }
 

@@ -159,7 +159,7 @@
     "gmb_placeholder": "https://g.page/tu-negocio",
     "default_language": "Idioma del espacio de trabajo",
     "default_language_hint": "Preferencia de idioma del espacio de trabajo cuando los usuarios no tienen una elección individual.",
-    "lang_system": "Predeterminado del sistema / navegador",
+    "lang_system": "Predeterminado del sistema",
     "lang_en": "English",
     "lang_es": "Español",
     "business_category": "Categoría del negocio",

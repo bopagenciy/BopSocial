@@ -116,7 +116,7 @@ export default function ClientDashboard({ clientId: propClientId }) {
   };
 
   const handleExportPDF = () => {
-    exportPDF({ client, summary, dateRange: range, chartsElementId: 'charts-area', posts, timeseries, connectedPlatforms });
+    exportPDF({ client, summary, dateRange: range, chartsElementId: 'charts-area', posts, timeseries, connectedPlatforms, language: i18n?.language });
   };
 
   const tabProps = {

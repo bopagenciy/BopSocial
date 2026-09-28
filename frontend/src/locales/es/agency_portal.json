@@ -338,6 +338,13 @@
         "billing": "Facturación"
       }
     },
+    "plans": {
+      "free": "Gratuito",
+      "pro": "Pro",
+      "premium": "Premium",
+      "agency": "Agencia",
+      "enterprise": "Empresarial"
+    },
     "dashboard": {
       "greeting": "Hola, {{name}} 👋",
       "workspace_happening": "Esto es lo que sucede con <strong style=\"color: var(--text-primary);\">{{company}}</strong>.",
