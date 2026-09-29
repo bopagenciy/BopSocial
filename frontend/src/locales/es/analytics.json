@@ -60,5 +60,100 @@
     "view_analytics": "Ver analítica →",
     "active": "Activo",
     "inactive": "Inactivo"
+  },
+  "roi_calculator": {
+    "title": "Calculadora de ROI",
+    "subtitle": "Mide el retorno de tu inversión en redes sociales",
+    "monthly_investment": "Inversión mensual",
+    "currency_label": "Moneda:",
+    "currency_aria": "Moneda",
+    "month_label": "Mes",
+    "year_label": "Año",
+    "client_label": "Cliente",
+    "select_user_prompt": "Selecciona un usuario del menú desplegable superior derecho para ver y calcular su retorno de inversión.",
+    "no_users_found": "No se encontraron usuarios.",
+    "loading": "Cargando calculadora de ROI…",
+    "settings_saved": "Configuración guardada",
+    "settings_saved_title": "Configuración guardada",
+    "settings_saved_help_disabled": "Haz clic en Editar configuración para cambiar presupuestos y datos del negocio.",
+    "settings_saved_help_editing": "Estás editando la configuración guardada de ROI.",
+    "save_failed": "Error al guardar",
+    "changes_discarded": "Cambios descartados",
+    "report_saved": "Informe guardado",
+    "agency_fee": "Tarifa de gestión de agencia",
+    "total_monthly_investment": "Inversión mensual total",
+    "business_numbers": {
+      "title": "Datos de tu negocio",
+      "avg_sale_value": "¿Cuánto vale una venta?",
+      "avg_sale_helper": "Ingreso promedio por cliente / venta",
+      "conversion_rate": "Visitante web → Tasa de leads",
+      "conversion_rate_helper": "Promedio de la industria: 2–3%",
+      "lead_to_sale_rate": "Lead → Tasa de clientes",
+      "lead_to_sale_helper": "Cuántos leads se convierten en clientes de pago"
+    },
+    "goals": {
+      "title": "Objetivos mensuales",
+      "revenue_goal": "Objetivo de ingresos",
+      "revenue_goal_helper": "Ingresos objetivo para este mes",
+      "leads_goal": "Objetivo de leads",
+      "leads_goal_helper": "Número objetivo de leads este mes",
+      "on_track": "En buen camino",
+      "behind": "Atrasado",
+      "achieved": "{{achieved}} alcanzado",
+      "of_target": "{{pct}}% de {{target}}"
+    },
+    "actions": {
+      "edit_settings": "Editar configuración",
+      "save_settings": "Guardar configuración",
+      "saving": "Guardando…",
+      "cancel": "Cancelar",
+      "save_report": "Guardar informe"
+    },
+    "status": {
+      "excellent": "Excelente",
+      "good": "Bueno",
+      "average": "Promedio",
+      "losing_money": "Generando pérdidas"
+    },
+    "cards": {
+      "return_on_investment": "Retorno de la inversión",
+      "per_dollar_sentence": "Por cada {{spent}} invertido, recuperas {{earned}}",
+      "total_invested": "Total invertido",
+      "est_revenue": "Ingresos estimados",
+      "investment": "Inversión",
+      "revenue": "Ingresos",
+      "conversion_funnel": "Embudo de conversión",
+      "cost_efficiency": "Eficiencia de costos",
+      "platform_breakdown": "Desglose por plataforma",
+      "goal_progress": "Progreso de objetivos",
+      "historical_trend": "Tendencia histórica de ROI",
+      "roi_pct": "ROI %"
+    },
+    "funnel": {
+      "total_clicks": "Clics totales",
+      "website_visits": "Visitas al sitio web",
+      "leads": "Leads",
+      "conversions": "Conversiones",
+      "conversion_label": "conversión"
+    },
+    "efficiency": {
+      "cost_per_click": "Costo / Clic",
+      "cost_per_lead": "Costo / Lead",
+      "cost_per_sale": "Costo / Venta",
+      "avg": "prom. {{val}}"
+    },
+    "table": {
+      "budget": "Presupuesto",
+      "leads": "Leads",
+      "sales": "Ventas",
+      "revenue": "Ingresos",
+      "roi_pct": "ROI%",
+      "total": "Total"
+    },
+    "error_help": "Ingresa tu presupuesto y datos de negocio a la izquierda para ver tu ROI.",
+    "no_data_for_month": "No se encontraron datos de redes sociales para {{month}} de {{year}}.",
+    "projection_note": "La proyección anterior se basa en tus presupuestos y tasas configurados.",
+    "empty_title": "Tu ROI aparecerá aquí",
+    "empty_desc": "Ingresa tus presupuestos mensuales y datos de negocio a la izquierda para calcular tu retorno de inversión."
   }
 }

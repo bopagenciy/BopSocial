@@ -418,7 +418,7 @@ describe('Phase BS-2.7D: Marketplace, ROI & Reporting Financial Localization Sui
     );
 
     await waitFor(() => {
-      expect(screen.getByLabelText('Currency')).toHaveValue('EUR');
+      expect(screen.getByLabelText(/Currency|Moneda/i)).toHaveValue('EUR');
     });
 
     // Est. Revenue and Total Invested should be formatted with EUR
@@ -438,7 +438,7 @@ describe('Phase BS-2.7D: Marketplace, ROI & Reporting Financial Localization Sui
     );
 
     await waitFor(() => {
-      expect(screen.getByLabelText('Currency')).toHaveValue('EUR');
+      expect(screen.getByLabelText(/Currency|Moneda/i)).toHaveValue('EUR');
     });
 
     // Change language to Spanish
@@ -447,7 +447,7 @@ describe('Phase BS-2.7D: Marketplace, ROI & Reporting Financial Localization Sui
     });
 
     // Currency select must STILL be EUR
-    expect(screen.getByLabelText('Currency')).toHaveValue('EUR');
+    expect(screen.getByLabelText(/Currency|Moneda/i)).toHaveValue('EUR');
   });
 
   // 8. TodayDashboard LeadsTile: single currency pipeline

@@ -1567,4 +1567,57 @@ Phase **BS-2.7D** completes the financial localization across the remaining core
   - `docker-compose.local.yml`: Updated to reference `:bs-2.7d`.
   - All 6 containers active, healthy, and operational (`http://localhost:3010/`, `http://localhost:3010/api/health/services/` returning HTTP 200 OK).
 
+---
+
+## 30. Phase BS-2.7D.1 — ROI Visual Localization Residual Closure
+
+### 30.1 Scope & Mission
+Phase BS-2.7D.1 addresses visual and internationalization residuals on the ROI Calculator screen (`/admin/analytics/roi?client=1`) discovered during browser acceptance:
+1. **Dynamic ROI Sentence Interpolation**:
+   - Resolved hardcoded English residuals ("For every $1.00 spent you earn $X.XX back") into dynamic localized sentences with parameter interpolation.
+   - Spanish: `Por cada {{spent}} invertido, recuperas {{earned}}`.
+   - English: `For every {{spent}} spent you earn {{earned}} back`.
+   - Formatted with `formatCurrency(1, currency, locale)` and `formatCurrency(ratio, currency, locale)`.
+2. **Locale-Aware Month Formatting**:
+   - Implemented `formatMonthName(monthNumber, locale)` in `frontend/src/utils/formatters.js` utilizing `Intl.DateTimeFormat(resolvedLocale, { month: 'long' })`.
+   - Displays months cleanly according to active language (e.g. `septiembre` in ES, `September` in EN) in month selectors and historical notifications.
+3. **ROI Performance Status Localization**:
+   - Replaced raw English status strings (`Losing Money`, `Average`, `Good`, `Excellent`) with localized badges (`Generando pérdidas`, `Promedio`, `Bueno`, `Excelente`).
+4. **Complete Screen Localization**:
+   - Localized all card titles, goals, funnel stages, settings banners, buttons, empty states, table headers, and accessibility aria-labels.
+   - Added `roi_calculator` sub-tree in `frontend/src/locales/en/analytics.json` and `frontend/src/locales/es/analytics.json` with 100% key parity across all 25+ keys.
+5. **Strict Currency Integrity**:
+   - Ensured zero alteration of monetary currencies or numeric formulas when toggling between EN and ES.
+   - Maintained full alignment with `CANONICAL_CURRENCIES` (USD, COP, EUR, GBP, MXN, CAD, INR, BRL, ARS, CLP, PEN).
+
+### 30.2 Automated Test Coverage & Verification
+- **Dedicated Test Suite** (`frontend/src/pages/__tests__/ROIVisualLocalization.test.jsx`):
+  - 13 comprehensive tests covering:
+    1. Spanish sentence formatting with correct currency symbol.
+    2. English sentence formatting with correct currency symbol.
+    3. Spanish month name resolution via `formatMonthName`.
+    4. English month name resolution via `formatMonthName`.
+    5. Performance status label localization in Spanish (`Generando pérdidas`, etc.).
+    6. Performance status label localization in English.
+    7. Funnel stages localization in Spanish.
+    8. Funnel stages localization in English.
+    9. Action buttons and table headers localization in Spanish.
+    10. 100% key symmetry between `en/analytics.json` and `es/analytics.json` for `roi_calculator`.
+    11. Absence of raw English strings when rendered in Spanish.
+    12. Currency integrity: switching language retains workspace currency code.
+    13. Empty states and settings notifications localized in Spanish.
+  - **Result: 13/13 passed (100%)**.
+- **Frontend Regression Suite**:
+  - Full suite execution: **31/31 passed, 264/264 passed (100%)**.
+
+### 30.3 Container Build & Deployment State
+- **Frontend Build**: Production compilation completed successfully (`build/`).
+- **Docker Compose Override**: `docker-compose.local.yml`:
+  - `frontend`: `bopsocial-frontend-local:bs-2.7d.1`
+  - `backend`: `bopsocial-backend-local:bs-2.7d`
+- **Runtime Verification**:
+  - `http://localhost:3010/` returns `HTTP/1.1 200 OK`.
+  - `http://localhost:3010/admin/analytics/roi?client=1` loads cleanly with complete bilingual parity.
+
+
 

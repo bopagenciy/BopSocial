@@ -60,5 +60,100 @@
     "view_analytics": "View Analytics →",
     "active": "Active",
     "inactive": "Inactive"
+  },
+  "roi_calculator": {
+    "title": "ROI Calculator",
+    "subtitle": "Measure the return on your social media investment",
+    "monthly_investment": "Monthly Investment",
+    "currency_label": "Currency:",
+    "currency_aria": "Currency",
+    "month_label": "Month",
+    "year_label": "Year",
+    "client_label": "Client",
+    "select_user_prompt": "Select a user from the top-right dropdown to view and calculate their return on investment.",
+    "no_users_found": "No users found.",
+    "loading": "Loading ROI Calculator…",
+    "settings_saved": "Settings saved",
+    "settings_saved_title": "Settings saved",
+    "settings_saved_help_disabled": "Click Edit Settings to change budgets and business numbers.",
+    "settings_saved_help_editing": "You are editing the saved ROI settings.",
+    "save_failed": "Save failed",
+    "changes_discarded": "Changes discarded",
+    "report_saved": "Report saved",
+    "agency_fee": "Agency Management Fee",
+    "total_monthly_investment": "Total Monthly Investment",
+    "business_numbers": {
+      "title": "Your Business Numbers",
+      "avg_sale_value": "How much is one sale worth?",
+      "avg_sale_helper": "Average revenue per customer / sale",
+      "conversion_rate": "Website visitor → Lead rate",
+      "conversion_rate_helper": "Industry average: 2–3%",
+      "lead_to_sale_rate": "Lead → Customer rate",
+      "lead_to_sale_helper": "How many leads become paying customers"
+    },
+    "goals": {
+      "title": "Monthly Goals",
+      "revenue_goal": "Revenue Goal",
+      "revenue_goal_helper": "Target revenue for this month",
+      "leads_goal": "Leads Goal",
+      "leads_goal_helper": "Target number of leads this month",
+      "on_track": "On Track",
+      "behind": "Behind",
+      "achieved": "{{achieved}} achieved",
+      "of_target": "{{pct}}% of {{target}}"
+    },
+    "actions": {
+      "edit_settings": "Edit Settings",
+      "save_settings": "Save Settings",
+      "saving": "Saving…",
+      "cancel": "Cancel",
+      "save_report": "Save Report"
+    },
+    "status": {
+      "excellent": "Excellent",
+      "good": "Good",
+      "average": "Average",
+      "losing_money": "Losing Money"
+    },
+    "cards": {
+      "return_on_investment": "Return on Investment",
+      "per_dollar_sentence": "For every {{spent}} spent you earn {{earned}} back",
+      "total_invested": "Total Invested",
+      "est_revenue": "Est. Revenue",
+      "investment": "Investment",
+      "revenue": "Revenue",
+      "conversion_funnel": "Conversion Funnel",
+      "cost_efficiency": "Cost Efficiency",
+      "platform_breakdown": "Platform Breakdown",
+      "goal_progress": "Goal Progress",
+      "historical_trend": "Historical ROI Trend",
+      "roi_pct": "ROI %"
+    },
+    "funnel": {
+      "total_clicks": "Total Clicks",
+      "website_visits": "Website Visits",
+      "leads": "Leads",
+      "conversions": "Conversions",
+      "conversion_label": "conversion"
+    },
+    "efficiency": {
+      "cost_per_click": "Cost / Click",
+      "cost_per_lead": "Cost / Lead",
+      "cost_per_sale": "Cost / Sale",
+      "avg": "avg {{val}}"
+    },
+    "table": {
+      "budget": "Budget",
+      "leads": "Leads",
+      "sales": "Sales",
+      "revenue": "Revenue",
+      "roi_pct": "ROI%",
+      "total": "Total"
+    },
+    "error_help": "Enter your budget and business numbers on the left to see your ROI.",
+    "no_data_for_month": "No social media data found for {{month}} {{year}}.",
+    "projection_note": "The projection above is based on your configured budgets and rates.",
+    "empty_title": "Your ROI Will Appear Here",
+    "empty_desc": "Enter your monthly budgets and business numbers on the left to calculate your return on investment."
   }
 }

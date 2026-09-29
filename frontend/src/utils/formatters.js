@@ -66,6 +66,21 @@ export function formatMonthYear(date, locale) {
 }
 
 /**
+ * Format a month number (1-12) to its localized full month name.
+ * (e.g. 9 in 'es' -> "septiembre", 9 in 'en' -> "September")
+ * @param {number|string} monthNumber - 1 to 12
+ * @param {string} [locale]
+ * @returns {string}
+ */
+export function formatMonthName(monthNumber, locale) {
+  const num = parseInt(monthNumber, 10);
+  if (isNaN(num) || num < 1 || num > 12) return '';
+  const d = new Date(2026, num - 1, 15);
+  const resolved = getResolvedLocale(locale);
+  return new Intl.DateTimeFormat(resolved, { month: 'long' }).format(d);
+}
+
+/**
  * Format date range in a locale-aware format
  * @param {Date|string|number} startDate
  * @param {Date|string|number} endDate
