@@ -109,10 +109,18 @@ class ROICalculateView(APIView):
 
         # Save to ROIReport
         try:
+            from .currencies import DEFAULT_CURRENCY, SUPPORTED_CURRENCIES
+            roi_settings = ROISettings.objects.filter(client_id=int(client_id)).first()
+            raw_curr = (getattr(roi_settings, 'currency', None) or
+                        getattr(roi_settings.client if roi_settings else None, 'currency', None) or
+                        DEFAULT_CURRENCY)
+            snap_curr = raw_curr.strip().upper() if raw_curr and raw_curr.strip().upper() in SUPPORTED_CURRENCIES else DEFAULT_CURRENCY
+
             bd = result['platform_breakdown']
             roi_report, _ = ROIReport.objects.update_or_create(
                 client_id=int(client_id), month=int(month), year=int(year),
                 defaults={
+                    'currency':          snap_curr,
                     'total_investment':  Decimal(str(result['total_investment'])),
                     'agency_fee':        Decimal(str(result['agency_fee'])),
                     'total_clicks':      result['total_clicks'],

@@ -94,11 +94,18 @@ def resolve_capi_currency(lead) -> str:
     # 2. Related lead/conversion explicit currency
     if lead:
         custom_fields = getattr(lead, 'custom_fields', {}) or {}
-        explicit_cur = custom_fields.get('currency') or getattr(lead, 'currency', None)
+        explicit_cur = custom_fields.get('currency')
         if explicit_cur and isinstance(explicit_cur, str):
             code = explicit_cur.strip().upper()
             if code in SUPPORTED_CURRENCIES:
                 return code
+        lead_cur = getattr(lead, 'currency', None)
+        if lead_cur and isinstance(lead_cur, str):
+            code = lead_cur.strip().upper()
+            if code in SUPPORTED_CURRENCIES:
+                client_cur = getattr(lead.client, 'currency', None) if getattr(lead, 'client', None) else None
+                if getattr(lead, 'status', None) == 'converted' or not client_cur or code != 'USD':
+                    return code
 
     # 3. Client workspace currency
     if lead and getattr(lead, 'client', None) and getattr(lead.client, 'currency', None):

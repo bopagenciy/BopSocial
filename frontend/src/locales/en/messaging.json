@@ -949,11 +949,11 @@
     "convert_modal": {
       "title": "Convert lead",
       "text": "Mark {{name}} as converted. Optional: enter the deal value.",
-      "value_label": "Conversion value (₹)",
+      "value_label": "Conversion value",
       "cancel": "Cancel",
       "convert_btn": "Convert",
       "converting": "Saving…",
-      "success": "Converted (₹{{value}})",
+      "success": "Converted: {{value}}",
       "error": "Could not convert"
     }
   }

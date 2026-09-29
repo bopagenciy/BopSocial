@@ -148,6 +148,12 @@ function InboxTile({ inbox = {} }) {
 function LeadsTile({ leads = {}, currency }) {
   const { i18n } = useTranslation();
   const cur = currency || leads.currency || 'USD';
+  let pipelineFooter = null;
+  if (leads.has_mixed_currencies || (leads.pipeline_value === null && leads.pipeline_values_by_currency && Object.keys(leads.pipeline_values_by_currency).length > 0)) {
+    pipelineFooter = <span style={S.tinyLine}>Pipeline: Multiple currencies</span>;
+  } else if (leads.pipeline_value > 0) {
+    pipelineFooter = <span style={S.tinyLine}>Pipeline {formatCompactCurrency(leads.pipeline_value, cur, i18n?.language)}</span>;
+  }
   return (
     <Tile
       icon={UserSquare}
@@ -158,9 +164,7 @@ function LeadsTile({ leads = {}, currency }) {
           {(leads.qualified ?? 0)} qualified · {(leads.converted_today ?? 0)} converted today
         </>
       }
-      footer={leads.pipeline_value > 0 ? (
-        <span style={S.tinyLine}>Pipeline {formatCompactCurrency(leads.pipeline_value, cur, i18n?.language)}</span>
-      ) : null}
+      footer={pipelineFooter}
     />
   );
 }

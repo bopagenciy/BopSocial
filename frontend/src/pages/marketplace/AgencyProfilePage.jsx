@@ -29,9 +29,10 @@ import WriteReviewModal  from '../../components/marketplace/WriteReviewModal';
 import { marketplaceAPI, reviewAPI } from '../../services/api';
 import { useAuth } from '../../hooks/useAuth';
 import toast from '../../components/ui/toast';
+import { formatCurrency } from '../../utils/formatters';
 
 export default function AgencyProfilePage() {
-  const { t } = useTranslation('agency_portal');
+  const { t, i18n } = useTranslation('agency_portal');
   const { slug } = useParams();
   const { user } = useAuth();
   const [agency,  setAgency]  = useState(null);
@@ -165,7 +166,7 @@ export default function AgencyProfilePage() {
             {agency.pricing_starting_at && (
               <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: 14 }}>
                 {t('agency_profile.starting_at')} <strong style={{ color: 'var(--text-primary)' }}>
-                  {agency.pricing_currency} {Number(agency.pricing_starting_at).toLocaleString()}
+                  {formatCurrency(Number(agency.pricing_starting_at), agency.pricing_currency || 'USD', i18n?.language)}
                 </strong> {t('agency_profile.per_month')}
               </p>
             )}

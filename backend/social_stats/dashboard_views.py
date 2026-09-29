@@ -355,10 +355,35 @@ def dashboard_today(request):
 
     # ── Leads ───────────────────────────────────────────────────────
     leads_qs = Lead.objects.filter(client=client)
-    qualified_set = ('qualified', 'converted')
-    pipeline_total = leads_qs.filter(
+    open_pipeline_leads = leads_qs.filter(
         status__in=['new', 'contacted', 'qualified'],
-    ).aggregate(total=Sum('conversion_value'))['total'] or 0
+        conversion_value__isnull=False,
+    )
+    by_currency_qs = (
+        open_pipeline_leads.values('currency')
+        .annotate(total=Sum('conversion_value'))
+        .order_by('currency')
+    )
+    pipeline_values_by_currency = {}
+    for entry in by_currency_qs:
+        cur_code = entry['currency'] or getattr(client, 'currency', 'USD') or 'USD'
+        val = float(entry['total'] or 0)
+        pipeline_values_by_currency[cur_code] = pipeline_values_by_currency.get(cur_code, 0.0) + val
+
+    currencies_present = [c for c, val in pipeline_values_by_currency.items() if val > 0]
+    if len(currencies_present) == 0:
+        pipeline_value = 0.0
+        pipeline_currency = getattr(client, 'currency', 'USD')
+        has_mixed_currencies = False
+    elif len(currencies_present) == 1:
+        pipeline_currency = currencies_present[0]
+        pipeline_value = pipeline_values_by_currency[pipeline_currency]
+        has_mixed_currencies = False
+    else:
+        pipeline_value = None
+        pipeline_currency = None
+        has_mixed_currencies = True
+
     leads = {
         'new_today':        leads_qs.filter(
             status='new', created_at__gte=today_start,
@@ -367,8 +392,10 @@ def dashboard_today(request):
         'converted_today':  leads_qs.filter(
             status='converted', converted_at__gte=today_start,
         ).count(),
-        'pipeline_value':   float(pipeline_total),
-        'currency':         getattr(client, 'currency', 'USD'),
+        'pipeline_value':   pipeline_value,
+        'currency':         pipeline_currency or getattr(client, 'currency', 'USD'),
+        'pipeline_values_by_currency': pipeline_values_by_currency,
+        'has_mixed_currencies': has_mixed_currencies,
     }
 
     # ── Campaigns ───────────────────────────────────────────────────
@@ -465,7 +492,7 @@ def _today_zeros() -> dict:
         'client_currency': 'USD',
         'posts':    {'published_today': 0, 'scheduled': 0, 'queued': 0, 'reach_change_pct': None},
         'inbox':    {'unread': 0, 'priority': 0, 'replied_today': 0, 'avg_reply_minutes': None},
-        'leads':    {'new_today': 0, 'qualified': 0, 'converted_today': 0, 'pipeline_value': 0.0, 'currency': 'USD'},
+        'leads':    {'new_today': 0, 'qualified': 0, 'converted_today': 0, 'pipeline_value': 0.0, 'currency': 'USD', 'pipeline_values_by_currency': {}, 'has_mixed_currencies': False},
         'campaigns':{'running': 0, 'sent_today': 0, 'avg_delivery_rate_pct': None},
         'recent_activity':   [],
         'pending_approvals': [],

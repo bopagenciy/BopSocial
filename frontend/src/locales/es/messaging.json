@@ -949,11 +949,11 @@
     "convert_modal": {
       "title": "Convertir cliente potencial",
       "text": "Marca a {{name}} como convertido. Opcional: ingresa el valor del acuerdo.",
-      "value_label": "Valor de conversión (₹)",
+      "value_label": "Valor de conversión",
       "cancel": "Cancelar",
       "convert_btn": "Convertir",
       "converting": "Guardando…",
-      "success": "Convertido (₹{{value}})",
+      "success": "Convertido: {{value}}",
       "error": "No se pudo convertir"
     }
   }

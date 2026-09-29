@@ -834,6 +834,7 @@ class ROIReport(models.Model):
     client            = models.ForeignKey(Client, on_delete=models.CASCADE, related_name='roi_reports')
     month             = models.IntegerField()
     year              = models.IntegerField()
+    currency          = models.CharField(max_length=3, choices=CURRENCY_CHOICES, default='USD')
     total_investment  = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     agency_fee        = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     total_clicks      = models.BigIntegerField(default=0)

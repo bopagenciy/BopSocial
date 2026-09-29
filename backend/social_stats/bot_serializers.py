@@ -136,7 +136,7 @@ class LeadListSerializer(serializers.ModelSerializer):
             'assigned_to', 'assigned_email',
             'source_flow', 'source_flow_name',
             'source_ad_id', 'source_ad_name', 'source_campaign_id', 'source_campaign_name',
-            'created_at', 'converted_at', 'conversion_value',
+            'created_at', 'converted_at', 'conversion_value', 'currency', 'conversion_currency',
         ]
 
 

@@ -22,6 +22,9 @@ import { PLATFORMS } from '../services/platforms';
 import { useClients } from '../hooks/useData';
 import PageHeader from '../components/layout/PageHeader';
 import SocialPlatformIcon from '../components/ui/SocialPlatformIcon';
+import { useTranslation } from 'react-i18next';
+import { formatCurrency, formatCompactCurrency } from '../utils/formatters';
+import { CANONICAL_CURRENCIES } from '../utils/currencies';
 
 // ── Inject styles once ────────────────────────────────────────────────────────
 if (typeof document !== 'undefined' && !document.getElementById('roi-styles')) {
@@ -98,13 +101,9 @@ function useCountUp(target, duration = 900) {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-function fmtCurrency(n, symbol) {
-  const sym = symbol || '$';
-  if (!n && n !== 0) return `${sym}0`;
-  const abs = Math.abs(n);
-  if (abs >= 1_000_000) return `${sym}${(n / 1_000_000).toFixed(2)}M`;
-  if (abs >= 1_000)     return `${sym}${(n / 1_000).toFixed(1)}K`;
-  return `${sym}${Number(n).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+function fmtCurrency(n, currency = 'USD', locale = 'en') {
+  if (n === null || n === undefined) return formatCurrency(0, currency, locale);
+  return formatCurrency(Number(n), currency, locale, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 }
 
 function fmtNum(n) {
@@ -140,8 +139,8 @@ const PLATFORM_CONFIGS = [
 ];
 
 // ── Sub-components ────────────────────────────────────────────────────────────
-function CurrencyInput({ label, value, onChange, symbol, helper, disabled = false }) {
-  const sym = symbol || '$';
+function CurrencyInput({ label, value, onChange, currency = 'USD', symbol, helper, disabled = false, locale = 'en' }) {
+  const sym = symbol || (currency ? formatCurrency(0, currency, locale).replace(/[0-9.,\s]/g, '') : '$') || '$';
   return (
     <div style={{ marginBottom: 12 }}>
       {label && <label style={inputLabel}>{label}</label>}
@@ -187,7 +186,7 @@ function SliderInput({ label, value, onChange, min, max, step, unit, helper, dis
   );
 }
 
-function PlatformRow({ row, symbol }) {
+function PlatformRow({ row, currency = 'USD', symbol, locale = 'en' }) {
   if (!row) return null;
   const pl = PLATFORMS[row.platform] || {};
   const roi = row.roi_percentage || 0;
@@ -205,11 +204,11 @@ function PlatformRow({ row, symbol }) {
           {pl.label || row.platform}
         </span>
       </td>
-      <td style={{ ...tdStyle, textAlign: 'right' }}>{symbol}{(row.budget || 0).toLocaleString()}</td>
+      <td style={{ ...tdStyle, textAlign: 'right' }}>{formatCurrency(row.budget || 0, currency, locale, { maximumFractionDigits: 0 })}</td>
       <td style={{ ...tdStyle, textAlign: 'right' }}>{fmtNum(row.clicks)}</td>
       <td style={{ ...tdStyle, textAlign: 'right' }}>{fmtNum(row.leads)}</td>
       <td style={{ ...tdStyle, textAlign: 'right' }}>{fmtNum(row.sales)}</td>
-      <td style={{ ...tdStyle, textAlign: 'right' }}>{fmtCurrency(row.revenue, symbol)}</td>
+      <td style={{ ...tdStyle, textAlign: 'right' }}>{fmtCurrency(row.revenue, currency, locale)}</td>
       <td style={{ ...tdStyle, textAlign: 'right' }}><span style={roiStyle}>{roi.toFixed(0)}%</span></td>
     </tr>
   );
@@ -248,6 +247,8 @@ function GoalBar({ label, current, target, progress, fmt }) {
 
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function ROICalculatorPage({ clientId: propClientId }) {
+  const { t, i18n } = useTranslation();
+  const locale = i18n?.language || 'en';
   const [searchParams, setSearchParams] = useSearchParams();
   const { clients } = useClients();
   const showClientSelector = !propClientId;
@@ -293,7 +294,8 @@ export default function ROICalculatorPage({ clientId: propClientId }) {
     }
   }, [settings, loadFromSettings, calculate, month, year]);
 
-  const symbol = inputs.currency_symbol || '$';
+  const currency = inputs.currency || settings?.currency || 'USD';
+  const symbol = formatCurrency(0, currency, locale).replace(/[0-9.,\s]/g, '') || '$';
 
   const totalInvestment = (
     (inputs.facebook_budget || 0) + (inputs.instagram_budget || 0) +
@@ -429,7 +431,24 @@ export default function ROICalculatorPage({ clientId: propClientId }) {
 
           {/* Monthly Investment */}
           <div style={card}>
-            <h3 style={cardTitle}><DollarSign size={16} style={{ color: '#2563EB' }} /> Monthly Investment</h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h3 style={{ ...cardTitle, margin: 0 }}><DollarSign size={16} style={{ color: '#2563EB' }} /> Monthly Investment</h3>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <label htmlFor="roi-currency-select" style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Currency:</label>
+                <select
+                  id="roi-currency-select"
+                  aria-label="Currency"
+                  value={currency}
+                  onChange={e => updateInput('currency', e.target.value)}
+                  disabled={fieldsDisabled}
+                  style={{ ...selectStyle, padding: '4px 8px', fontSize: 12 }}
+                >
+                  {CANONICAL_CURRENCIES.map(c => (
+                    <option key={c.code} value={c.code}>{c.code} ({c.symbol})</option>
+                  ))}
+                </select>
+              </div>
+            </div>
             {hasSavedSettings && (
               <div style={settingsBanner}>
                 <span style={{ color: 'var(--text-primary)', fontWeight: 700 }}>Settings saved</span>
@@ -478,7 +497,7 @@ export default function ROICalculatorPage({ clientId: propClientId }) {
             <div style={{ ...totalDisplay, marginTop: 12 }}>
               <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Total Monthly Investment</span>
               <span style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
-                {fmtCurrency(totalInvestment, symbol)}
+                {fmtCurrency(totalInvestment, currency, locale)}
               </span>
             </div>
           </div>
@@ -491,7 +510,8 @@ export default function ROICalculatorPage({ clientId: propClientId }) {
               label="How much is one sale worth?"
               value={inputs.avg_sale_value}
               onChange={v => updateInput('avg_sale_value', v)}
-              symbol={symbol}
+              currency={currency}
+              locale={locale}
               helper="Average revenue per customer / sale"
               disabled={fieldsDisabled}
             />
@@ -523,7 +543,8 @@ export default function ROICalculatorPage({ clientId: propClientId }) {
               label="Revenue Goal"
               value={inputs.monthly_revenue_goal}
               onChange={v => updateInput('monthly_revenue_goal', v)}
-              symbol={symbol}
+              currency={currency}
+              locale={locale}
               helper="Target revenue for this month"
               disabled={fieldsDisabled}
             />
@@ -609,8 +630,8 @@ export default function ROICalculatorPage({ clientId: propClientId }) {
                   {rLabel.text}
                 </div>
                 <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>
-                  For every {symbol}1 spent you earn{' '}
-                  <strong style={{ color: 'var(--text-primary)' }}>{symbol}{(result.per_dollar_earned || 0).toFixed(2)}</strong> back
+                  For every {formatCurrency(1, currency, locale)} spent you earn{' '}
+                  <strong style={{ color: 'var(--text-primary)' }}>{formatCurrency(result.per_dollar_earned || 0, currency, locale)}</strong> back
                 </p>
               </div>
 
@@ -620,13 +641,13 @@ export default function ROICalculatorPage({ clientId: propClientId }) {
                   <div style={{ flex: 1, textAlign: 'center', padding: 16, background: '#FEF3C7', borderRadius: 12 }}>
                     <div style={{ fontSize: 11, color: '#D97706', fontWeight: 700, textTransform: 'uppercase', marginBottom: 6 }}>💰 Total Invested</div>
                     <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
-                      {fmtCurrency(result.total_investment, symbol)}
+                      {fmtCurrency(result.total_investment, currency, locale)}
                     </div>
                   </div>
                   <div style={{ flex: 1, textAlign: 'center', padding: 16, background: '#D1FAE5', borderRadius: 12 }}>
                     <div style={{ fontSize: 11, color: '#059669', fontWeight: 700, textTransform: 'uppercase', marginBottom: 6 }}>📈 Est. Revenue</div>
                     <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
-                      {fmtCurrency(animatedRevenue, symbol)}
+                      {fmtCurrency(animatedRevenue, currency, locale)}
                     </div>
                   </div>
                 </div>
@@ -673,9 +694,9 @@ export default function ROICalculatorPage({ clientId: propClientId }) {
                 <h4 style={cardTitle}>Cost Efficiency</h4>
                 <div className="roi-chart-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
                   {[
-                    { label: 'Cost / Click', value: result.cost_per_click, industry: 1.00,   fmt: v => `${symbol}${(+v).toFixed(2)}`, better: 'lower' },
-                    { label: 'Cost / Lead',  value: result.cost_per_lead,  industry: 50.00,  fmt: v => `${symbol}${(+v).toFixed(2)}`, better: 'lower' },
-                    { label: 'Cost / Sale',  value: result.cost_per_sale,  industry: 200.00, fmt: v => `${symbol}${(+v).toFixed(0)}`, better: 'lower' },
+                    { label: 'Cost / Click', value: result.cost_per_click, industry: 1.00,   fmt: v => formatCurrency(+v, currency, locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }), better: 'lower' },
+                    { label: 'Cost / Lead',  value: result.cost_per_lead,  industry: 50.00,  fmt: v => formatCurrency(+v, currency, locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }), better: 'lower' },
+                    { label: 'Cost / Sale',  value: result.cost_per_sale,  industry: 200.00, fmt: v => formatCurrency(+v, currency, locale, { minimumFractionDigits: 0, maximumFractionDigits: 0 }), better: 'lower' },
                   ].map(m => {
                     const isGood = m.value > 0 && m.value <= m.industry;
                     return (
@@ -711,15 +732,15 @@ export default function ROICalculatorPage({ clientId: propClientId }) {
                     </thead>
                     <tbody>
                       {result.platform_breakdown.map(row => (
-                        <PlatformRow key={row.platform} row={row} symbol={symbol} />
+                        <PlatformRow key={row.platform} row={row} currency={currency} locale={locale} />
                       ))}
                       <tr style={{ ...trStyle, fontWeight: 700, background: 'var(--surface-page)' }}>
                         <td style={tdStyle}><strong>Total</strong></td>
-                        <td style={{ ...tdStyle, textAlign: 'right' }}><strong>{fmtCurrency(result.total_investment, symbol)}</strong></td>
+                        <td style={{ ...tdStyle, textAlign: 'right' }}><strong>{fmtCurrency(result.total_investment, currency, locale)}</strong></td>
                         <td style={{ ...tdStyle, textAlign: 'right' }}><strong>{fmtNum(result.total_clicks)}</strong></td>
                         <td style={{ ...tdStyle, textAlign: 'right' }}><strong>{fmtNum(result.estimated_leads)}</strong></td>
                         <td style={{ ...tdStyle, textAlign: 'right' }}><strong>{fmtNum(result.estimated_sales)}</strong></td>
-                        <td style={{ ...tdStyle, textAlign: 'right' }}><strong>{fmtCurrency(result.estimated_revenue, symbol)}</strong></td>
+                        <td style={{ ...tdStyle, textAlign: 'right' }}><strong>{fmtCurrency(result.estimated_revenue, currency, locale)}</strong></td>
                         <td style={{ ...tdStyle, textAlign: 'right' }}>
                           <span style={{ fontWeight: 700, color: roiColor(roi) }}>{roi.toFixed(0)}%</span>
                         </td>
@@ -739,7 +760,7 @@ export default function ROICalculatorPage({ clientId: propClientId }) {
                       current={result.estimated_revenue}
                       target={result.goals.revenue_goal}
                       progress={result.goals.revenue_progress}
-                      fmt={v => fmtCurrency(v, symbol)}
+                      fmt={v => fmtCurrency(v, currency, locale)}
                     />
                   )}
                   {result.goals.leads_progress !== null && (
@@ -763,10 +784,10 @@ export default function ROICalculatorPage({ clientId: propClientId }) {
                       <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
                       <XAxis dataKey="label" tick={{ fontSize: 11 }} />
                       <YAxis yAxisId="left"  tick={{ fontSize: 11 }} tickFormatter={v => `${v}%`} />
-                      <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} tickFormatter={v => fmtCurrency(v, symbol)} />
+                      <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} tickFormatter={v => formatCompactCurrency(v, currency, locale)} />
                       <Tooltip
                         formatter={(v, name) => [
-                          name === 'roi_percentage' ? `${v.toFixed(0)}%` : fmtCurrency(v, symbol),
+                          name === 'roi_percentage' ? `${v.toFixed(0)}%` : fmtCurrency(v, currency, locale),
                           name === 'roi_percentage' ? 'ROI %' : 'Revenue',
                         ]}
                       />

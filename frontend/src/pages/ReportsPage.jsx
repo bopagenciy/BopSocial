@@ -18,7 +18,7 @@ import ShareReportModal from '../components/ui/ShareReportModal';
 import { getPlatformLabel } from '../services/platforms';
 import PageHeader from '../components/layout/PageHeader';
 import SegmentedTabs from '../components/ui/SegmentedTabs';
-import { formatDate, formatDateRange, formatRelativeTime, formatNumber } from '../utils/formatters';
+import { formatDate, formatDateRange, formatRelativeTime, formatNumber, formatCurrency } from '../utils/formatters';
 
 function buildShareUrl(report) {
   if (report?.share_url) return report.share_url;
@@ -257,7 +257,7 @@ function ROIReportsPanel() {
               {filtered.map(r => {
                 const pct   = parseFloat(r.roi_percentage) || 0;
                 const badge = roiLabel(pct);
-                const sym   = r.currency_symbol || '$';
+                const repCurrency = r.currency || 'USD';
                 return (
                   <tr key={r.id} style={{ borderBottom: '1px solid var(--surface-sunken)' }}>
                     <td style={{ padding: '12px 14px', fontWeight: 600 }}>{r.client_name}</td>
@@ -268,10 +268,10 @@ function ROIReportsPanel() {
                       {pct.toFixed(0)}%
                     </td>
                     <td style={{ padding: '12px 14px' }}>
-                      {sym}{formatNumber(r.total_investment || 0, { maximumFractionDigits: 0 }, i18n?.language)}
+                      {formatCurrency(r.total_investment || 0, repCurrency, i18n?.language, { maximumFractionDigits: 0 })}
                     </td>
                     <td style={{ padding: '12px 14px' }}>
-                      {sym}{formatNumber(r.estimated_revenue || 0, { maximumFractionDigits: 0 }, i18n?.language)}
+                      {formatCurrency(r.estimated_revenue || 0, repCurrency, i18n?.language, { maximumFractionDigits: 0 })}
                     </td>
                     <td style={{ padding: '12px 14px' }}>
                       {formatNumber(r.estimated_leads || 0, {}, i18n?.language)}

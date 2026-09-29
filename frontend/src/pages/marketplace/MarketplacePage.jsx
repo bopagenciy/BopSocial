@@ -22,6 +22,7 @@ import {
 
 import { marketplaceAPI } from '../../services/api';
 import toast from '../../components/ui/toast';
+import { formatCurrency } from '../../utils/formatters';
 
 export default function MarketplacePage() {
   const { t } = useTranslation('agency_portal');
@@ -221,7 +222,7 @@ function Chip({ active, onClick, children }) {
 }
 
 function AgencyCard({ agency }) {
-  const { t } = useTranslation('agency_portal');
+  const { t, i18n } = useTranslation('agency_portal');
   return (
     <Link
       to={`/agencies/${agency.slug}`}
@@ -300,7 +301,7 @@ function AgencyCard({ agency }) {
         </div>
         {agency.pricing_starting_at && (
           <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-            {t('marketplace.card.from')} <strong style={{ color: 'var(--text-primary)' }}>{agency.pricing_currency} {Number(agency.pricing_starting_at).toLocaleString()}</strong>{t('marketplace.card.per_month')}
+            {t('marketplace.card.from')} <strong style={{ color: 'var(--text-primary)' }}>{formatCurrency(Number(agency.pricing_starting_at), agency.pricing_currency || 'USD', i18n?.language)}</strong>{t('marketplace.card.per_month')}
           </div>
         )}
       </div>

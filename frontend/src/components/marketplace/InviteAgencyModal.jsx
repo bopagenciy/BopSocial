@@ -27,6 +27,7 @@ import { ArrowLeft, ArrowRight, Send, X, Building2, Check } from 'lucide-react';
 import PermissionMatrix from './PermissionMatrix';
 import { agencyInviteAPI } from '../../services/api';
 import toast from '../ui/toast';
+import { formatCurrency } from '../../utils/formatters';
 
 // Server-side AGENCY_CLIENT_PERMISSIONS catalog.
 // Mirrors backend (). Used only for default seeding — the backend
@@ -70,14 +71,38 @@ const SERVICE_OPTIONS = [
   { value: 'strategy',    label: 'Strategy & growth' },
 ];
 
-const BUDGET_RANGES = [
-  '< ₹5,000/mo',
-  '₹5,000–10,000/mo',
-  '₹10,000–25,000/mo',
-  '₹25,000–50,000/mo',
-  '> ₹50,000/mo',
-  'Open / discuss',
+export const BUDGET_RANGE_THRESHOLDS = [
+  { min: null,  max: 5000,  key: 'under_5k' },
+  { min: 5000,  max: 10000, key: '5k_10k' },
+  { min: 10000, max: 25000, key: '10k_25k' },
+  { min: 25000, max: 50000, key: '25k_50k' },
+  { min: 50000, max: null,  key: 'over_50k' },
+  { min: null,  max: null,  key: 'open' },
 ];
+
+export function getBudgetRangeOptions(currency = 'USD', locale = 'en') {
+  return BUDGET_RANGE_THRESHOLDS.map((r) => {
+    if (r.key === 'open') {
+      return { value: 'Open / discuss', label: 'Open / discuss' };
+    }
+    if (r.min === null) {
+      return {
+        value: `< ${r.max} ${currency}/mo`,
+        label: `< ${formatCurrency(r.max, currency, locale, { maximumFractionDigits: 0 })}/mo`,
+      };
+    }
+    if (r.max === null) {
+      return {
+        value: `> ${r.min} ${currency}/mo`,
+        label: `> ${formatCurrency(r.min, currency, locale, { maximumFractionDigits: 0 })}/mo`,
+      };
+    }
+    return {
+      value: `${r.min}–${r.max} ${currency}/mo`,
+      label: `${formatCurrency(r.min, currency, locale, { maximumFractionDigits: 0 })} – ${formatCurrency(r.max, currency, locale, { maximumFractionDigits: 0 })}/mo`,
+    };
+  });
+}
 
 function defaultPerms() {
   const out = {};
@@ -86,7 +111,7 @@ function defaultPerms() {
 }
 
 export default function InviteAgencyModal({ open, onClose, targetAgency = null, onSent }) {
-  const { t } = useTranslation('agency_portal');
+  const { t, i18n } = useTranslation('agency_portal');
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
@@ -97,6 +122,16 @@ export default function InviteAgencyModal({ open, onClose, targetAgency = null, 
     desired_services:     [],
     budget_range:         '',
   });
+
+  const currency = targetAgency?.pricing_currency || 'USD';
+  const budgetOptions = useMemo(
+    () => getBudgetRangeOptions(currency, i18n?.language),
+    [currency, i18n?.language]
+  );
+  const selectedBudgetLabel = useMemo(() => {
+    const found = budgetOptions.find((b) => b.value === form.budget_range);
+    return found ? found.label : form.budget_range;
+  }, [budgetOptions, form.budget_range]);
 
   const granted = useMemo(
     () => Object.values(form.proposed_permissions).filter(Boolean).length,
@@ -261,7 +296,7 @@ export default function InviteAgencyModal({ open, onClose, targetAgency = null, 
                   style={inputStyle}
                 >
                   <option value="">—</option>
-                  {BUDGET_RANGES.map((b) => <option key={b} value={b}>{b}</option>)}
+                  {budgetOptions.map((b) => <option key={b.value} value={b.value}>{b.label}</option>)}
                 </select>
               </div>
             </div>
@@ -273,7 +308,7 @@ export default function InviteAgencyModal({ open, onClose, targetAgency = null, 
               <Row k={t('invitations.invite_modal.review_agency', 'Target agency')} v={targetAgency ? targetAgency.name : form.target_locator} />
               <Row k={t('invitations.invite_modal.review_perms', 'Permissions granted')} v={t('invitations.invite_modal.review_perms_detail', '{{granted}} granted, {{declined}} declined', { granted, declined: Object.keys(SEED_CATALOG).length - granted })} />
               <Row k={t('invitations.invite_modal.desired_services', 'Desired services')} v={form.desired_services.length ? form.desired_services.map(s => t(`agency_profile.services.${s}`, s)).join(', ') : '—'} />
-              {form.budget_range && <Row k={t('invitations.invite_modal.review_budget', 'Budget')} v={form.budget_range} />}
+              {form.budget_range && <Row k={t('invitations.invite_modal.review_budget', 'Budget')} v={selectedBudgetLabel} />}
               <Row k={t('invitations.agency_invite.message', 'Message')} v={form.message || <em style={{ color: 'var(--text-tertiary)' }}>{t('common.none', '(none)')}</em>} multiline />
               <p style={{ ...hintText, marginTop: 8 }}>
                 <Check size={11} style={{ marginRight: 4, verticalAlign: 'middle', color: 'var(--success)' }} />

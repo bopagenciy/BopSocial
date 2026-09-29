@@ -26,6 +26,8 @@ import { ArrowLeft, ArrowRight, Send, X, Check } from 'lucide-react';
 
 import { manageRequestAPI } from '../../services/api';
 import toast from '../ui/toast';
+import { formatCurrency } from '../../utils/formatters';
+import { CANONICAL_CURRENCIES, DEFAULT_CURRENCY } from '../../utils/currencies';
 
 // Matches backend AGENCY_CLIENT_PERMISSIONS (). Order = display order.
 const PERMISSIONS = [
@@ -77,7 +79,7 @@ function defaultPerms() {
 }
 
 export default function SendManageRequestModal({ open, onClose, onSent }) {
-  const { t } = useTranslation('agency_portal');
+  const { t, i18n } = useTranslation('agency_portal');
   const [step,    setStep]    = useState(1);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
@@ -86,6 +88,7 @@ export default function SendManageRequestModal({ open, onClose, onSent }) {
     permissions:  defaultPerms(),
     proposed_message: '',
     proposed_pricing: '',
+    proposed_currency: DEFAULT_CURRENCY,
     proposed_services: [],
   });
 
@@ -121,6 +124,7 @@ export default function SendManageRequestModal({ open, onClose, onSent }) {
         proposed_permissions: form.permissions,
         proposed_message:     form.proposed_message,
         proposed_pricing:     pricing,
+        proposed_currency:    form.proposed_currency,
         proposed_services:    form.proposed_services,
       });
       toast.success(t('invitations.send_request_modal.toast_sent', 'Invitation sent to {{email}}', { email: form.target_email }));
@@ -205,15 +209,29 @@ export default function SendManageRequestModal({ open, onClose, onSent }) {
                   style={textareaStyle}
                 />
               </div>
-              <Field label={t('invitations.send_request_modal.pricing_label', 'Proposed monthly pricing')} type="number"
-                     value={form.proposed_pricing}
-                     onChange={(e) => setForm((s) => ({ ...s, proposed_pricing: e.target.value }))}
-                     placeholder="e.g., 5000" />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px', gap: 10 }}>
+                <Field label={t('invitations.send_request_modal.pricing_label', 'Proposed monthly pricing')} type="number"
+                       value={form.proposed_pricing}
+                       onChange={(e) => setForm((s) => ({ ...s, proposed_pricing: e.target.value }))}
+                       placeholder="e.g., 5000" />
+                <div>
+                  <Label>{t('agency_marketplace_profile.fields.pricing_currency', 'Currency')}</Label>
+                  <select
+                    value={form.proposed_currency}
+                    onChange={(e) => setForm((s) => ({ ...s, proposed_currency: e.target.value }))}
+                    style={inputStyle}
+                  >
+                    {CANONICAL_CURRENCIES.map((c) => (
+                      <option key={c.code} value={c.code}>{c.code}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
             </div>
           )}
 
           {step === 4 && (
-            <ReviewSummary form={form} granted={granted} t={t} />
+            <ReviewSummary form={form} granted={granted} t={t} i18n={i18n} />
           )}
         </div>
 
@@ -238,13 +256,18 @@ export default function SendManageRequestModal({ open, onClose, onSent }) {
   );
 }
 
-function ReviewSummary({ form, granted, t }) {
+function ReviewSummary({ form, granted, t, i18n }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <Row k={t('invitations.invite_modal.review_agency', 'To')} v={form.target_email} />
       {form.target_phone && <Row k={t('invitations.send_request_modal.phone_label', 'Phone')} v={form.target_phone} />}
       <Row k={t('invitations.invite_modal.review_perms', 'Permissions')} v={t('invitations.invite_modal.review_perms_detail', '{{granted}} granted, {{declined}} declined', { granted, declined: PERMISSIONS.length - granted })} />
-      {form.proposed_pricing && <Row k={t('invitations.send_request_modal.monthly_fee', 'Monthly fee')} v={`₹${form.proposed_pricing}`} />}
+      {form.proposed_pricing && (
+        <Row
+          k={t('invitations.send_request_modal.monthly_fee', 'Monthly fee')}
+          v={formatCurrency(Number(form.proposed_pricing), form.proposed_currency, i18n?.language)}
+        />
+      )}
       <Row k={t('invitations.agency_invite.message', 'Message')} v={form.proposed_message || <em style={{ color: 'var(--text-tertiary)' }}>{t('common.none', '(none)')}</em>} multiline />
       <p style={{ ...hintStyle, marginTop: 8 }}>
         <Check size={11} style={{ marginRight: 4, verticalAlign: 'middle', color: 'var(--success)' }} />

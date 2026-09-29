@@ -1521,3 +1521,50 @@ Phase BS-2.7C implements canonical multi-currency authority and financial locali
   - `agencyos-beat-1`: Up
   - Backend services health API: 100% operational (`curl.exe http://localhost:8000/api/health/services/`).
 
+---
+
+## 29. Phase BS-2.7D — Marketplace, ROI & Reporting Financial Localization Closure
+
+### 29.1 Architecture Overview & Scope
+Phase **BS-2.7D** completes the financial localization across the remaining core commercial modules of Bop Social:
+1. **Marketplace & Agency Relations**:
+   - `Agency.pricing_currency`: Base starting currency for agencies offering services in the marketplace.
+   - `AgencyClientRelation.fee_currency`: Authoritative commercial retainer currency between agency and managed client.
+   - `ManageRequest.proposed_currency`: Commercial proposal currency resolved through an authoritative hierarchy and propagated to relations upon acceptance.
+2. **ROI Analytics & Historical Immutability**:
+   - `ROIReport.currency`: Exact snapshot of the calculation currency at report generation time. Subsequent changes to client or workspace settings do not mutate historical records.
+3. **Leads & Pipeline Valuation**:
+   - `Lead.currency` (`conversion_currency`): Canonical currency of lead conversions.
+   - `Lead CSV Export`: Includes machine-readable `currency` column adjacent to `conversion_value`.
+4. **Mixed-Currency Dashboard Aggregation Protection**:
+   - Open pipeline totals prevent mathematically invalid arithmetic across disparate currencies.
+   - If leads have multiple currencies, `pipeline_value` returns `null`, `has_mixed_currencies` is `True`, and `pipeline_values_by_currency` provides grouped subtotals. The frontend renders "Multiple currencies".
+5. **Eradication of Hardcoded Currency Symbols**:
+   - Eradicated residual `₹` and `$` symbols from `messaging.json` catalogs (`convert_modal`), lead views, ROI calculators, marketplace profiles, and admin summaries.
+   - Created `frontend/src/utils/currencies.js` exposing canonical 11 ISO 4217 currencies matching backend `currencies.py`.
+
+### 29.2 Data Models & Migrations
+- **Database Migrations**:
+  - `0069_marketplace_roi_lead_currency.py`: Adds `pricing_currency` on `Agency`, `fee_currency` on `AgencyClientRelation`, `proposed_currency` on `ManageRequest`, `currency` on `ROIReport`, and `currency` on `Lead`.
+  - `0070_alter_client_currency.py`: Aligns `Client.currency` choices with canonical 11 currencies.
+- **Authoritative Currency Precedence**:
+  - **ManageRequest Hierarchy**: Explicit request parameter > Existing AgencyClientRelation fee currency > Target Client default currency > Agency pricing currency > USD fallback.
+  - **Lead Conversion Hierarchy**: Associated CTWA Campaign currency > Explicit conversion parameter > Client default currency > USD fallback.
+  - **Meta CAPI Hierarchy**: Lead conversion currency > Client default currency > USD fallback (with custom fields override).
+
+### 29.3 Test Suite & Verification Results
+- **Backend Test Suites**:
+  - `social_stats.tests.test_bs27d_financial_localization`: **9/9 passed (100%)**.
+  - `social_stats.tests.test_ctwa_meta_multicurrency` (BS-2.7C): **15/15 passed (100%)**.
+  - `social_stats.tests.test_workspace_currency_foundation` (BS-2.7B): **12/12 passed (100%)**.
+  - `social_stats.tests.test_dashboard_endpoints`: **22/22 passed (100%)**.
+- **Frontend Test Suites**:
+  - `MarketplaceROIFinancialLocalization.test.jsx`: **11/11 passed (100%)**.
+  - Full frontend suite: **30/30 suites passed, 251/251 tests passed (100%)**.
+- **Production Build & Containerization**:
+  - Frontend production build (`npm run build`): Completed cleanly with exit code 0.
+  - Docker images built and tagged: `bopsocial-frontend-local:bs-2.7d`, `bopsocial-backend-local:bs-2.7d`.
+  - `docker-compose.local.yml`: Updated to reference `:bs-2.7d`.
+  - All 6 containers active, healthy, and operational (`http://localhost:3010/`, `http://localhost:3010/api/health/services/` returning HTTP 200 OK).
+
+

@@ -1027,9 +1027,15 @@ def generate_monthly_roi_reports():
     for client in clients_with_settings:
         try:
             result = calculate_roi(client.id, month, year)
+            roi_cur = (
+                getattr(getattr(client, 'roi_settings', None), 'currency', None)
+                or getattr(client, 'currency', None)
+                or 'USD'
+            )
             ROIReport.objects.update_or_create(
                 client=client, month=month, year=year,
                 defaults={
+                    'currency':           roi_cur,
                     'total_investment':   Decimal(str(result['total_investment'])),
                     'agency_fee':         Decimal(str(result['agency_fee'])),
                     'total_clicks':       result['total_clicks'],

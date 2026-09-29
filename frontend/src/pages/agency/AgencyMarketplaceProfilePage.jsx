@@ -23,6 +23,7 @@ import {
 
 import { agencyAPI, authAPI, verificationAPI } from '../../services/api';
 import toast from '../../components/ui/toast';
+import { CANONICAL_CURRENCIES } from '../../utils/currencies';
 
 export default function AgencyMarketplaceProfilePage() {
   const { t } = useTranslation('agency_portal');
@@ -220,11 +221,10 @@ export default function AgencyMarketplaceProfilePage() {
           />
           <div>
             <Label>{t('agency_marketplace_profile.fields.pricing_currency')}</Label>
-            <select value={draft.pricing_currency || 'INR'} onChange={(e) => set('pricing_currency', e.target.value)} style={inputStyle}>
-              <option value="INR">INR</option>
-              <option value="USD">USD</option>
-              <option value="EUR">EUR</option>
-              <option value="GBP">GBP</option>
+            <select value={draft.pricing_currency || 'USD'} onChange={(e) => set('pricing_currency', e.target.value)} style={inputStyle}>
+              {CANONICAL_CURRENCIES.map((c) => (
+                <option key={c.code} value={c.code}>{c.code}</option>
+              ))}
             </select>
           </div>
         </div>

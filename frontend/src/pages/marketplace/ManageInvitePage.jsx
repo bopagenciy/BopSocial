@@ -26,6 +26,7 @@ import {
 import { manageRequestAPI } from '../../services/api';
 import { useAuth } from '../../hooks/useAuth';
 import toast from '../../components/ui/toast';
+import { formatCurrency } from '../../utils/formatters';
 
 const RISK_COLOR = {
   low:      'var(--text-tertiary)',
@@ -35,7 +36,7 @@ const RISK_COLOR = {
 };
 
 export default function ManageInvitePage() {
-  const { t } = useTranslation('agency_portal');
+  const { t, i18n } = useTranslation('agency_portal');
   const { token } = useParams();
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -201,7 +202,7 @@ export default function ManageInvitePage() {
 
           {invite.proposed_pricing && (
             <div style={pricingChip}>
-              {t('invitations.manage_invite.proposed_pricing', '₹{{price}} / month proposed', { price: invite.proposed_pricing.toLocaleString('en-IN') })}
+              {t('invitations.manage_invite.proposed_pricing', '{{price}} / month proposed', { price: formatCurrency(Number(invite.proposed_pricing), invite.proposed_currency || invite.currency || 'USD', i18n?.language) })}
             </div>
           )}
 

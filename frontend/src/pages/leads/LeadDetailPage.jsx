@@ -23,6 +23,7 @@ import { useTranslation } from 'react-i18next';
 
 import { leadAPI } from '../../services/api';
 import toast from '../../components/ui/toast';
+import { formatCurrency } from '../../utils/formatters';
 
 const STATUS_KEYS = [
   { key: 'new',       color: 'var(--brand-primary)' },
@@ -190,7 +191,8 @@ export default function LeadDetailPage() {
 // Tab: Overview
 // ─────────────────────────────────────────────────────────
 function Overview({ lead }) {
-  const { t } = useTranslation('messaging');
+  const { t, i18n } = useTranslation('messaging');
+  const currency = lead.currency || lead.conversion_currency || 'USD';
   const rows = [
     [t('leads.fields.interest'), lead.interest],
     [t('leads.fields.budget'),   lead.budget],
@@ -204,7 +206,7 @@ function Overview({ lead }) {
     [t('leads.fields.created'),  lead.created_at && new Date(lead.created_at).toLocaleString()],
     [t('leads.fields.updated'),  lead.updated_at && new Date(lead.updated_at).toLocaleString()],
     [t('leads.fields.converted_at'), lead.converted_at && new Date(lead.converted_at).toLocaleString()],
-    [t('leads.fields.conversion_value'), lead.conversion_value && `₹${Number(lead.conversion_value).toLocaleString()}`],
+    [t('leads.fields.conversion_value'), lead.conversion_value && formatCurrency(Number(lead.conversion_value), currency, i18n?.language)],
   ];
   return (
     <section style={card}>
@@ -399,14 +401,16 @@ function ScoreBadge({ score, reason }) {
 }
 
 function ConvertModal({ lead, onClose, onConverted }) {
-  const { t } = useTranslation('messaging');
+  const { t, i18n } = useTranslation('messaging');
   const [value, setValue] = useState('');
   const [busy, setBusy] = useState(false);
+  const currency = lead.currency || lead.conversion_currency || 'USD';
   async function go() {
     setBusy(true);
     try {
       await leadAPI.convert(lead.id, Number(value || 0));
-      toast.success(t('leads.convert_modal.success', { value: Number(value || 0).toLocaleString() }));
+      const formattedVal = formatCurrency(Number(value || 0), currency, i18n?.language);
+      toast.success(t('leads.convert_modal.success', { value: formattedVal }));
       onConverted();
     } catch (e) { toast.error(e?.response?.data?.error || t('leads.convert_modal.error')); }
     finally { setBusy(false); }

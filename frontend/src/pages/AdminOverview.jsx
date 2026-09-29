@@ -11,7 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useOverview, useDateRange, useClients, useGoals, useAlerts, useLookups } from '../hooks/useData';
 import { formatTimeAgo } from '../services/formatters';
-import { formatDate, formatDateRange, formatNumber } from '../utils/formatters';
+import { formatDate, formatDateRange, formatNumber, formatCurrency } from '../utils/formatters';
 import DateRangePicker from '../components/ui/DateRangePicker';
 import StatCard from '../components/ui/StatCard';
 import { PLATFORMS, fmt } from '../services/platforms';
@@ -622,18 +622,18 @@ function ROIOverviewPanel() {
               {reports.map(r => {
                 const pct   = parseFloat(r.roi_percentage) || 0;
                 const label = roiStatusLabel(pct, t);
-                const sym   = r.currency_symbol || '$';
+                const repCurrency = r.currency || 'USD';
                 return (
                   <tr key={r.id || r.client_id} style={styles.tr}>
                     <td style={{ ...styles.td, fontWeight: 600 }}>{r.client_name || r.client}</td>
                     <td style={{ ...styles.td, fontWeight: 700, color: pct > 0 ? '#059669' : '#EF4444' }}>
-                      {pct.toFixed(0)}%
+                       {pct.toFixed(0)}%
                     </td>
                     <td style={styles.td}>
-                      {sym}{formatNumber(r.estimated_revenue || 0, { maximumFractionDigits: 0 }, i18n?.language)}
+                      {formatCurrency(r.estimated_revenue || 0, repCurrency, i18n?.language, { maximumFractionDigits: 0 })}
                     </td>
                     <td style={styles.td}>
-                      {sym}{formatNumber(r.total_investment || 0, { maximumFractionDigits: 0 }, i18n?.language)}
+                      {formatCurrency(r.total_investment || 0, repCurrency, i18n?.language, { maximumFractionDigits: 0 })}
                     </td>
                     <td style={styles.td}>
                       <span style={{

@@ -310,8 +310,17 @@ class Lead(models.Model):
     # Conversion
     converted_at     = models.DateTimeField(null=True, blank=True)
     conversion_value = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    currency         = models.CharField(max_length=3, choices=CURRENCY_CHOICES, default='USD')
 
     capi_pushed_at = models.DateTimeField(null=True, blank=True)
+
+    @property
+    def conversion_currency(self):
+        return self.currency
+
+    @conversion_currency.setter
+    def conversion_currency(self, val):
+        self.currency = val
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

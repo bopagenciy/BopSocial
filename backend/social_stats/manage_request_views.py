@@ -102,6 +102,8 @@ def _serialize_request(req: ManageRequest, *, include_token=False) -> dict:
         'proposed_permissions': req.proposed_permissions,
         'proposed_message':    req.proposed_message,
         'proposed_pricing':    float(req.proposed_pricing) if req.proposed_pricing is not None else None,
+        'proposed_currency':   req.proposed_currency,
+        'currency':            req.proposed_currency,
         'proposed_services':   req.proposed_services,
         'status':              req.status,
         'sent_at':             req.sent_at.isoformat() if req.sent_at else None,
@@ -226,6 +228,28 @@ def send_manage_request(request):
     except (TypeError, ValueError):
         pricing = None
 
+    # Currency authority resolution:
+    # 1. Explicit request currency
+    # 2. Related agency/client relation currency where appropriate
+    # 3. Client.currency
+    # 4. DEFAULT_CURRENCY
+    from .currencies import DEFAULT_CURRENCY, SUPPORTED_CURRENCIES
+    explicit_curr = (data.get('proposed_currency') or data.get('currency') or '').strip().upper()
+    if explicit_curr in SUPPORTED_CURRENCIES:
+        req_currency = explicit_curr
+    else:
+        existing_rel = None
+        if target_client:
+            existing_rel = AgencyClientRelation.objects.filter(agency=agency, client=target_client).first()
+        if existing_rel and existing_rel.fee_currency and existing_rel.fee_currency in SUPPORTED_CURRENCIES:
+            req_currency = existing_rel.fee_currency
+        elif target_client and getattr(target_client, 'currency', None) and target_client.currency in SUPPORTED_CURRENCIES:
+            req_currency = target_client.currency
+        elif agency and getattr(agency, 'pricing_currency', None) and agency.pricing_currency in SUPPORTED_CURRENCIES:
+            req_currency = agency.pricing_currency
+        else:
+            req_currency = DEFAULT_CURRENCY
+
     with transaction.atomic():
         req = ManageRequest.objects.create(
             agency=agency,
@@ -236,6 +260,7 @@ def send_manage_request(request):
             proposed_permissions=proposed,
             proposed_message=(data.get('proposed_message') or '').strip(),
             proposed_pricing=pricing,
+            proposed_currency=req_currency,
             proposed_services=data.get('proposed_services') or [],
         )
 
@@ -413,6 +438,8 @@ def accept_manage_invite(request, token):
             requires_approval_for=requires_approval_for,
             approved_at=timezone.now(),
             notes_from_user=notes,
+            monthly_fee=req.proposed_pricing,
+            fee_currency=req.proposed_currency,
         )
         req.status     = 'accepted'
         req.decided_at = timezone.now()
