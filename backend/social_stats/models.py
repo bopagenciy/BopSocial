@@ -170,6 +170,24 @@ class Client(models.Model):
     # return 423. The user can still log in to view existing data.
     is_processing_paused = models.BooleanField(default=False)
 
+    # ── Canonical Bop Universe Identity ──────────────────────────
+    bop_organization_id = models.UUIDField(
+        default=uuid.uuid4,
+        unique=True,
+        editable=False,
+        db_index=True,
+        help_text="Canonical Bop Universe organization identifier (UUIDv4).",
+    )
+
+    def save(self, *args, **kwargs):
+        if not self.bop_organization_id:
+            self.bop_organization_id = uuid.uuid4()
+        elif self.pk:
+            orig = Client.objects.filter(pk=self.pk).values('bop_organization_id').first()
+            if orig and orig['bop_organization_id'] and str(orig['bop_organization_id']) != str(self.bop_organization_id):
+                raise ValueError("bop_organization_id is immutable once assigned.")
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"{self.company} ({self.name})"
 
@@ -1561,6 +1579,24 @@ class WhatsAppContact(models.Model):
     last_inbound_at = models.DateTimeField(null=True, blank=True)
     created_at      = models.DateTimeField(auto_now_add=True)
     updated_at      = models.DateTimeField(auto_now=True)
+
+    # ── Canonical Bop Universe Identity ──────────────────────────
+    bop_contact_id = models.UUIDField(
+        default=uuid.uuid4,
+        unique=True,
+        editable=False,
+        db_index=True,
+        help_text="Canonical Bop Universe contact identifier (UUIDv4).",
+    )
+
+    def save(self, *args, **kwargs):
+        if not self.bop_contact_id:
+            self.bop_contact_id = uuid.uuid4()
+        elif self.pk:
+            orig = WhatsAppContact.objects.filter(pk=self.pk).values('bop_contact_id').first()
+            if orig and orig['bop_contact_id'] and str(orig['bop_contact_id']) != str(self.bop_contact_id):
+                raise ValueError("bop_contact_id is immutable once assigned.")
+        super().save(*args, **kwargs)
 
     class Meta:
         unique_together = ('client', 'phone')

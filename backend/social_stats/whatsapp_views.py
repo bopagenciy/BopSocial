@@ -87,6 +87,8 @@ class WhatsAppContactViewSet(TenantScopedMixin, viewsets.ModelViewSet):
         params = self.request.query_params
         if params.get('opt_in_status'):
             qs = qs.filter(opt_in_status=params['opt_in_status'])
+        if params.get('bop_contact_id'):
+            qs = qs.filter(bop_contact_id=params['bop_contact_id'])
         if params.get('search'):
             term = params['search']
             qs = qs.filter(Q(phone__icontains=term) | Q(name__icontains=term) | Q(email__icontains=term))

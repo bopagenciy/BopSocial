@@ -322,6 +322,11 @@ class Lead(models.Model):
     def conversion_currency(self, val):
         self.currency = val
 
+    @property
+    def bop_contact_id(self):
+        """Canonical contact identifier from associated WhatsAppContact."""
+        return self.contact.bop_contact_id if self.contact else None
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

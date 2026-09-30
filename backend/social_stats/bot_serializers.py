@@ -122,6 +122,7 @@ class LeadActivitySerializer(serializers.ModelSerializer):
 
 
 class LeadListSerializer(serializers.ModelSerializer):
+    bop_contact_id = serializers.UUIDField(source='contact.bop_contact_id', read_only=True)
     contact_name = serializers.CharField(source='contact.name', read_only=True)
     contact_phone = serializers.CharField(source='contact.phone', read_only=True)
     assigned_email = serializers.CharField(source='assigned_to.email', read_only=True, default='')
@@ -130,7 +131,7 @@ class LeadListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Lead
         fields = [
-            'id', 'name', 'phone', 'email', 'interest', 'budget', 'location',
+            'id', 'bop_contact_id', 'name', 'phone', 'email', 'interest', 'budget', 'location',
             'contact', 'contact_name', 'contact_phone',
             'status', 'quality_score', 'tags',
             'assigned_to', 'assigned_email',

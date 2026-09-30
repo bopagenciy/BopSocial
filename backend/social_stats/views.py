@@ -310,19 +310,26 @@ class ClientViewSet(viewsets.ModelViewSet):
             if self.action == 'list':
                 # AllClientsPage: only show properly onboarded clients
                 # (admin-created OR accepted invitation from this agency)
-                return Client.objects.filter(
+                qs = Client.objects.filter(
                     Q(userprofile__isnull=True) |
                     Q(userprofile__is_self_registered=False) |
                     Q(userprofile__agency=self.request.user)
                 ).distinct().order_by('company')
-            # All other actions (trigger_sync, dashboard, settings, etc.)
-            # allow full access to every client
-            return Client.objects.all().order_by('company')
-        if profile.role == 'staff':
-            return profile.assigned_clients.all()
-        if profile.role == 'client' and profile.client:
-            return Client.objects.filter(id=profile.client_id)
-        return Client.objects.none()
+            else:
+                # All other actions (trigger_sync, dashboard, settings, etc.)
+                # allow full access to every client
+                qs = Client.objects.all().order_by('company')
+        elif profile.role == 'staff':
+            qs = profile.assigned_clients.all().order_by('company')
+        elif profile.role == 'client' and profile.client:
+            qs = Client.objects.filter(id=profile.client_id)
+        else:
+            return Client.objects.none()
+
+        bop_org_id = self.request.query_params.get('bop_organization_id')
+        if bop_org_id:
+            qs = qs.filter(bop_organization_id=bop_org_id)
+        return qs
 
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:

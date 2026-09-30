@@ -23,6 +23,7 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class ClientSerializer(serializers.ModelSerializer):
+    bop_organization_id = serializers.UUIDField(read_only=True)
     logo = serializers.ImageField(required=False)
     profile_image = serializers.ImageField(required=False)
     competitors = serializers.SerializerMethodField()
@@ -31,6 +32,17 @@ class ClientSerializer(serializers.ModelSerializer):
     class Meta:
         model = Client
         fields = '__all__'
+
+    def validate(self, attrs):
+        if self.instance and hasattr(self, 'initial_data') and isinstance(self.initial_data, dict):
+            if 'bop_organization_id' in self.initial_data:
+                attempted = str(self.initial_data['bop_organization_id']).strip().lower()
+                current = str(self.instance.bop_organization_id).strip().lower()
+                if attempted != current:
+                    raise serializers.ValidationError({
+                        "bop_organization_id": "bop_organization_id is immutable once assigned."
+                    })
+        return super().validate(attrs)
 
     def to_internal_value(self, data):
         if hasattr(data, 'copy'):
