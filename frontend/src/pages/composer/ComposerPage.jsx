@@ -34,6 +34,12 @@ const PLATFORMS = [
   { id: 'google_my_business', label: 'Google',    color: '#34A853', maxText: 1500,  types: ['text','image'] },
 ];
 
+const UNSUPPORTED_PLATFORMS = [
+  { id: 'tiktok',    label: 'TikTok' },
+  { id: 'twitter',   label: 'X / Twitter' },
+  { id: 'pinterest', label: 'Pinterest' },
+];
+
 const MEDIA_TYPES = [
   { id: 'text',     label: 'Text only', icon: null },
   { id: 'image',    label: 'Image',     icon: ImageIcon },
@@ -98,6 +104,7 @@ export default function ComposerPage() {
 
   /* ── Handlers ──────────────────────────────────────────────────────── */
   function togglePlatform(pid) {
+    if (UNSUPPORTED_PLATFORMS.some((u) => u.id === pid)) return;
     setTargetPlatforms((cur) => cur.includes(pid)
       ? cur.filter((x) => x !== pid)
       : [...cur, pid]);
@@ -346,6 +353,43 @@ export default function ComposerPage() {
                   </button>
                 );
               })}
+              {UNSUPPORTED_PLATFORMS.map((u) => (
+                <div
+                  key={u.id}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '8px 12px',
+                    borderRadius: 'var(--radius-pill)',
+                    border: '1px dashed var(--border-default)',
+                    background: 'var(--surface-card)',
+                    color: 'var(--text-tertiary)',
+                    fontSize: 13,
+                    fontWeight: 500,
+                    cursor: 'not-allowed',
+                    opacity: 0.65,
+                    userSelect: 'none',
+                  }}
+                  title={t('composer.unsupported_platform_tooltip', { platform: u.label })}
+                >
+                  <span>{u.label}</span>
+                  <span
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.04em',
+                      padding: '1px 6px',
+                      borderRadius: 4,
+                      background: 'var(--surface-sunken, rgba(120,120,120,0.15))',
+                      color: 'var(--text-secondary)',
+                    }}
+                  >
+                    {t('composer.coming_soon', 'Coming Soon')}
+                  </span>
+                </div>
+              ))}
             </div>
           </Card>
 

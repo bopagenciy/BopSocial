@@ -10,7 +10,7 @@
 # ============================================================================
 services:
   backend:
-    image: bopsocial-backend-local:bop-conv-b1a
+    image: bopsocial-backend-local:bs-3b
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -19,21 +19,21 @@ services:
       SECRET_KEY: "${SECRET_KEY:-bopsocial-local-dev-secret-key-32chars-minimum-valid-key-2026}"
 
   worker:
-    image: bopsocial-backend-local:bop-conv-b1a
+    image: bopsocial-backend-local:bs-3b
     build:
       context: ./backend
       dockerfile: Dockerfile
     environment: *local-backend-env
 
   beat:
-    image: bopsocial-backend-local:bop-conv-b1a
+    image: bopsocial-backend-local:bs-3b
     build:
       context: ./backend
       dockerfile: Dockerfile
     environment: *local-backend-env
 
   frontend:
-    image: bopsocial-frontend-local:bs-2.7d.1
+    image: bopsocial-frontend-local:bs-3b
     build:
       context: .
       dockerfile: Dockerfile.bopsocial-local

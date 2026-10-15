@@ -68,6 +68,11 @@ class InstagramPublisher(BasePublisher):
     def publish_video(self, credential, content: str, video_url: str, *,
                       thumbnail: Optional[str] = None, **kwargs) -> PublishResult:
         self._require_ig(credential)
+        from ..media_service import validate_media_url_for_provider
+        validate_media_url_for_provider(video_url, 'instagram', lang=kwargs.get('lang', 'en'))
+        if thumbnail:
+            validate_media_url_for_provider(thumbnail, 'instagram', lang=kwargs.get('lang', 'en'))
+
         client = GraphClient(credential.access_token, timeout=LONG_TIMEOUT)
         data = {
             'media_type':  'VIDEO',
@@ -85,6 +90,11 @@ class InstagramPublisher(BasePublisher):
 
     def publish_reel(self, credential, video_url: str, content: str, **kwargs) -> PublishResult:
         self._require_ig(credential)
+        from ..media_service import validate_media_url_for_provider
+        validate_media_url_for_provider(video_url, 'instagram', lang=kwargs.get('lang', 'en'))
+        if kwargs.get('cover_url'):
+            validate_media_url_for_provider(kwargs['cover_url'], 'instagram', lang=kwargs.get('lang', 'en'))
+
         client = GraphClient(credential.access_token, timeout=LONG_TIMEOUT)
         data = {
             'media_type':  'REELS',
@@ -104,6 +114,9 @@ class InstagramPublisher(BasePublisher):
 
     def publish_story(self, credential, media_url: str, **kwargs) -> PublishResult:
         self._require_ig(credential)
+        from ..media_service import validate_media_url_for_provider
+        validate_media_url_for_provider(media_url, 'instagram', lang=kwargs.get('lang', 'en'))
+
         client = GraphClient(credential.access_token, timeout=LONG_TIMEOUT)
         # Decide whether the story is image or video based on caller hint;
         # default to image (most common).
@@ -131,6 +144,10 @@ class InstagramPublisher(BasePublisher):
             raise PublishError('Carousel needs ≥2 items', code='missing_media')
         if len(image_urls) > 10:
             raise PublishError('IG carousel max 10 items', code='too_many_media')
+
+        from ..media_service import validate_media_url_for_provider
+        for url in image_urls:
+            validate_media_url_for_provider(url, 'instagram', lang=kwargs.get('lang', 'en'))
 
         client = GraphClient(credential.access_token, timeout=LONG_TIMEOUT)
 
@@ -202,6 +219,9 @@ class InstagramPublisher(BasePublisher):
 
     # ── Internals ────────────────────────────────────────────────────────
     def _create_image_container(self, credential, image_url: str, *, caption: str) -> str:
+        from ..media_service import validate_media_url_for_provider
+        validate_media_url_for_provider(image_url, 'instagram')
+
         client = GraphClient(credential.access_token, timeout=LONG_TIMEOUT)
         body = client.post(
             f'/{credential.instagram_account_id}/media',

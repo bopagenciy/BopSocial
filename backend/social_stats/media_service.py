@@ -27,12 +27,14 @@ Storage:
 from __future__ import annotations
 
 import io
+import ipaddress
 import logging
 import mimetypes
 import os
 import uuid
 from dataclasses import dataclass
 from typing import Any, Optional
+from urllib.parse import urlparse
 
 from django.conf import settings
 from django.core.files.base import ContentFile
@@ -267,8 +269,106 @@ def transcode_for_platform(asset: MediaAsset, platform: str, post_type: str) -> 
 
 
 # ── S3 helpers (used when settings configure S3) ──────────────────────────────
+LOCAL_HOSTNAMES = frozenset({
+    'localhost', '127.0.0.1', '::1', '0.0.0.0',
+    'testserver', 'web', 'example.com',
+    'host.docker.internal', 'backend', 'frontend', 'postgres', 'redis', 'worker', 'beat',
+})
+LOCAL_SUFFIXES = ('.local', '.internal', '.localhost', '.invalid', '.test')
+
+
+def get_s3_bucket_name() -> str:
+    """Return configured S3 bucket name checking both canonical variable names."""
+    return getattr(settings, 'AWS_STORAGE_BUCKET_NAME', '') or getattr(settings, 'AWS_S3_BUCKET', '') or ''
+
+
+def get_s3_region_name() -> Optional[str]:
+    """Return configured S3 region checking both canonical variable names."""
+    return getattr(settings, 'AWS_S3_REGION_NAME', None) or getattr(settings, 'AWS_S3_REGION', None)
+
+
 def _s3_enabled() -> bool:
-    return bool(getattr(settings, 'AWS_ACCESS_KEY_ID', None) and getattr(settings, 'AWS_S3_BUCKET', None))
+    """Return True if AWS credentials and bucket name are configured."""
+    return bool(getattr(settings, 'AWS_ACCESS_KEY_ID', None) and get_s3_bucket_name())
+
+
+def validate_s3_configuration() -> dict:
+    """
+    Validate AWS S3 storage configuration without exposing secrets.
+
+    Returns:
+      dict with keys: 'valid' (bool), 'errors' (list[str]), 'warnings' (list[str]),
+      'bucket_configured' (bool), 'credentials_configured' (bool).
+    """
+    errors = []
+    warnings = []
+
+    access_key = getattr(settings, 'AWS_ACCESS_KEY_ID', '') or ''
+    secret_key = getattr(settings, 'AWS_SECRET_ACCESS_KEY', '') or ''
+    bucket = get_s3_bucket_name()
+    region = get_s3_region_name()
+    custom_domain = getattr(settings, 'AWS_S3_CUSTOM_DOMAIN', '') or ''
+
+    if not access_key:
+        errors.append('AWS_ACCESS_KEY_ID is missing or empty')
+    if not secret_key:
+        errors.append('AWS_SECRET_ACCESS_KEY is missing or empty')
+    if not bucket:
+        errors.append('AWS_STORAGE_BUCKET_NAME / AWS_S3_BUCKET is missing or empty')
+    if not region:
+        warnings.append('AWS_S3_REGION / AWS_S3_REGION_NAME is not explicitly set; defaulting to AWS SDK standard resolution')
+
+    if custom_domain:
+        if 'localhost' in custom_domain or '127.0.0.1' in custom_domain:
+            errors.append(f'AWS_S3_CUSTOM_DOMAIN contains local address: {custom_domain}')
+        elif not custom_domain.startswith('https://') and not custom_domain.startswith('http://'):
+            warnings.append(f'AWS_S3_CUSTOM_DOMAIN does not include https:// scheme: {custom_domain}')
+
+    return {
+        'valid': len(errors) == 0,
+        'errors': errors,
+        'warnings': warnings,
+        'bucket_configured': bool(bucket),
+        'credentials_configured': bool(access_key and secret_key),
+    }
+
+
+def is_public_https_url(url: str) -> tuple[bool, str]:
+    """
+    Validate that a media URL is externally accessible over HTTPS for external providers
+    such as Meta Graph API.
+
+    Returns (is_valid: bool, failure_reason: str).
+    """
+    if not url or not isinstance(url, str):
+        return False, 'URL is empty'
+
+    parsed = urlparse(url.strip())
+    if parsed.scheme.lower() != 'https':
+        return False, f"URL scheme must be HTTPS, got '{parsed.scheme or 'none'}'"
+
+    host = (parsed.hostname or '').lower().strip()
+    if not host:
+        return False, 'URL has no hostname'
+
+    if host in LOCAL_HOSTNAMES or any(host.endswith(sfx) for sfx in LOCAL_SUFFIXES):
+        return False, f"Host '{host}' is local/internal and not publicly reachable"
+
+    # Check for private/reserved IP addresses
+    try:
+        ip = ipaddress.ip_address(host)
+        if ip.is_private:
+            return False, f"Host '{host}' is in a private IP address range"
+        if ip.is_loopback:
+            return False, f"Host '{host}' is a loopback address"
+        if ip.is_link_local:
+            return False, f"Host '{host}' is a link-local address"
+        if ip.is_reserved:
+            return False, f"Host '{host}' is a reserved IP address"
+    except ValueError:
+        pass
+
+    return True, ''
 
 
 def presigned_url(asset: MediaAsset, *, expires: int = 3600) -> str:
@@ -285,11 +385,11 @@ def presigned_url(asset: MediaAsset, *, expires: int = 3600) -> str:
                 's3',
                 aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
                 aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-                region_name=getattr(settings, 'AWS_S3_REGION', None),
+                region_name=get_s3_region_name(),
             )
             return client.generate_presigned_url(
                 'get_object',
-                Params={'Bucket': settings.AWS_S3_BUCKET, 'Key': asset.file.name},
+                Params={'Bucket': get_s3_bucket_name(), 'Key': asset.file.name},
                 ExpiresIn=expires,
             )
         except Exception:
@@ -302,6 +402,74 @@ def presigned_url(asset: MediaAsset, *, expires: int = 3600) -> str:
             return asset.file.url
         except Exception:
             return ''
+
+
+def get_provider_media_url(asset: MediaAsset, provider: str, *, lang: str = 'en') -> str:
+    """
+    Resolve and validate a media URL for a specific target publishing provider.
+
+    Meta (Facebook & Instagram) requires a publicly accessible HTTPS URL.
+    Direct-upload providers (YouTube, LinkedIn, GMB) can use local or presigned URLs.
+    """
+    if not asset or not asset.file:
+        return ''
+
+    prov = (provider or '').lower()
+    from .publishers.base import PublishError
+    from .locale_helpers import get_media_error_message
+
+    # 1. Direct upload providers (YouTube, LinkedIn, Google Business Profile)
+    # These platforms stream/download bytes on the backend server and upload directly.
+    # Local filesystem storage remains fully supported for dev and internal workflows.
+    if prov in ('youtube', 'linkedin', 'google_my_business', 'gmb'):
+        url = presigned_url(asset)
+        return url or asset.file.url
+
+    # 2. Meta (Facebook, Instagram) — strictly requires publicly accessible HTTPS URLs
+    if prov in ('facebook', 'instagram', 'meta'):
+        candidate_url = ''
+        if _s3_enabled():
+            candidate_url = presigned_url(asset)
+        elif getattr(settings, 'BACKEND_PUBLIC_URL', ''):
+            candidate_url = asset.get_public_publishing_url()
+        else:
+            candidate_url = presigned_url(asset)
+
+        is_valid, reason = is_public_https_url(candidate_url)
+        if not is_valid:
+            msg = get_media_error_message(
+                'public_media_required', prov, lang=lang, reason=reason,
+            )
+            logger.warning(
+                'Public media URL required for %s publish (asset=%s): candidate=%s rejected: %s',
+                prov, asset.id, candidate_url, reason
+            )
+            raise PublishError(
+                msg,
+                code='public_media_required',
+                status_code=400,
+                supported=True,
+            )
+        return candidate_url
+
+    # Fallback for unrecognized providers
+    return presigned_url(asset) or asset.file.url
+
+
+def validate_media_url_for_provider(url: str, provider: str, *, lang: str = 'en') -> str:
+    """
+    Validate that an existing URL string satisfies the provider's hosting requirements.
+    Raises PublishError if unsuitable.
+    """
+    prov = (provider or '').lower()
+    if prov in ('facebook', 'instagram', 'meta'):
+        is_valid, reason = is_public_https_url(url)
+        if not is_valid:
+            from .publishers.base import PublishError
+            from .locale_helpers import get_media_error_message
+            msg = get_media_error_message('invalid_media_url', prov, lang=lang, reason=reason)
+            raise PublishError(msg, code='invalid_media_url', status_code=400, supported=True)
+    return url
 
 
 # ── Internals ─────────────────────────────────────────────────────────────────

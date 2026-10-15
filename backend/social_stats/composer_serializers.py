@@ -13,6 +13,7 @@ from .models import (
     UnifiedPost, PlatformPublishLog, MediaAsset,
     PostQueue, QueuedItem, PostEngagement,
 )
+from .publishers import is_platform_supported
 
 
 # ── Media ─────────────────────────────────────────────────────────────────────
@@ -107,7 +108,13 @@ class UnifiedPostSerializer(serializers.ModelSerializer):
     def validate_target_platforms(self, value):
         if not isinstance(value, list):
             raise serializers.ValidationError('target_platforms must be a list')
-        return [str(p).lower() for p in value if p]
+        cleaned = [str(p).lower() for p in value if p]
+        for p in cleaned:
+            if not is_platform_supported(p):
+                raise serializers.ValidationError(
+                    f"Platform '{p}' is not currently supported for automated publishing. Coming soon."
+                )
+        return cleaned
 
     def validate(self, attrs):
         media_type = attrs.get('media_type', 'text')

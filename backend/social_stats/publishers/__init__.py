@@ -20,16 +20,18 @@ Concrete publishers (FacebookPublisher, InstagramPublisher, etc.) are added
 in the build. The factory raises NotImplementedError until they exist.
 """
 from .base import (
- BasePublisher,
- PublishError, PublishResult,
- MediaTooLargeError, RateLimitError, TokenExpiredError,
- PermissionDeniedError, MediaValidationError,
- get_publisher, register_publisher,
+    BasePublisher,
+    PublishError, PublishResult,
+    MediaTooLargeError, RateLimitError, TokenExpiredError,
+    PermissionDeniedError, MediaValidationError,
+    get_publisher, register_publisher,
+    is_platform_supported, SUPPORTED_PUBLISHERS, UNSUPPORTED_PUBLISHERS,
 )
 
 __all__ = [
- 'BasePublisher', 'PublishResult',
- 'PublishError', 'MediaTooLargeError', 'RateLimitError',
- 'TokenExpiredError', 'PermissionDeniedError', 'MediaValidationError',
- 'get_publisher', 'register_publisher',
+    'BasePublisher', 'PublishResult',
+    'PublishError', 'MediaTooLargeError', 'RateLimitError',
+    'TokenExpiredError', 'PermissionDeniedError', 'MediaValidationError',
+    'get_publisher', 'register_publisher',
+    'is_platform_supported', 'SUPPORTED_PUBLISHERS', 'UNSUPPORTED_PUBLISHERS',
 ]

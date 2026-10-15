@@ -119,16 +119,27 @@ def publish_to_platform(self, unified_post_id: int, platform: str):
         update_unified_post_status(post.id)
         return
 
+    # Check publisher capability safely
+    try:
+        publisher = get_publisher(platform)
+    except PublishError as e:
+        _mark_failed(log, code=e.code or 'unsupported_platform', message=str(e)[:500])
+        update_unified_post_status(post.id)
+        return
+
     # Resolve content + media (apply per-platform overrides)
     overrides = (post.platform_overrides or {}).get(platform, {}) or {}
     content    = overrides.get('content', post.content) or ''
     media_urls = overrides.get('media_urls', post.media_urls) or []
     media_type = overrides.get('media_type', post.media_type) or 'text'
 
-    # Resolve any internal MediaAsset IDs to public URLs (S3 presigned or local).
-    media_urls = _resolve_media_urls(post, media_urls)
-
-    publisher = get_publisher(platform)
+    # Resolve any internal MediaAsset IDs to provider-safe URLs (e.g. S3 presigned or validated public URL).
+    try:
+        media_urls = _resolve_media_urls(post, media_urls, platform=platform)
+    except PublishError as e:
+        _mark_failed(log, code=e.code or 'public_media_required', message=str(e)[:500])
+        update_unified_post_status(post.id)
+        return
 
     try:
         result = _dispatch_publish(publisher, cred, content, media_urls, media_type, post=post)
@@ -220,13 +231,13 @@ def _dispatch_publish(publisher, credential, content, media_urls, media_type, *,
     raise PublishError(f'Unknown media_type: {media_type}', code='unknown_media_type')
 
 
-def _resolve_media_urls(post: UnifiedPost, media_urls: list) -> list:
+def _resolve_media_urls(post: UnifiedPost, media_urls: list, platform: Optional[str] = None) -> list:
     """
     Translate a mix of bare URLs and `asset:<id>` placeholders into final URLs.
-    Real apps will store everything as `asset:<id>` so the orchestrator can
-    swap to S3 presigned URLs at publish time. Bare URLs pass through unchanged.
+    Resolves provider-safe public URLs using media_service.get_provider_media_url.
     """
     out = []
+    lang = getattr(post.client, 'default_language', 'en') or 'en'
     for u in media_urls or []:
         if isinstance(u, str) and u.startswith('asset:'):
             try:
@@ -235,11 +246,21 @@ def _resolve_media_urls(post: UnifiedPost, media_urls: list) -> list:
                     id=asset_id, client=post.client,
                 ).first()
                 if asset:
-                    out.append(media_service.presigned_url(asset) or '')
+                    if platform:
+                        resolved = media_service.get_provider_media_url(asset, platform, lang=lang)
+                    else:
+                        resolved = media_service.presigned_url(asset)
+                    if resolved:
+                        out.append(resolved)
                     continue
             except (ValueError, IndexError):
                 pass
-        out.append(u)
+        elif isinstance(u, str) and u:
+            if platform:
+                validated = media_service.validate_media_url_for_provider(u, platform, lang=lang)
+                out.append(validated)
+            else:
+                out.append(u)
     return [u for u in out if u]
 
 

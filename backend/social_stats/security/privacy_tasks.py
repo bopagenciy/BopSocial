@@ -164,14 +164,15 @@ def _json(obj) -> str:
 
 
 def _readme_text(user, manifest: dict) -> str:
+    privacy_email = getattr(settings, 'PRIVACY_EMAIL', 'privacy@bopsocial.com')
     return (
-        f'Social Stats — personal data export\n'
+        f'Bop Social — personal data export\n'
         f'-----------------------------\n'
         f'Subject: {user.email or user.username}\n'
         f'Generated: {manifest["export_generated_at"]}\n\n'
         f'Files in this archive:\n'
         + '\n'.join(f'  • {f}' for f in manifest['files'])
-        + '\n\nQuestions? privacy@socialstats.app\n'
+        + f'\n\nQuestions? {privacy_email}\n'
     )
 
 

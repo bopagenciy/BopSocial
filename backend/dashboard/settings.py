@@ -273,8 +273,8 @@ SIMPLE_JWT = {
     'BLACKLIST_AFTER_ROTATION':    True,
     'UPDATE_LAST_LOGIN':           True,
     'AUTH_HEADER_TYPES':           ('Bearer',),
-    'AUDIENCE':                    os.environ.get('JWT_AUDIENCE', 'socialstats-app'),
-    'ISSUER':                      os.environ.get('JWT_ISSUER',   'socialstats.com'),
+    'AUDIENCE':                    os.environ.get('JWT_AUDIENCE', 'bopsocial-app'),
+    'ISSUER':                      os.environ.get('JWT_ISSUER',   'bopsocial.com'),
     # JTI claim is on by default in simplejwt — required for blacklist to work.
 }
 
@@ -404,11 +404,17 @@ EMAIL_HOST          = os.environ.get('EMAIL_HOST', 'smtp.zoho.in')
 EMAIL_PORT          = int(os.environ.get('EMAIL_PORT', 587))
 EMAIL_USE_TLS       = True
 EMAIL_USE_SSL       = False
-EMAIL_HOST_USER     = os.environ.get('EMAIL_HOST_USER', 'noreply@socialstats.app')
+EMAIL_HOST_USER     = os.environ.get('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
 DEFAULT_FROM_EMAIL  = os.environ.get('DEFAULT_FROM_EMAIL', 'Bop Social <noreply@bopsocial.com>')
+PRIVACY_EMAIL       = os.environ.get('PRIVACY_EMAIL', 'privacy@bopsocial.com')
 
-FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
+FRONTEND_URL        = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
+BACKEND_URL         = os.environ.get('BACKEND_URL', 'http://localhost:8000')
+BACKEND_PUBLIC_URL  = os.environ.get('BACKEND_PUBLIC_URL', '')
+
+FACEBOOK_CONSUMER_APP_ID       = os.environ.get('FACEBOOK_CONSUMER_APP_ID', '')
+FACEBOOK_CONSUMER_REDIRECT_URI = os.environ.get('FACEBOOK_CONSUMER_REDIRECT_URI', '')
 
 # ── Anthropic Claude API ──────────────────────────────
 ANTHROPIC_API_KEY = os.environ.get('ANTHROPIC_API_KEY', '')

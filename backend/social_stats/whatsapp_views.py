@@ -565,7 +565,7 @@ class WhatsAppInboxView(APIView):
         # Latest inbound/outbound message per contact in one window-function
         # query (Django 4.2 sliced prefetch).
         from django.db.models import Prefetch
-        latest_qs = WhatsAppMessage.objects.order_by('-created_at')[:1]
+        latest_qs = WhatsAppMessage.objects.order_by('-created_at', '-id')
         contacts_with_latest = (
             WhatsAppContact.objects.filter(id__in=contact_ids)
             .prefetch_related(Prefetch('messages', queryset=latest_qs, to_attr='latest_only'))

@@ -111,12 +111,16 @@ describe('PHASE BS-2.3: Analytics & Reporting Internationalization', () => {
     },
   ];
 
+  const now = new Date();
+  const currentMonth = now.getMonth() + 1;
+  const currentYear = now.getFullYear();
+
   const mockROIReports = [
     {
       id: 50,
       client_name: 'Acme Corp',
-      month: 9,
-      year: 2026,
+      month: currentMonth,
+      year: currentYear,
       roi_percentage: '220.5',
       currency_symbol: '$',
       total_investment: 5000,
@@ -124,6 +128,7 @@ describe('PHASE BS-2.3: Analytics & Reporting Internationalization', () => {
       estimated_leads: 140,
     },
   ];
+
 
   beforeEach(async () => {
     localStorage.clear();
@@ -358,7 +363,8 @@ describe('PHASE BS-2.3: Analytics & Reporting Internationalization', () => {
 
       // Badge in Spanish (220.5% -> Excelente)
       expect(screen.getByText('Excelente')).toBeInTheDocument();
-      expect(screen.getByText('Sep 2026')).toBeInTheDocument();
+      const monthNamesEs = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+      expect(screen.getByText(`${monthNamesEs[currentMonth - 1]} ${currentYear}`)).toBeInTheDocument();
       expect(screen.getByText(/Ver →/i)).toBeInTheDocument();
     });
 

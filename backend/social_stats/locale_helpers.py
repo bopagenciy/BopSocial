@@ -454,3 +454,52 @@ def get_notification_copy(event_type: str, lang: str = 'en', **kwargs: Any) -> d
         else:
             result[key] = val
     return result
+
+
+# ── Media Publishing Error Copy ───────────────────────────────────────────────
+
+MEDIA_ERROR_COPY = {
+    'public_media_required': {
+        'en': 'Public media hosting is required to publish this asset to {platform}. Configure media hosting (AWS S3 or BACKEND_PUBLIC_URL) before publishing.',
+        'es': 'Se requiere alojamiento público multimedia para publicar este recurso en {platform}. Configure el almacenamiento de medios (AWS S3 o BACKEND_PUBLIC_URL) antes de publicar.',
+    },
+    'invalid_media_url': {
+        'en': 'The media URL provided for {platform} is not publicly accessible over HTTPS ({reason}).',
+        'es': 'La URL del medio proporcionada para {platform} no es accesible públicamente vía HTTPS ({reason}).',
+    },
+    'unsupported_platform': {
+        'en': "Platform '{platform}' is not currently supported for automated publishing. Coming soon.",
+        'es': "La plataforma '{platform}' no está admitida actualmente para publicación automática. Próximamente.",
+    },
+    'provider_unavailable': {
+        'en': 'The {platform} publishing service is currently unavailable. Please verify your credentials or try again later.',
+        'es': 'El servicio de publicación de {platform} no está disponible actualmente. Verifique sus credenciales o intente nuevamente más tarde.',
+    },
+    'media_validation_failed': {
+        'en': 'Media validation failed for {platform}: {reason}',
+        'es': 'Error de validación del archivo multimedia para {platform}: {reason}',
+    },
+}
+
+
+def get_media_error_message(error_code: str, platform: str, lang: str = 'en', **kwargs: Any) -> str:
+    """Retrieve localized user-facing error message for media/publishing failures."""
+    platform_label = {
+        'facebook': 'Facebook',
+        'instagram': 'Instagram',
+        'youtube': 'YouTube',
+        'linkedin': 'LinkedIn',
+        'google_my_business': 'Google Business Profile',
+        'gmb': 'Google Business Profile',
+        'tiktok': 'TikTok',
+        'twitter': 'X (Twitter)',
+        'pinterest': 'Pinterest',
+    }.get(platform.lower(), platform.title())
+
+    template_dict = MEDIA_ERROR_COPY.get(error_code, {})
+    template = template_dict.get(lang) or template_dict.get('en') or 'Media publishing error for {platform}.'
+    try:
+        return template.format(platform=platform_label, **kwargs)
+    except (KeyError, ValueError):
+        return template
+

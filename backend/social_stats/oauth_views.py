@@ -38,13 +38,25 @@ from .activity_logger import log_activity_for_request
 FACEBOOK_CONSUMER_APP_ID = getattr(
     settings, 'FACEBOOK_CONSUMER_APP_ID', '2880231975675480'
 )
-FACEBOOK_CONSUMER_REDIRECT = getattr(
-    settings, 'FACEBOOK_CONSUMER_REDIRECT_URI',
-    'https://socialstats.app/api/oauth/facebook/consumer/callback/',
-)
+
+def _get_facebook_consumer_redirect():
+    """
+    Resolve the redirect URI for Facebook Consumer OAuth.
+    Hierarchy:
+      1. Explicit environment / Django settings FACEBOOK_CONSUMER_REDIRECT_URI
+      2. Dynamic resolution via BACKEND_URL (e.g. {BACKEND_URL}/api/oauth/facebook/consumer/callback/)
+      3. Fail-safe localhost default
+    """
+    configured = getattr(settings, 'FACEBOOK_CONSUMER_REDIRECT_URI', None)
+    if configured:
+        return configured
+    backend_url = getattr(settings, 'BACKEND_URL', None) or 'http://localhost:8000'
+    return f"{backend_url.rstrip('/')}/api/oauth/facebook/consumer/callback/"
+
+FACEBOOK_CONSUMER_REDIRECT = _get_facebook_consumer_redirect()
 
 def _facebook_consumer_secret():
-    return getattr(settings, 'FACEBOOK_SOCIAL_APP_SECRET', '') or settings.META_APP_SECRET
+    return getattr(settings, 'FACEBOOK_SOCIAL_APP_SECRET', '') or getattr(settings, 'META_APP_SECRET', '')
 
 
 def _oauth_state_valid(request) -> bool:
