@@ -56,6 +56,7 @@ export default function LoginPage() {
     if (!email.trim()) e.email = t('login.validation.email_required', 'Email is required.');
     else if (!/\S+@\S+\.\S+/.test(email)) e.email = t('login.validation.email_invalid', 'Enter a valid email address.');
     if (!password.trim()) e.password = t('login.validation.password_required', 'Password is required.');
+    if (!accepted) e.terms = t('login.validation.terms_required', 'You must accept the Terms of Service and Privacy Policy.');
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -76,10 +77,10 @@ export default function LoginPage() {
     }
   }
 
-  async function doLogin(emailVal, passwordVal) {
+  async function doLogin(emailVal, passwordVal, termsVal = true) {
     setLoading(true);
     try {
-      const user = await login(emailVal, passwordVal, true);
+      const user = await login(emailVal, passwordVal, termsVal);
       if (user?.mfa_required) {
         // Password verified; a TOTP or backup code is still needed.
         setMfaToken(user.mfa_token);
@@ -89,11 +90,19 @@ export default function LoginPage() {
       navigateFor(user);
     } catch (err) {
       const detail = err?.response?.data?.detail;
-      setServerError(
-        detail === 'email_not_verified'
-          ? t('login.email_not_verified', 'Please verify your email before signing in. Check your inbox for the verification link.')
-          : t('login.invalid_credentials', 'Invalid email or password. Please try again.')
-      );
+      if (detail === 'email_not_verified') {
+        setServerError(
+          t('login.email_not_verified', 'Please verify your email before signing in. Check your inbox for the verification link.')
+        );
+      } else if (err?.response?.status === 400 && typeof detail === 'string' && detail.toLowerCase().includes('terms')) {
+        setServerError(
+          t('login.terms_required_server', 'You must accept the Terms of Service and Privacy Policy to sign in.')
+        );
+      } else {
+        setServerError(
+          t('login.invalid_credentials', 'Invalid email or password. Please try again.')
+        );
+      }
     } finally {
       setLoading(false);
     }
@@ -127,7 +136,7 @@ export default function LoginPage() {
     ev.preventDefault();
     setServerError('');
     if (!validate()) return;
-    await doLogin(email, password);
+    await doLogin(email, password, accepted);
   }
 
   async function signInAsDemo(demoEmail) {
@@ -135,7 +144,7 @@ export default function LoginPage() {
     setEmail(demoEmail);
     setPassword(DEMO_PASSWORD);
     setAccepted(true);
-    await doLogin(demoEmail, DEMO_PASSWORD);
+    await doLogin(demoEmail, DEMO_PASSWORD, true);
   }
 
   // ── MFA second-factor step ────────────────────────────────────────────────
@@ -301,22 +310,32 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <Checkbox
-            checked={accepted}
-            onChange={(e) => setAccepted(e.target.checked)}
-            label={
-              <>
-                {t('login.terms_notice_pre', "I agree to Bop Social's")}{' '}
-                <Link to="/terms" style={{ color: 'var(--text-link)', fontWeight: 500 }}>
-                  {t('login.terms_notice_terms', 'Terms of Service')}
-                </Link>
-                {' '}{t('login.terms_notice_and', 'and')}{' '}
-                <Link to="/privacy" style={{ color: 'var(--text-link)', fontWeight: 500 }}>
-                  {t('login.terms_notice_privacy', 'Privacy Policy')}
-                </Link>
-              </>
-            }
-          />
+          <div>
+            <Checkbox
+              checked={accepted}
+              onChange={(e) => {
+                setAccepted(e.target.checked);
+                if (errors.terms) setErrors((p) => ({ ...p, terms: undefined }));
+              }}
+              label={
+                <>
+                  {t('login.terms_notice_pre', 'I agree to the')}{' '}
+                  <Link to="/terms" style={{ color: 'var(--text-link)', fontWeight: 500 }}>
+                    {t('login.terms_notice_terms', 'Terms of Service')}
+                  </Link>
+                  {' '}{t('login.terms_notice_and', 'and')}{' '}
+                  <Link to="/privacy" style={{ color: 'var(--text-link)', fontWeight: 500 }}>
+                    {t('login.terms_notice_privacy', 'Privacy Policy')}
+                  </Link>
+                </>
+              }
+            />
+            {errors.terms && (
+              <p role="alert" style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--danger)' }}>
+                {errors.terms}
+              </p>
+            )}
+          </div>
 
           {(serverError || urlError) && (
             <div
@@ -345,7 +364,7 @@ export default function LoginPage() {
             iconRight={ArrowRight}
             fullWidth
             loading={loading}
-            disabled={!accepted}
+            disabled={!accepted || loading}
           >
             {loading ? t('login.signing_in', 'Signing in...') : t('login.submit_button', 'Sign in')}
           </Button>

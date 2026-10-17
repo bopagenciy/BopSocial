@@ -106,10 +106,15 @@ def facebook_oauth_start(request, client_id):
 
     logger.info("FB oauth start (business app): client_id=%s app_id=%s", client_id, settings.META_APP_ID)
 
+    # BS-3C.3: Facebook-only scope configuration.
+    # pages_manage_posts is required for automated page publishing (piloted in BS-3C.3).
+    # Instagram scopes (e.g. instagram_manage_insights) were removed temporarily
+    # because Meta returned 'Invalid Scopes' for this app configuration.
+    # Capability-aware or separate Instagram connection will be handled in a dedicated phase.
     params = {
         'client_id':     settings.META_APP_ID,
         'redirect_uri':  settings.META_REDIRECT_URI,
-        'scope':         'pages_show_list,pages_read_engagement,pages_manage_metadata,instagram_manage_insights,read_insights',
+        'scope':         'pages_show_list,pages_read_engagement,pages_manage_metadata,pages_manage_posts,read_insights',
         'response_type': 'code',
         'state':          state,
     }
