@@ -31,6 +31,14 @@ from .marketplace_permissions import (
     resolve_acting_context, check_action, deny_response, approval_pending_response,
 )
 from .activity_logger import log_activity_for_request
+from .meta_capabilities import (
+    META_OAUTH_CAPABILITIES,
+    DEFAULT_META_CAPABILITY,
+    get_capability_scope_string,
+    validate_capability_scopes,
+    normalize_scopes,
+    fetch_meta_granted_scopes,
+)
 
 # ── Consumer app (public_profile + email only) ────────────────────────────────
 # App ID is public (appears in OAuth URLs). Secret comes from env.
@@ -96,27 +104,34 @@ def _settings_redirect(client_id, query=''):
 @permission_classes([AllowAny])
 def facebook_oauth_start(request, client_id):
     """
-    Use the Business app to request page + Instagram access.
-    This is the platform-connect flow (not social login).
-    Redirect goes to facebook_oauth_callback which fetches pages + IG.
+    Capability-aware Meta OAuth authorization start.
+    Initiates Facebook/Meta OAuth flow requesting strictly the scopes needed
+    for the requested capability (default: 'facebook_page').
     """
+    capability = request.GET.get('capability', DEFAULT_META_CAPABILITY)
+    if capability not in META_OAUTH_CAPABILITIES:
+        logger.warning(
+            "Unsupported Meta capability '%s' requested, defaulting to '%s' (client_id=%s)",
+            capability, DEFAULT_META_CAPABILITY, client_id
+        )
+        capability = DEFAULT_META_CAPABILITY
+
     state = f"{client_id}:{secrets.token_urlsafe(16)}"
-    request.session['oauth_state']     = state
-    request.session['oauth_client_id'] = str(client_id)
+    request.session['oauth_state']      = state
+    request.session['oauth_client_id']  = str(client_id)
+    request.session['oauth_capability'] = capability
 
-    logger.info("FB oauth start (business app): client_id=%s app_id=%s", client_id, settings.META_APP_ID)
+    logger.info(
+        "FB oauth start (business app): client_id=%s capability=%s app_id=%s",
+        client_id, capability, settings.META_APP_ID
+    )
 
-    # BS-3C.3: Facebook-only scope configuration.
-    # pages_manage_posts is required for automated page publishing (piloted in BS-3C.3).
-    # Instagram scopes (e.g. instagram_manage_insights) were removed temporarily
-    # because Meta returned 'Invalid Scopes' for this app configuration.
-    # Capability-aware or separate Instagram connection will be handled in a dedicated phase.
     params = {
         'client_id':     settings.META_APP_ID,
         'redirect_uri':  settings.META_REDIRECT_URI,
-        'scope':         'pages_show_list,pages_read_engagement,pages_manage_metadata,pages_manage_posts,read_insights',
+        'scope':         get_capability_scope_string(capability),
         'response_type': 'code',
-        'state':          state,
+        'state':         state,
     }
     return redirect(f"https://www.facebook.com/dialog/oauth?{urlencode(params)}")
 
@@ -263,13 +278,26 @@ def facebook_consumer_callback(request):
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def facebook_oauth_callback(request):
-    """Exchange code for tokens, fetch page/IG IDs, save to DB."""
-    code      = request.GET.get('code')
-    state     = request.GET.get('state', '')
-    error     = request.GET.get('error')
-    client_id = state.split(':')[0] if ':' in state else state or '0'
+    """
+    Capability-aware Meta OAuth callback:
+    1. Validates OAuth CSRF state.
+    2. Exchanges authorization code for short-lived and long-lived tokens.
+    3. Fetches managed Facebook pages.
+    4. Introspects and validates real granted scopes against requested capability.
+    5. Persists real granted scopes into PlatformCredential.scope without assumptions.
+    6. Decouples Facebook connection from Instagram connection.
+    """
+    code       = request.GET.get('code')
+    state      = request.GET.get('state', '')
+    error      = request.GET.get('error')
+    client_id  = state.split(':')[0] if ':' in state else state or '0'
+    capability = request.session.pop('oauth_capability', DEFAULT_META_CAPABILITY)
 
-    if error:
+    if error or not code:
+        logger.warning(
+            "FB callback: Meta authorization canceled or failed (error=%s, code_present=%s, client_id=%s)",
+            error, bool(code), client_id
+        )
         return _settings_redirect(client_id, '?error=facebook_denied')
 
     if not _oauth_state_valid(request):
@@ -283,26 +311,33 @@ def facebook_oauth_callback(request):
             'client_id':     settings.META_APP_ID,
             'client_secret': settings.META_APP_SECRET,
             'redirect_uri':  settings.META_REDIRECT_URI,
-            'code':           code,
+            'code':          code,
         }, timeout=10
     ).json()
 
-    logger.info("FB business callback: client_id=%s token_resp_keys=%s", client_id, list(token_resp.keys()))
+    logger.info(
+        "FB business callback: client_id=%s capability=%s token_resp_keys=%s",
+        client_id, capability, list(token_resp.keys())
+    )
 
     if 'error' in token_resp:
-        logger.error("FB business token error: %s", token_resp)
+        err = token_resp.get('error', {})
+        logger.error(
+            "FB business token error (client_id=%s, error_code=%s, error_subcode=%s, error_type=%s)",
+            client_id, err.get('code'), err.get('error_subcode'), err.get('type')
+        )
         return _settings_redirect(client_id, '?error=facebook_token')
 
-    short_token = token_resp['access_token']
+    short_token = token_resp.get('access_token', '')
 
     # Step 2: Long-lived token (60 days)
     long_resp = requests.get(
         f"https://graph.facebook.com/{settings.META_API_VERSION}/oauth/access_token",
         params={
             'grant_type':        'fb_exchange_token',
-            'client_id':          settings.META_APP_ID,
-            'client_secret':      settings.META_APP_SECRET,
-            'fb_exchange_token':  short_token,
+            'client_id':         settings.META_APP_ID,
+            'client_secret':     settings.META_APP_SECRET,
+            'fb_exchange_token': short_token,
         }, timeout=10
     ).json()
 
@@ -316,91 +351,107 @@ def facebook_oauth_callback(request):
         params={'access_token': long_token}, timeout=10
     ).json().get('data', [])
 
-    # Log granted permissions — helps diagnose if Meta stripped a scope
-    # (e.g. instagram_manage_insights not yet approved by App Review).
-    try:
-        perms_resp = requests.get(
-            f"https://graph.facebook.com/{settings.META_API_VERSION}/me/permissions",
-            params={'access_token': long_token}, timeout=10
-        ).json()
-        granted = [p.get('permission') for p in perms_resp.get('data', []) if p.get('status') == 'granted']
-        logger.info("FB granted permissions for client %s: %s", client_id, granted)
-    except Exception as e:
-        logger.warning("FB permissions probe failed for client %s: %s", client_id, e)
-
     if not pages:
         logger.warning("FB callback: /me/accounts returned no pages for client %s", client_id)
         return _settings_redirect(client_id, '?error=facebook_no_pages')
 
-    # Step 4: Probe every page for a linked Instagram Business Account.
-    # Prefer the first page that has IG linked. If none do, fall back to
-    # pages[0] for FB-only credential.
+    # Step 4: Choose managed Page
     chosen_page = None
     chosen_ig_id = ''
     for page in pages:
-        page_id    = page['id']
+        page_id    = page.get('id')
         page_name  = page.get('name', '')
         page_token = page.get('access_token', long_token)
 
-        ig_resp = requests.get(
-            f"https://graph.facebook.com/{settings.META_API_VERSION}/{page_id}",
-            params={
-                'fields':       'instagram_business_account',
-                'access_token': page_token,
-            }, timeout=10
-        ).json()
+        # Only probe Instagram if the capability explicitly requires it
+        if capability == 'instagram_professional':
+            ig_resp = requests.get(
+                f"https://graph.facebook.com/{settings.META_API_VERSION}/{page_id}",
+                params={
+                    'fields':       'instagram_business_account',
+                    'access_token': page_token,
+                }, timeout=10
+            ).json()
 
-        ig_id = ig_resp.get('instagram_business_account', {}).get('id', '')
-        logger.info(
-            "FB page candidate: client=%s page_id=%s name=%s ig_id=%r ig_resp=%s",
-            client_id, page_id, page_name, ig_id, ig_resp
-        )
-
-        if ig_id and not chosen_page:
-            chosen_page  = page
-            chosen_ig_id = ig_id
-            break
+            ig_id = ig_resp.get('instagram_business_account', {}).get('id', '')
+            if ig_id and not chosen_page:
+                chosen_page  = page
+                chosen_ig_id = ig_id
+                break
 
     if chosen_page is None:
         chosen_page = pages[0]
 
-    page_id    = chosen_page['id']
+    page_id    = chosen_page.get('id', '')
     page_name  = chosen_page.get('name', '')
-    page_token = chosen_page.get('access_token', long_token)
+    page_token = chosen_page.get('access_token')
+
+    if not page_id:
+        logger.warning("FB callback: chosen page missing ID (client_id=%s)", client_id)
+        return _settings_redirect(client_id, '?error=facebook_no_pages')
+
+    if not page_token:
+        logger.error(
+            "FB callback: page access token acquisition failure for page_id=%s (client_id=%s)",
+            page_id, client_id
+        )
+        return _settings_redirect(client_id, '?error=facebook_page_token_failed')
+
+    # Step 5: Introspect real granted scopes from Meta API
+    granted_scopes = fetch_meta_granted_scopes(
+        user_token=long_token,
+        page_token=page_token,
+        app_id=settings.META_APP_ID,
+        app_secret=settings.META_APP_SECRET,
+        api_version=settings.META_API_VERSION,
+        timeout=10,
+    )
+
+    logger.info(
+        "FB granted permissions for client %s (capability=%s): count=%d",
+        client_id, capability, len(granted_scopes)
+    )
+
+    scope_val = validate_capability_scopes(capability, granted_scopes)
+    if not scope_val['is_valid']:
+        logger.error(
+            "FB callback: missing required Facebook scope(s) for capability '%s': %s (client_id=%s)",
+            capability, scope_val['missing_required_scopes'], client_id
+        )
+        return _settings_redirect(client_id, '?error=facebook_missing_permissions')
+
+    persisted_scope = normalize_scopes(scope_val['granted_scopes'])
 
     connected = []
 
-    # Save Facebook credential for the chosen page
+    # Save Facebook credential for the chosen page with persisted scopes
     _save_credential(client_id, 'facebook', {
         'access_token':  page_token,
         'refresh_token': long_token,
         'expires_at':    expires_at,
         'page_id':       page_id,
         'page_name':     page_name,
+        'scope':         persisted_scope,
     })
     connected.append('facebook')
 
-    # Save Instagram credential if a linked IG Business Account was found
-    if chosen_ig_id:
+    # Decoupled Instagram connection: ONLY connect Instagram if capability explicitly requests it
+    if capability == 'instagram_professional' and chosen_ig_id:
         ig_info = requests.get(
             f"https://graph.facebook.com/{settings.META_API_VERSION}/{chosen_ig_id}",
             params={'fields': 'name,username', 'access_token': page_token}, timeout=10
         ).json()
 
         _save_credential(client_id, 'instagram', {
-            'access_token':          page_token,
-            'refresh_token':         long_token,
-            'expires_at':            expires_at,
-            'page_id':               page_id,
-            'page_name':             ig_info.get('username', page_name),
-            'instagram_account_id':  chosen_ig_id,
+            'access_token':         page_token,
+            'refresh_token':        long_token,
+            'expires_at':           expires_at,
+            'page_id':              page_id,
+            'page_name':            ig_info.get('username', page_name),
+            'instagram_account_id': chosen_ig_id,
+            'scope':                persisted_scope,
         })
         connected.append('instagram')
-    else:
-        logger.warning(
-            "FB callback: no page with linked Instagram for client %s (checked %d pages)",
-            client_id, len(pages)
-        )
 
     platforms = ','.join(connected)
     return _settings_redirect(client_id, f"?connected={platforms}")
@@ -821,7 +872,7 @@ def oauth_debug(request):
         'facebook_consumer_app_id':        FACEBOOK_CONSUMER_APP_ID,
         'facebook_consumer_redirect':      FACEBOOK_CONSUMER_REDIRECT,
         'facebook_consumer_secret_set':    bool(secret),
-        'facebook_consumer_secret_prefix': secret[:6] + '...' if secret else '(empty)',
         'meta_app_id':                     settings.META_APP_ID,
+        'meta_app_secret_set':             bool(getattr(settings, 'META_APP_SECRET', '')),
         'FACEBOOK_SOCIAL_APP_SECRET_env':  bool(getattr(settings, 'FACEBOOK_SOCIAL_APP_SECRET', '')),
     })

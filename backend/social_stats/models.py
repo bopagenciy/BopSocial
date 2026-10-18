@@ -405,6 +405,19 @@ class PlatformCredential(models.Model):
             return 'expired'
         return 'active'
 
+    def get_scopes(self) -> list[str]:
+        """Return granted scopes as a sorted list of unique scope strings."""
+        if not self.scope:
+            return []
+        return [s.strip().lower() for s in self.scope.split(',') if s.strip()]
+
+    def has_scope(self, scope_name: str) -> bool:
+        """Check whether a specific scope was granted to this credential."""
+        if not scope_name:
+            return False
+        return scope_name.strip().lower() in self.get_scopes()
+
+
 
 class ManualCredentialExtras(models.Model):
     """
