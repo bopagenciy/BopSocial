@@ -41,14 +41,15 @@ class InstagramPublisherTests(SimpleTestCase):
         m.side_effect = [
             _resp(200, {'id': 'container-1'}),
             _resp(200, {'id': 'media-1'}),
+            _resp(200, {'id': 'media-1', 'permalink': 'https://www.instagram.com/p/SHORTCODE1/'}),
         ]
         pub = get_publisher('instagram')
         result = pub.publish_image(_fake_credential(), 'caption!',
                                    ['https://x/img.jpg'])
 
-        # 2 calls: create container, publish container
-        self.assertEqual(m.call_count, 2)
-        first, second = m.call_args_list
+        # 3 calls: create container, publish container, get permalink
+        self.assertEqual(m.call_count, 3)
+        first, second, third = m.call_args_list
 
         # Step 1: container with image_url
         self.assertIn('/17841400000000000/media', first.kwargs['url'])
@@ -59,8 +60,13 @@ class InstagramPublisherTests(SimpleTestCase):
         self.assertIn('/17841400000000000/media_publish', second.kwargs['url'])
         self.assertEqual(second.kwargs['data']['creation_id'], 'container-1')
 
+        # Step 3: GET permalink
+        self.assertIn('/media-1', third.kwargs['url'])
+        self.assertEqual(third.kwargs['params']['fields'], 'permalink')
+
         self.assertTrue(result.success)
         self.assertEqual(result.platform_post_id, 'media-1')
+        self.assertEqual(result.platform_url, 'https://www.instagram.com/p/SHORTCODE1/')
 
     # ── Video with container readiness polling ──────────────────────────
     @patch('social_stats.publishers._graph_client.requests.request')
@@ -71,12 +77,13 @@ class InstagramPublisherTests(SimpleTestCase):
             _resp(200, {'status_code': 'IN_PROGRESS'}),        # poll #2
             _resp(200, {'status_code': 'FINISHED'}),           # poll #3
             _resp(200, {'id': 'media-v'}),                     # publish
+            _resp(200, {'id': 'media-v', 'permalink': 'https://www.instagram.com/p/SHORTCODEV/'}), # permalink
         ]
         pub = get_publisher('instagram')
         result = pub.publish_video(_fake_credential(), 'video caption',
                                    'https://x/v.mp4')
 
-        self.assertEqual(m.call_count, 5)
+        self.assertEqual(m.call_count, 6)
         # First call creates the VIDEO container
         first = m.call_args_list[0].kwargs
         self.assertEqual(first['data']['media_type'], 'VIDEO')
@@ -88,11 +95,12 @@ class InstagramPublisherTests(SimpleTestCase):
             self.assertIn('/container-v', poll.kwargs['url'])
             self.assertEqual(poll.kwargs['params']['fields'], 'status_code,status')
 
-        # Final call publishes
-        publish = m.call_args_list[-1].kwargs
+        # Fifth call publishes
+        publish = m.call_args_list[4].kwargs
         self.assertIn('/media_publish', publish['url'])
         self.assertEqual(publish['data']['creation_id'], 'container-v')
         self.assertEqual(result.platform_post_id, 'media-v')
+        self.assertEqual(result.platform_url, 'https://www.instagram.com/p/SHORTCODEV/')
 
     @patch('social_stats.publishers._graph_client.requests.request')
     def test_video_container_error_raises(self, m):
@@ -112,6 +120,7 @@ class InstagramPublisherTests(SimpleTestCase):
             _resp(200, {'id': 'container-r'}),
             _resp(200, {'status_code': 'FINISHED'}),
             _resp(200, {'id': 'media-r'}),
+            _resp(200, {'id': 'media-r', 'permalink': 'https://www.instagram.com/reel/SHORTCODER/'}),
         ]
         pub = get_publisher('instagram')
         pub.publish_reel(_fake_credential(), 'https://x/v.mp4', 'reel caption',
@@ -129,6 +138,7 @@ class InstagramPublisherTests(SimpleTestCase):
         m.side_effect = [
             _resp(200, {'id': 'container-s'}),
             _resp(200, {'id': 'media-s'}),
+            _resp(200, {'id': 'media-s', 'permalink': 'https://www.instagram.com/stories/user/SHORTCODES/'}),
         ]
         pub = get_publisher('instagram')
         pub.publish_story(_fake_credential(), 'https://x/img.jpg')
@@ -136,8 +146,8 @@ class InstagramPublisherTests(SimpleTestCase):
         first = m.call_args_list[0].kwargs
         self.assertEqual(first['data']['media_type'], 'STORIES')
         self.assertEqual(first['data']['image_url'], 'https://x/img.jpg')
-        # No polling for image story
-        self.assertEqual(m.call_count, 2)
+        # 3 calls: create story container, media_publish, get permalink
+        self.assertEqual(m.call_count, 3)
 
     # ── Carousel ─────────────────────────────────────────────────────────
     @patch('social_stats.publishers._graph_client.requests.request')
@@ -149,6 +159,7 @@ class InstagramPublisherTests(SimpleTestCase):
             _resp(200, {'id': 'parent'}),                  # CAROUSEL container
             _resp(200, {'status_code': 'FINISHED'}),       # poll
             _resp(200, {'id': 'media-c'}),                 # publish
+            _resp(200, {'id': 'media-c', 'permalink': 'https://www.instagram.com/p/SHORTCODEC/'}), # permalink
         ]
         pub = get_publisher('instagram')
         result = pub.publish_carousel(
@@ -157,8 +168,8 @@ class InstagramPublisherTests(SimpleTestCase):
             ['https://x/1.jpg', 'https://x/2.jpg', 'https://x/3.jpg'],
         )
 
-        # 3 children + 1 parent + 1 poll + 1 publish = 6
-        self.assertEqual(m.call_count, 6)
+        # 3 children + 1 parent + 1 poll + 1 publish + 1 permalink = 7
+        self.assertEqual(m.call_count, 7)
 
         # Each child has is_carousel_item=true
         for i in range(3):
@@ -171,6 +182,7 @@ class InstagramPublisherTests(SimpleTestCase):
         self.assertEqual(parent['data']['caption'], 'caption!')
 
         self.assertEqual(result.platform_post_id, 'media-c')
+        self.assertEqual(result.platform_url, 'https://www.instagram.com/p/SHORTCODEC/')
 
     def test_carousel_too_few_items(self):
         pub = get_publisher('instagram')
@@ -227,3 +239,72 @@ class InstagramPublisherTests(SimpleTestCase):
         with self.assertRaises(PublishError) as ctx:
             pub.publish_image(cred, 'hi', ['https://x/img.jpg'])
         self.assertEqual(ctx.exception.code, 'missing_config')
+
+    # ── Canonical permalink regression tests (BS-3D.6A) ─────────────────
+    @patch('social_stats.publishers._graph_client.requests.request')
+    def test_publish_container_fetches_canonical_permalink(self, m):
+        """Case 1: media_publish returns id, GET permalink returns canonical URL."""
+        m.side_effect = [
+            _resp(200, {'id': 'container-img-1'}),
+            _resp(200, {'id': '17991627227860965'}),
+            _resp(200, {'id': '17991627227860965', 'permalink': 'https://www.instagram.com/p/Derx_mjEb62/'}),
+        ]
+        pub = get_publisher('instagram')
+        result = pub.publish_image(_fake_credential(), 'caption!', ['https://x/img.jpg'])
+
+        self.assertEqual(m.call_count, 3)
+        self.assertTrue(result.success)
+        self.assertEqual(result.platform_post_id, '17991627227860965')
+        self.assertEqual(result.platform_url, 'https://www.instagram.com/p/Derx_mjEb62/')
+        third = m.call_args_list[2]
+        self.assertEqual(third.kwargs['method'], 'GET')
+        self.assertIn('/17991627227860965', third.kwargs['url'])
+        self.assertEqual(third.kwargs['params']['fields'], 'permalink')
+
+    @patch('social_stats.publishers._graph_client.requests.request')
+    def test_publish_container_permalink_lookup_fails_gracefully(self, m):
+        """Case 2: permalink GET fails -> publication succeeds, platform_url is empty, no duplicate publish."""
+        m.side_effect = [
+            _resp(200, {'id': 'container-img-2'}),
+            _resp(200, {'id': '17991627227860965'}),
+            Exception('Network error during permalink lookup'),
+        ]
+        pub = get_publisher('instagram')
+        with self.assertLogs('social_stats.publishers.instagram', level='WARNING') as log_ctx:
+            result = pub.publish_image(_fake_credential(), 'caption!', ['https://x/img.jpg'])
+
+        self.assertEqual(m.call_count, 3)
+        self.assertTrue(result.success)
+        self.assertEqual(result.platform_post_id, '17991627227860965')
+        self.assertEqual(result.platform_url, '')
+        self.assertNotIn('https://www.instagram.com/p/17991627227860965', result.platform_url)
+        self.assertTrue(any('permalink lookup failed' in record.message for record in log_ctx.records))
+
+    @patch('social_stats.publishers._graph_client.requests.request')
+    def test_publish_container_media_publish_missing_id_raises(self, m):
+        """Case 3: media_publish does not return id -> raises PublishError."""
+        m.side_effect = [
+            _resp(200, {'id': 'container-img-3'}),
+            _resp(200, {}),
+        ]
+        pub = get_publisher('instagram')
+        with self.assertRaises(PublishError) as ctx:
+            pub.publish_image(_fake_credential(), 'caption!', ['https://x/img.jpg'])
+        self.assertIn('did not return media id', str(ctx.exception).lower())
+
+    @patch('social_stats.publishers._graph_client.requests.request')
+    def test_publish_container_permalink_empty_returns_blank(self, m):
+        """Case 4: permalink response has no permalink key -> platform_url is empty (no synthetic fallback)."""
+        m.side_effect = [
+            _resp(200, {'id': 'container-img-4'}),
+            _resp(200, {'id': '17991627227860965'}),
+            _resp(200, {'id': '17991627227860965'}),
+        ]
+        pub = get_publisher('instagram')
+        result = pub.publish_image(_fake_credential(), 'caption!', ['https://x/img.jpg'])
+
+        self.assertEqual(m.call_count, 3)
+        self.assertTrue(result.success)
+        self.assertEqual(result.platform_post_id, '17991627227860965')
+        self.assertEqual(result.platform_url, '')
+        self.assertNotIn('https://www.instagram.com/p/17991627227860965', result.platform_url)

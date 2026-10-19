@@ -263,11 +263,25 @@ class InstagramPublisher(BasePublisher):
         media_id = body.get('id')
         if not media_id:
             raise PublishError('IG publish did not return media id', raw=body)
-        # Permalink fetch is a separate call but only when the orchestrator wants it.
+
+        permalink = None
+        try:
+            permalink_res = client.get(
+                f'/{media_id}',
+                params={'fields': 'permalink'},
+            )
+            permalink = (permalink_res.get('permalink') or '').strip()
+        except Exception as exc:
+            logger.warning(
+                'Instagram post published (media_id=%s) but permalink lookup failed: %s: %s',
+                media_id, exc.__class__.__name__, str(exc)[:200],
+            )
+            permalink = ''
+
         return PublishResult(
             success=True,
             platform_post_id=str(media_id),
-            platform_url=f'https://www.instagram.com/p/{media_id}',
+            platform_url=permalink or '',
             raw_response=body,
         )
 
