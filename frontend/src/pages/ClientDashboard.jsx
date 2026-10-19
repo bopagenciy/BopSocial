@@ -415,6 +415,12 @@ function AnalyticsTab(p) {
               <PlatformCompareChart byPlatform={byPlatform} />
             )}
           </div>
+        ) : (platform === 'instagram' || (connectedPlatforms.length === 1 && connectedPlatforms[0] === 'instagram')) && (summary?.capabilities?.instagram?.analytics_level === 'basic' || !summary?.capabilities?.instagram?.supports_timeseries) ? (
+          <div style={S.emptyBox} className="db-card">
+            <BarChart2 size={36} style={{ color: '#00d7ff', marginBottom: 10 }} />
+            <p style={{ margin: 0, color: 'var(--text-primary)', fontWeight: 600 }}>{t('empty_charts.instagram_basic_title', 'Advanced Instagram insights unavailable for this connection')}</p>
+            <p style={{ margin: '6px 0 0', color: 'var(--text-tertiary)', fontSize: 13, maxWidth: 480 }}>{t('empty_charts.instagram_basic_body', 'Your Instagram connection is active with basic media access. Per-post engagement metrics are available in the Posts tab, while daily timeseries charts require advanced insights permissions.')}</p>
+          </div>
         ) : (
           <div style={S.emptyBox} className="db-card">
             <BarChart2 size={36} style={{ color: 'var(--text-quaternary)', marginBottom: 10 }} />

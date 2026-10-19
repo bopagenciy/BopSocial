@@ -352,7 +352,11 @@ export default function AnalyticsPage() {
               {t('loading_chart')}
             </div>
           ) : chartData.length === 0 ? (
-            <EmptyChart message={t('empty.no_data_period')} />
+            selectedPlatform === 'instagram' && summary?.capabilities?.instagram?.analytics_level === 'basic' ? (
+              <EmptyChart message={t('empty.instagram_basic', 'Advanced Instagram timeseries insights unavailable for this connection (basic media metrics active)')} />
+            ) : (
+              <EmptyChart message={t('empty.no_data_period')} />
+            )
           ) : (
             <ResponsiveContainer width="100%" height={280}>
               <AreaChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>

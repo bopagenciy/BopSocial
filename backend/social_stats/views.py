@@ -410,11 +410,32 @@ class ClientViewSet(viewsets.ModelViewSet):
             followers=Sum('followers'),
         ))
 
+        # Capability map for connected credentials
+        capabilities = {}
+        for cred in PlatformCredential.objects.filter(client=client, is_active=True):
+            if cred.platform == 'instagram':
+                scopes = [s.strip().lower() for s in (cred.scope or '').replace(',', ' ').split() if s.strip()]
+                has_adv = 'instagram_manage_insights' in scopes
+                capabilities['instagram'] = {
+                    'analytics_level': 'advanced' if has_adv else 'basic',
+                    'supports_timeseries': has_adv,
+                    'supports_media_metrics': True,
+                    'reason': None if has_adv else 'instagram_manage_insights scope not granted; timeseries insights unavailable',
+                }
+            else:
+                capabilities[cred.platform] = {
+                    'analytics_level': 'advanced',
+                    'supports_timeseries': True,
+                    'supports_media_metrics': True,
+                    'reason': None,
+                }
+
         return Response({
-            'client':      ClientSerializer(client).data,
-            'period':      {'since': since.isoformat(), 'until': until.isoformat()},
-            'totals':      agg,
-            'by_platform': by_platform,
+            'client':       ClientSerializer(client).data,
+            'period':       {'since': since.isoformat(), 'until': until.isoformat()},
+            'totals':       agg,
+            'by_platform':  by_platform,
+            'capabilities': capabilities,
         })
 
     @action(detail=True, methods=['get'])

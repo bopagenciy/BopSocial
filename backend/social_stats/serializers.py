@@ -76,14 +76,15 @@ class CompetitorSerializer(serializers.ModelSerializer):
 
 
 class PlatformCredentialSerializer(serializers.ModelSerializer):
-    access_token  = serializers.CharField(write_only=True, required=False, allow_blank=True)
-    refresh_token = serializers.CharField(write_only=True, required=False, allow_blank=True)
-    status        = serializers.ReadOnlyField()
+    access_token    = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    refresh_token   = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    status          = serializers.ReadOnlyField()
+    analytics_level = serializers.SerializerMethodField()
 
     class Meta:
         model  = PlatformCredential
         fields = [
-            'id', 'client', 'platform', 'status',
+            'id', 'client', 'platform', 'status', 'analytics_level',
             'access_token', 'refresh_token', 'expires_at', 'scope',
             'page_id', 'page_name', 'instagram_account_id',
             'channel_id', 'channel_name',
@@ -91,6 +92,12 @@ class PlatformCredentialSerializer(serializers.ModelSerializer):
             'gmb_account_id', 'gmb_location_id',
             'is_active', 'connected_at', 'updated_at',
         ]
+
+    def get_analytics_level(self, obj):
+        if obj.platform == 'instagram':
+            scopes = [s.strip().lower() for s in (obj.scope or '').replace(',', ' ').split() if s.strip()]
+            return 'advanced' if 'instagram_manage_insights' in scopes else 'basic'
+        return 'advanced'
 
 
 class DailyMetricSerializer(serializers.ModelSerializer):
