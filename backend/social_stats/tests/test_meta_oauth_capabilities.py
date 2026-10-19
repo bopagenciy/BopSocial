@@ -99,8 +99,8 @@ class MetaOAuthCapabilitiesTests(TestCase):
         self.assertIn('instagram_professional', META_OAUTH_CAPABILITIES)
         ig_scopes = get_capability_scopes('instagram_professional')
         self.assertIn('instagram_basic', ig_scopes)
-        self.assertIn('instagram_content_publishing', ig_scopes)
-        self.assertNotIn('instagram_content_publish', ig_scopes)
+        self.assertIn('instagram_content_publish', ig_scopes)
+        self.assertNotIn('instagram_content_publishing', ig_scopes)
         self.assertIn('pages_show_list', ig_scopes)
         self.assertIn('business_management', ig_scopes)
         self.assertIn('instagram_manage_insights', ig_scopes)
@@ -510,18 +510,18 @@ class MetaOAuthCapabilitiesTests(TestCase):
 
     # ── Unit tests for modern Instagram scopes and alias validation ──────────
     def test_instagram_modern_scope_set_requests(self):
-        """instagram_professional must request modern instagram_content_publishing and business_management."""
+        """instagram_professional must request valid instagram_content_publish and business_management."""
         ig_scopes = get_capability_scopes('instagram_professional')
         self.assertIn('instagram_basic', ig_scopes)
-        self.assertIn('instagram_content_publishing', ig_scopes)
-        self.assertNotIn('instagram_content_publish', ig_scopes)
+        self.assertIn('instagram_content_publish', ig_scopes)
+        self.assertNotIn('instagram_content_publishing', ig_scopes)
         self.assertIn('pages_show_list', ig_scopes)
         self.assertIn('business_management', ig_scopes)
         self.assertIn('instagram_manage_insights', ig_scopes)
         self.assertIn('pages_read_engagement', ig_scopes)
 
     def test_instagram_validation_modern_grant_pass(self):
-        """Modern grant set with instagram_content_publishing must validate PASS."""
+        """Modern grant set with instagram_content_publishing must validate PASS via alias equivalence."""
         granted = [
             'instagram_basic',
             'instagram_content_publishing',
@@ -533,7 +533,7 @@ class MetaOAuthCapabilitiesTests(TestCase):
         self.assertEqual(res['missing_required_scopes'], [])
 
     def test_instagram_validation_legacy_grant_pass_via_alias(self):
-        """Legacy grant set with instagram_content_publish must validate PASS via alias equivalence."""
+        """Standard grant set with instagram_content_publish must validate PASS."""
         granted = [
             'instagram_basic',
             'instagram_content_publish',
@@ -553,7 +553,7 @@ class MetaOAuthCapabilitiesTests(TestCase):
         ]
         res = validate_capability_scopes('instagram_professional', granted)
         self.assertFalse(res['is_valid'])
-        self.assertIn('instagram_content_publishing', res['missing_required_scopes'])
+        self.assertIn('instagram_content_publish', res['missing_required_scopes'])
 
     def test_instagram_validation_missing_business_management_fails(self):
         """Absence of business_management must validate FAIL."""

@@ -64,7 +64,7 @@ META_OAUTH_CAPABILITIES = {
         'platform': 'instagram',
         'required_scopes': [
             'instagram_basic',
-            'instagram_content_publishing',
+            'instagram_content_publish',
             'pages_show_list',
             'business_management',
         ],
