@@ -1912,6 +1912,20 @@ class MediaAsset(models.Model):
         base = (getattr(settings, 'BACKEND_PUBLIC_URL', '') or getattr(settings, 'FRONTEND_URL', '')).rstrip('/')
         return f"{base}/api/media/public/{token}/"
 
+    def delete(self, *args, **kwargs):
+        from . import media_service
+        if media_service._s3_enabled():
+            if self.file and self.file.name:
+                media_service.delete_s3_object(self.file.name)
+            if self.thumbnail and self.thumbnail.name:
+                media_service.delete_s3_object(self.thumbnail.name)
+        else:
+            if self.file:
+                self.file.delete(save=False)
+            if self.thumbnail:
+                self.thumbnail.delete(save=False)
+        return super().delete(*args, **kwargs)
+
 
 class UnifiedPost(models.Model):
     """A post composed in Social Stats, fanned out to one or more platforms."""

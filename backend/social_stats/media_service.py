@@ -42,7 +42,11 @@ from django.core.files.uploadedfile import UploadedFile
 from django.utils.text import slugify
 from PIL import Image, ImageOps
 
-from .models import MediaAsset
+from .models import (
+    MediaAsset,
+    media_asset_upload_path,
+    media_asset_thumb_upload_path,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -124,37 +128,94 @@ def upload_media(
         tags=tags or [],
         folder=(folder or '').strip(),
     )
-    asset.file.save(name, file, save=False)
+    if _s3_enabled():
+        main_key = media_asset_upload_path(asset, name)
+        thumb_bytes = None
+        thumb_key = None
 
-    # Image metadata + thumbnail
-    if mime.startswith('image/'):
+        # Image metadata + thumbnail
+        if mime.startswith('image/'):
+            try:
+                file.seek(0)
+                with Image.open(file) as img:
+                    img = ImageOps.exif_transpose(img)
+                    asset.width, asset.height = img.size
+                    thumb_buffer = io.BytesIO()
+                    thumb = img.copy()
+                    thumb.thumbnail((480, 480))
+                    if thumb.mode in ('RGBA', 'LA', 'P'):
+                        thumb = thumb.convert('RGB')
+                    thumb.save(thumb_buffer, format='JPEG', quality=80)
+                    thumb_bytes = thumb_buffer.getvalue()
+                    thumb_name = f"{os.path.splitext(name)[0]}_thumb.jpg"
+                    thumb_key = media_asset_thumb_upload_path(asset, thumb_name)
+            except Exception:
+                logger.exception('Failed to process image metadata for %s', name)
+
+        # Video duration via moviepy if available
+        elif mime.startswith('video/'):
+            if hasattr(file, 'temporary_file_path'):
+                try:
+                    duration = _probe_video_duration(file.temporary_file_path())
+                    if duration:
+                        asset.duration_seconds = duration
+                except Exception:
+                    pass
+
+        uploaded_s3_keys = []
         try:
-            file.seek(0)
-            with Image.open(file) as img:
-                img = ImageOps.exif_transpose(img)
-                asset.width, asset.height = img.size
-                thumb_buffer = io.BytesIO()
-                thumb = img.copy()
-                thumb.thumbnail((480, 480))
-                if thumb.mode in ('RGBA', 'LA', 'P'):
-                    thumb = thumb.convert('RGB')
-                thumb.save(thumb_buffer, format='JPEG', quality=80)
-                asset.thumbnail.save(
-                    f'{os.path.splitext(name)[0]}_thumb.jpg',
-                    ContentFile(thumb_buffer.getvalue()),
-                    save=False,
-                )
+            # 1. Upload main file to S3
+            upload_to_s3(file, main_key, content_type=mime)
+            uploaded_s3_keys.append(main_key)
+            asset.file.name = main_key
+
+            # 2. Upload thumbnail if generated
+            if thumb_bytes and thumb_key:
+                upload_to_s3(thumb_bytes, thumb_key, content_type='image/jpeg')
+                uploaded_s3_keys.append(thumb_key)
+                asset.thumbnail.name = thumb_key
+
+            # 3. Persist record in database
+            asset.save()
+            return asset
         except Exception:
-            logger.exception('Failed to process image metadata for %s', name)
+            # Atomic rollback: cleanup any already uploaded S3 objects
+            for k in uploaded_s3_keys:
+                delete_s3_object(k)
+            raise
 
-    # Video duration via moviepy if available.
-    elif mime.startswith('video/'):
-        duration = _probe_video_duration(asset.file.path if asset.file else None)
-        if duration:
-            asset.duration_seconds = duration
+    else:
+        asset.file.save(name, file, save=False)
 
-    asset.save()
-    return asset
+        # Image metadata + thumbnail
+        if mime.startswith('image/'):
+            try:
+                file.seek(0)
+                with Image.open(file) as img:
+                    img = ImageOps.exif_transpose(img)
+                    asset.width, asset.height = img.size
+                    thumb_buffer = io.BytesIO()
+                    thumb = img.copy()
+                    thumb.thumbnail((480, 480))
+                    if thumb.mode in ('RGBA', 'LA', 'P'):
+                        thumb = thumb.convert('RGB')
+                    thumb.save(thumb_buffer, format='JPEG', quality=80)
+                    asset.thumbnail.save(
+                        f'{os.path.splitext(name)[0]}_thumb.jpg',
+                        ContentFile(thumb_buffer.getvalue()),
+                        save=False,
+                    )
+            except Exception:
+                logger.exception('Failed to process image metadata for %s', name)
+
+        # Video duration via moviepy if available.
+        elif mime.startswith('video/'):
+            duration = _probe_video_duration(asset.file.path if asset.file else None)
+            if duration:
+                asset.duration_seconds = duration
+
+        asset.save()
+        return asset
 
 
 def validate_for_platform(asset: MediaAsset, platform: str, post_type: str) -> ValidationResult:
@@ -292,6 +353,47 @@ def _s3_enabled() -> bool:
     return bool(getattr(settings, 'AWS_ACCESS_KEY_ID', None) and get_s3_bucket_name())
 
 
+def get_s3_client():
+    """Return an authenticated boto3 S3 client using settings."""
+    import boto3
+    return boto3.client(
+        's3',
+        aws_access_key_id=getattr(settings, 'AWS_ACCESS_KEY_ID', ''),
+        aws_secret_access_key=getattr(settings, 'AWS_SECRET_ACCESS_KEY', ''),
+        region_name=get_s3_region_name(),
+    )
+
+
+def upload_to_s3(file_obj, key: str, content_type: str = '') -> None:
+    """Upload a file or buffer to S3 using put_object with explicit ContentType."""
+    s3 = get_s3_client()
+    bucket = get_s3_bucket_name()
+    if hasattr(file_obj, 'seek'):
+        file_obj.seek(0)
+    body = file_obj.read() if hasattr(file_obj, 'read') else file_obj
+    kwargs = {
+        'Bucket': bucket,
+        'Key': key,
+        'Body': body,
+    }
+    if content_type:
+        kwargs['ContentType'] = content_type
+    s3.put_object(**kwargs)
+
+
+def delete_s3_object(key: str) -> bool:
+    """Best-effort deletion of an S3 object by key. Returns True if deleted, False on failure."""
+    if not key or not _s3_enabled():
+        return False
+    try:
+        s3 = get_s3_client()
+        s3.delete_object(Bucket=get_s3_bucket_name(), Key=key)
+        return True
+    except Exception:
+        logger.exception("Failed to delete S3 object: %s", key)
+        return False
+
+
 def validate_s3_configuration() -> dict:
     """
     Validate AWS S3 storage configuration without exposing secrets.
@@ -380,13 +482,7 @@ def presigned_url(asset: MediaAsset, *, expires: int = 3600) -> str:
         return ''
     if _s3_enabled():
         try:
-            import boto3
-            client = boto3.client(
-                's3',
-                aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-                aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-                region_name=get_s3_region_name(),
-            )
+            client = get_s3_client()
             return client.generate_presigned_url(
                 'get_object',
                 Params={'Bucket': get_s3_bucket_name(), 'Key': asset.file.name},

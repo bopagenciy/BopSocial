@@ -153,6 +153,21 @@ def serve_secure_file(request, file_field, asset_id: int, is_thumbnail: bool = F
     if not file_field or not file_field.name:
         raise Http404("Media file is not present on this asset")
 
+    from . import media_service
+    if media_service._s3_enabled():
+        try:
+            s3 = media_service.get_s3_client()
+            url = s3.generate_presigned_url(
+                'get_object',
+                Params={'Bucket': media_service.get_s3_bucket_name(), 'Key': file_field.name},
+                ExpiresIn=3600,
+            )
+            from django.http import HttpResponseRedirect
+            return HttpResponseRedirect(url)
+        except Exception:
+            logger.exception("Failed to generate presigned S3 redirect for %s", file_field.name)
+            raise Http404("Error generating access URL for S3 media asset")
+
     storage_root = getattr(getattr(file_field, 'storage', None), 'location', None) or settings.MEDIA_ROOT
     media_root = os.path.normcase(os.path.realpath(os.path.abspath(str(storage_root))))
     try:

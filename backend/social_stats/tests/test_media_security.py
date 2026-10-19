@@ -48,7 +48,13 @@ class MediaTenantSecurityTests(TestCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.temp_media = tempfile.mkdtemp()
-        cls.media_override = override_settings(MEDIA_ROOT=cls.temp_media)
+        cls.media_override = override_settings(
+            MEDIA_ROOT=cls.temp_media,
+            AWS_ACCESS_KEY_ID='',
+            AWS_SECRET_ACCESS_KEY='',
+            AWS_STORAGE_BUCKET_NAME='',
+            AWS_S3_BUCKET='',
+        )
         cls.media_override.enable()
 
     @classmethod
