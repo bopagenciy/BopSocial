@@ -152,6 +152,7 @@
     "recent_sync_activity": "Recent Sync Activity",
     "sync_status": {
       "success": "success",
+      "partial": "partial",
       "failed": "failed",
       "running": "running",
       "queued": "queued"

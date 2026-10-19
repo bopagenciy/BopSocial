@@ -33,6 +33,7 @@ SYNC_STATUS = [
     ('pending', 'Pending'),
     ('running', 'Running'),
     ('success', 'Success'),
+    ('partial', 'Partial'),
     ('failed',  'Failed'),
 ]
 

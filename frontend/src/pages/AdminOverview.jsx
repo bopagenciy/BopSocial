@@ -761,7 +761,7 @@ export default function AdminOverview() {
             label={t('admin.sync_health', 'Sync Health')}
             value={latestSync ? `${syncSuccessCount}/${overview?.recent_syncs?.length || 0}` : '0/0'}
             detail={latestSyncLabel}
-            accent={latestSync?.status === 'failed' ? '#ef4444' : latestSync?.status === 'running' ? '#00d7ff' : '#f59e0b'}
+            accent={latestSync?.status === 'failed' ? '#ef4444' : latestSync?.status === 'partial' ? '#f59e0b' : latestSync?.status === 'running' ? '#00d7ff' : latestSync?.status === 'success' ? '#22c55e' : '#f59e0b'}
           />
         </div>
       </div>
@@ -900,6 +900,7 @@ export default function AdminOverview() {
 
 const statusColors = {
   success: { background: '#dcfce7', color: '#16a34a' },
+  partial: { background: '#fef3c7', color: '#d97706' },
   failed:  { background: '#fee2e2', color: '#dc2626' },
   running: { background: '#e6fbff', color: '#00d7ff' },
   pending: { background: 'var(--surface-page)', color: 'var(--text-secondary)' },

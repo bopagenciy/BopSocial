@@ -152,6 +152,7 @@
     "recent_sync_activity": "Actividad reciente de sincronización",
     "sync_status": {
       "success": "éxito",
+      "partial": "parcial",
       "failed": "fallido",
       "running": "en ejecución",
       "queued": "en cola"
