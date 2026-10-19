@@ -39,9 +39,11 @@ logger = logging.getLogger(__name__)
 #     - pages_manage_metadata
 #     - read_insights
 #
-# instagram_professional (future decoupled capability):
+# instagram_professional:
 #   Decoupled from Facebook-only flow to prevent Meta 'Invalid Scopes' errors
 #   in current App Review tier.
+#   Uses modern Meta permission naming ('instagram_content_publishing') with
+#   backward compatibility for legacy 'instagram_content_publish' grants.
 #
 META_OAUTH_CAPABILITIES = {
     'facebook_page': {
@@ -62,17 +64,25 @@ META_OAUTH_CAPABILITIES = {
         'platform': 'instagram',
         'required_scopes': [
             'instagram_basic',
-            'instagram_content_publish',
+            'instagram_content_publishing',
+            'pages_show_list',
+            'business_management',
         ],
         'optional_scopes': [
             'instagram_manage_insights',
-            'pages_show_list',
             'pages_read_engagement',
         ],
     },
 }
 
 DEFAULT_META_CAPABILITY = 'facebook_page'
+
+# Canonical aliases for permission evaluation (canonical -> set of acceptable equivalents)
+SCOPE_EQUIVALENCE_ALIASES: dict[str, set[str]] = {
+    'instagram_content_publishing': {'instagram_content_publishing', 'instagram_content_publish'},
+    'instagram_content_publish': {'instagram_content_publishing', 'instagram_content_publish'},
+}
+SCOPE_ALIASES = SCOPE_EQUIVALENCE_ALIASES
 
 
 def get_capability_config(capability: str = DEFAULT_META_CAPABILITY) -> dict:
@@ -155,8 +165,17 @@ def validate_capability_scopes(
     granted_list = parse_scopes(granted_scopes)
     granted_set = set(granted_list)
 
-    missing_required = [s for s in required if s not in granted_set]
-    missing_optional = [s for s in optional if s not in granted_set]
+    missing_required = []
+    for s in required:
+        acceptable = SCOPE_EQUIVALENCE_ALIASES.get(s, {s})
+        if not (acceptable & granted_set):
+            missing_required.append(s)
+
+    missing_optional = []
+    for s in optional:
+        acceptable = SCOPE_EQUIVALENCE_ALIASES.get(s, {s})
+        if not (acceptable & granted_set):
+            missing_optional.append(s)
 
     is_valid = len(missing_required) == 0
 

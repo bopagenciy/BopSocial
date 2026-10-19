@@ -88,6 +88,7 @@ class MetaOAuthCapabilitiesTests(TestCase):
         fb_scopes = get_capability_scopes('facebook_page')
         ig_exclusive = [
             'instagram_basic',
+            'instagram_content_publishing',
             'instagram_content_publish',
             'instagram_manage_insights',
         ]
@@ -98,7 +99,12 @@ class MetaOAuthCapabilitiesTests(TestCase):
         self.assertIn('instagram_professional', META_OAUTH_CAPABILITIES)
         ig_scopes = get_capability_scopes('instagram_professional')
         self.assertIn('instagram_basic', ig_scopes)
-        self.assertIn('instagram_content_publish', ig_scopes)
+        self.assertIn('instagram_content_publishing', ig_scopes)
+        self.assertNotIn('instagram_content_publish', ig_scopes)
+        self.assertIn('pages_show_list', ig_scopes)
+        self.assertIn('business_management', ig_scopes)
+        self.assertIn('instagram_manage_insights', ig_scopes)
+        self.assertIn('pages_read_engagement', ig_scopes)
 
     # ── Test 3: Scope persistence guarda grants reales ──────────────────────
     def test_scope_persistence_saves_real_meta_grants(self):
@@ -501,4 +507,108 @@ class MetaOAuthCapabilitiesTests(TestCase):
                 app_secret='app_sec',
             )
         self.assertEqual(scopes, ['pages_manage_posts', 'pages_show_list'])
+
+    # ── Unit tests for modern Instagram scopes and alias validation ──────────
+    def test_instagram_modern_scope_set_requests(self):
+        """instagram_professional must request modern instagram_content_publishing and business_management."""
+        ig_scopes = get_capability_scopes('instagram_professional')
+        self.assertIn('instagram_basic', ig_scopes)
+        self.assertIn('instagram_content_publishing', ig_scopes)
+        self.assertNotIn('instagram_content_publish', ig_scopes)
+        self.assertIn('pages_show_list', ig_scopes)
+        self.assertIn('business_management', ig_scopes)
+        self.assertIn('instagram_manage_insights', ig_scopes)
+        self.assertIn('pages_read_engagement', ig_scopes)
+
+    def test_instagram_validation_modern_grant_pass(self):
+        """Modern grant set with instagram_content_publishing must validate PASS."""
+        granted = [
+            'instagram_basic',
+            'instagram_content_publishing',
+            'pages_show_list',
+            'business_management',
+        ]
+        res = validate_capability_scopes('instagram_professional', granted)
+        self.assertTrue(res['is_valid'])
+        self.assertEqual(res['missing_required_scopes'], [])
+
+    def test_instagram_validation_legacy_grant_pass_via_alias(self):
+        """Legacy grant set with instagram_content_publish must validate PASS via alias equivalence."""
+        granted = [
+            'instagram_basic',
+            'instagram_content_publish',
+            'pages_show_list',
+            'business_management',
+        ]
+        res = validate_capability_scopes('instagram_professional', granted)
+        self.assertTrue(res['is_valid'])
+        self.assertEqual(res['missing_required_scopes'], [])
+
+    def test_instagram_validation_missing_publish_fails(self):
+        """Absence of both publish scopes must validate FAIL."""
+        granted = [
+            'instagram_basic',
+            'pages_show_list',
+            'business_management',
+        ]
+        res = validate_capability_scopes('instagram_professional', granted)
+        self.assertFalse(res['is_valid'])
+        self.assertIn('instagram_content_publishing', res['missing_required_scopes'])
+
+    def test_instagram_validation_missing_business_management_fails(self):
+        """Absence of business_management must validate FAIL."""
+        granted = [
+            'instagram_basic',
+            'instagram_content_publishing',
+            'pages_show_list',
+        ]
+        res = validate_capability_scopes('instagram_professional', granted)
+        self.assertFalse(res['is_valid'])
+        self.assertIn('business_management', res['missing_required_scopes'])
+
+    def test_instagram_validation_missing_pages_show_list_fails(self):
+        """Absence of pages_show_list must validate FAIL."""
+        granted = [
+            'instagram_basic',
+            'instagram_content_publishing',
+            'business_management',
+        ]
+        res = validate_capability_scopes('instagram_professional', granted)
+        self.assertFalse(res['is_valid'])
+        self.assertIn('pages_show_list', res['missing_required_scopes'])
+
+    def test_instagram_validation_missing_basic_fails(self):
+        """Absence of instagram_basic must validate FAIL."""
+        granted = [
+            'instagram_content_publishing',
+            'pages_show_list',
+            'business_management',
+        ]
+        res = validate_capability_scopes('instagram_professional', granted)
+        self.assertFalse(res['is_valid'])
+        self.assertIn('instagram_basic', res['missing_required_scopes'])
+
+    def test_scope_persistence_preserves_real_grant_without_replacement(self):
+        """Real Meta grants must be stored without replacing them with aliases."""
+        val_modern = validate_capability_scopes(
+            'instagram_professional',
+            ['instagram_basic', 'instagram_content_publishing', 'pages_show_list', 'business_management']
+        )
+        self.assertIn('instagram_content_publishing', val_modern['granted_scopes'])
+        self.assertNotIn('instagram_content_publish', val_modern['granted_scopes'])
+        self.assertEqual(
+            normalize_scopes(val_modern['granted_scopes']),
+            'business_management,instagram_basic,instagram_content_publishing,pages_show_list'
+        )
+
+        val_legacy = validate_capability_scopes(
+            'instagram_professional',
+            ['instagram_basic', 'instagram_content_publish', 'pages_show_list', 'business_management']
+        )
+        self.assertIn('instagram_content_publish', val_legacy['granted_scopes'])
+        self.assertNotIn('instagram_content_publishing', val_legacy['granted_scopes'])
+        self.assertEqual(
+            normalize_scopes(val_legacy['granted_scopes']),
+            'business_management,instagram_basic,instagram_content_publish,pages_show_list'
+        )
 

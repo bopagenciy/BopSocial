@@ -415,7 +415,7 @@ def facebook_oauth_callback(request):
     scope_val = validate_capability_scopes(capability, granted_scopes)
     if not scope_val['is_valid']:
         logger.error(
-            "FB callback: missing required Facebook scope(s) for capability '%s': %s (client_id=%s)",
+            "FB callback: missing required scope(s) for capability '%s': %s (client_id=%s)",
             capability, scope_val['missing_required_scopes'], client_id
         )
         return _settings_redirect(client_id, '?error=facebook_missing_permissions')
