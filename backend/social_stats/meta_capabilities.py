@@ -69,7 +69,6 @@ META_OAUTH_CAPABILITIES = {
             'business_management',
         ],
         'optional_scopes': [
-            'instagram_manage_insights',
             'pages_read_engagement',
         ],
     },

@@ -103,7 +103,7 @@ class MetaOAuthCapabilitiesTests(TestCase):
         self.assertNotIn('instagram_content_publishing', ig_scopes)
         self.assertIn('pages_show_list', ig_scopes)
         self.assertIn('business_management', ig_scopes)
-        self.assertIn('instagram_manage_insights', ig_scopes)
+        self.assertNotIn('instagram_manage_insights', ig_scopes)
         self.assertIn('pages_read_engagement', ig_scopes)
 
     # ── Test 3: Scope persistence guarda grants reales ──────────────────────
@@ -510,14 +510,14 @@ class MetaOAuthCapabilitiesTests(TestCase):
 
     # ── Unit tests for modern Instagram scopes and alias validation ──────────
     def test_instagram_modern_scope_set_requests(self):
-        """instagram_professional must request valid instagram_content_publish and business_management."""
+        """instagram_professional must request valid instagram_content_publish and business_management without invalid insights."""
         ig_scopes = get_capability_scopes('instagram_professional')
         self.assertIn('instagram_basic', ig_scopes)
         self.assertIn('instagram_content_publish', ig_scopes)
         self.assertNotIn('instagram_content_publishing', ig_scopes)
         self.assertIn('pages_show_list', ig_scopes)
         self.assertIn('business_management', ig_scopes)
-        self.assertIn('instagram_manage_insights', ig_scopes)
+        self.assertNotIn('instagram_manage_insights', ig_scopes)
         self.assertIn('pages_read_engagement', ig_scopes)
 
     def test_instagram_validation_modern_grant_pass(self):
