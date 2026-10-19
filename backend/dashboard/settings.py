@@ -192,6 +192,30 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 USE_X_ACCEL_REDIRECT = os.environ.get('USE_X_ACCEL_REDIRECT', 'False').lower() in ('true', '1', 'yes')
 
+# ── AWS S3 Storage (Bop Social Media Assets) ───────────
+AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID', '')
+AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY', '')
+
+AWS_STORAGE_BUCKET_NAME = os.environ.get(
+    'AWS_STORAGE_BUCKET_NAME',
+    os.environ.get('AWS_S3_BUCKET', '')
+)
+
+AWS_S3_BUCKET = AWS_STORAGE_BUCKET_NAME
+
+AWS_S3_REGION_NAME = os.environ.get(
+    'AWS_S3_REGION_NAME',
+    os.environ.get('AWS_S3_REGION', '')
+)
+
+AWS_S3_REGION = AWS_S3_REGION_NAME
+
+AWS_S3_CUSTOM_DOMAIN = os.environ.get('AWS_S3_CUSTOM_DOMAIN', '')
+
+AWS_PRESIGNED_URL_EXPIRY = int(
+    os.environ.get('AWS_PRESIGNED_URL_EXPIRY', '3600')
+)
+
 # ── Security headers + HTTPS enforcement () ──────────────────────────
 # Defaults flip ON when DEBUG is False. Each can still be overridden per env
 # (useful for staging that runs HTTP-only behind a private LB).
