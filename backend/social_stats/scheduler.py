@@ -62,8 +62,18 @@ def process_scheduled_posts(self):
                        .update(status='queued'))
             if not updated:
                 continue
-        publish_unified_post.delay(post.id)
-        dispatched += 1
+        try:
+            publish_unified_post.delay(post.id)
+            dispatched += 1
+            logger.info(
+                'process_scheduled_posts: dispatched post_id=%s client_id=%s scheduled_at=%s',
+                post.id, post.client_id, post.scheduled_at,
+            )
+        except Exception:
+            logger.exception(
+                'process_scheduled_posts: failed to dispatch post_id=%s client_id=%s',
+                post.id, post.client_id,
+            )
 
     if dispatched:
         logger.info('process_scheduled_posts dispatched %s posts', dispatched)
@@ -166,7 +176,17 @@ def _dispatch_queued_item(queue: PostQueue, item: QueuedItem):
         item.save(update_fields=['status', 'used_at', 'unified_post'])
         queue.last_dispatched_at = timezone.now()
         queue.save(update_fields=['last_dispatched_at'])
-    publish_unified_post.delay(post.id)
+    try:
+        publish_unified_post.delay(post.id)
+        logger.info(
+            '_dispatch_queued_item: dispatched queue_id=%s item_id=%s post_id=%s',
+            queue.id, item.id, post.id,
+        )
+    except Exception:
+        logger.exception(
+            '_dispatch_queued_item: failed to dispatch queue_id=%s item_id=%s post_id=%s',
+            queue.id, item.id, post.id,
+        )
 
 
 def _guess_media_type(item: QueuedItem) -> str:

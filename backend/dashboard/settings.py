@@ -332,6 +332,18 @@ CELERY_BEAT_SCHEDULER    = 'django_celery_beat.schedulers:DatabaseScheduler'
 CELERY_TASK_ALWAYS_EAGER = DEBUG
 CELERY_TASK_EAGER_PROPAGATES = DEBUG
 
+CELERY_IMPORTS = (
+    'social_stats.tasks',
+    'social_stats.scheduler',
+    'social_stats.inbox_tasks',
+    'social_stats.competitor_tasks',
+    'social_stats.notification_watchers',
+    'social_stats.meta_capi_tasks',
+    'social_stats.whatsapp_tasks',
+    'social_stats.security.tasks',
+    'social_stats.security.privacy_tasks',
+)
+
 from celery.schedules import crontab
 CELERY_BEAT_SCHEDULE = {
     'check-alerts-every-6-hours': {

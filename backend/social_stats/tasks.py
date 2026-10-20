@@ -17,6 +17,14 @@ from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
+# Ensure sub-task modules are imported and registered with Celery app
+from . import scheduler  # noqa: F401
+from . import inbox_tasks  # noqa: F401
+from . import competitor_tasks  # noqa: F401
+from . import notification_watchers  # noqa: F401
+from . import meta_capi_tasks  # noqa: F401
+from . import whatsapp_tasks  # noqa: F401
+
 
 def _date_range(days=30):
     today = date.today()
