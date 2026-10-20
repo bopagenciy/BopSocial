@@ -78,6 +78,8 @@ class PublishResult:
     platform_url: str = ''
     raw_response: dict = field(default_factory=dict)
     warnings: list = field(default_factory=list)
+    error_code: str = ''
+    error_message: str = ''
 
     def as_dict(self) -> dict:
         return {
@@ -85,6 +87,8 @@ class PublishResult:
             'platform_post_id':  self.platform_post_id,
             'platform_url':      self.platform_url,
             'warnings':          self.warnings,
+            'error_code':        self.error_code,
+            'error_message':     self.error_message,
             # raw_response kept on the instance but excluded from this digest
         }
 

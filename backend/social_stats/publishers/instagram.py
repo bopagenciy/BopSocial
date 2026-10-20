@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import logging
 import time
+import urllib.parse
 from typing import Optional
 
 from .base import (
@@ -118,14 +119,38 @@ class InstagramPublisher(BasePublisher):
         validate_media_url_for_provider(media_url, 'instagram', lang=kwargs.get('lang', 'en'))
 
         client = GraphClient(credential.access_token, timeout=LONG_TIMEOUT)
-        # Decide whether the story is image or video based on caller hint;
-        # default to image (most common).
-        media_type = (kwargs.get('media_type') or '').upper()
-        if not media_type:
-            media_type = 'VIDEO' if str(media_url).lower().endswith(('.mp4', '.mov', '.webm')) else 'IMAGE'
+
+        # Priority:
+        # 1. Explicit normalized media_kind / media_type keyword arg (IMAGE or VIDEO)
+        # 2. Trusted MIME hint if explicitly supplied (kwargs.get('mime_type'))
+        # 3. URL path fallback ONLY for backwards compatibility (legacy callers)
+        media_kind = (kwargs.get('media_kind') or kwargs.get('media_type') or '').upper().strip()
+        if media_kind not in ('IMAGE', 'VIDEO'):
+            mime = (kwargs.get('mime_type') or '').lower().strip()
+            if mime.startswith('video/'):
+                media_kind = 'VIDEO'
+            elif mime.startswith('image/'):
+                media_kind = 'IMAGE'
+            elif not media_kind:
+                # Safe legacy URL fallback: parse URL path safely (ignoring query string)
+                parsed_path = urllib.parse.urlparse(str(media_url)).path.lower()
+                if parsed_path.endswith(('.mp4', '.mov', '.webm')):
+                    media_kind = 'VIDEO'
+                elif parsed_path.endswith(('.jpg', '.jpeg', '.png')):
+                    media_kind = 'IMAGE'
+                else:
+                    raise PublishError(
+                        f'Cannot determine media kind for Instagram Story URL: {media_url}',
+                        code='unsupported_media_type',
+                    )
+            else:
+                raise PublishError(
+                    f'Unsupported media_kind for Instagram Story: {media_kind}',
+                    code='unsupported_media_type',
+                )
 
         data = {'media_type': 'STORIES'}  # IG story marker
-        if media_type == 'IMAGE':
+        if media_kind == 'IMAGE':
             data['image_url'] = media_url
         else:
             data['video_url'] = media_url
@@ -134,9 +159,13 @@ class InstagramPublisher(BasePublisher):
         container_id = body.get('id')
         if not container_id:
             raise PublishError('IG story container missing id', raw=body)
-        if media_type == 'VIDEO':
+        if media_kind == 'VIDEO':
             self._wait_for_container_ready(credential, container_id)
-        return self._publish_container(credential, container_id)
+        return self._publish_container(
+            credential, container_id,
+            expected_media_type=media_kind,
+            expected_product_type='STORY',
+        )
 
     def publish_carousel(self, credential, content: str, image_urls: list[str], **kwargs) -> PublishResult:
         self._require_ig(credential)
@@ -254,7 +283,9 @@ class InstagramPublisher(BasePublisher):
         raise PublishError('IG container did not finish in time',
                            code='container_timeout')
 
-    def _publish_container(self, credential, container_id: str) -> PublishResult:
+    def _publish_container(self, credential, container_id: str, *,
+                           expected_media_type: Optional[str] = None,
+                           expected_product_type: Optional[str] = None) -> PublishResult:
         client = GraphClient(credential.access_token)
         body = client.post(
             f'/{credential.instagram_account_id}/media_publish',
@@ -264,13 +295,18 @@ class InstagramPublisher(BasePublisher):
         if not media_id:
             raise PublishError('IG publish did not return media id', raw=body)
 
-        permalink = None
+        permalink = ''
+        provider_media_type = None
+        provider_product_type = None
         try:
-            permalink_res = client.get(
+            fields = 'permalink,media_type,media_product_type' if expected_media_type else 'permalink'
+            media_info = client.get(
                 f'/{media_id}',
-                params={'fields': 'permalink'},
+                params={'fields': fields},
             )
-            permalink = (permalink_res.get('permalink') or '').strip()
+            permalink = (media_info.get('permalink') or '').strip()
+            provider_media_type = (media_info.get('media_type') or '').upper()
+            provider_product_type = (media_info.get('media_product_type') or '').upper()
         except Exception as exc:
             logger.warning(
                 'Instagram post published (media_id=%s) but permalink lookup failed: %s: %s',
@@ -278,11 +314,33 @@ class InstagramPublisher(BasePublisher):
             )
             permalink = ''
 
+        mismatch = False
+        error_code = ''
+        error_message = ''
+        if expected_media_type and provider_media_type and provider_media_type != expected_media_type:
+            mismatch = True
+            error_code = 'provider_media_type_mismatch'
+            error_message = (
+                f'Instagram published media {media_id} as {provider_media_type}, '
+                f'expected {expected_media_type}'
+            )
+            logger.warning(error_message)
+
+        raw = dict(body)
+        if mismatch:
+            raw['mismatch'] = True
+            raw['expected_media_type'] = expected_media_type
+            raw['provider_media_type'] = provider_media_type
+            if provider_product_type:
+                raw['provider_media_product_type'] = provider_product_type
+
         return PublishResult(
             success=True,
             platform_post_id=str(media_id),
             platform_url=permalink or '',
-            raw_response=body,
+            raw_response=raw,
+            error_code=error_code,
+            error_message=error_message,
         )
 
     def _require_ig(self, credential):

@@ -27,6 +27,7 @@ from the children's statuses after each child task finishes.
 from __future__ import annotations
 
 import logging
+import urllib.parse
 from typing import Optional
 
 from celery import shared_task
@@ -208,13 +209,13 @@ def publish_to_platform(self, unified_post_id: int, platform: str):
         update_unified_post_status(post.id)
         return
 
-    # Success
+    # Success (or semantic mismatch on successful platform publish)
     log.status = 'success'
     log.platform_post_id = result.platform_post_id or ''
     log.platform_url = result.platform_url or ''
     log.completed_at = timezone.now()
-    log.error_code = ''
-    log.error_message = ''
+    log.error_code = getattr(result, 'error_code', '') or ''
+    log.error_message = getattr(result, 'error_message', '') or ''
     log.raw_response = result.raw_response or {}
     log.save(update_fields=[
         'status', 'platform_post_id', 'platform_url',
@@ -245,10 +246,61 @@ def _dispatch_publish(publisher, credential, content, media_urls, media_type, *,
         first = media_urls[0] if media_urls else ''
         return publisher.publish_reel(credential, first, content)
     if media_type == 'story':
-        first = media_urls[0] if media_urls else ''
-        return publisher.publish_story(credential, first)
+        if not media_urls:
+            raise PublishError('Story requires exactly one media asset', code='missing_media')
+        if len(media_urls) > 1:
+            raise PublishError('Story supports only one media asset', code='too_many_media')
+        first = media_urls[0]
+        raw_urls = (post.platform_overrides or {}).get(publisher.platform, {}).get('media_urls') or post.media_urls
+        media_kind = _resolve_story_media_kind(post, raw_urls)
+        return publisher.publish_story(credential, first, media_type=media_kind, media_kind=media_kind)
 
     raise PublishError(f'Unknown media_type: {media_type}', code='unknown_media_type')
+
+
+def _resolve_story_media_kind(post: UnifiedPost, raw_urls: list) -> str:
+    """
+    Determine canonical media kind ('IMAGE' or 'VIDEO') from MediaAsset.mime_type.
+    Falls back to safe URL path extension if no MediaAsset is linked.
+    Raises PublishError on unknown/unsupported types.
+    """
+    if not raw_urls:
+        raise PublishError('Story requires exactly one media asset', code='missing_media')
+
+    first_raw = raw_urls[0] if raw_urls else ''
+    asset = None
+    if isinstance(first_raw, str) and first_raw.startswith('asset:'):
+        try:
+            aid = int(first_raw.split(':', 1)[1])
+            asset = MediaAsset.objects.filter(id=aid, client=post.client).first()
+        except (ValueError, IndexError):
+            pass
+    if not asset and hasattr(post, 'media_assets'):
+        asset = post.media_assets.first()
+
+    if asset and asset.mime_type:
+        mime = asset.mime_type.lower().strip()
+        if mime.startswith('video/'):
+            return 'VIDEO'
+        if mime.startswith('image/'):
+            return 'IMAGE'
+        raise PublishError(
+            f'Unsupported Story media MIME type: {asset.mime_type}',
+            code='unsupported_media_type',
+        )
+
+    # Fallback to parsing URL path safely if no MediaAsset metadata exists
+    if isinstance(first_raw, str) and first_raw:
+        path = urllib.parse.urlparse(first_raw).path.lower()
+        if path.endswith(('.mp4', '.mov', '.webm')):
+            return 'VIDEO'
+        if path.endswith(('.jpg', '.jpeg', '.png')):
+            return 'IMAGE'
+
+    raise PublishError(
+        'Could not determine canonical media type (IMAGE/VIDEO) for Story',
+        code='unsupported_media_type',
+    )
 
 
 def _resolve_media_urls(post: UnifiedPost, media_urls: list, platform: Optional[str] = None) -> list:
