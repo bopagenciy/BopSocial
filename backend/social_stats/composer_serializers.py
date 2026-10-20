@@ -26,12 +26,14 @@ class MediaAssetSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'client',
             'mime_type', 'file_size', 'width', 'height', 'duration_seconds',
+            'technical_metadata',
             'alt_text', 'tags', 'folder', 'is_used',
             'file_url', 'thumbnail_url',
             'created_at',
         ]
         read_only_fields = [
             'mime_type', 'file_size', 'width', 'height', 'duration_seconds',
+            'technical_metadata',
             'is_used', 'created_at',
         ]
 

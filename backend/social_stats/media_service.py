@@ -47,6 +47,11 @@ from .models import (
     media_asset_upload_path,
     media_asset_thumb_upload_path,
 )
+from .video_probe import (
+    probe_video_metadata,
+    generate_video_thumbnail,
+    VideoProbeError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -64,9 +69,9 @@ PLATFORM_LIMITS: dict[str, dict] = {
                   'aspect_min': 4 / 5, 'aspect_max': 1.91, 'min_width': 320, 'max_width': 1440},
         'video': {'max_bytes': 1024 * 1024 * 1024, 'max_seconds': 60, 'allowed_mime': {'video/mp4', 'video/quicktime'},
                   'aspect_min': 4 / 5, 'aspect_max': 16 / 9},
-        'reel':  {'max_bytes': 1024 * 1024 * 1024, 'max_seconds': 90, 'allowed_mime': {'video/mp4'},
+        'reel':  {'max_bytes': 1024 * 1024 * 1024, 'min_seconds': 3.0, 'max_seconds': 90.0, 'allowed_mime': {'video/mp4', 'video/quicktime'},
                   'aspect_target': 9 / 16},
-        'story': {'max_bytes': 100 * 1024 * 1024, 'max_seconds': 60, 'allowed_mime': {'video/mp4', 'image/jpeg'},
+        'story': {'max_bytes': 100 * 1024 * 1024, 'max_seconds': 60.0, 'allowed_mime': {'video/mp4', 'video/quicktime', 'image/jpeg'},
                   'aspect_target': 9 / 16},
     },
     'youtube': {
@@ -128,39 +133,52 @@ def upload_media(
         tags=tags or [],
         folder=(folder or '').strip(),
     )
+    thumb_bytes = None
+
+    # Image metadata + thumbnail
+    if mime.startswith('image/'):
+        try:
+            file.seek(0)
+            with Image.open(file) as img:
+                img = ImageOps.exif_transpose(img)
+                asset.width, asset.height = img.size
+                thumb_buffer = io.BytesIO()
+                thumb = img.copy()
+                thumb.thumbnail((480, 480))
+                if thumb.mode in ('RGBA', 'LA', 'P'):
+                    thumb = thumb.convert('RGB')
+                thumb.save(thumb_buffer, format='JPEG', quality=80)
+                thumb_bytes = thumb_buffer.getvalue()
+        except Exception:
+            logger.exception('Failed to process image metadata for %s', name)
+
+    # Video metadata + thumbnail via authoritative ffprobe/ffmpeg
+    elif mime.startswith('video/'):
+        file.seek(0)
+        try:
+            v_meta = probe_video_metadata(file)
+            asset.duration_seconds = v_meta['duration_seconds']
+            asset.width = v_meta['width']
+            asset.height = v_meta['height']
+            asset.technical_metadata = v_meta
+        except VideoProbeError:
+            raise
+        except Exception as exc:
+            logger.exception('Failed to probe video metadata for %s: %s', name, exc)
+            raise VideoProbeError('Video metadata could not be verified.')
+
+        try:
+            file.seek(0)
+            thumb_bytes = generate_video_thumbnail(file, duration=asset.duration_seconds)
+        except Exception as exc:
+            logger.warning('Failed to generate video thumbnail for %s: %s', name, exc)
+
     if _s3_enabled():
         main_key = media_asset_upload_path(asset, name)
-        thumb_bytes = None
         thumb_key = None
-
-        # Image metadata + thumbnail
-        if mime.startswith('image/'):
-            try:
-                file.seek(0)
-                with Image.open(file) as img:
-                    img = ImageOps.exif_transpose(img)
-                    asset.width, asset.height = img.size
-                    thumb_buffer = io.BytesIO()
-                    thumb = img.copy()
-                    thumb.thumbnail((480, 480))
-                    if thumb.mode in ('RGBA', 'LA', 'P'):
-                        thumb = thumb.convert('RGB')
-                    thumb.save(thumb_buffer, format='JPEG', quality=80)
-                    thumb_bytes = thumb_buffer.getvalue()
-                    thumb_name = f"{os.path.splitext(name)[0]}_thumb.jpg"
-                    thumb_key = media_asset_thumb_upload_path(asset, thumb_name)
-            except Exception:
-                logger.exception('Failed to process image metadata for %s', name)
-
-        # Video duration via moviepy if available
-        elif mime.startswith('video/'):
-            if hasattr(file, 'temporary_file_path'):
-                try:
-                    duration = _probe_video_duration(file.temporary_file_path())
-                    if duration:
-                        asset.duration_seconds = duration
-                except Exception:
-                    pass
+        if thumb_bytes:
+            thumb_name = f"{os.path.splitext(name)[0]}_thumb.jpg"
+            thumb_key = media_asset_thumb_upload_path(asset, thumb_name)
 
         uploaded_s3_keys = []
         try:
@@ -186,34 +204,13 @@ def upload_media(
 
     else:
         asset.file.save(name, file, save=False)
-
-        # Image metadata + thumbnail
-        if mime.startswith('image/'):
-            try:
-                file.seek(0)
-                with Image.open(file) as img:
-                    img = ImageOps.exif_transpose(img)
-                    asset.width, asset.height = img.size
-                    thumb_buffer = io.BytesIO()
-                    thumb = img.copy()
-                    thumb.thumbnail((480, 480))
-                    if thumb.mode in ('RGBA', 'LA', 'P'):
-                        thumb = thumb.convert('RGB')
-                    thumb.save(thumb_buffer, format='JPEG', quality=80)
-                    asset.thumbnail.save(
-                        f'{os.path.splitext(name)[0]}_thumb.jpg',
-                        ContentFile(thumb_buffer.getvalue()),
-                        save=False,
-                    )
-            except Exception:
-                logger.exception('Failed to process image metadata for %s', name)
-
-        # Video duration via moviepy if available.
-        elif mime.startswith('video/'):
-            duration = _probe_video_duration(asset.file.path if asset.file else None)
-            if duration:
-                asset.duration_seconds = duration
-
+        if thumb_bytes:
+            thumb_name = f"{os.path.splitext(name)[0]}_thumb.jpg"
+            asset.thumbnail.save(
+                thumb_name,
+                ContentFile(thumb_bytes),
+                save=False,
+            )
         asset.save()
         return asset
 
@@ -248,6 +245,13 @@ def validate_for_platform(asset: MediaAsset, platform: str, post_type: str) -> V
             f'{platform} {post_type} requires one of {sorted(allowed)} — got {asset.mime_type}'
         )
 
+    if rules.get('min_seconds') and asset.duration_seconds is not None:
+        if asset.duration_seconds < rules['min_seconds']:
+            result.add_error(
+                f'Video too short for {platform} {post_type}: '
+                f'{asset.duration_seconds:.1f}s < {rules["min_seconds"]:.1f}s'
+            )
+
     if rules.get('max_seconds') and asset.duration_seconds:
         if asset.duration_seconds > rules['max_seconds']:
             result.add_error(
@@ -255,13 +259,31 @@ def validate_for_platform(asset: MediaAsset, platform: str, post_type: str) -> V
                 f'{asset.duration_seconds:.0f}s > {rules["max_seconds"]:.0f}s'
             )
 
-    # Image dimension constraints
-    if rules.get('min_width') and asset.width and asset.width < rules['min_width']:
-        result.add_error(f'Image width {asset.width}px below minimum {rules["min_width"]}px')
-    if rules.get('min_height') and asset.height and asset.height < rules['min_height']:
-        result.add_error(f'Image height {asset.height}px below minimum {rules["min_height"]}px')
+    is_video = (getattr(asset, 'mime_type', '') or '').startswith('video/') or post_type in ('reel', 'video')
 
-    # Aspect ratio for image posts (warn rather than block — it's recoverable)
+    # Video dimension and codec constraints
+    if is_video and platform == 'instagram':
+        if not asset.width or not asset.height or asset.width <= 0 or asset.height <= 0:
+            result.add_error(f'Video dimensions could not be verified for {platform} {post_type}.')
+
+        tech_meta = getattr(asset, 'technical_metadata', {}) or {}
+        v_codec = tech_meta.get('video_codec')
+        if v_codec and v_codec not in {'h264', 'hevc', 'h265'}:
+            result.add_error(
+                f'Unsupported video codec for {platform} {post_type}: {v_codec}. Only H.264 and HEVC are supported.'
+            )
+        a_codec = tech_meta.get('audio_codec')
+        if a_codec and a_codec not in {'aac', 'mp3', 'mp4a'}:
+            result.add_warning(f'Audio codec {a_codec} may not be supported by {platform} (AAC recommended).')
+
+    # Image dimension constraints
+    if not is_video:
+        if rules.get('min_width') and asset.width and asset.width < rules['min_width']:
+            result.add_error(f'Image width {asset.width}px below minimum {rules["min_width"]}px')
+        if rules.get('min_height') and asset.height and asset.height < rules['min_height']:
+            result.add_error(f'Image height {asset.height}px below minimum {rules["min_height"]}px')
+
+    # Aspect ratio for image & video posts (warn rather than block — it's recoverable)
     if asset.width and asset.height:
         ar = asset.width / asset.height
         if rules.get('aspect_min') and ar < rules['aspect_min']:
@@ -663,15 +685,11 @@ def _safe_filename(original: str) -> str:
 
 
 def _probe_video_duration(path: Optional[str]) -> float:
+    """Deprecated: Authoritative video probing is handled by probe_video_metadata."""
     if not path:
         return 0.0
     try:
-        from moviepy.editor import VideoFileClip
-    except ImportError:
-        return 0.0
-    try:
-        with VideoFileClip(path) as clip:
-            return float(clip.duration or 0)
+        meta = probe_video_metadata(path)
+        return float(meta.get('duration_seconds') or 0.0)
     except Exception:
-        logger.exception('Failed to probe video duration for %s', path)
         return 0.0

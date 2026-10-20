@@ -80,7 +80,27 @@ class UploadTests(TestCase):
         self.u = _user_for(self.c)
         self.api = _api(self.u)
 
-    def test_multipart_upload_creates_asset(self):
+    @patch('social_stats.media_service.probe_video_metadata')
+    def test_multipart_upload_creates_asset(self, mock_probe):
+        mock_probe.return_value = {
+            'duration_seconds': 5.0,
+            'width': 1920,
+            'height': 1080,
+            'aspect_ratio': 1.7778,
+            'fps': 30.0,
+            'video_codec': 'h264',
+            'codec_profile': 'High',
+            'pixel_format': 'yuv420p',
+            'bitrate': 2000000,
+            'audio_codec': 'aac',
+            'audio_channels': 2,
+            'audio_sample_rate': 44100,
+            'rotation': 0,
+            'format_name': 'mov,mp4,m4a,3gp,3g2,mj2',
+            'format_long_name': 'QuickTime / MOV',
+            'stream_count': 2,
+            'has_audio': True,
+        }
         f = SimpleUploadedFile('vid.mp4', b'\x00' * 1024, content_type='video/mp4')
         res = self.api.post('/api/video/upload/', {'file': f}, format='multipart')
         self.assertEqual(res.status_code, 201, res.content)

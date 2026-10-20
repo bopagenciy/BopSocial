@@ -1889,6 +1889,7 @@ class MediaAsset(models.Model):
     alt_text     = models.CharField(max_length=500, blank=True)
     tags         = models.JSONField(default=list, blank=True)
     folder       = models.CharField(max_length=100, blank=True)
+    technical_metadata = models.JSONField(default=dict, blank=True)
     is_used      = models.BooleanField(default=False)
     created_at   = models.DateTimeField(auto_now_add=True)
 

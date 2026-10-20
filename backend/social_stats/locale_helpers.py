@@ -495,6 +495,10 @@ MEDIA_ERROR_COPY = {
         'en': 'An Instagram carousel cannot exceed 10 items.',
         'es': 'Un carrusel de Instagram no puede exceder los 10 elementos.',
     },
+    'video_metadata_unverified': {
+        'en': 'Video metadata could not be verified.',
+        'es': 'No se pudieron verificar los metadatos del video.',
+    },
 }
 
 

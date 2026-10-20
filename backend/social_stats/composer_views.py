@@ -45,6 +45,7 @@ from .models import (
 from .orchestrator import publish_unified_post
 from .publishers import get_publisher
 from . import media_service
+from .video_probe import VideoProbeError
 from .tenant_mixins import TenantScopedMixin
 from .marketplace_permissions import (
     check_action, deny_response, approval_pending_response,
@@ -366,15 +367,18 @@ class MediaAssetViewSet(TenantScopedMixin, viewsets.ModelViewSet):
         if not upload:
             return Response({'detail': 'file is required (multipart "file")'}, status=400)
 
-        asset = media_service.upload_media(
-            upload,
-            client_id=client_id,
-            uploaded_by_id=request.user.id,
-            folder=request.data.get('folder', ''),
-            alt_text=request.data.get('alt_text', ''),
-            tags=request.data.getlist('tags') if hasattr(request.data, 'getlist') else (request.data.get('tags') or []),
-        )
-        return Response(MediaAssetSerializer(asset).data, status=201)
+        try:
+            asset = media_service.upload_media(
+                upload,
+                client_id=client_id,
+                uploaded_by_id=request.user.id,
+                folder=request.data.get('folder', ''),
+                alt_text=request.data.get('alt_text', ''),
+                tags=request.data.getlist('tags') if hasattr(request.data, 'getlist') else (request.data.get('tags') or []),
+            )
+            return Response(MediaAssetSerializer(asset).data, status=201)
+        except (ValueError, VideoProbeError) as e:
+            return Response({'detail': str(e)}, status=400)
 
     @action(detail=False, methods=['post'], parser_classes=[MultiPartParser, FormParser])
     def bulk_upload(self, request):
