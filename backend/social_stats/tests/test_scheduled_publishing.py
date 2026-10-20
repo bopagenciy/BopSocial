@@ -25,12 +25,16 @@ from datetime import timedelta
 from unittest.mock import patch, MagicMock
 
 from django.conf import settings
+from django.contrib.auth.models import User
 from django.test import TestCase, override_settings
 from django.utils import timezone
 import importlib
+from rest_framework.test import APIClient
 
 from dashboard.celery import app as celery_app
-from social_stats.models import Client, PlatformCredential, UnifiedPost, PostQueue, QueuedItem
+from social_stats.models import (
+    Client, PlatformCredential, UnifiedPost, PostQueue, QueuedItem, UserProfile,
+)
 from social_stats.scheduler import (
     process_scheduled_posts,
     process_post_queues,
@@ -55,6 +59,18 @@ class ScheduledPublishingTests(TestCase):
             instagram_account_id='17841400000000001',
             is_active=True,
         )
+        self.user = User.objects.create_user(
+            username=f'operator_{id(self)}',
+            email=f'operator_{id(self)}@test.com',
+            password='testpassword123',
+        )
+        self.profile = UserProfile.objects.create(
+            user=self.user,
+            client=self.client_obj,
+            role='client',
+        )
+        self.api = APIClient()
+        self.api.force_authenticate(user=self.user)
 
     # 1. scheduler tasks registered
     def test_01_scheduler_tasks_registered(self):
@@ -314,3 +330,314 @@ class ScheduledPublishingTests(TestCase):
             mod = importlib.import_module(module_name)
             func = getattr(mod, func_name)
             self.assertTrue(callable(func), f"Task {task_path} in {entry_name} is not callable")
+
+    # 19. schedule future requires approval sets pending_approval
+    def test_19_schedule_future_requires_approval_sets_pending_approval(self):
+        self.client_obj.requires_approval = True
+        self.client_obj.save(update_fields=['requires_approval'])
+        post = UnifiedPost.objects.create(
+            client=self.client_obj,
+            created_by=self.user,
+            content='Schedule requires approval post',
+            media_type='text',
+            target_platforms=['instagram'],
+            status='draft',
+        )
+        future_time = timezone.now() + timedelta(minutes=15)
+        with patch('social_stats.scheduler.publish_unified_post.delay') as mock_sched_pub, \
+             patch('social_stats.orchestrator.publish_unified_post.delay') as mock_orch_pub:
+            res = self.api.post(
+                f'/api/composer/posts/{post.id}/schedule/',
+                {'scheduled_at': future_time.isoformat()},
+            )
+            self.assertEqual(res.status_code, 200)
+            self.assertEqual(res.data['status'], 'pending_approval')
+            mock_sched_pub.assert_not_called()
+            mock_orch_pub.assert_not_called()
+
+        post.refresh_from_db()
+        self.assertEqual(post.status, 'pending_approval')
+        self.assertIsNone(post.approved_by)
+        self.assertIsNone(post.approved_at)
+        self.assertEqual(post.scheduled_at, future_time)
+
+    # 20. future schedule no immediate publish
+    def test_20_future_schedule_no_immediate_publish(self):
+        self.client_obj.requires_approval = True
+        self.client_obj.save(update_fields=['requires_approval'])
+        post = UnifiedPost.objects.create(
+            client=self.client_obj,
+            created_by=self.user,
+            content='No immediate publish test',
+            media_type='text',
+            target_platforms=['instagram'],
+            status='draft',
+        )
+        future_time = timezone.now() + timedelta(minutes=10)
+        with patch('requests.post') as mock_http_post, \
+             patch('social_stats.scheduler.publish_unified_post.delay') as mock_delay:
+            res = self.api.post(
+                f'/api/composer/posts/{post.id}/schedule/',
+                {'scheduled_at': future_time.isoformat()},
+            )
+            self.assertEqual(res.status_code, 200)
+            mock_delay.assert_not_called()
+            mock_http_post.assert_not_called()
+
+    # 21. approve future post sets status scheduled
+    def test_21_approve_future_post_sets_status_scheduled(self):
+        self.client_obj.requires_approval = True
+        self.client_obj.save(update_fields=['requires_approval'])
+        future_time = timezone.now() + timedelta(minutes=12)
+        post = UnifiedPost.objects.create(
+            client=self.client_obj,
+            created_by=self.user,
+            content='Approve future post test',
+            media_type='text',
+            target_platforms=['instagram'],
+            status='pending_approval',
+            scheduled_at=future_time,
+        )
+        with patch('social_stats.orchestrator.publish_unified_post.delay') as mock_delay:
+            res = self.api.post(f'/api/composer/posts/{post.id}/approve/')
+            self.assertEqual(res.status_code, 200)
+            self.assertEqual(res.data['status'], 'scheduled')
+            mock_delay.assert_not_called()
+
+        post.refresh_from_db()
+        self.assertEqual(post.status, 'scheduled')
+        self.assertEqual(post.approved_by, self.user)
+        self.assertIsNotNone(post.approved_at)
+        self.assertEqual(post.scheduled_at, future_time)
+
+    # 22. approve future no celery publish dispatch
+    def test_22_approve_future_no_celery_publish_dispatch(self):
+        self.client_obj.requires_approval = True
+        self.client_obj.save(update_fields=['requires_approval'])
+        future_time = timezone.now() + timedelta(hours=1)
+        post = UnifiedPost.objects.create(
+            client=self.client_obj,
+            created_by=self.user,
+            content='Approve future post celery check',
+            media_type='text',
+            target_platforms=['instagram'],
+            status='pending_approval',
+            scheduled_at=future_time,
+        )
+        with patch('social_stats.orchestrator.publish_unified_post.delay') as mock_delay:
+            res = self.api.post(f'/api/composer/posts/{post.id}/approve/')
+            self.assertEqual(res.status_code, 200)
+            self.assertEqual(mock_delay.call_count, 0)
+
+    # 23. approve future preserves scheduled_at and audit fields
+    def test_23_approve_future_preserves_scheduled_at_and_audit_fields(self):
+        self.client_obj.requires_approval = True
+        self.client_obj.save(update_fields=['requires_approval'])
+        exact_time = timezone.now() + timedelta(minutes=20)
+        post = UnifiedPost.objects.create(
+            client=self.client_obj,
+            created_by=self.user,
+            content='Audit integrity test',
+            media_type='text',
+            target_platforms=['instagram'],
+            status='pending_approval',
+            scheduled_at=exact_time,
+        )
+        from django.utils.dateparse import parse_datetime
+        res = self.api.post(f'/api/composer/posts/{post.id}/approve/')
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(parse_datetime(res.data['scheduled_at']), exact_time)
+        self.assertEqual(res.data['approved_by'], self.user.id)
+        self.assertIsNotNone(res.data['approved_at'])
+
+        post.refresh_from_db()
+        self.assertEqual(post.scheduled_at, exact_time)
+        self.assertEqual(post.approved_by, self.user)
+        self.assertIsNotNone(post.approved_at)
+
+    # 24. due approved post dispatched by scheduler
+    def test_24_due_approved_post_dispatched_by_scheduler(self):
+        self.client_obj.requires_approval = True
+        self.client_obj.save(update_fields=['requires_approval'])
+        due_time = timezone.now() - timedelta(minutes=2)
+        post = UnifiedPost.objects.create(
+            client=self.client_obj,
+            created_by=self.user,
+            content='Due approved scheduler pickup',
+            media_type='text',
+            target_platforms=['instagram'],
+            status='scheduled',
+            approved_by=self.user,
+            approved_at=timezone.now() - timedelta(minutes=10),
+            scheduled_at=due_time,
+        )
+        with patch('social_stats.scheduler.publish_unified_post.delay') as mock_delay:
+            dispatched = process_scheduled_posts()
+            self.assertEqual(dispatched, 1)
+            mock_delay.assert_called_once_with(post.id)
+
+        post.refresh_from_db()
+        self.assertEqual(post.status, 'queued')
+
+    # 25. due unapproved post blocked by orchestrator approval gate
+    def test_25_due_unapproved_post_blocked_by_orchestrator(self):
+        self.client_obj.requires_approval = True
+        self.client_obj.save(update_fields=['requires_approval'])
+        # Construct synthetic state simulating a post claimed to queued without approval
+        post = UnifiedPost.objects.create(
+            client=self.client_obj,
+            created_by=self.user,
+            content='Defensive unapproved post',
+            media_type='text',
+            target_platforms=['instagram'],
+            status='queued',
+            approved_by=None,
+            approved_at=None,
+            scheduled_at=timezone.now() - timedelta(minutes=1),
+        )
+        from social_stats.orchestrator import publish_unified_post
+        with patch('social_stats.publishers.instagram.InstagramPublisher.publish_text') as mock_pub:
+            publish_unified_post(post.id)
+            mock_pub.assert_not_called()
+
+        post.refresh_from_db()
+        self.assertEqual(post.status, 'pending_approval')
+
+    # 26. immediate publish approval regression
+    def test_26_immediate_publish_approval_regression(self):
+        self.client_obj.requires_approval = True
+        self.client_obj.save(update_fields=['requires_approval'])
+        post = UnifiedPost.objects.create(
+            client=self.client_obj,
+            created_by=self.user,
+            content='Immediate publish regression test',
+            media_type='text',
+            target_platforms=['instagram'],
+            status='draft',
+            scheduled_at=None,
+        )
+        # Step 1: publish_now moves to pending_approval
+        res_pub = self.api.post(f'/api/composer/posts/{post.id}/publish_now/')
+        self.assertEqual(res_pub.status_code, 202)
+        post.refresh_from_db()
+        self.assertEqual(post.status, 'pending_approval')
+
+        # Step 2: approve immediate moves to queued and dispatches publish task
+        with patch('social_stats.orchestrator.publish_unified_post.delay') as mock_delay:
+            res_app = self.api.post(f'/api/composer/posts/{post.id}/approve/')
+            self.assertEqual(res_app.status_code, 200)
+            self.assertEqual(res_app.data['status'], 'queued')
+            mock_delay.assert_called_once_with(post.id)
+
+        post.refresh_from_db()
+        self.assertEqual(post.status, 'queued')
+        self.assertEqual(post.approved_by, self.user)
+        self.assertIsNotNone(post.approved_at)
+
+    # 27. no-approval tenant future scheduling
+    def test_27_no_approval_tenant_future_scheduling(self):
+        self.client_obj.requires_approval = False
+        self.client_obj.save(update_fields=['requires_approval'])
+        post = UnifiedPost.objects.create(
+            client=self.client_obj,
+            created_by=self.user,
+            content='No approval tenant future schedule',
+            media_type='text',
+            target_platforms=['instagram'],
+            status='draft',
+        )
+        future_time = timezone.now() + timedelta(minutes=30)
+        with patch('social_stats.scheduler.publish_unified_post.delay') as mock_delay:
+            res = self.api.post(
+                f'/api/composer/posts/{post.id}/schedule/',
+                {'scheduled_at': future_time.isoformat()},
+            )
+            self.assertEqual(res.status_code, 200)
+            self.assertEqual(res.data['status'], 'scheduled')
+            mock_delay.assert_not_called()
+
+        post.refresh_from_db()
+        self.assertEqual(post.status, 'scheduled')
+        self.assertEqual(post.scheduled_at, future_time)
+
+    # 28. second approve safe (rejected with 400)
+    def test_28_second_approve_safe_rejected(self):
+        self.client_obj.requires_approval = True
+        self.client_obj.save(update_fields=['requires_approval'])
+        future_time = timezone.now() + timedelta(minutes=15)
+        post = UnifiedPost.objects.create(
+            client=self.client_obj,
+            created_by=self.user,
+            content='Idempotent approval test',
+            media_type='text',
+            target_platforms=['instagram'],
+            status='pending_approval',
+            scheduled_at=future_time,
+        )
+        # First approve
+        res1 = self.api.post(f'/api/composer/posts/{post.id}/approve/')
+        self.assertEqual(res1.status_code, 200)
+        self.assertEqual(res1.data['status'], 'scheduled')
+
+        # Second approve must be safely rejected
+        with patch('social_stats.orchestrator.publish_unified_post.delay') as mock_delay:
+            res2 = self.api.post(f'/api/composer/posts/{post.id}/approve/')
+            self.assertEqual(res2.status_code, 400)
+            self.assertIn('not pending approval', res2.data.get('detail', ''))
+            mock_delay.assert_not_called()
+
+    # 29. invalid and past schedule rejected
+    def test_29_invalid_and_past_schedule_rejected(self):
+        post = UnifiedPost.objects.create(
+            client=self.client_obj,
+            created_by=self.user,
+            content='Validation test',
+            media_type='text',
+            target_platforms=['instagram'],
+            status='draft',
+        )
+        # Past timestamp
+        past = (timezone.now() - timedelta(minutes=5)).isoformat()
+        res_past = self.api.post(f'/api/composer/posts/{post.id}/schedule/', {'scheduled_at': past})
+        self.assertEqual(res_past.status_code, 400)
+        self.assertIn('must be in the future', res_past.data.get('detail', ''))
+
+        # Naive datetime
+        res_naive = self.api.post(f'/api/composer/posts/{post.id}/schedule/', {'scheduled_at': '2026-10-25 15:30:00'})
+        self.assertEqual(res_naive.status_code, 400)
+        self.assertIn('timezone-aware', res_naive.data.get('detail', ''))
+
+        # Malformed
+        res_bad = self.api.post(f'/api/composer/posts/{post.id}/schedule/', {'scheduled_at': 'not-a-date'})
+        self.assertEqual(res_bad.status_code, 400)
+
+    # 30. reschedule resets approval if requires_approval
+    def test_30_reschedule_resets_approval_if_requires_approval(self):
+        self.client_obj.requires_approval = True
+        self.client_obj.save(update_fields=['requires_approval'])
+        future_time = timezone.now() + timedelta(minutes=15)
+        post = UnifiedPost.objects.create(
+            client=self.client_obj,
+            created_by=self.user,
+            content='Reschedule resets approval test',
+            media_type='text',
+            target_platforms=['instagram'],
+            status='scheduled',
+            approved_by=self.user,
+            approved_at=timezone.now() - timedelta(minutes=5),
+            scheduled_at=future_time,
+        )
+        new_future_time = future_time + timedelta(hours=2)
+        res = self.api.post(
+            f'/api/composer/posts/{post.id}/schedule/',
+            {'scheduled_at': new_future_time.isoformat()},
+        )
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data['status'], 'pending_approval')
+        self.assertIsNone(res.data['approved_by'])
+
+        post.refresh_from_db()
+        self.assertEqual(post.status, 'pending_approval')
+        self.assertIsNone(post.approved_by)
+        self.assertIsNone(post.approved_at)
+        self.assertEqual(post.scheduled_at, new_future_time)

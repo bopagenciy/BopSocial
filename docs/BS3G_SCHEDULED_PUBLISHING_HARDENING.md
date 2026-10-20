@@ -138,5 +138,81 @@ Created `backend/social_stats/tests/test_scheduled_publishing.py` with 18 compre
 
 ---
 
-### 8. Recommended Next Phase
-With Celery scheduler registration hardened and validated at runtime, the platform is ready for **BS-3G.1B: Controlled Scheduled Post Publication Pilot** (e.g. scheduled single image or scheduled story with operator authorization).
+## Phase BS-3G.1B-H1: Scheduled Approval Governance Hardening
+
+### 1. Architectural Defect Isolated
+During recovery audit for Phase BS-3G.1B, an architectural governance gap was identified between the scheduling endpoint, the approval gate, and Celery Beat:
+1. `schedule` (`POST /api/composer/posts/{id}/schedule/`): Set `status = 'scheduled'` and future `scheduled_at`, but did not set approval metadata (`approved_by = None`).
+2. `approve` (`POST /api/composer/posts/{id}/approve/`): Required `status == 'pending_approval'`, and unconditionally set `status = 'queued'` and dispatched `publish_unified_post.delay(post.id)` immediately, ignoring any future `scheduled_at`.
+3. `orchestrator.py`: Contained an approval gate (`if client.requires_approval and post.status != 'scheduled' and not post.approved_by_id:`). When `scheduler.py` atomically claimed a scheduled post at due time (`status='scheduled'` $\to$ `status='queued'`), `post.status` was `'queued'` and `approved_by_id` was `None`, tripping the approval gate into `pending_approval` and aborting publication.
+
+### 2. Canonical State Machine Specification
+
+#### Immediate Publishing Workflow (`client.requires_approval = True`)
+```
+draft ──[ publish_now ]──> pending_approval ──[ approve ]──> queued ──[ publish_unified_post ]──> published
+```
+
+#### Scheduled Publishing Workflow (`client.requires_approval = True`)
+```
+draft ──[ schedule(future) ]──> pending_approval ──[ approve ]──> scheduled ──[ scheduler claim (due) ]──> queued ──[ publish_unified_post ]──> published
+```
+
+#### No-Approval Tenant Workflow (`client.requires_approval = False`)
+```
+draft ──[ schedule(future) ]──> scheduled ──[ scheduler claim (due) ]──> queued ──[ publish_unified_post ]──> published
+```
+
+### 3. Implementation Details
+
+1. **`schedule` Endpoint Hardening (`backend/social_stats/composer_views.py`)**:
+   - Strictly validates `scheduled_at`: rejects naive datetimes, past datetimes, or malformed strings.
+   - For `client.requires_approval == True`:
+     - Sets `scheduled_at = future_dt`
+     - Sets `status = 'pending_approval'`
+     - Resets `approved_by = None`, `approved_at = None` (ensuring that rescheduling an already approved post resets approval)
+     - Dispatches `notify_approver_for_post.delay(post.id)`
+     - Zero Celery publish tasks, zero Meta calls
+   - For `client.requires_approval == False`:
+     - Sets `scheduled_at = future_dt`
+     - Sets `status = 'scheduled'`
+
+2. **`approve` Endpoint Hardening (`backend/social_stats/composer_views.py`)**:
+   - Strictly enforces `status == 'pending_approval'` (re-approving an already approved/scheduled post returns HTTP 400).
+   - Evaluates future scheduling intent canonically based on timestamp:
+     `is_future = bool(post.scheduled_at and post.scheduled_at > timezone.now())`
+   - If `is_future`:
+     - `post.approved_by = request.user`
+     - `post.approved_at = timezone.now()`
+     - `post.status = 'scheduled'`
+     - `scheduled_at` is preserved exactly
+     - Zero Celery publish dispatches; Celery Beat will pick up the post when due
+   - If immediate (`scheduled_at is None or scheduled_at <= now`):
+     - `post.approved_by = request.user`
+     - `post.approved_at = timezone.now()`
+     - `post.status = 'queued'`
+     - `post.scheduled_at = post.scheduled_at or timezone.now()`
+     - Dispatches `publish_unified_post.delay(post.id)` immediately
+
+3. **Scheduler & Orchestrator Compatibility**:
+   - `scheduler.py` queries `status='scheduled', scheduled_at <= now` and atomically claims `status='queued'`.
+   - In `orchestrator.py`, because `post.approved_by_id` is set (e.g. `5`), the approval gate passes cleanly at due time.
+   - If an unapproved post somehow enters `status='scheduled'`, `orchestrator.py` defensively detects `not post.approved_by_id` when claimed to `'queued'` and safely blocks publication by moving it to `'pending_approval'`.
+
+### 4. Verification & Automated Test Coverage
+The test suite in `backend/social_stats/tests/test_scheduled_publishing.py` was expanded from 18 to 30 tests:
+- `test_19_schedule_future_requires_approval_sets_pending_approval`: PASS
+- `test_20_future_schedule_no_immediate_publish`: PASS
+- `test_21_approve_future_post_sets_status_scheduled`: PASS
+- `test_22_approve_future_no_celery_publish_dispatch`: PASS
+- `test_23_approve_future_preserves_scheduled_at_and_audit_fields`: PASS
+- `test_24_due_approved_post_dispatched_by_scheduler`: PASS
+- `test_25_due_unapproved_post_blocked_by_orchestrator`: PASS
+- `test_26_immediate_publish_approval_regression`: PASS
+- `test_27_no_approval_tenant_future_scheduling`: PASS
+- `test_28_second_approve_safe_rejected`: PASS
+- `test_29_invalid_and_past_schedule_rejected`: PASS
+- `test_30_reschedule_resets_approval_if_requires_approval`: PASS
+
+Full regression suite: **129 tests passed in 4.704s** (0 failures, 0 errors).
+Real database baseline preserved intact: UnifiedPost=9, PlatformPublishLog=9, MediaAsset=6, Video=1. Zero live calls. Zero Post #10 created.

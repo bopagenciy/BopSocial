@@ -250,13 +250,27 @@ class UnifiedPostViewSet(TenantScopedMixin, viewsets.ModelViewSet):
             dt = parse_datetime(when)
             if dt is None:
                 raise ValueError
-        except ValueError:
+        except (ValueError, TypeError):
             return Response({'detail': 'Invalid scheduled_at — expected ISO 8601 datetime'}, status=400)
+        if timezone.is_naive(dt):
+            return Response({'detail': 'scheduled_at must be timezone-aware (ISO 8601 with offset or Z)'}, status=400)
         if dt < timezone.now():
             return Response({'detail': 'scheduled_at must be in the future'}, status=400)
+
         post.scheduled_at = dt
-        post.status = 'scheduled'
-        post.save(update_fields=['scheduled_at', 'status'])
+        if post.client and getattr(post.client, 'requires_approval', False):
+            post.status = 'pending_approval'
+            post.approved_by = None
+            post.approved_at = None
+            post.save(update_fields=['scheduled_at', 'status', 'approved_by', 'approved_at'])
+            try:
+                from .notification_watchers import notify_approver_for_post
+                notify_approver_for_post.delay(post.id)
+            except Exception:
+                logger.exception('Failed to dispatch notify_approver_for_post for post_id=%s', post.id)
+        else:
+            post.status = 'scheduled'
+            post.save(update_fields=['scheduled_at', 'status'])
         return Response(UnifiedPostSerializer(post).data)
 
     @action(detail=True, methods=['post'])
@@ -293,11 +307,21 @@ class UnifiedPostViewSet(TenantScopedMixin, viewsets.ModelViewSet):
             return Response({'detail': f'Post is not pending approval (status={post.status})'}, status=400)
         post.approved_by = request.user
         post.approved_at = timezone.now()
-        post.status = 'queued'
-        post.scheduled_at = post.scheduled_at or timezone.now()
-        post.save(update_fields=['approved_by', 'approved_at', 'status', 'scheduled_at'])
-        publish_unified_post.delay(post.id)
-        return Response(UnifiedPostSerializer(post).data)
+
+        # Canonical future scheduling intent check (scheduled_at > now)
+        is_future = bool(post.scheduled_at and post.scheduled_at > timezone.now())
+
+        if is_future:
+            post.status = 'scheduled'
+            post.save(update_fields=['approved_by', 'approved_at', 'status'])
+            # Do NOT dispatch Celery publication task; wait for scheduler tick at due time
+            return Response(UnifiedPostSerializer(post).data)
+        else:
+            post.status = 'queued'
+            post.scheduled_at = post.scheduled_at or timezone.now()
+            post.save(update_fields=['approved_by', 'approved_at', 'status', 'scheduled_at'])
+            publish_unified_post.delay(post.id)
+            return Response(UnifiedPostSerializer(post).data)
 
     @action(detail=True, methods=['post'])
     def add_to_queue(self, request, pk=None):
