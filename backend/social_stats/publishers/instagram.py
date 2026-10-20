@@ -46,6 +46,50 @@ CONTAINER_POLL_INTERVAL = 3   # seconds between polls
 CONTAINER_POLL_TIMEOUT  = 180 # max seconds to wait for video container
 
 
+def _resolve_carousel_child_kind(url: str, meta: Optional[dict] = None) -> str:
+    """
+    Resolve whether a carousel child is 'IMAGE' or 'VIDEO'.
+    Resolution priority:
+      1. Explicit media_kind from canonical MediaAsset MIME
+      2. Trusted MIME hint if available
+      3. Parsed URL path fallback for legacy callers only
+    Never uses raw URL suffix matching.
+    """
+    if meta and isinstance(meta, dict):
+        explicit_kind = (meta.get('media_kind') or meta.get('media_type') or '').upper().strip()
+        if explicit_kind:
+            if explicit_kind in ('VIDEO', 'IMAGE'):
+                return explicit_kind
+            raise PublishError(
+                f'Unsupported media_kind for carousel child: {explicit_kind}',
+                code='unsupported_media_type',
+            )
+
+        mime = (meta.get('mime_type') or '').lower().strip()
+        if mime:
+            if mime.startswith('video/'):
+                return 'VIDEO'
+            if mime.startswith('image/'):
+                return 'IMAGE'
+            raise PublishError(
+                f'Unsupported MIME type for carousel child: {mime}',
+                code='unsupported_media_type',
+            )
+
+    # Safe URL path fallback for legacy callers
+    if isinstance(url, str) and url:
+        path = urllib.parse.urlparse(url).path.lower()
+        if path.endswith(('.mp4', '.mov', '.webm')):
+            return 'VIDEO'
+        if path.endswith(('.jpg', '.jpeg', '.png')):
+            return 'IMAGE'
+
+    raise PublishError(
+        f'Could not determine canonical media type (IMAGE/VIDEO) for carousel child: {url}',
+        code='unsupported_media_type',
+    )
+
+
 class InstagramPublisher(BasePublisher):
     platform = 'instagram'
     MAX_TEXT_LENGTH = 2200      # caption cap on feed posts
@@ -174,6 +218,14 @@ class InstagramPublisher(BasePublisher):
         if len(image_urls) > 10:
             raise PublishError('IG carousel max 10 items', code='too_many_media')
 
+        children_metadata = kwargs.get('children_metadata') or kwargs.get('media_items')
+        if children_metadata is not None:
+            if len(children_metadata) != len(image_urls):
+                raise PublishError(
+                    f'Carousel media metadata count ({len(children_metadata)}) does not match URL count ({len(image_urls)})',
+                    code='media_count_mismatch',
+                )
+
         from ..media_service import validate_media_url_for_provider
         for url in image_urls:
             validate_media_url_for_provider(url, 'instagram', lang=kwargs.get('lang', 'en'))
@@ -182,19 +234,23 @@ class InstagramPublisher(BasePublisher):
 
         # 1. Create children (each with is_carousel_item=true)
         children = []
-        for url in image_urls:
-            is_video = str(url).lower().endswith(('.mp4', '.mov', '.webm'))
+        for i, url in enumerate(image_urls):
+            meta = children_metadata[i] if children_metadata else None
+            child_kind = _resolve_carousel_child_kind(url, meta)
             data = {'is_carousel_item': 'true'}
-            if is_video:
+            if child_kind == 'VIDEO':
                 data['media_type'] = 'VIDEO'
                 data['video_url'] = url
-            else:
+            elif child_kind == 'IMAGE':
                 data['image_url'] = url
+            else:
+                raise PublishError(f'Unsupported child kind: {child_kind}', code='unsupported_media_type')
+
             child_body = client.post(f'/{credential.instagram_account_id}/media', data=data)
             cid = child_body.get('id')
             if not cid:
                 raise PublishError('IG carousel child missing id', raw=child_body)
-            if is_video:
+            if child_kind == 'VIDEO':
                 self._wait_for_container_ready(credential, cid)
             children.append(cid)
 

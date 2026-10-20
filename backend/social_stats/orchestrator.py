@@ -241,7 +241,14 @@ def _dispatch_publish(publisher, credential, content, media_urls, media_type, *,
         first = media_urls[0] if media_urls else ''
         return publisher.publish_video(credential, content, first)
     if media_type == 'carousel':
-        return publisher.publish_carousel(credential, content, media_urls)
+        raw_urls = (post.platform_overrides or {}).get(publisher.platform, {}).get('media_urls') or post.media_urls
+        children_metadata = _resolve_carousel_children(post, raw_urls, media_urls)
+        return publisher.publish_carousel(
+            credential,
+            content,
+            media_urls,
+            children_metadata=children_metadata,
+        )
     if media_type == 'reel':
         first = media_urls[0] if media_urls else ''
         return publisher.publish_reel(credential, first, content)
@@ -256,6 +263,79 @@ def _dispatch_publish(publisher, credential, content, media_urls, media_type, *,
         return publisher.publish_story(credential, first, media_type=media_kind, media_kind=media_kind)
 
     raise PublishError(f'Unknown media_type: {media_type}', code='unknown_media_type')
+
+
+def _resolve_carousel_children(post: UnifiedPost, raw_urls: list, resolved_urls: list) -> list[dict]:
+    """
+    Build ordered canonical child metadata pairing resolved provider URLs
+    with explicit media_kind ('IMAGE' or 'VIDEO') based on MediaAsset.mime_type.
+    """
+    raw_urls = raw_urls or []
+    resolved_urls = resolved_urls or []
+    if len(raw_urls) != len(resolved_urls):
+        raise PublishError(
+            f'Carousel media metadata count ({len(raw_urls)}) does not match URL count ({len(resolved_urls)})',
+            code='media_count_mismatch',
+        )
+
+    asset_ids = []
+    for u in raw_urls:
+        if isinstance(u, str) and u.startswith('asset:'):
+            try:
+                asset_ids.append(int(u.split(':', 1)[1]))
+            except (ValueError, IndexError):
+                pass
+
+    asset_map = {}
+    if asset_ids:
+        qs = MediaAsset.objects.filter(id__in=asset_ids, client=post.client)
+        asset_map = {a.id: a for a in qs}
+
+    children = []
+    for raw, url in zip(raw_urls, resolved_urls):
+        asset = None
+        if isinstance(raw, str) and raw.startswith('asset:'):
+            try:
+                aid = int(raw.split(':', 1)[1])
+                asset = asset_map.get(aid)
+            except (ValueError, IndexError):
+                pass
+
+        if asset and asset.mime_type:
+            mime = asset.mime_type.lower().strip()
+            if mime.startswith('video/'):
+                media_kind = 'VIDEO'
+            elif mime.startswith('image/'):
+                media_kind = 'IMAGE'
+            else:
+                raise PublishError(
+                    f'Unsupported carousel media MIME type: {asset.mime_type}',
+                    code='unsupported_media_type',
+                )
+            children.append({
+                'url': url,
+                'media_kind': media_kind,
+                'mime_type': asset.mime_type,
+                'asset_id': asset.id,
+            })
+        else:
+            # Safe URL fallback for legacy bare URLs
+            path = urllib.parse.urlparse(str(url)).path.lower()
+            if path.endswith(('.mp4', '.mov', '.webm')):
+                media_kind = 'VIDEO'
+            elif path.endswith(('.jpg', '.jpeg', '.png')):
+                media_kind = 'IMAGE'
+            else:
+                raise PublishError(
+                    f'Could not determine canonical media type (IMAGE/VIDEO) for carousel item: {url}',
+                    code='unsupported_media_type',
+                )
+            children.append({
+                'url': url,
+                'media_kind': media_kind,
+            })
+
+    return children
 
 
 def _resolve_story_media_kind(post: UnifiedPost, raw_urls: list) -> str:
