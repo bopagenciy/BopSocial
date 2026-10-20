@@ -229,6 +229,9 @@ def validate_for_platform(asset: MediaAsset, platform: str, post_type: str) -> V
     result = ValidationResult(ok=True, errors=[], warnings=[])
 
     rules = (PLATFORM_LIMITS.get(platform) or {}).get(post_type)
+    if not rules and post_type == 'carousel':
+        effective_type = 'video' if (getattr(asset, 'mime_type', '') or '').startswith('video/') else 'image'
+        rules = (PLATFORM_LIMITS.get(platform) or {}).get(effective_type)
     if not rules:
         result.add_warning(f'No validation rules defined for {platform}/{post_type}')
         return result
@@ -272,6 +275,86 @@ def validate_for_platform(asset: MediaAsset, platform: str, post_type: str) -> V
     return result
 
 
+
+
+def validate_carousel_for_platform(
+    assets: list[Any],
+    platform: str,
+    *,
+    lang: str = 'en',
+) -> ValidationResult:
+    """
+    Validate a sequence of assets for carousel publishing on the given platform.
+
+    Enforces:
+      - Item count limits (2 to 10 items for Instagram).
+      - Per-item format/size/dimension validation.
+      - Uniform aspect ratio across all items (comparing ratios with <= 0.01 tolerance).
+      - Strict blocking if dimensions cannot be determined (e.g. video without metadata).
+
+    Returns ValidationResult; never raises.
+    """
+    result = ValidationResult(ok=True, errors=[], warnings=[])
+    plat = (platform or '').lower()
+    from .locale_helpers import get_media_error_message
+
+    if plat == 'instagram':
+        # 1. Count validation: 2 to 10 items
+        if len(assets) < 2:
+            result.add_error(get_media_error_message('carousel_too_few_items', plat, lang=lang))
+        elif len(assets) > 10:
+            result.add_error(get_media_error_message('carousel_too_many_items', plat, lang=lang))
+
+        # 2. Individual asset validation
+        for asset in assets:
+            vr = validate_for_platform(asset, plat, 'carousel')
+            for e in vr.errors:
+                aid = getattr(asset, 'id', None)
+                result.add_error(f'asset#{aid}: {e}' if aid else e)
+            for w in vr.warnings:
+                aid = getattr(asset, 'id', None)
+                result.add_warning(f'asset#{aid}: {w}' if aid else w)
+
+        # 3. Uniform aspect ratio validation
+        if len(assets) >= 1:
+            first = assets[0]
+            f_w = getattr(first, 'width', None)
+            f_h = getattr(first, 'height', None)
+            f_mime = getattr(first, 'mime_type', '') or ''
+            if not f_w or not f_h or f_h <= 0:
+                if f_mime.startswith('video/'):
+                    result.add_error(get_media_error_message('carousel_video_dimensions_unknown', plat, lang=lang))
+                result.add_error(get_media_error_message('carousel_aspect_uniformity', plat, lang=lang))
+            else:
+                base_ar = f_w / f_h
+                for asset in assets[1:]:
+                    a_w = getattr(asset, 'width', None)
+                    a_h = getattr(asset, 'height', None)
+                    a_mime = getattr(asset, 'mime_type', '') or ''
+                    if not a_w or not a_h or a_h <= 0:
+                        if a_mime.startswith('video/'):
+                            result.add_error(get_media_error_message('carousel_video_dimensions_unknown', plat, lang=lang))
+                        result.add_error(get_media_error_message('carousel_aspect_uniformity', plat, lang=lang))
+                        break
+                    ar = a_w / a_h
+                    if abs(ar - base_ar) > 0.01:
+                        result.add_error(get_media_error_message('carousel_aspect_uniformity', plat, lang=lang))
+                        break
+    else:
+        if len(assets) < 2:
+            result.add_error(f'A {platform} carousel requires at least 2 items.')
+        for asset in assets:
+            vr = validate_for_platform(asset, plat, 'carousel')
+            for e in vr.errors:
+                aid = getattr(asset, 'id', None)
+                result.add_error(f'asset#{aid}: {e}' if aid else e)
+            for w in vr.warnings:
+                aid = getattr(asset, 'id', None)
+                result.add_warning(f'asset#{aid}: {w}' if aid else w)
+
+    return result
+
+
 def transcode_for_platform(asset: MediaAsset, platform: str, post_type: str) -> MediaAsset:
     """
     Best-effort transcoder. Currently:
@@ -282,7 +365,10 @@ def transcode_for_platform(asset: MediaAsset, platform: str, post_type: str) -> 
     Returns the (possibly new) MediaAsset. Real per-platform transcoding will
     expand here in this.
     """
-    rules = (PLATFORM_LIMITS.get(platform) or {}).get(post_type) or {}
+    rules = (PLATFORM_LIMITS.get(platform) or {}).get(post_type)
+    if not rules and post_type == 'carousel':
+        effective_type = 'video' if (getattr(asset, 'mime_type', '') or '').startswith('video/') else 'image'
+        rules = (PLATFORM_LIMITS.get(platform) or {}).get(effective_type) or {}
     max_bytes = rules.get('max_bytes')
 
     # Image: re-compress JPEG/PNG until under max_bytes.

@@ -479,6 +479,22 @@ MEDIA_ERROR_COPY = {
         'en': 'Media validation failed for {platform}: {reason}',
         'es': 'Error de validación del archivo multimedia para {platform}: {reason}',
     },
+    'carousel_aspect_uniformity': {
+        'en': 'All Instagram carousel items must use the same aspect ratio.',
+        'es': 'Todos los elementos del carrusel de Instagram deben usar la misma proporción.',
+    },
+    'carousel_video_dimensions_unknown': {
+        'en': 'Video dimensions could not be verified for Instagram carousel.',
+        'es': 'No se pudieron verificar las dimensiones del video para el carrusel de Instagram.',
+    },
+    'carousel_too_few_items': {
+        'en': 'An Instagram carousel requires at least 2 items.',
+        'es': 'Un carrusel de Instagram requiere al menos 2 elementos.',
+    },
+    'carousel_too_many_items': {
+        'en': 'An Instagram carousel cannot exceed 10 items.',
+        'es': 'Un carrusel de Instagram no puede exceder los 10 elementos.',
+    },
 }
 
 

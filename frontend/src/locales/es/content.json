@@ -82,7 +82,8 @@
       "carousel": "Carrusel",
       "reel": "Reel",
       "story": "Historia"
-    }
+    },
+    "carousel_aspect_uniformity_error": "Todos los elementos del carrusel de Instagram deben usar la misma proporción."
   },
   "calendar": {
     "title": "Calendario",

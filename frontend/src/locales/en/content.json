@@ -82,7 +82,8 @@
       "carousel": "Carousel",
       "reel": "Reel",
       "story": "Story"
-    }
+    },
+    "carousel_aspect_uniformity_error": "All Instagram carousel items must use the same aspect ratio."
   },
   "calendar": {
     "title": "Calendar",

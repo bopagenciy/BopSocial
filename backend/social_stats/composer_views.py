@@ -171,6 +171,25 @@ class UnifiedPostViewSet(TenantScopedMixin, viewsets.ModelViewSet):
                 status=400,
             )
 
+        # Validate Instagram carousel before gating or dispatching
+        if (post.media_type or '').lower() == 'carousel' and 'instagram' in (post.target_platforms or []):
+            asset_ids = []
+            for u in (post.media_urls or []):
+                if isinstance(u, str) and u.startswith('asset:'):
+                    try:
+                        asset_ids.append(int(u.split(':', 1)[1]))
+                    except (ValueError, IndexError):
+                        pass
+            asset_qs = MediaAsset.objects.filter(id__in=asset_ids, client=post.client)
+            asset_map = {a.id: a for a in asset_qs}
+            post_assets = [asset_map[aid] for aid in asset_ids if aid in asset_map]
+            from .locale_helpers import resolve_user_language
+            lang = resolve_user_language(request.user, post.client)
+            c_vr = media_service.validate_carousel_for_platform(post_assets, 'instagram', lang=lang)
+            if not c_vr.ok:
+                return Response({'detail': c_vr.errors[0]}, status=400)
+
+
         # Marketplace gate (): if the actor is agency-side, must hold
         # the publish_posts permission; if it's flagged for approval, intercept.
         verdict, ctx = check_action(
@@ -467,11 +486,26 @@ class PreflightCheckView(APIView):
 
         # Resolve referenced MediaAssets within this tenant for size/format checks
         client_id = self._resolve_client_id(request, data)
+        if not media_asset_ids and media_urls:
+            for u in media_urls:
+                if isinstance(u, str) and u.startswith('asset:'):
+                    try:
+                        media_asset_ids.append(int(u.split(':', 1)[1]))
+                    except (ValueError, IndexError):
+                        pass
+
         assets = []
         if media_asset_ids and client_id:
-            assets = list(MediaAsset.objects.filter(
+            asset_qs = MediaAsset.objects.filter(
                 id__in=media_asset_ids, client_id=client_id,
-            ))
+            )
+            asset_map = {a.id: a for a in asset_qs}
+            assets = [asset_map[aid] for aid in media_asset_ids if aid in asset_map]
+
+        from .locale_helpers import resolve_user_language
+        from .models import Client
+        client = Client.objects.filter(id=client_id).first() if client_id else None
+        lang = resolve_user_language(getattr(request, 'user', None), client)
 
         results = {}
         any_block = False
@@ -496,13 +530,20 @@ class PreflightCheckView(APIView):
                 any_block = True
                 continue
 
-            # Per-asset platform validation
-            for asset in assets:
-                vr = media_service.validate_for_platform(asset, platform, p_media_type)
-                if vr.errors:
-                    errors.extend([f'asset#{asset.id}: {e}' for e in vr.errors])
-                if vr.warnings:
-                    warnings.extend([f'asset#{asset.id}: {w}' for w in vr.warnings])
+            # Platform asset validation
+            if p_media_type == 'carousel':
+                c_vr = media_service.validate_carousel_for_platform(assets, platform, lang=lang)
+                if c_vr.errors:
+                    errors.extend(c_vr.errors)
+                if c_vr.warnings:
+                    warnings.extend(c_vr.warnings)
+            else:
+                for asset in assets:
+                    vr = media_service.validate_for_platform(asset, platform, p_media_type)
+                    if vr.errors:
+                        errors.extend([f'asset#{asset.id}: {e}' for e in vr.errors])
+                    if vr.warnings:
+                        warnings.extend([f'asset#{asset.id}: {w}' for w in vr.warnings])
 
             # Active credential check
             if client_id:

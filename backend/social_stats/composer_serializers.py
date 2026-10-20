@@ -123,6 +123,15 @@ class UnifiedPostSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 {'media_urls': 'At least one media URL is required for non-text posts'}
             )
+        if media_type == 'carousel':
+            if len(media_urls) < 2:
+                raise serializers.ValidationError(
+                    {'media_urls': 'An Instagram carousel requires at least 2 items.'}
+                )
+            if len(media_urls) > 10:
+                raise serializers.ValidationError(
+                    {'media_urls': 'An Instagram carousel cannot exceed 10 items.'}
+                )
         return attrs
 
 

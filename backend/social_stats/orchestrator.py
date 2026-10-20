@@ -141,6 +141,26 @@ def publish_to_platform(self, unified_post_id: int, platform: str):
         update_unified_post_status(post.id)
         return
 
+    # Defense-in-depth: validate Instagram carousel uniformity before any Meta calls
+    if platform == 'instagram' and media_type == 'carousel':
+        asset_ids = []
+        raw_urls = overrides.get('media_urls', post.media_urls) or []
+        for u in raw_urls:
+            if isinstance(u, str) and u.startswith('asset:'):
+                try:
+                    asset_ids.append(int(u.split(':', 1)[1]))
+                except (ValueError, IndexError):
+                    pass
+        asset_qs = MediaAsset.objects.filter(id__in=asset_ids, client=post.client)
+        asset_map = {a.id: a for a in asset_qs}
+        post_assets = [asset_map[aid] for aid in asset_ids if aid in asset_map]
+        lang = getattr(post.client, 'default_language', 'en') or 'en'
+        c_vr = media_service.validate_carousel_for_platform(post_assets, 'instagram', lang=lang)
+        if not c_vr.ok:
+            _mark_failed(log, code='invalid_carousel_aspect_ratio', message=c_vr.errors[0])
+            update_unified_post_status(post.id)
+            return
+
     try:
         result = _dispatch_publish(publisher, cred, content, media_urls, media_type, post=post)
     except TokenExpiredError as e:
