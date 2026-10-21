@@ -11,6 +11,7 @@ from django.db import models
 from django.db import transaction
 from django.contrib.auth.models import User
 from django.utils import timezone
+from django.core.exceptions import ValidationError
 from datetime import timedelta
 from .currencies import CURRENCY_CHOICES
 from .fields import EncryptedTextField
@@ -385,6 +386,9 @@ class PlatformCredential(models.Model):
         default='oauth',
     )
 
+    # BS-4B: Rate limit quota state (stores non-secret provider quota metrics, usage %, cooldowns)
+    rate_limit_state = models.JSONField(default=dict, blank=True)
+
     class Meta:
         unique_together = ('client', 'platform')
         ordering = ['platform']
@@ -515,6 +519,8 @@ class PostMetric(models.Model):
     client        = models.ForeignKey(Client, on_delete=models.CASCADE, related_name='post_metrics')
     platform      = models.CharField(max_length=30, choices=PLATFORM_CHOICES)
     post_id       = models.CharField(max_length=300)
+    # BS-4B: Optional prospective linkage to Bop Social authored UnifiedPost
+    unified_post  = models.ForeignKey('social_stats.UnifiedPost', on_delete=models.SET_NULL, null=True, blank=True, related_name='legacy_post_metrics')
     post_url      = models.TextField(blank=True)
     post_type     = models.CharField(max_length=50, blank=True)
     caption       = models.TextField(blank=True)
@@ -2020,6 +2026,158 @@ class PostEngagement(models.Model):
 
     def __str__(self):
         return f"Engagement — {self.publish_log}"
+
+
+# ── Canonical Analytics Foundation (BS-4B) ───────────────────────────────────
+
+METRIC_SCOPE_CHOICES = [
+    ('account',  'Account / Page'),
+    ('post',     'Post / Media'),
+    ('story',    'Story'),
+    ('reel',     'Reel'),
+    ('video',    'Video'),
+    ('campaign', 'Campaign / Tag'),
+]
+
+BUCKET_PERIOD_CHOICES = [
+    ('hour',     'Hour'),
+    ('day',      'Day'),
+    ('month',    'Month'),
+    ('lifetime', 'Lifetime'),
+]
+
+ROLLUP_PERIOD_CHOICES = [
+    ('day',   'Day'),
+    ('week',  'Week'),
+    ('month', 'Month'),
+    ('year',  'Year'),
+]
+
+FRESHNESS_STATE_CHOICES = [
+    ('FRESH',       'Fresh'),
+    ('AGING',       'Aging'),
+    ('STALE',       'Stale'),
+    ('UNAVAILABLE', 'Unavailable'),
+]
+
+
+class SocialMetricSnapshot(models.Model):
+    """
+    Durable, idempotent observation snapshot for social analytics telemetry.
+    Supports provider-native raw metrics, canonical normalized metrics,
+    deterministic dimension hashing, and optional UnifiedPost linking.
+    """
+    client        = models.ForeignKey(Client, on_delete=models.CASCADE, related_name='metric_snapshots', db_index=True)
+    platform      = models.CharField(max_length=30, choices=PLATFORM_CHOICES, db_index=True)
+    account_id    = models.CharField(max_length=120, blank=True, db_index=True)
+    metric_scope  = models.CharField(max_length=20, choices=METRIC_SCOPE_CHOICES, db_index=True)
+    object_id     = models.CharField(max_length=255, db_index=True)
+
+    unified_post  = models.ForeignKey(
+        'social_stats.UnifiedPost',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='metric_snapshots',
+    )
+    publish_log   = models.ForeignKey(
+        'social_stats.PlatformPublishLog',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='metric_snapshots',
+    )
+
+    raw_metric_name   = models.CharField(max_length=100)
+    normalized_metric = models.CharField(max_length=60, db_index=True)
+    metric_value      = models.DecimalField(max_digits=20, decimal_places=4, default=0)
+
+    extra_dimensions  = models.JSONField(default=dict, blank=True)
+    dimensions_hash   = models.CharField(max_length=64, default='', db_index=True)
+
+    bucket_period     = models.CharField(max_length=20, choices=BUCKET_PERIOD_CHOICES, default='day')
+    bucket_timestamp  = models.DateTimeField(db_index=True)
+
+    provider_timestamp = models.DateTimeField(null=True, blank=True)
+    captured_at        = models.DateTimeField(auto_now_add=True, db_index=True)
+    updated_at         = models.DateTimeField(auto_now=True)
+
+    freshness_state    = models.CharField(max_length=20, choices=FRESHNESS_STATE_CHOICES, default='FRESH')
+    is_derived         = models.BooleanField(default=False)
+    metadata           = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        ordering = ['-bucket_timestamp']
+        unique_together = (
+            'client',
+            'platform',
+            'metric_scope',
+            'object_id',
+            'normalized_metric',
+            'dimensions_hash',
+            'bucket_period',
+            'bucket_timestamp',
+        )
+        indexes = [
+            models.Index(fields=['client', 'platform', 'bucket_timestamp']),
+            models.Index(fields=['client', 'normalized_metric', 'bucket_timestamp']),
+            models.Index(fields=['platform', 'object_id']),
+            models.Index(fields=['unified_post']),
+        ]
+
+    def __str__(self):
+        return f"{self.client_id} | {self.platform} | {self.normalized_metric} = {self.metric_value} ({self.bucket_period} @ {self.bucket_timestamp:%Y-%m-%d %H:%M})"
+
+    def clean(self):
+        super().clean()
+        if self.unified_post_id and self.unified_post.client_id != self.client_id:
+            raise ValidationError("unified_post must belong to the same client as snapshot.")
+        if self.publish_log_id and self.publish_log.unified_post.client_id != self.client_id:
+            raise ValidationError("publish_log must belong to the same client as snapshot.")
+
+
+class SocialMetricRollup(models.Model):
+    """
+    Materialized, derivable rollup cache for high-speed client dashboard queries.
+    Always rebuildable from SocialMetricSnapshot source-of-truth observations.
+    """
+    client        = models.ForeignKey(Client, on_delete=models.CASCADE, related_name='metric_rollups', db_index=True)
+    platform      = models.CharField(max_length=30, choices=PLATFORM_CHOICES, db_index=True)
+    metric_scope  = models.CharField(max_length=20, choices=METRIC_SCOPE_CHOICES, db_index=True)
+    object_id     = models.CharField(max_length=255, blank=True, default='', db_index=True)
+
+    normalized_metric = models.CharField(max_length=60, db_index=True)
+    dimensions_hash   = models.CharField(max_length=64, default='', db_index=True)
+
+    period        = models.CharField(max_length=20, choices=ROLLUP_PERIOD_CHOICES)
+    period_start  = models.DateField(db_index=True)
+
+    metric_value  = models.DecimalField(max_digits=20, decimal_places=4, default=0)
+    extra_dimensions = models.JSONField(default=dict, blank=True)
+    sample_count  = models.IntegerField(default=1)
+
+    computed_at   = models.DateTimeField(auto_now=True)
+    metadata      = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        ordering = ['-period_start']
+        unique_together = (
+            'client',
+            'platform',
+            'metric_scope',
+            'object_id',
+            'normalized_metric',
+            'dimensions_hash',
+            'period',
+            'period_start',
+        )
+        indexes = [
+            models.Index(fields=['client', 'platform', 'period', 'period_start']),
+            models.Index(fields=['client', 'normalized_metric', 'period_start']),
+        ]
+
+    def __str__(self):
+        return f"{self.client_id} | {self.platform} | {self.normalized_metric} = {self.metric_value} ({self.period} @ {self.period_start})"
 
 
 class PostQueue(models.Model):

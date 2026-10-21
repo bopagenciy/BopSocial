@@ -8,6 +8,7 @@
 # ============================================================================
 from django.contrib import admin
 from .models import (
+    SocialMetricSnapshot, SocialMetricRollup,
     Client, UserProfile, PlatformCredential, DailyMetric, PostMetric, SyncLog,
     ROISettings, ROIReport,
     CalendarPost, CalendarNote, PostingSchedule, SiteContent, LookupCollection, LookupItem,
@@ -103,3 +104,21 @@ class LookupCollectionAdmin(admin.ModelAdmin):
     search_fields = ['key', 'title']
     list_filter = ['is_public']
     inlines = [LookupItemInline]
+
+
+@admin.register(SocialMetricSnapshot)
+class SocialMetricSnapshotAdmin(admin.ModelAdmin):
+    list_display = ['client', 'platform', 'metric_scope', 'object_id', 'normalized_metric', 'metric_value', 'bucket_period', 'bucket_timestamp', 'freshness_state']
+    list_filter = ['platform', 'metric_scope', 'normalized_metric', 'bucket_period', 'freshness_state']
+    search_fields = ['client__company', 'object_id', 'normalized_metric', 'raw_metric_name']
+    raw_id_fields = ['client', 'unified_post', 'publish_log']
+    readonly_fields = ['dimensions_hash', 'captured_at', 'updated_at']
+
+
+@admin.register(SocialMetricRollup)
+class SocialMetricRollupAdmin(admin.ModelAdmin):
+    list_display = ['client', 'platform', 'metric_scope', 'object_id', 'normalized_metric', 'period', 'period_start', 'metric_value']
+    list_filter = ['platform', 'metric_scope', 'normalized_metric', 'period']
+    search_fields = ['client__company', 'object_id', 'normalized_metric']
+    raw_id_fields = ['client']
+    readonly_fields = ['computed_at']
