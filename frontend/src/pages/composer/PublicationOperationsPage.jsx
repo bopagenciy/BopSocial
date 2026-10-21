@@ -151,6 +151,8 @@ export default function PublicationOperationsPage() {
         toast.success(`Meta confirmed ${platform} published successfully!`);
       } else if (outcome === 'CONFIRMED_NOT_PUBLISHED') {
         toast.success(`Meta confirmed ${platform} was NOT published. Platform is now eligible for retry.`);
+      } else if (outcome === 'READY_TO_PUBLISH_UNCONFIRMED') {
+        toast('Container is ready on Meta, but publication is not confirmed. Manual verification required.', { icon: '⚠️' });
       } else if (outcome === 'STILL_PROCESSING') {
         toast('Media container is still processing on Meta servers.', { icon: '⏳' });
       } else {
@@ -619,7 +621,18 @@ export default function PublicationOperationsPage() {
 
                             {p.reconciliation_status && (
                               <div style={{ fontSize: 12, color: '#4b5563', marginTop: 4 }}>
-                                Last Reconciliation: <strong>{p.reconciliation_status}</strong>
+                                Last Reconciliation:{' '}
+                                <strong>
+                                  {p.reconciliation_status === 'READY_TO_PUBLISH_UNCONFIRMED'
+                                    ? 'Container Ready — Publication Not Confirmed'
+                                    : p.reconciliation_status === 'CONFIRMED_PUBLISHED'
+                                    ? 'Confirmed Published'
+                                    : p.reconciliation_status === 'CONFIRMED_NOT_PUBLISHED'
+                                    ? 'Confirmed Not Published'
+                                    : p.reconciliation_status === 'STILL_PROCESSING'
+                                    ? 'Still Processing on Provider'
+                                    : p.reconciliation_status}
+                                </strong>
                               </div>
                             )}
 

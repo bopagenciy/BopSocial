@@ -1,5 +1,5 @@
 # ============================================================================
-#  Social Stats — BS-3J Provider Reconciliation Test Suite
+#  Social Stats — BS-3J / BS-3J.1 Provider Reconciliation Test Suite
 # ============================================================================
 import json
 from datetime import timedelta
@@ -25,8 +25,9 @@ from social_stats.publication_ops import (
 from social_stats.reconciliation import (
     OUTCOME_AMBIGUOUS, OUTCOME_CONFIRMED_NOT_PUBLISHED,
     OUTCOME_CONFIRMED_PUBLISHED, OUTCOME_PROVIDER_ERROR,
-    OUTCOME_RECONCILIATION_UNAVAILABLE, OUTCOME_STILL_PROCESSING,
-    FacebookReconciliationAdapter, InstagramReconciliationAdapter,
+    OUTCOME_READY_TO_PUBLISH_UNCONFIRMED, OUTCOME_RECONCILIATION_UNAVAILABLE,
+    OUTCOME_STILL_PROCESSING, FacebookReconciliationAdapter,
+    InstagramReconciliationAdapter,
 )
 from social_stats.publishers import PublishResult, PublishError
 
@@ -34,7 +35,7 @@ User = get_user_model()
 
 
 class ProviderReconciliationTests(TestCase):
-    """Exhaustive test suite for ambiguous publish reconciliation (BS-3J)."""
+    """Exhaustive test suite for ambiguous publish reconciliation (BS-3J / BS-3J.1)."""
 
     def setUp(self):
         uid = f"{id(self)}_{timezone.now().timestamp()}".replace('.', '_')
@@ -86,19 +87,16 @@ class ProviderReconciliationTests(TestCase):
         self.api = APIClient()
         self.api.force_authenticate(user=self.user)
 
-    # ── 1. Instagram Ambiguous + Container FINISHED -> Confirmed Published ─
+    # ── 1. Instagram FINISHED Does NOT Become Success (BS-3J.1) ───────────
     @patch('social_stats.reconciliation.GraphClient')
-    def test_instagram_finished_container_confirms_published(self, mock_client_cls):
+    def test_instagram_finished_does_not_become_success(self, mock_client_cls):
         mock_client = MagicMock()
-        mock_client.get.side_effect = [
-            {'status_code': 'FINISHED', 'id': 'cont_999'},  # Container query
-            {'data': [{'id': 'ig_post_888', 'caption': 'Test post'}]},  # Media query
-        ]
+        mock_client.get.return_value = {'status_code': 'FINISHED', 'id': 'cont_999'}
         mock_client_cls.return_value = mock_client
 
         post = UnifiedPost.objects.create(
             client=self.client_a,
-            content='Test post',
+            content='Test post for FINISHED container',
             target_platforms=['instagram'],
             status='publishing',
             created_by=self.user,
@@ -113,15 +111,180 @@ class ProviderReconciliationTests(TestCase):
 
         res = reconcile_platform_publication(post.id, 'instagram', user=self.user)
         self.assertTrue(res['success'])
+        self.assertEqual(res['outcome'], OUTCOME_READY_TO_PUBLISH_UNCONFIRMED)
+        self.assertFalse(res['safe_to_retry'])
+        self.assertIsNone(res.get('provider_post_id'))
+
+        log.refresh_from_db()
+        self.assertEqual(log.status, 'publishing', 'FINISHED must not transition log to success')
+        self.assertEqual(log.platform_post_id, '', 'FINISHED must not populate platform_post_id')
+        self.assertEqual(log.reconciliation_status, OUTCOME_READY_TO_PUBLISH_UNCONFIRMED)
+
+        # Non-retryable
+        eval_res = classify_platform_target(post, 'instagram', log)
+        self.assertFalse(eval_res['can_retry'])
+
+        retry_res = retry_failed_platform(post.id, 'instagram', user=self.user)
+        self.assertFalse(retry_res['success'])
+
+        # Read-only verification
+        mock_client.post.assert_not_called()
+
+    # ── 2. Instagram PUBLISHED Confirms Published (BS-3J.1) ─────────────────
+    @patch('social_stats.reconciliation.GraphClient')
+    def test_instagram_published_confirms_published(self, mock_client_cls):
+        mock_client = MagicMock()
+        mock_client.get.return_value = {'status_code': 'PUBLISHED', 'id': 'cont_pub_123'}
+        mock_client_cls.return_value = mock_client
+
+        post = UnifiedPost.objects.create(
+            client=self.client_a,
+            content='Test post for PUBLISHED container',
+            target_platforms=['instagram'],
+            status='publishing',
+            created_by=self.user,
+        )
+        log = PlatformPublishLog.objects.create(
+            unified_post=post,
+            platform='instagram',
+            status='publishing',
+            provider_container_id='cont_pub_123',
+            attempted_at=timezone.now() - timedelta(minutes=20),
+        )
+
+        res = reconcile_platform_publication(post.id, 'instagram', user=self.user)
+        self.assertTrue(res['success'])
         self.assertEqual(res['outcome'], OUTCOME_CONFIRMED_PUBLISHED)
-        self.assertEqual(res['provider_post_id'], 'ig_post_888')
+        self.assertFalse(res['safe_to_retry'])
 
         log.refresh_from_db()
         self.assertEqual(log.status, 'success')
-        self.assertEqual(log.platform_post_id, 'ig_post_888')
         self.assertEqual(log.reconciliation_status, OUTCOME_CONFIRMED_PUBLISHED)
 
-    # ── 2. Confirmed Published Never Retried ────────────────────────────────
+        # Retry permanently blocked
+        eval_res = classify_platform_target(post, 'instagram', log)
+        self.assertEqual(eval_res['state'], PLATFORM_SUCCESS)
+        self.assertFalse(eval_res['can_retry'])
+        self.assertTrue(eval_res['is_immutable'])
+
+        retry_res = retry_failed_platform(post.id, 'instagram', user=self.user)
+        self.assertFalse(retry_res['success'])
+        self.assertIn('already published successfully', retry_res['error'])
+
+    # ── 3. Instagram PUBLISHED Does Not Fabricate Media ID from Container ID ─
+    @patch('social_stats.reconciliation.GraphClient')
+    def test_instagram_published_does_not_fabricate_media_id_from_container(self, mock_client_cls):
+        mock_client = MagicMock()
+        mock_client.get.return_value = {'status_code': 'PUBLISHED', 'id': 'cont_pub_789'}
+        mock_client_cls.return_value = mock_client
+
+        post = UnifiedPost.objects.create(
+            client=self.client_a,
+            content='No media ID on container',
+            target_platforms=['instagram'],
+            status='publishing',
+        )
+        log = PlatformPublishLog.objects.create(
+            unified_post=post,
+            platform='instagram',
+            status='publishing',
+            provider_container_id='cont_pub_789',
+            platform_post_id='',
+            attempted_at=timezone.now() - timedelta(minutes=20),
+        )
+
+        reconcile_platform_publication(post.id, 'instagram', user=self.user)
+        log.refresh_from_db()
+        self.assertEqual(log.status, 'success')
+        # Crucial check: container ID is NOT media ID
+        self.assertEqual(log.platform_post_id, '', 'Must not set platform_post_id to container ID or guess')
+
+    # ── 4. Heuristic Caption Matching is NOT Performed (BS-3J.1) ───────────
+    @patch('social_stats.reconciliation.GraphClient')
+    def test_heuristic_caption_matching_is_not_performed(self, mock_client_cls):
+        mock_client = MagicMock()
+        mock_client.get.return_value = {'status_code': 'FINISHED', 'id': 'cont_no_heuristic'}
+        mock_client_cls.return_value = mock_client
+
+        post = UnifiedPost.objects.create(
+            client=self.client_a,
+            content='Heuristic probe post',
+            target_platforms=['instagram'],
+            status='publishing',
+        )
+        PlatformPublishLog.objects.create(
+            unified_post=post,
+            platform='instagram',
+            status='publishing',
+            provider_container_id='cont_no_heuristic',
+            attempted_at=timezone.now() - timedelta(minutes=20),
+        )
+
+        reconcile_platform_publication(post.id, 'instagram', user=self.user)
+
+        # Verify only the container endpoint was queried, never recent media
+        self.assertEqual(mock_client.get.call_count, 1)
+        endpoint_called = mock_client.get.call_args[0][0]
+        self.assertEqual(endpoint_called, '/cont_no_heuristic')
+        self.assertNotIn('/media', endpoint_called)
+
+    # ── 5. Duplicate Caption Candidates Cannot Affect Outcome ─────────────
+    @patch('social_stats.reconciliation.GraphClient')
+    def test_duplicate_caption_candidates_cannot_affect_outcome(self, mock_client_cls):
+        mock_client = MagicMock()
+        mock_client.get.return_value = {'status_code': 'FINISHED', 'id': 'cont_dup'}
+        mock_client_cls.return_value = mock_client
+
+        # Create multiple posts with identical content
+        UnifiedPost.objects.create(
+            client=self.client_a,
+            content='Duplicate caption test',
+            target_platforms=['instagram'],
+            status='published',
+        )
+        post = UnifiedPost.objects.create(
+            client=self.client_a,
+            content='Duplicate caption test',
+            target_platforms=['instagram'],
+            status='publishing',
+        )
+        PlatformPublishLog.objects.create(
+            unified_post=post,
+            platform='instagram',
+            status='publishing',
+            provider_container_id='cont_dup',
+            attempted_at=timezone.now() - timedelta(minutes=20),
+        )
+
+        res = reconcile_platform_publication(post.id, 'instagram', user=self.user)
+        self.assertEqual(res['outcome'], OUTCOME_READY_TO_PUBLISH_UNCONFIRMED)
+        self.assertFalse(res['safe_to_retry'])
+
+    # ── 6. Reconciliation Never Issues POST Requests (Read-Only) ───────────
+    @patch('social_stats.reconciliation.GraphClient')
+    def test_reconciliation_never_issues_post_requests(self, mock_client_cls):
+        mock_client = MagicMock()
+        mock_client.get.return_value = {'status_code': 'FINISHED', 'id': 'cont_readonly'}
+        mock_client_cls.return_value = mock_client
+
+        post = UnifiedPost.objects.create(
+            client=self.client_a,
+            content='Read-only test',
+            target_platforms=['instagram'],
+            status='publishing',
+        )
+        PlatformPublishLog.objects.create(
+            unified_post=post,
+            platform='instagram',
+            status='publishing',
+            provider_container_id='cont_readonly',
+            attempted_at=timezone.now() - timedelta(minutes=20),
+        )
+
+        reconcile_platform_publication(post.id, 'instagram', user=self.user)
+        mock_client.post.assert_not_called()
+
+    # ── 7. Confirmed Published Never Retried ────────────────────────────────
     def test_confirmed_published_never_retried(self):
         post = UnifiedPost.objects.create(
             client=self.client_a,
@@ -142,12 +305,11 @@ class ProviderReconciliationTests(TestCase):
         self.assertFalse(eval_res['can_retry'])
         self.assertTrue(eval_res['is_immutable'])
 
-        # Attempting retry must be rejected
         retry_res = retry_failed_platform(post.id, 'instagram', user=self.user)
         self.assertFalse(retry_res['success'])
         self.assertIn('already published successfully', retry_res['error'])
 
-    # ── 3. Instagram Container IN_PROGRESS -> Still Processing ─────────────
+    # ── 8. Instagram Container IN_PROGRESS -> Still Processing ─────────────
     @patch('social_stats.reconciliation.GraphClient')
     def test_instagram_in_progress_container_returns_still_processing(self, mock_client_cls):
         mock_client = MagicMock()
@@ -177,7 +339,7 @@ class ProviderReconciliationTests(TestCase):
         self.assertEqual(log.status, 'publishing')
         self.assertEqual(log.reconciliation_status, OUTCOME_STILL_PROCESSING)
 
-    # ── 4. Instagram Terminal Error -> Confirmed Not Published ─────────────
+    # ── 9. Instagram Terminal Error -> Confirmed Not Published ─────────────
     @patch('social_stats.reconciliation.GraphClient')
     def test_instagram_error_container_confirms_not_published(self, mock_client_cls):
         mock_client = MagicMock()
@@ -212,12 +374,41 @@ class ProviderReconciliationTests(TestCase):
         self.assertEqual(log.error_code, 'reconciled_not_published')
         self.assertEqual(log.reconciliation_status, OUTCOME_CONFIRMED_NOT_PUBLISHED)
 
-        # Now platform evaluates as failed retryable
         eval_res = classify_platform_target(post, 'instagram', log)
         self.assertEqual(eval_res['state'], PLATFORM_FAILED_RETRYABLE)
         self.assertTrue(eval_res['can_retry'])
 
-    # ── 5. Unknown Instagram Status -> Ambiguous ───────────────────────────
+    # ── 10. Instagram EXPIRED Container -> Confirmed Not Published ──────────
+    @patch('social_stats.reconciliation.GraphClient')
+    def test_instagram_expired_container_confirms_not_published(self, mock_client_cls):
+        mock_client = MagicMock()
+        mock_client.get.return_value = {'status_code': 'EXPIRED', 'id': 'cont_exp'}
+        mock_client_cls.return_value = mock_client
+
+        post = UnifiedPost.objects.create(
+            client=self.client_a,
+            content='Expired post',
+            target_platforms=['instagram'],
+            status='publishing',
+        )
+        log = PlatformPublishLog.objects.create(
+            unified_post=post,
+            platform='instagram',
+            status='publishing',
+            provider_container_id='cont_exp',
+            attempted_at=timezone.now() - timedelta(minutes=25),
+        )
+
+        res = reconcile_platform_publication(post.id, 'instagram', user=self.user)
+        self.assertTrue(res['success'])
+        self.assertEqual(res['outcome'], OUTCOME_CONFIRMED_NOT_PUBLISHED)
+        self.assertTrue(res['safe_to_retry'])
+
+        log.refresh_from_db()
+        self.assertEqual(log.status, 'failed')
+        self.assertEqual(log.reconciliation_status, OUTCOME_CONFIRMED_NOT_PUBLISHED)
+
+    # ── 11. Unknown Instagram Status -> Ambiguous ───────────────────────────
     @patch('social_stats.reconciliation.GraphClient')
     def test_unknown_instagram_status_returns_ambiguous(self, mock_client_cls):
         mock_client = MagicMock()
@@ -243,7 +434,7 @@ class ProviderReconciliationTests(TestCase):
         self.assertEqual(res['outcome'], OUTCOME_AMBIGUOUS)
         self.assertFalse(res['safe_to_retry'])
 
-    # ── 6. Container Lookup Timeout -> Provider Error & Blocked ────────────
+    # ── 12. Container Lookup Timeout -> Provider Error & Blocked ────────────
     @patch('social_stats.reconciliation.GraphClient')
     def test_container_lookup_timeout_returns_provider_error(self, mock_client_cls):
         mock_client = MagicMock()
@@ -269,7 +460,7 @@ class ProviderReconciliationTests(TestCase):
         self.assertEqual(res['outcome'], OUTCOME_PROVIDER_ERROR)
         self.assertFalse(res['safe_to_retry'])
 
-    # ── 7. Malformed Provider Response -> Blocked ──────────────────────────
+    # ── 13. Malformed Provider Response -> Blocked ──────────────────────────
     @patch('social_stats.reconciliation.GraphClient')
     def test_malformed_provider_response_is_blocked(self, mock_client_cls):
         mock_client = MagicMock()
@@ -294,7 +485,7 @@ class ProviderReconciliationTests(TestCase):
         self.assertEqual(res['outcome'], OUTCOME_AMBIGUOUS)
         self.assertFalse(res['safe_to_retry'])
 
-    # ── 8. Missing Container ID -> Reconciliation Unavailable ──────────────
+    # ── 14. Missing Container ID -> Reconciliation Unavailable ──────────────
     def test_missing_container_id_returns_reconciliation_unavailable(self):
         post = UnifiedPost.objects.create(
             client=self.client_a,
@@ -314,7 +505,7 @@ class ProviderReconciliationTests(TestCase):
         self.assertEqual(res['outcome'], OUTCOME_RECONCILIATION_UNAVAILABLE)
         self.assertFalse(res['safe_to_retry'])
 
-    # ── 9. Provider Container ID Persisted Before Media Publish ─────────────
+    # ── 15. Provider Container ID Persisted Before Media Publish ─────────────
     @patch('social_stats.publishers.instagram.GraphClient')
     def test_provider_container_id_persisted_before_media_publish(self, mock_client_cls):
         post = UnifiedPost.objects.create(
@@ -332,11 +523,8 @@ class ProviderReconciliationTests(TestCase):
         )
 
         mock_client = MagicMock()
-        # 1st call: container creation -> returns container id
-        # 2nd call: media publish -> simulate crash before response!
         def mock_post(url, *args, **kwargs):
             if '/media_publish' in url:
-                # Prove container id was already persisted in the DB!
                 log.refresh_from_db()
                 self.assertEqual(log.provider_container_id, 'cid_persisted_early')
                 raise PublishError('Simulated network timeout during media_publish')
@@ -345,13 +533,12 @@ class ProviderReconciliationTests(TestCase):
         mock_client.post.side_effect = mock_post
         mock_client_cls.return_value = mock_client
 
-        # Execute publish_to_platform
         publish_to_platform(post.id, 'instagram')
 
         log.refresh_from_db()
         self.assertEqual(log.provider_container_id, 'cid_persisted_early')
 
-    # ── 10. Platform Post ID Stored on Successful Publish ───────────────────
+    # ── 16. Platform Post ID Stored on Successful Publish ───────────────────
     @patch('social_stats.publishers.instagram.GraphClient')
     def test_platform_post_id_stored_on_successful_publish(self, mock_client_cls):
         post = UnifiedPost.objects.create(
@@ -383,7 +570,7 @@ class ProviderReconciliationTests(TestCase):
         self.assertEqual(log.platform_post_id, 'ig_final_media_99')
         self.assertEqual(log.provider_container_id, 'cid_123')
 
-    # ── 11. Facebook Deterministic Evidence -> Confirmed Published ─────────
+    # ── 17. Facebook Deterministic Evidence -> Confirmed Published ─────────
     @patch('social_stats.reconciliation.GraphClient')
     def test_facebook_deterministic_object_id_confirms_published(self, mock_client_cls):
         mock_client = MagicMock()
@@ -407,7 +594,7 @@ class ProviderReconciliationTests(TestCase):
         self.assertEqual(res['outcome'], OUTCOME_CONFIRMED_PUBLISHED)
         self.assertEqual(res['provider_post_id'], 'fb_page_123_456')
 
-    # ── 12 & 13. Facebook Heuristic Matching Strictly Forbidden ────────────
+    # ── 18. Facebook Heuristic Matching Strictly Forbidden ─────────────────
     def test_facebook_without_post_id_returns_reconciliation_unavailable(self):
         post = UnifiedPost.objects.create(
             client=self.client_a,
@@ -428,7 +615,7 @@ class ProviderReconciliationTests(TestCase):
         self.assertFalse(res['safe_to_retry'])
         self.assertIn('Heuristic feed matching is blocked by safety policy', res['detail'])
 
-    # ── 14. Facebook Provider Error -> Retry Blocked ───────────────────────
+    # ── 19. Facebook Provider Error -> Retry Blocked ───────────────────────
     @patch('social_stats.reconciliation.GraphClient')
     def test_facebook_provider_error_keeps_retry_blocked(self, mock_client_cls):
         mock_client = MagicMock()
@@ -452,14 +639,11 @@ class ProviderReconciliationTests(TestCase):
         self.assertEqual(res['outcome'], OUTCOME_PROVIDER_ERROR)
         self.assertFalse(res['safe_to_retry'])
 
-    # ── 15. Successful Reconciliation Recomputes UnifiedPost Status ────────
+    # ── 20. Successful PUBLISHED Reconciliation Recomputes UnifiedPost ─────
     @patch('social_stats.reconciliation.GraphClient')
     def test_successful_reconciliation_recomputes_unified_post_status(self, mock_client_cls):
         mock_client = MagicMock()
-        mock_client.get.side_effect = [
-            {'status_code': 'FINISHED', 'id': 'cid_done'},
-            {'data': [{'id': 'ig_done_111', 'caption': 'Multi post'}]},
-        ]
+        mock_client.get.return_value = {'status_code': 'PUBLISHED', 'id': 'cid_done'}
         mock_client_cls.return_value = mock_client
 
         post = UnifiedPost.objects.create(
@@ -488,7 +672,7 @@ class ProviderReconciliationTests(TestCase):
         self.assertEqual(post.status, 'published')
         self.assertIsNotNone(post.published_at)
 
-    # ── 16. Confirmed Not Published Exposes Platform Retry ─────────────────
+    # ── 21. Confirmed Not Published Exposes Platform Retry ─────────────────
     @patch('social_stats.reconciliation.GraphClient')
     def test_confirmed_not_published_exposes_retry_action(self, mock_client_cls):
         mock_client = MagicMock()
@@ -518,7 +702,7 @@ class ProviderReconciliationTests(TestCase):
         self.assertEqual(eval_res['state'], PLATFORM_FAILED_RETRYABLE)
         self.assertTrue(eval_res['can_retry'])
 
-    # ── 17 & 18. Still Processing & Unavailable Do Not Expose Retry ────────
+    # ── 22. Still Processing & Unavailable Do Not Expose Retry ────────────
     def test_still_processing_and_unavailable_do_not_expose_retry(self):
         post = UnifiedPost.objects.create(
             client=self.client_a,
@@ -537,7 +721,7 @@ class ProviderReconciliationTests(TestCase):
         eval_res = classify_platform_target(post, 'instagram', log)
         self.assertFalse(eval_res['can_retry'])
 
-    # ── 19. Tenant Isolation ────────────────────────────────────────────────
+    # ── 23. Tenant Isolation ────────────────────────────────────────────────
     def test_reconciliation_tenant_isolation(self):
         post_b = UnifiedPost.objects.create(
             client=self.client_b,
@@ -556,7 +740,7 @@ class ProviderReconciliationTests(TestCase):
         res = self.api.post(url, {'platform': 'instagram'}, format='json')
         self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
 
-    # ── 20. Agency Scoped Access ────────────────────────────────────────────
+    # ── 24. Agency Scoped Access ────────────────────────────────────────────
     @patch('social_stats.reconciliation.GraphClient')
     def test_reconciliation_agency_scoped_access(self, mock_client_cls):
         mock_client = MagicMock()
@@ -602,7 +786,7 @@ class ProviderReconciliationTests(TestCase):
         self.assertEqual(res.status_code, 200)
         self.assertEqual(res.data['outcome'], OUTCOME_STILL_PROCESSING)
 
-    # ── 21. Approval Still Required Before Retry ────────────────────────────
+    # ── 25. Approval Still Required Before Retry ────────────────────────────
     def test_approval_still_required_before_retry_after_reconciliation(self):
         self.client_a.requires_approval = True
         self.client_a.save()
@@ -622,17 +806,15 @@ class ProviderReconciliationTests(TestCase):
             reconciliation_status=OUTCOME_CONFIRMED_NOT_PUBLISHED,
         )
 
-        # Evaluating target platform must show PLATFORM_BLOCKED due to approval requirement
         eval_res = classify_platform_target(post, 'instagram', log)
         self.assertEqual(eval_res['state'], 'PLATFORM_BLOCKED')
         self.assertFalse(eval_res['can_retry'])
 
-        # Explicit retry fails
         retry_res = retry_failed_platform(post.id, 'instagram', user=self.user)
         self.assertFalse(retry_res['success'])
         self.assertIn('requires approval', retry_res['error'])
 
-    # ── 22, 23 & 24. Audit Log Generated & No Secrets Serialized ───────────
+    # ── 26. Audit Log Generated & No Secrets Serialized ─────────────────────
     @patch('social_stats.reconciliation.GraphClient')
     def test_audit_log_generated_without_secrets(self, mock_client_cls):
         mock_client = MagicMock()
@@ -668,7 +850,7 @@ class ProviderReconciliationTests(TestCase):
         for secret_kw in ['token', 'secret', 'password', 'key', 'access_token']:
             self.assertNotIn(f'"{secret_kw}"', audit_str)
 
-    # ── 25. Operations API Exposes Reconciliation State ─────────────────────
+    # ── 27. Operations API Exposes Reconciliation State ─────────────────────
     def test_operations_api_exposes_reconciliation_state(self):
         post = UnifiedPost.objects.create(
             client=self.client_a,
@@ -695,7 +877,7 @@ class ProviderReconciliationTests(TestCase):
         self.assertEqual(prog['reconciliation_evidence_type'], 'meta_container_status')
         self.assertIsNotNone(prog['last_reconciled_at'])
 
-    # ── 29. Legacy PlatformPublishLog Rows Remain Compatible ────────────────
+    # ── 28. Legacy PlatformPublishLog Rows Remain Compatible ────────────────
     def test_legacy_rows_compatibility_with_reconciliation(self):
         post = UnifiedPost.objects.create(
             client=self.client_a,
@@ -715,7 +897,7 @@ class ProviderReconciliationTests(TestCase):
         eval_res = classify_platform_target(post, 'instagram', log, now)
         self.assertFalse(eval_res['can_retry'])
 
-    # ── 30. Invalid Platform Rejected in Reconciliation Endpoint ────────────
+    # ── 29. Invalid Platform Rejected in Reconciliation Endpoint ────────────
     def test_invalid_platform_rejected(self):
         post = UnifiedPost.objects.create(
             client=self.client_a,

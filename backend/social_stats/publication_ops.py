@@ -28,6 +28,7 @@ from .tenant_mixins import TenantScopedMixin
 from .reconciliation import (
     OUTCOME_CONFIRMED_PUBLISHED,
     OUTCOME_CONFIRMED_NOT_PUBLISHED,
+    OUTCOME_READY_TO_PUBLISH_UNCONFIRMED,
     OUTCOME_STILL_PROCESSING,
     OUTCOME_AMBIGUOUS,
     OUTCOME_RECONCILIATION_UNAVAILABLE,
@@ -952,7 +953,8 @@ def reconcile_platform_publication(post_id: int, platform: str, user=None) -> di
             update_unified_post_status(post.id)
 
         else:
-            # STILL_PROCESSING, AMBIGUOUS, RECONCILIATION_UNAVAILABLE, PROVIDER_ERROR
+            # READY_TO_PUBLISH_UNCONFIRMED, STILL_PROCESSING, AMBIGUOUS, RECONCILIATION_UNAVAILABLE, PROVIDER_ERROR
+            # Under no circumstances modify log.status or log.platform_post_id; maintain fail-closed retry block
             log.save(update_fields=[
                 'last_reconciled_at', 'reconciliation_status',
                 'reconciliation_evidence_type', 'reconciliation_reference',
