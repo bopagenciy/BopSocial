@@ -31,6 +31,7 @@ import urllib.parse
 from typing import Optional
 
 from celery import shared_task
+from django.db import transaction
 from django.utils import timezone
 
 from .models import (
@@ -49,10 +50,19 @@ from .audit import log_action
 logger = logging.getLogger(__name__)
 
 
+# ── BS-3I Execution Modes ─────────────────────────────────────────────────────
+MODE_INITIAL_PUBLISH   = 'INITIAL_PUBLISH'
+MODE_WATCHDOG_RECOVERY = 'WATCHDOG_RECOVERY'
+MODE_PLATFORM_RETRY    = 'PLATFORM_RETRY'
+
+
 # ── Public entry points ───────────────────────────────────────────────────────
 @shared_task(bind=True)
-def publish_unified_post(self, unified_post_id: int):
-    """Fan-out a UnifiedPost across all of its target platforms."""
+def publish_unified_post(self, unified_post_id: int, mode: str = MODE_INITIAL_PUBLISH, target_platform: Optional[str] = None):
+    """
+    Fan-out a UnifiedPost across target platforms with platform-level idempotency (BS-3I).
+    Skipped targets with existing success evidence or in-flight executions.
+    """
     try:
         post = UnifiedPost.objects.get(id=unified_post_id)
     except UnifiedPost.DoesNotExist:
@@ -72,23 +82,65 @@ def publish_unified_post(self, unified_post_id: int):
         notify_approver_for_post.delay(post.id)
         return
 
-    targets = list(post.target_platforms or [])
-    if not targets:
+    all_targets = list(post.target_platforms or [])
+    if not all_targets:
         post.status = 'failed'
         post.save(update_fields=['status'])
         logger.warning('publish_unified_post: no target_platforms on post %s', unified_post_id)
         return
 
+    if mode == MODE_PLATFORM_RETRY:
+        if not target_platform or target_platform not in all_targets:
+            logger.warning('publish_unified_post: invalid target_platform %s for post %s', target_platform, unified_post_id)
+            return
+        targets = [target_platform]
+    else:
+        targets = all_targets
+
+    to_dispatch = []
+    for platform in targets:
+        log = PlatformPublishLog.objects.filter(unified_post=post, platform=platform).first()
+        if log:
+            # 1. Success Immutability: definitive external success evidence must never be replayed
+            if log.status == 'success' or bool(log.platform_post_id):
+                logger.info(
+                    'publish_unified_post: post %s platform %s already succeeded (id=%s) — skipping provider invocation (immutable)',
+                    post.id, platform, log.platform_post_id,
+                )
+                continue
+
+            # 2. In-flight protection
+            if log.status == 'publishing' and log.attempted_at:
+                logger.info('publish_unified_post: post %s platform %s is actively publishing — skipping duplicate fanout',
+                            post.id, platform)
+                continue
+
+            # 3. Failed targets require explicit retry mode
+            if log.status == 'failed' and mode != MODE_PLATFORM_RETRY:
+                logger.info('publish_unified_post: post %s platform %s has failed — skipping automatic redispatch (explicit retry required)',
+                            post.id, platform)
+                continue
+
+            # Reset log for dispatch
+            log.status = 'pending'
+            log.error_code = ''
+            log.error_message = ''
+            log.save(update_fields=['status', 'error_code', 'error_message'])
+        else:
+            log = PlatformPublishLog.objects.create(
+                unified_post=post, platform=platform, status='pending',
+            )
+
+        to_dispatch.append(platform)
+
+    if not to_dispatch:
+        update_unified_post_status(post.id)
+        return
+
     post.status = 'publishing'
     post.save(update_fields=['status'])
 
-    for platform in targets:
-        # Materialize a log row per platform up-front so the UI shows them.
-        PlatformPublishLog.objects.update_or_create(
-            unified_post=post, platform=platform,
-            defaults={'status': 'pending', 'attempted_at': None,
-                      'error_code': '', 'error_message': ''},
-        )
+    for platform in to_dispatch:
         publish_to_platform.delay(post.id, platform)
 
 
@@ -100,15 +152,33 @@ def publish_to_platform(self, unified_post_id: int, platform: str):
     except UnifiedPost.DoesNotExist:
         return
 
-    log = PlatformPublishLog.objects.filter(unified_post=post, platform=platform).first()
-    if not log:
-        log = PlatformPublishLog.objects.create(
-            unified_post=post, platform=platform, status='pending',
+    with transaction.atomic():
+        log, created = PlatformPublishLog.objects.select_for_update(of=('self',)).get_or_create(
+            unified_post=post, platform=platform,
+            defaults={'status': 'pending'},
         )
+        # Defense-in-depth: Success Immutability
+        if log.status == 'success' or bool(log.platform_post_id):
+            logger.info(
+                'publish_to_platform: post %s platform %s already succeeded (id=%s) — skipping provider invocation (immutable success)',
+                post.id, platform, log.platform_post_id,
+            )
+            update_unified_post_status(post.id)
+            return
 
-    log.status = 'publishing'
-    log.attempted_at = timezone.now()
-    log.save(update_fields=['status', 'attempted_at'])
+        # Check in-flight publishing
+        if log.status == 'publishing' and log.attempted_at and not created:
+            attempt_age = (timezone.now() - log.attempted_at).total_seconds()
+            if attempt_age < 300:  # 5 min active window
+                logger.warning(
+                    'publish_to_platform: post %s platform %s is actively publishing (age=%.1fs) — skipping concurrent execution',
+                    post.id, platform, attempt_age,
+                )
+                return
+
+        log.status = 'publishing'
+        log.attempted_at = timezone.now()
+        log.save(update_fields=['status', 'attempted_at'])
 
     # Find an active credential for this client+platform
     cred = PlatformCredential.objects.filter(
@@ -211,15 +281,20 @@ def publish_to_platform(self, unified_post_id: int, platform: str):
 
     # Success (or semantic mismatch on successful platform publish)
     log.status = 'success'
-    log.platform_post_id = result.platform_post_id or ''
+    log.platform_post_id = result.platform_post_id or log.platform_post_id or ''
     log.platform_url = result.platform_url or ''
     log.completed_at = timezone.now()
     log.error_code = getattr(result, 'error_code', '') or ''
     log.error_message = getattr(result, 'error_message', '') or ''
     log.raw_response = result.raw_response or {}
+    if hasattr(result, 'provider_container_id') and result.provider_container_id:
+        log.provider_container_id = result.provider_container_id
+    if hasattr(result, 'provider_request_id') and result.provider_request_id:
+        log.provider_request_id = result.provider_request_id
     log.save(update_fields=[
         'status', 'platform_post_id', 'platform_url',
         'completed_at', 'error_code', 'error_message', 'raw_response',
+        'provider_container_id', 'provider_request_id',
     ])
 
     # Mark referenced media as used
@@ -417,6 +492,13 @@ def _resolve_media_urls(post: UnifiedPost, media_urls: list, platform: Optional[
 
 
 def _mark_failed(log: PlatformPublishLog, *, code: str, message: str):
+    # Safety check: NEVER overwrite successful platform state
+    if log.status == 'success' or bool(log.platform_post_id):
+        logger.warning(
+            'Refusing to mark failed: log %s for platform %s already succeeded (post_id=%s)',
+            log.id, log.platform, log.platform_post_id,
+        )
+        return
     log.status = 'failed'
     log.error_code = (code or 'failed')[:80]
     log.error_message = (message or '')[:500]
@@ -431,14 +513,35 @@ def update_unified_post_status(unified_post_id: int):
     except UnifiedPost.DoesNotExist:
         return
 
-    statuses = list(post.publish_logs.values_list('status', flat=True))
-    targets = post.target_platforms or []
-    if not statuses or len(statuses) < len(targets):
-        # Some children haven't been touched yet → still publishing.
-        if post.status not in ('publishing',):
-            return
+    targets = list(post.target_platforms or [])
+    if not targets:
         return
 
+    logs = {l.platform: l for l in post.publish_logs.all()}
+
+    # If any targeted platform has no log or log status in ('pending', 'publishing'),
+    # then publication is still in-flight.
+    in_flight = False
+    for p in targets:
+        log = logs.get(p)
+        if not log or log.status in ('pending', 'publishing'):
+            in_flight = True
+            break
+
+    if in_flight:
+        if post.status != 'publishing':
+            post.status = 'publishing'
+            post.save(update_fields=['status'])
+        return
+
+    statuses = [logs[p].status for p in targets if p in logs]
+    if len(statuses) < len(targets):
+        if post.status != 'publishing':
+            post.status = 'publishing'
+            post.save(update_fields=['status'])
+        return
+
+    # All success
     if all(s == 'success' for s in statuses):
         post.status = 'published'
         if not post.published_at:
@@ -469,6 +572,7 @@ def update_unified_post_status(unified_post_id: int):
             pass
         return
 
+    # All failed
     if all(s == 'failed' for s in statuses):
         post.status = 'failed'
         post.save(update_fields=['status'])
@@ -485,7 +589,7 @@ def update_unified_post_status(unified_post_id: int):
             from .events.publisher import EventPublisher
             # Pull a representative reason from the first failed publish_log.
             failed_log = post.publish_logs.filter(status='failed').first()
-            reason = (failed_log.error if failed_log and failed_log.error else 'all platforms failed')
+            reason = (failed_log.error_message if failed_log and failed_log.error_message else 'all platforms failed')
             EventPublisher.publish(
                 'post.failed',
                 client=post.client,

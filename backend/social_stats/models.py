@@ -1981,6 +1981,11 @@ class PlatformPublishLog(models.Model):
     engagement_synced_at = models.DateTimeField(null=True, blank=True)
     raw_response       = models.JSONField(default=dict, blank=True)
 
+    # BS-3I Traceability & Provider Reconciliation
+    provider_request_id    = models.CharField(max_length=255, blank=True, default='', db_index=True)
+    provider_container_id  = models.CharField(max_length=255, blank=True, default='', db_index=True)
+    provider_attempt_token = models.CharField(max_length=100, blank=True, default='')
+
     class Meta:
         unique_together = ('unified_post', 'platform')
         ordering = ['-attempted_at']

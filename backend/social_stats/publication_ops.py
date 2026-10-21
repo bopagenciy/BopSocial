@@ -33,6 +33,129 @@ logger = logging.getLogger(__name__)
 # 1. DETERMINISTIC RECOVERY CLASSIFICATION & ATTENTION
 # ============================================================================
 
+# ── BS-3I Platform Target States ─────────────────────────────────────────────
+PLATFORM_NOT_TARGETED       = 'PLATFORM_NOT_TARGETED'
+PLATFORM_SUCCESS            = 'PLATFORM_SUCCESS'
+PLATFORM_FAILED_RETRYABLE   = 'PLATFORM_FAILED_RETRYABLE'
+PLATFORM_AMBIGUOUS          = 'PLATFORM_AMBIGUOUS'
+PLATFORM_PUBLISHING_ACTIVE  = 'PLATFORM_PUBLISHING_ACTIVE'
+PLATFORM_PUBLISHING_STALLED = 'PLATFORM_PUBLISHING_STALLED'
+PLATFORM_PENDING_SAFE       = 'PLATFORM_PENDING_SAFE'
+PLATFORM_BLOCKED            = 'PLATFORM_BLOCKED'
+
+
+def classify_platform_target(post: UnifiedPost, platform: str, log: Optional[PlatformPublishLog], now: Optional[datetime] = None) -> dict:
+    """
+    Evaluates individual platform target eligibility and retryability (BS-3I).
+    Guarantees that platforms with external success evidence or ambiguity are non-retryable.
+    """
+    if now is None:
+        now = timezone.now()
+
+    targets = list(post.target_platforms or [])
+    if platform not in targets:
+        return {
+            'platform': platform,
+            'state': PLATFORM_NOT_TARGETED,
+            'can_retry': False,
+            'retry_ineligible_reason': f"Platform '{platform}' is not targeted by post",
+            'is_immutable': False,
+        }
+
+    # Governance / active checks
+    if not post.client.is_active:
+        return {
+            'platform': platform,
+            'state': PLATFORM_BLOCKED,
+            'can_retry': False,
+            'retry_ineligible_reason': 'Tenant workspace is inactive',
+            'is_immutable': False,
+        }
+
+    if post.client.requires_approval and not (post.approved_by_id and post.approved_at):
+        return {
+            'platform': platform,
+            'state': PLATFORM_BLOCKED,
+            'can_retry': False,
+            'retry_ineligible_reason': 'Post requires approver sign-off',
+            'is_immutable': False,
+        }
+
+    if not log:
+        return {
+            'platform': platform,
+            'state': PLATFORM_PENDING_SAFE,
+            'can_retry': False,
+            'retry_ineligible_reason': 'Target has not been dispatched yet',
+            'is_immutable': False,
+        }
+
+    # 1. Definitive Success Evidence -> Immutable
+    if log.status == 'success' or bool(log.platform_post_id):
+        return {
+            'platform': platform,
+            'state': PLATFORM_SUCCESS,
+            'can_retry': False,
+            'retry_ineligible_reason': 'Platform has already published successfully (immutable)',
+            'is_immutable': True,
+        }
+
+    # 2. In-flight / Publishing
+    if log.status == 'publishing':
+        attempt_age = (now - log.attempted_at).total_seconds() if log.attempted_at else 0.0
+        if attempt_age > 900:  # > 15 minutes without result
+            return {
+                'platform': platform,
+                'state': PLATFORM_AMBIGUOUS,
+                'can_retry': False,
+                'retry_ineligible_reason': 'Publish attempt timed out with no platform confirmation; manual provider review required',
+                'is_immutable': False,
+            }
+        return {
+            'platform': platform,
+            'state': PLATFORM_PUBLISHING_ACTIVE,
+            'can_retry': False,
+            'retry_ineligible_reason': 'Platform is actively publishing',
+            'is_immutable': False,
+        }
+
+    # 3. Pending
+    if log.status == 'pending':
+        if log.attempted_at is None:
+            return {
+                'platform': platform,
+                'state': PLATFORM_PENDING_SAFE,
+                'can_retry': False,
+                'retry_ineligible_reason': 'Platform is pending initial worker dispatch',
+                'is_immutable': False,
+            }
+        # Pending with attempted_at set (e.g. rate-limited retry in Celery)
+        return {
+            'platform': platform,
+            'state': PLATFORM_PUBLISHING_ACTIVE,
+            'can_retry': False,
+            'retry_ineligible_reason': 'Platform is queued for Celery rate-limit retry',
+            'is_immutable': False,
+        }
+
+    # 4. Failed
+    if log.status == 'failed':
+        return {
+            'platform': platform,
+            'state': PLATFORM_FAILED_RETRYABLE,
+            'can_retry': True,
+            'retry_ineligible_reason': None,
+            'is_immutable': False,
+        }
+
+    return {
+        'platform': platform,
+        'state': PLATFORM_AMBIGUOUS,
+        'can_retry': False,
+        'retry_ineligible_reason': f"Unrecognized log status '{log.status}'",
+        'is_immutable': False,
+    }
+
 def classify_publication(post: UnifiedPost, now: Optional[datetime] = None) -> dict:
     """
     Deterministic operational classification layer considering:
@@ -430,28 +553,23 @@ def serialize_publication_operation(post: UnifiedPost, now: Optional[datetime] =
     platform_progress = []
     for p in target_platforms:
         log = logs_map.get(p)
-        if log:
-            platform_progress.append({
-                'platform': p,
-                'status': log.status,
-                'attempted_at': log.attempted_at.isoformat() if log.attempted_at else None,
-                'completed_at': log.completed_at.isoformat() if log.completed_at else None,
-                'platform_post_id': log.platform_post_id,
-                'platform_url': log.platform_url,
-                'error_code': log.error_code,
-                'error_message': log.error_message,
-            })
-        else:
-            platform_progress.append({
-                'platform': p,
-                'status': 'not_dispatched',
-                'attempted_at': None,
-                'completed_at': None,
-                'platform_post_id': '',
-                'platform_url': '',
-                'error_code': '',
-                'error_message': '',
-            })
+        eval_res = classify_platform_target(post, p, log, now)
+        platform_progress.append({
+            'platform': p,
+            'status': log.status if log else 'not_dispatched',
+            'state': eval_res['state'],
+            'can_retry': eval_res['can_retry'],
+            'retry_ineligible_reason': eval_res['retry_ineligible_reason'],
+            'is_immutable': eval_res.get('is_immutable', False),
+            'attempted_at': log.attempted_at.isoformat() if log and log.attempted_at else None,
+            'completed_at': log.completed_at.isoformat() if log and log.completed_at else None,
+            'platform_post_id': log.platform_post_id if log else '',
+            'platform_url': log.platform_url if log else '',
+            'error_code': log.error_code if log else '',
+            'error_message': log.error_message if log else '',
+            'provider_container_id': log.provider_container_id if log else '',
+            'provider_request_id': log.provider_request_id if log else '',
+        })
 
     effective_time = post.queued_at or post.scheduled_at or post.created_at
     effective_age_sec = (now - effective_time).total_seconds() if effective_time else 0.0
@@ -556,6 +674,143 @@ def execute_safe_recovery(post_id: int, user) -> dict:
             'post_id': post.id,
             'detail': 'Publication successfully redispatched for publishing',
             'classification': classification_info['classification'],
+            'status_code': 200,
+        }
+
+
+# ============================================================================
+# 5B. CANONICAL SAFE PLATFORM RETRY (BS-3I)
+# ============================================================================
+
+def retry_failed_platform(post_id: int, platform: str, user=None) -> dict:
+    """
+    Canonical safe platform retry service (BS-3I).
+    Exclusively retries the specified failed platform without replaying successful platforms.
+    """
+    now = timezone.now()
+    with transaction.atomic():
+        post = (
+            UnifiedPost.objects
+            .select_for_update(of=('self',), skip_locked=True)
+            .select_related('client')
+            .filter(id=post_id)
+            .first()
+        )
+        if not post:
+            return {
+                'success': False,
+                'error': 'Post not found or currently locked by another operation',
+                'status_code': 409,
+            }
+
+        # 1. Tenant client active check
+        if not post.client.is_active:
+            return {
+                'success': False,
+                'error': 'Cannot retry platform publication: client workspace is inactive',
+                'status_code': 400,
+            }
+
+        # 2. Approval governance
+        if post.client.requires_approval and not (post.approved_by_id and post.approved_at):
+            return {
+                'success': False,
+                'error': 'Cannot retry platform publication: post requires approval',
+                'status_code': 400,
+            }
+
+        # 3. Target platforms validation
+        targets = list(post.target_platforms or [])
+        if platform not in targets:
+            return {
+                'success': False,
+                'error': f"Platform '{platform}' is not targeted by this post ({targets})",
+                'status_code': 400,
+            }
+
+        # 4. Target log state & lock
+        log = (
+            PlatformPublishLog.objects
+            .select_for_update(of=('self',), skip_locked=True)
+            .filter(unified_post=post, platform=platform)
+            .first()
+        )
+        if not log:
+            return {
+                'success': False,
+                'error': f"No publish log exists for platform '{platform}'",
+                'status_code': 400,
+            }
+
+        target_eval = classify_platform_target(post, platform, log, now)
+        if not target_eval['can_retry']:
+            return {
+                'success': False,
+                'error': f"Cannot retry platform '{platform}': {target_eval['retry_ineligible_reason'] or 'State is not retryable'}",
+                'state': target_eval['state'],
+                'status_code': 400,
+            }
+
+        # Immutable check: any platform with success evidence must never be retried
+        if log.status == 'success' or bool(log.platform_post_id):
+            return {
+                'success': False,
+                'error': f"Platform '{platform}' has already published successfully and is immutable",
+                'status_code': 400,
+            }
+
+        successful_platforms = [
+            l.platform for l in post.publish_logs.all()
+            if l.platform != platform and (l.status == 'success' or bool(l.platform_post_id))
+        ]
+
+        previous_status = log.status
+
+        # Reset ONLY this platform log to pending
+        log.status = 'pending'
+        log.error_code = ''
+        log.error_message = ''
+        log.completed_at = None
+        log.save(update_fields=['status', 'error_code', 'error_message', 'completed_at'])
+
+        # Set parent post to publishing
+        post.status = 'publishing'
+        post.save(update_fields=['status'])
+
+        # Dispatch ONLY this platform
+        from .orchestrator import publish_to_platform
+        try:
+            publish_to_platform.delay(post.id, platform)
+        except Exception as exc:
+            logger.exception('retry_failed_platform: broker dispatch failure for post %s platform %s: %s', post.id, platform, exc)
+            return {
+                'success': False,
+                'error': f'Broker failure during platform redispatch: {exc}',
+                'status_code': 502,
+            }
+
+        # Audit log in ActionLog
+        ActionLog.objects.create(
+            actor=user if user and user.is_authenticated else None,
+            client=post.client,
+            action='composer.platform_retry',
+            platform=platform,
+            object_type='UnifiedPost',
+            object_id=str(post.id),
+            result='success',
+            details={
+                'platform': platform,
+                'previous_status': previous_status,
+                'untouched_successful_platforms': successful_platforms,
+            },
+        )
+
+        return {
+            'success': True,
+            'post_id': post.id,
+            'platform': platform,
+            'detail': f"Platform '{platform}' successfully queued for retry; {len(successful_platforms)} successful platforms untouched",
+            'untouched_platforms': successful_platforms,
             'status_code': 200,
         }
 
@@ -816,3 +1071,39 @@ class PublicationTimelineView(TenantScopedMixin, APIView):
             'client_id': post.client_id,
             'timeline': timeline,
         })
+
+
+class PublicationPlatformRetryView(TenantScopedMixin, APIView):
+    """Controlled manual safe platform retry endpoint (BS-3I)."""
+    permission_classes = [IsAuthenticated]
+    client_field_name = 'client'
+
+    def post(self, request, pk: int):
+        post = UnifiedPost.objects.select_related('client').filter(id=pk).first()
+        if not post:
+            return Response({'detail': 'Publication not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        profile = self._profile()
+        if not profile:
+            raise PermissionDenied('No profile found')
+
+        # Tenant boundary check
+        if profile.role != 'superadmin':
+            if profile.role == 'staff':
+                if not profile.assigned_clients.filter(id=post.client_id).exists():
+                    raise PermissionDenied('Access denied to this tenant')
+            else:
+                agency_ids = self._agency_client_ids(profile)
+                if agency_ids and post.client_id not in agency_ids:
+                    raise PermissionDenied('Access denied to this tenant')
+                elif not agency_ids and profile.client_id != post.client_id:
+                    raise PermissionDenied('Access denied to this tenant')
+
+        platform = request.data.get('platform')
+        if not platform or not isinstance(platform, str):
+            return Response({'detail': "Missing or invalid 'platform' in request payload"}, status=status.HTTP_400_BAD_REQUEST)
+
+        res = retry_failed_platform(post.id, platform.lower().strip(), user=request.user)
+        if not res['success']:
+            return Response({'detail': res['error']}, status=res.get('status_code', 400))
+        return Response(res, status=status.HTTP_200_OK)

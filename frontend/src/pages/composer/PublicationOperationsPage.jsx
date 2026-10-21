@@ -1,11 +1,11 @@
 /* ============================================================================
- *  Social Stats — BS-3H Publication Operations & Manual Recovery Console
+ *  Social Stats — BS-3H / BS-3I Publication Operations & Platform Retry Console
  * ========================================================================== */
 import { useEffect, useState, useMemo } from 'react';
 import {
   AlertTriangle, CheckCircle2, Clock, RefreshCw, XCircle, Eye,
   ShieldAlert, Play, Layers, Calendar, Send, HelpCircle, ArrowRight,
-  Filter, ChevronRight, X, Info, ExternalLink
+  Filter, ChevronRight, X, Info, ExternalLink, RotateCcw, ShieldCheck
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -42,6 +42,10 @@ export default function PublicationOperationsPage() {
   const [detailData, setDetailData] = useState(null);
   const [recoveringId, setRecoveringId] = useState(null);
   const [activeTab, setActiveTab] = useState('overview'); // overview, timeline
+
+  // BS-3I Platform Retry Modal State
+  const [retryModal, setRetryModal] = useState(null);
+  const [retrying, setRetrying] = useState(false);
 
   const fetchOperations = async () => {
     setLoading(true);
@@ -100,11 +104,44 @@ export default function PublicationOperationsPage() {
     }
   };
 
+  const handleOpenRetryModal = (post, platformObj) => {
+    const successful = (post.platform_progress || [])
+      .filter(p => p.platform !== platformObj.platform && (p.status === 'success' || p.is_immutable))
+      .map(p => p.platform);
+
+    setRetryModal({
+      post,
+      platform: platformObj.platform,
+      error: platformObj.error_message || platformObj.error_code,
+      status: platformObj.status,
+      attempted_at: platformObj.attempted_at,
+      untouchedPlatforms: successful,
+    });
+  };
+
+  const handleConfirmPlatformRetry = async () => {
+    if (!retryModal) return;
+    setRetrying(true);
+    try {
+      const res = await composerAPI.operations.retryPlatform(retryModal.post.id, retryModal.platform);
+      toast.success(res.data?.detail || `Platform ${retryModal.platform} queued for retry`);
+      setRetryModal(null);
+      fetchOperations();
+      if (selectedPost && selectedPost.id === retryModal.post.id) {
+        openDetail(selectedPost);
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Platform retry failed');
+    } finally {
+      setRetrying(false);
+    }
+  };
+
   return (
     <div style={{ padding: '24px 32px', maxWidth: 1400, margin: '0 auto' }}>
       <PageHeader
         title="Publication Operations & Orphan Console"
-        subtitle="Operational health, orphan visibility, multi-platform status, and controlled safe recovery."
+        subtitle="Operational health, orphan visibility, multi-platform status, and platform-isolated retry (BS-3I)."
         action={
           <Button icon={RefreshCw} onClick={fetchOperations} loading={loading} variant="secondary">
             Refresh
@@ -228,12 +265,11 @@ export default function PublicationOperationsPage() {
                       </div>
                     </td>
                     <td style={{ padding: '12px 16px' }}>
-                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
                         {(post.platform_progress || []).map((p) => {
-                          let badgeColor = 'neutral';
-                          if (p.status === 'success') badgeColor = 'success';
-                          else if (p.status === 'failed') badgeColor = 'error';
-                          else if (p.status === 'publishing') badgeColor = 'warning';
+                          const isSuccess = p.status === 'success' || p.is_immutable;
+                          const isFailed = p.status === 'failed';
+                          const isAmbiguous = p.state === 'PLATFORM_AMBIGUOUS';
                           return (
                             <span
                               key={p.platform}
@@ -242,12 +278,38 @@ export default function PublicationOperationsPage() {
                                 padding: '2px 8px',
                                 borderRadius: 4,
                                 border: '1px solid var(--border)',
-                                background: p.status === 'success' ? '#ecfdf5' : p.status === 'failed' ? '#fef2f2' : 'var(--surface)',
-                                color: p.status === 'success' ? '#047857' : p.status === 'failed' ? '#b91c1c' : 'var(--text-secondary)',
+                                background: isSuccess ? '#ecfdf5' : isFailed ? '#fef2f2' : isAmbiguous ? '#fffbeb' : 'var(--surface)',
+                                color: isSuccess ? '#047857' : isFailed ? '#b91c1c' : isAmbiguous ? '#b45309' : 'var(--text-secondary)',
                                 fontWeight: 500,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4,
                               }}
                             >
+                              {isSuccess && <CheckCircle2 size={11} />}
+                              {isFailed && <XCircle size={11} />}
                               {p.platform}: {p.status}
+                              {p.can_retry && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleOpenRetryModal(post, p);
+                                  }}
+                                  style={{
+                                    border: 'none',
+                                    background: '#fee2e2',
+                                    color: '#991b1b',
+                                    borderRadius: 3,
+                                    padding: '1px 4px',
+                                    fontSize: 10,
+                                    cursor: 'pointer',
+                                    fontWeight: 600,
+                                    marginLeft: 2,
+                                  }}
+                                >
+                                  Retry
+                                </button>
+                              )}
                             </span>
                           );
                         })}
@@ -453,32 +515,80 @@ export default function PublicationOperationsPage() {
                     </div>
                   </Card>
 
-                  {/* Platform Progress Breakdown */}
+                  {/* Platform Progress Breakdown with BS-3I Platform-Level Actions */}
                   <Card style={{ padding: 16 }}>
                     <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 12 }}>
-                      Platform Target Breakdown
+                      Platform Target Breakdown & Actions
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                      {(detailData.platform_progress || []).map((p) => (
-                        <div key={p.platform} style={{ padding: 12, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface-hover)' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ fontWeight: 600, textTransform: 'capitalize' }}>{p.platform}</span>
-                            <span style={{ fontSize: 12, fontWeight: 600, color: p.status === 'success' ? '#059669' : p.status === 'failed' ? '#dc2626' : 'var(--text-secondary)' }}>
-                              {p.status}
-                            </span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      {(detailData.platform_progress || []).map((p) => {
+                        const isSuccess = p.status === 'success' || p.is_immutable;
+                        const isAmbiguous = p.state === 'PLATFORM_AMBIGUOUS';
+                        return (
+                          <div
+                            key={p.platform}
+                            style={{
+                              padding: 14,
+                              borderRadius: 8,
+                              border: '1px solid var(--border)',
+                              background: isSuccess ? 'rgba(16, 185, 129, 0.04)' : isAmbiguous ? 'rgba(245, 158, 11, 0.04)' : 'var(--surface-hover)',
+                            }}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <span style={{ fontWeight: 600, textTransform: 'capitalize', fontSize: 14 }}>{p.platform}</span>
+                                {isSuccess && (
+                                  <span style={{ fontSize: 11, background: '#ecfdf5', color: '#047857', padding: '1px 6px', borderRadius: 4, fontWeight: 600 }}>
+                                    Immutable ✓
+                                  </span>
+                                )}
+                                {isAmbiguous && (
+                                  <span style={{ fontSize: 11, background: '#fffbeb', color: '#b45309', padding: '1px 6px', borderRadius: 4, fontWeight: 600 }}>
+                                    Manual Review Required
+                                  </span>
+                                )}
+                              </div>
+                              <span style={{ fontSize: 12, fontWeight: 600, color: isSuccess ? '#059669' : p.status === 'failed' ? '#dc2626' : 'var(--text-secondary)' }}>
+                                {p.status}
+                              </span>
+                            </div>
+
+                            {p.platform_post_id && (
+                              <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 6 }}>
+                                Provider Post ID: <code style={{ background: 'var(--surface)', padding: '2px 4px', borderRadius: 4 }}>{p.platform_post_id}</code>
+                              </div>
+                            )}
+
+                            {p.error_message && (
+                              <div style={{ fontSize: 12, color: '#dc2626', marginTop: 6, background: '#fef2f2', padding: 8, borderRadius: 6 }}>
+                                {p.error_message}
+                              </div>
+                            )}
+
+                            {/* BS-3I Individual Platform Action */}
+                            <div style={{ marginTop: 10, display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
+                              {p.can_retry ? (
+                                <Button
+                                  size="sm"
+                                  variant="primary"
+                                  icon={RotateCcw}
+                                  onClick={() => handleOpenRetryModal(detailData, p)}
+                                >
+                                  Retry {p.platform.charAt(0).toUpperCase() + p.platform.slice(1)} Only
+                                </Button>
+                              ) : isSuccess ? (
+                                <span style={{ fontSize: 11, color: '#047857', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                  <ShieldCheck size={13} /> Protected against duplicate dispatch
+                                </span>
+                              ) : isAmbiguous ? (
+                                <span style={{ fontSize: 11, color: '#b45309' }}>
+                                  Cannot retry automatically: provider response ambiguous
+                                </span>
+                              ) : null}
+                            </div>
                           </div>
-                          {p.platform_post_id && (
-                            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>
-                              Provider ID: <code>{p.platform_post_id}</code>
-                            </div>
-                          )}
-                          {p.error_message && (
-                            <div style={{ fontSize: 12, color: '#dc2626', marginTop: 4 }}>
-                              Error: {p.error_message}
-                            </div>
-                          )}
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </Card>
                 </div>
@@ -533,6 +643,63 @@ export default function PublicationOperationsPage() {
                   Recover Publication
                 </Button>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* BS-3I Explicit Operator Confirmation Modal for Single-Platform Retry */}
+      {retryModal && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.5)',
+            zIndex: 1100,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+          onClick={() => !retrying && setRetryModal(null)}
+        >
+          <div
+            style={{
+              background: 'var(--surface)',
+              borderRadius: 12,
+              padding: 24,
+              maxWidth: 480,
+              width: '100%',
+              boxShadow: '0 20px 25px -5px rgba(0,0,0,0.2)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ margin: '0 0 12px', fontSize: 18, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <RotateCcw size={18} style={{ color: 'var(--primary)' }} />
+              Retry {retryModal.platform.toUpperCase()} Only?
+            </h3>
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5, margin: '0 0 16px' }}>
+              You are authorizing an isolated single-platform retry for <strong>Publication #{retryModal.post.id}</strong> on platform <strong>{retryModal.platform}</strong>.
+            </p>
+
+            {retryModal.untouchedPlatforms.length > 0 && (
+              <div style={{ padding: 12, background: '#ecfdf5', borderRadius: 8, border: '1px solid #a7f3d0', fontSize: 12, color: '#065f46', marginBottom: 16 }}>
+                <strong>Immutable platforms protected:</strong> {retryModal.untouchedPlatforms.map(p => p.toUpperCase()).join(', ')} has already published successfully and will <strong>NOT</strong> be touched or duplicated.
+              </div>
+            )}
+
+            {retryModal.error && (
+              <div style={{ padding: 10, background: '#fef2f2', borderRadius: 6, fontSize: 12, color: '#991b1b', marginBottom: 16 }}>
+                <strong>Previous failure reason:</strong> {retryModal.error}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+              <Button variant="secondary" onClick={() => setRetryModal(null)} disabled={retrying}>
+                Cancel
+              </Button>
+              <Button variant="primary" onClick={handleConfirmPlatformRetry} loading={retrying}>
+                Confirm Retry {retryModal.platform}
+              </Button>
             </div>
           </div>
         </div>
