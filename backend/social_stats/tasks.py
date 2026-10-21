@@ -24,6 +24,7 @@ from . import competitor_tasks  # noqa: F401
 from . import notification_watchers  # noqa: F401
 from . import meta_capi_tasks  # noqa: F401
 from . import whatsapp_tasks  # noqa: F401
+from . import analytics_tasks  # noqa: F401
 
 
 def _date_range(days=30):

@@ -1,6 +1,7 @@
 """
 Analytics package for Bop Social.
-Exposes canonical metric registry, capabilities, normalizers, derived calculations, and ingestion services.
+Exposes canonical metric registry, capabilities, normalizers, derived calculations,
+ingestion services, adapters, rate limiters, and synchronization services.
 """
 from .registry import (
     AggregationBehavior,
@@ -38,6 +39,33 @@ from .ingestion import (
     ingest_metric_snapshot,
     ingest_observations,
 )
+from .exceptions import (
+    AnalyticsError,
+    AnalyticsAuthExpiredError,
+    AnalyticsPermissionError,
+    AnalyticsRateLimitedError,
+    AnalyticsObjectUnavailableError,
+    AnalyticsMetricUnsupportedError,
+    AnalyticsTemporaryProviderError,
+    classify_provider_error,
+)
+from .rate_limits import (
+    parse_meta_rate_limit_headers,
+    update_credential_rate_limit_state,
+    evaluate_throttling,
+)
+from .adapters import (
+    BaseAnalyticsAdapter,
+    ProviderPayload,
+    FacebookAnalyticsAdapter,
+    InstagramAnalyticsAdapter,
+    has_instagram_insights_capability,
+)
+from .sync_service import (
+    SyncResult,
+    sync_facebook_analytics,
+    sync_instagram_analytics,
+)
 
 __all__ = [
     "AggregationBehavior",
@@ -66,4 +94,23 @@ __all__ = [
     "find_publish_log_and_unified_post",
     "ingest_metric_snapshot",
     "ingest_observations",
+    "AnalyticsError",
+    "AnalyticsAuthExpiredError",
+    "AnalyticsPermissionError",
+    "AnalyticsRateLimitedError",
+    "AnalyticsObjectUnavailableError",
+    "AnalyticsMetricUnsupportedError",
+    "AnalyticsTemporaryProviderError",
+    "classify_provider_error",
+    "parse_meta_rate_limit_headers",
+    "update_credential_rate_limit_state",
+    "evaluate_throttling",
+    "BaseAnalyticsAdapter",
+    "ProviderPayload",
+    "FacebookAnalyticsAdapter",
+    "InstagramAnalyticsAdapter",
+    "has_instagram_insights_capability",
+    "SyncResult",
+    "sync_facebook_analytics",
+    "sync_instagram_analytics",
 ]
