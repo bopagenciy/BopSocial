@@ -66,6 +66,30 @@ from .sync_service import (
     sync_facebook_analytics,
     sync_instagram_analytics,
 )
+from .rollups import (
+    get_client_timezone,
+    calculate_period_start,
+    aggregate_snapshots,
+    build_rollups_for_client,
+)
+from .freshness import (
+    evaluate_freshness,
+    get_client_platform_freshness,
+)
+from .orchestrator import (
+    acquire_sync_lock,
+    release_sync_lock,
+    is_sync_due,
+    run_analytics_orchestrator,
+)
+from .backfill import (
+    backfill_rollups,
+)
+from .api import (
+    AnalyticsSummaryView,
+    AnalyticsTrendsView,
+    AnalyticsTopPostsView,
+)
 
 __all__ = [
     "AggregationBehavior",
@@ -113,4 +137,18 @@ __all__ = [
     "SyncResult",
     "sync_facebook_analytics",
     "sync_instagram_analytics",
+    "get_client_timezone",
+    "calculate_period_start",
+    "aggregate_snapshots",
+    "build_rollups_for_client",
+    "evaluate_freshness",
+    "get_client_platform_freshness",
+    "acquire_sync_lock",
+    "release_sync_lock",
+    "is_sync_due",
+    "run_analytics_orchestrator",
+    "backfill_rollups",
+    "AnalyticsSummaryView",
+    "AnalyticsTrendsView",
+    "AnalyticsTopPostsView",
 ]

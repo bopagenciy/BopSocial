@@ -10,6 +10,11 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenRefreshView
 
+from .analytics.api import (
+    AnalyticsSummaryView,
+    AnalyticsTrendsView,
+    AnalyticsTopPostsView,
+)
 from .views import (
     LoginView, me, ClientViewSet, CredentialViewSet,
     SyncLogViewSet, GoalViewSet, AlertViewSet, AIInsightViewSet, WeeklyTopPostViewSet,
@@ -658,6 +663,11 @@ urlpatterns = [
     path('composer/publications/orphans/',                   PublicationOrphansListView.as_view(),      name='composer_publication_orphans_list'),
     path('composer/publications/<int:pk>/timeline/',         PublicationTimelineView.as_view(),         name='composer_publication_timeline'),
 
+
+    # ── BS-4D Social Analytics Read API ──────────────────────────────────────────
+    path('analytics/summary/',   AnalyticsSummaryView.as_view(),   name='analytics_summary'),
+    path('analytics/trends/',    AnalyticsTrendsView.as_view(),    name='analytics_trends'),
+    path('analytics/top-posts/', AnalyticsTopPostsView.as_view(),  name='analytics_top_posts'),
     # REST API
     path('', include(router.urls)),
 ]
