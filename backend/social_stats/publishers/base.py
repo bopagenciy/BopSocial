@@ -78,6 +78,8 @@ class PublishResult:
     platform_url: str = ''
     raw_response: dict = field(default_factory=dict)
     warnings: list = field(default_factory=list)
+    error_code: str = ''
+    error_message: str = ''
 
     def as_dict(self) -> dict:
         return {
@@ -85,6 +87,8 @@ class PublishResult:
             'platform_post_id':  self.platform_post_id,
             'platform_url':      self.platform_url,
             'warnings':          self.warnings,
+            'error_code':        self.error_code,
+            'error_message':     self.error_message,
             # raw_response kept on the instance but excluded from this digest
         }
 
@@ -165,6 +169,18 @@ class BasePublisher:
         )
 
 
+# ── Platform Capabilities Registry ────────────────────────────────────────────
+SUPPORTED_PUBLISHERS = frozenset({'facebook', 'instagram', 'youtube', 'linkedin', 'google_my_business', 'gmb'})
+UNSUPPORTED_PUBLISHERS = frozenset({'tiktok', 'twitter', 'x', 'pinterest'})
+
+
+def is_platform_supported(platform: str) -> bool:
+    """Return True if the platform has an active, operational backend publisher."""
+    if not platform:
+        return False
+    return platform.lower() in SUPPORTED_PUBLISHERS
+
+
 # ── Factory ───────────────────────────────────────────────────────────────────
 _REGISTRY: dict[str, type[BasePublisher]] = {}
 
@@ -173,18 +189,31 @@ def register_publisher(platform: str, publisher_cls: type[BasePublisher]) -> Non
     """Concrete publisher modules call this on import to register themselves."""
     if not issubclass(publisher_cls, BasePublisher):
         raise TypeError(f'{publisher_cls} must subclass BasePublisher')
-    _REGISTRY[platform] = publisher_cls
+    _REGISTRY[platform.lower()] = publisher_cls
 
 
 def get_publisher(platform: str) -> BasePublisher:
     """Return a fresh publisher instance for the given platform key."""
-    cls = _REGISTRY.get(platform)
+    if not platform:
+        raise PublishError('Platform identifier cannot be empty', code='invalid_platform', supported=False)
+    norm = str(platform).lower()
+    if norm in UNSUPPORTED_PUBLISHERS:
+        raise PublishError(
+            f"Platform '{platform}' is not currently supported for automated publishing. Coming soon.",
+            code='unsupported_platform',
+            supported=False,
+        )
+    cls = _REGISTRY.get(norm)
     if cls is None:
         # Lazy import to avoid circular registration on first call.
         _autoload()
-        cls = _REGISTRY.get(platform)
+        cls = _REGISTRY.get(norm)
     if cls is None:
-        raise NotImplementedError(f'No publisher registered for platform={platform}')
+        raise PublishError(
+            f"No publisher registered for platform={platform}",
+            code='unsupported_platform',
+            supported=False,
+        )
     return cls()
 
 

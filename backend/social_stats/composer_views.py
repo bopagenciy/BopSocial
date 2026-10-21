@@ -45,6 +45,7 @@ from .models import (
 from .orchestrator import publish_unified_post
 from .publishers import get_publisher
 from . import media_service
+from .video_probe import VideoProbeError
 from .tenant_mixins import TenantScopedMixin
 from .marketplace_permissions import (
     check_action, deny_response, approval_pending_response,
@@ -171,6 +172,25 @@ class UnifiedPostViewSet(TenantScopedMixin, viewsets.ModelViewSet):
                 status=400,
             )
 
+        # Validate Instagram carousel before gating or dispatching
+        if (post.media_type or '').lower() == 'carousel' and 'instagram' in (post.target_platforms or []):
+            asset_ids = []
+            for u in (post.media_urls or []):
+                if isinstance(u, str) and u.startswith('asset:'):
+                    try:
+                        asset_ids.append(int(u.split(':', 1)[1]))
+                    except (ValueError, IndexError):
+                        pass
+            asset_qs = MediaAsset.objects.filter(id__in=asset_ids, client=post.client)
+            asset_map = {a.id: a for a in asset_qs}
+            post_assets = [asset_map[aid] for aid in asset_ids if aid in asset_map]
+            from .locale_helpers import resolve_user_language
+            lang = resolve_user_language(request.user, post.client)
+            c_vr = media_service.validate_carousel_for_platform(post_assets, 'instagram', lang=lang)
+            if not c_vr.ok:
+                return Response({'detail': c_vr.errors[0]}, status=400)
+
+
         # Marketplace gate (): if the actor is agency-side, must hold
         # the publish_posts permission; if it's flagged for approval, intercept.
         verdict, ctx = check_action(
@@ -199,9 +219,11 @@ class UnifiedPostViewSet(TenantScopedMixin, viewsets.ModelViewSet):
                 {'detail': 'Post requires approval before publishing.', 'status': 'pending_approval'},
                 status=202,
             )
+        now = timezone.now()
         post.status = 'queued'
-        post.scheduled_at = timezone.now()
-        post.save(update_fields=['status', 'scheduled_at'])
+        post.queued_at = now
+        post.scheduled_at = now
+        post.save(update_fields=['status', 'queued_at', 'scheduled_at'])
         publish_unified_post.delay(post.id)
 
         log_activity_for_request(
@@ -230,13 +252,27 @@ class UnifiedPostViewSet(TenantScopedMixin, viewsets.ModelViewSet):
             dt = parse_datetime(when)
             if dt is None:
                 raise ValueError
-        except ValueError:
+        except (ValueError, TypeError):
             return Response({'detail': 'Invalid scheduled_at — expected ISO 8601 datetime'}, status=400)
+        if timezone.is_naive(dt):
+            return Response({'detail': 'scheduled_at must be timezone-aware (ISO 8601 with offset or Z)'}, status=400)
         if dt < timezone.now():
             return Response({'detail': 'scheduled_at must be in the future'}, status=400)
+
         post.scheduled_at = dt
-        post.status = 'scheduled'
-        post.save(update_fields=['scheduled_at', 'status'])
+        if post.client and getattr(post.client, 'requires_approval', False):
+            post.status = 'pending_approval'
+            post.approved_by = None
+            post.approved_at = None
+            post.save(update_fields=['scheduled_at', 'status', 'approved_by', 'approved_at'])
+            try:
+                from .notification_watchers import notify_approver_for_post
+                notify_approver_for_post.delay(post.id)
+            except Exception:
+                logger.exception('Failed to dispatch notify_approver_for_post for post_id=%s', post.id)
+        else:
+            post.status = 'scheduled'
+            post.save(update_fields=['scheduled_at', 'status'])
         return Response(UnifiedPostSerializer(post).data)
 
     @action(detail=True, methods=['post'])
@@ -273,11 +309,23 @@ class UnifiedPostViewSet(TenantScopedMixin, viewsets.ModelViewSet):
             return Response({'detail': f'Post is not pending approval (status={post.status})'}, status=400)
         post.approved_by = request.user
         post.approved_at = timezone.now()
-        post.status = 'queued'
-        post.scheduled_at = post.scheduled_at or timezone.now()
-        post.save(update_fields=['approved_by', 'approved_at', 'status', 'scheduled_at'])
-        publish_unified_post.delay(post.id)
-        return Response(UnifiedPostSerializer(post).data)
+
+        # Canonical future scheduling intent check (scheduled_at > now)
+        is_future = bool(post.scheduled_at and post.scheduled_at > timezone.now())
+
+        if is_future:
+            post.status = 'scheduled'
+            post.save(update_fields=['approved_by', 'approved_at', 'status'])
+            # Do NOT dispatch Celery publication task; wait for scheduler tick at due time
+            return Response(UnifiedPostSerializer(post).data)
+        else:
+            now = timezone.now()
+            post.status = 'queued'
+            post.queued_at = now
+            post.scheduled_at = post.scheduled_at or now
+            post.save(update_fields=['approved_by', 'approved_at', 'status', 'queued_at', 'scheduled_at'])
+            publish_unified_post.delay(post.id)
+            return Response(UnifiedPostSerializer(post).data)
 
     @action(detail=True, methods=['post'])
     def add_to_queue(self, request, pk=None):
@@ -347,15 +395,18 @@ class MediaAssetViewSet(TenantScopedMixin, viewsets.ModelViewSet):
         if not upload:
             return Response({'detail': 'file is required (multipart "file")'}, status=400)
 
-        asset = media_service.upload_media(
-            upload,
-            client_id=client_id,
-            uploaded_by_id=request.user.id,
-            folder=request.data.get('folder', ''),
-            alt_text=request.data.get('alt_text', ''),
-            tags=request.data.getlist('tags') if hasattr(request.data, 'getlist') else (request.data.get('tags') or []),
-        )
-        return Response(MediaAssetSerializer(asset).data, status=201)
+        try:
+            asset = media_service.upload_media(
+                upload,
+                client_id=client_id,
+                uploaded_by_id=request.user.id,
+                folder=request.data.get('folder', ''),
+                alt_text=request.data.get('alt_text', ''),
+                tags=request.data.getlist('tags') if hasattr(request.data, 'getlist') else (request.data.get('tags') or []),
+            )
+            return Response(MediaAssetSerializer(asset).data, status=201)
+        except (ValueError, VideoProbeError) as e:
+            return Response({'detail': str(e)}, status=400)
 
     @action(detail=False, methods=['post'], parser_classes=[MultiPartParser, FormParser])
     def bulk_upload(self, request):
@@ -377,6 +428,19 @@ class MediaAssetViewSet(TenantScopedMixin, viewsets.ModelViewSet):
                 logger.exception('bulk_upload failed for %s', f.name)
                 errors.append({'file': f.name, 'error': str(e)})
         return Response({'created': out, 'errors': errors}, status=201 if out else 400)
+
+    @action(detail=True, methods=['get'])
+    def file(self, request, pk=None):
+        asset = self.get_object()
+        from .media_access import serve_secure_file
+        return serve_secure_file(request, asset.file, asset.id, is_thumbnail=False)
+
+    @action(detail=True, methods=['get'])
+    def thumbnail(self, request, pk=None):
+        asset = self.get_object()
+        from .media_access import serve_secure_file
+        target = asset.thumbnail or asset.file
+        return serve_secure_file(request, target, asset.id, is_thumbnail=True)
 
 
 # ── Queues ────────────────────────────────────────────────────────────────────
@@ -433,6 +497,40 @@ class PostQueueViewSet(TenantScopedMixin, viewsets.ModelViewSet):
         queue.save(update_fields=['is_active'])
         return Response({'is_active': True})
 
+    @action(detail=True, methods=['get'])
+    def items(self, request, pk=None):
+        queue = self.get_object()
+        items = queue.items.order_by('sort_order', 'id')
+        return Response(QueuedItemSerializer(items, many=True).data)
+
+    @action(detail=True, methods=['post'], url_path=r'items/(?P<item_id>\d+)/approve')
+    def approve_item(self, request, pk=None, item_id=None):
+        queue = self.get_object()
+        try:
+            item = queue.items.get(id=item_id)
+        except QueuedItem.DoesNotExist:
+            return Response({'detail': f'QueuedItem {item_id} not found in this queue.'}, status=404)
+        if item.status == 'used':
+            return Response({'detail': 'Cannot approve an item that has already been used.'}, status=400)
+        item.approved_by = request.user
+        item.approved_at = timezone.now()
+        item.save(update_fields=['approved_by', 'approved_at'])
+        return Response(QueuedItemSerializer(item).data)
+
+    @action(detail=True, methods=['post'], url_path=r'items/(?P<item_id>\d+)/revoke_approval')
+    def revoke_item_approval(self, request, pk=None, item_id=None):
+        queue = self.get_object()
+        try:
+            item = queue.items.get(id=item_id)
+        except QueuedItem.DoesNotExist:
+            return Response({'detail': f'QueuedItem {item_id} not found in this queue.'}, status=404)
+        if item.status == 'used':
+            return Response({'detail': 'Cannot revoke approval for an item that has already been used.'}, status=400)
+        item.approved_by = None
+        item.approved_at = None
+        item.save(update_fields=['approved_by', 'approved_at'])
+        return Response(QueuedItemSerializer(item).data)
+
 
 # ── Preflight ─────────────────────────────────────────────────────────────────
 class PreflightCheckView(APIView):
@@ -454,11 +552,26 @@ class PreflightCheckView(APIView):
 
         # Resolve referenced MediaAssets within this tenant for size/format checks
         client_id = self._resolve_client_id(request, data)
+        if not media_asset_ids and media_urls:
+            for u in media_urls:
+                if isinstance(u, str) and u.startswith('asset:'):
+                    try:
+                        media_asset_ids.append(int(u.split(':', 1)[1]))
+                    except (ValueError, IndexError):
+                        pass
+
         assets = []
         if media_asset_ids and client_id:
-            assets = list(MediaAsset.objects.filter(
+            asset_qs = MediaAsset.objects.filter(
                 id__in=media_asset_ids, client_id=client_id,
-            ))
+            )
+            asset_map = {a.id: a for a in asset_qs}
+            assets = [asset_map[aid] for aid in media_asset_ids if aid in asset_map]
+
+        from .locale_helpers import resolve_user_language
+        from .models import Client
+        client = Client.objects.filter(id=client_id).first() if client_id else None
+        lang = resolve_user_language(getattr(request, 'user', None), client)
 
         results = {}
         any_block = False
@@ -483,13 +596,20 @@ class PreflightCheckView(APIView):
                 any_block = True
                 continue
 
-            # Per-asset platform validation
-            for asset in assets:
-                vr = media_service.validate_for_platform(asset, platform, p_media_type)
-                if vr.errors:
-                    errors.extend([f'asset#{asset.id}: {e}' for e in vr.errors])
-                if vr.warnings:
-                    warnings.extend([f'asset#{asset.id}: {w}' for w in vr.warnings])
+            # Platform asset validation
+            if p_media_type == 'carousel':
+                c_vr = media_service.validate_carousel_for_platform(assets, platform, lang=lang)
+                if c_vr.errors:
+                    errors.extend(c_vr.errors)
+                if c_vr.warnings:
+                    warnings.extend(c_vr.warnings)
+            else:
+                for asset in assets:
+                    vr = media_service.validate_for_platform(asset, platform, p_media_type)
+                    if vr.errors:
+                        errors.extend([f'asset#{asset.id}: {e}' for e in vr.errors])
+                    if vr.warnings:
+                        warnings.extend([f'asset#{asset.id}: {w}' for w in vr.warnings])
 
             # Active credential check
             if client_id:

@@ -16,6 +16,7 @@
  * old threads, not live chat.
  */
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Sparkles, MessageSquare, Trash2, Archive, ArchiveRestore,
   Search, Loader2, X, Wrench, AlertTriangle, CheckCircle2,
@@ -30,6 +31,7 @@ import { aiV2API } from '../../services/api';
 import toast from '../../components/ui/toast';
 
 export default function AIChatHistoryPage() {
+  const { t } = useTranslation('ai');
   const [conversations, setConversations] = useState([]);
   const [showArchived, setShowArchived]   = useState(false);
   const [selected, setSelected]           = useState(null);  // active conversation_id
@@ -52,9 +54,9 @@ export default function AIChatHistoryPage() {
     setLoadingThread(true);
     aiV2API.chatGetConversation(selected)
       .then((r) => setThread(r.data || null))
-      .catch(() => toast.error('Failed to load conversation'))
+      .catch(() => toast.error(t('assistant.chat.failed_load', 'Failed to load conversation')))
       .finally(() => setLoadingThread(false));
-  }, [selected]);
+  }, [selected, t]);
 
   const filtered = useMemo(() => {
     if (!search.trim()) return conversations;
@@ -65,38 +67,38 @@ export default function AIChatHistoryPage() {
   async function archive(id, archived) {
     try {
       await aiV2API.chatPatchConversation(id, { archived });
-      toast.success(archived ? 'Archived' : 'Restored');
+      toast.success(archived ? t('history.archived_toast', 'Archived') : t('history.restored_toast', 'Restored'));
       loadList();
       if (selected === id) setSelected(null);
     } catch {
-      toast.error('Could not update conversation');
+      toast.error(t('insights.update_failed', 'Could not update conversation'));
     }
   }
 
   async function deleteConv(id) {
-    if (!window.confirm('Delete this conversation? This cannot be undone.')) return;
+    if (!window.confirm(t('history.confirm_delete', 'Delete this conversation? This cannot be undone.'))) return;
     try {
       await aiV2API.chatDeleteConversation(id);
-      toast.success('Deleted');
+      toast.success(t('history.deleted_toast', 'Deleted'));
       if (selected === id) setSelected(null);
       loadList();
     } catch {
-      toast.error('Could not delete');
+      toast.error(t('assistant.chat.delete_failed', 'Could not delete'));
     }
   }
 
   return (
     <div className="app-page app-page--lg">
       <PageHeader
-        title="Chat History"
-        subtitle="Past conversations with Social Stats"
+        title={t('history.title', 'Chat History')}
+        subtitle={t('history.subtitle', 'Past conversations with Bop Social')}
         actions={(
           <Button
             size="sm" variant="ghost"
             icon={showArchived ? ArchiveRestore : Archive}
             onClick={() => { setShowArchived((v) => !v); setSelected(null); }}
           >
-            {showArchived ? 'Show active' : 'Show archived'}
+            {showArchived ? t('history.show_active', 'Show active') : t('history.show_archived', 'Show archived')}
           </Button>
         )}
       />
@@ -113,7 +115,7 @@ export default function AIChatHistoryPage() {
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search conversations…"
+              placeholder={t('history.search_placeholder', 'Search conversations…')}
               style={{
                 flex: 1, minHeight: 'auto',
                 padding: '4px 0',
@@ -132,8 +134,8 @@ export default function AIChatHistoryPage() {
             ) : filtered.length === 0 ? (
               <EmptyState
                 icon={MessageSquare}
-                title={showArchived ? 'No archived chats' : 'No conversations yet'}
-                description={showArchived ? null : 'Press ⌘J anywhere to start a chat with Social Stats.'}
+                title={showArchived ? t('history.no_archived', 'No archived chats') : t('history.no_conversations', 'No conversations yet')}
+                description={showArchived ? null : t('history.empty_desc', 'Press ⌘J anywhere to start a chat with Bop Social.')}
                 compact
               />
             ) : (
@@ -155,7 +157,7 @@ export default function AIChatHistoryPage() {
                       color: 'var(--text-primary)',
                       overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                     }}>
-                      {c.title || 'Untitled chat'}
+                      {c.title || t('history.untitled', 'Untitled chat')}
                     </div>
                     <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
                       {c.updated_at ? new Date(c.updated_at).toLocaleString(undefined, {
@@ -166,12 +168,12 @@ export default function AIChatHistoryPage() {
                   <Button
                     variant="ghost" size="sm" iconOnly
                     icon={c.archived ? ArchiveRestore : Archive}
-                    aria-label={c.archived ? 'Restore' : 'Archive'}
+                    aria-label={c.archived ? t('history.restore', 'Restore') : t('history.archive', 'Archive')}
                     onClick={(e) => { e.stopPropagation(); archive(c.id, !c.archived); }}
                   />
                   <Button
                     variant="ghost" size="sm" iconOnly icon={Trash2}
-                    aria-label="Delete"
+                    aria-label={t('history.delete', 'Delete')}
                     onClick={(e) => { e.stopPropagation(); deleteConv(c.id); }}
                   />
                 </div>
@@ -186,8 +188,8 @@ export default function AIChatHistoryPage() {
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <EmptyState
                 icon={Sparkles}
-                title="Pick a conversation"
-                description="Click a chat on the left to read it."
+                title={t('history.pick_conversation', 'Pick a conversation')}
+                description={t('history.pick_desc', 'Click a chat on the left to read it.')}
                 compact
               />
             </div>
@@ -196,7 +198,7 @@ export default function AIChatHistoryPage() {
               <Loader2 size={20} style={{ color: 'var(--text-tertiary)', animation: 'spin 1s linear infinite' }} />
             </div>
           ) : !thread ? (
-            <EmptyState icon={MessageSquare} title="Conversation not found" />
+            <EmptyState icon={MessageSquare} title={t('history.not_found', 'Conversation not found')} />
           ) : (
             <>
               <header style={{
@@ -206,13 +208,13 @@ export default function AIChatHistoryPage() {
               }}>
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
-                    {thread.title || 'Untitled chat'}
+                    {thread.title || t('history.untitled', 'Untitled chat')}
                   </div>
                   <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
-                    {thread.created_at ? new Date(thread.created_at).toLocaleString() : ''} · {thread.messages?.length || 0} messages
+                    {thread.created_at ? new Date(thread.created_at).toLocaleString() : ''} · {t('history.messages_count', { count: thread.messages?.length || 0 })}
                   </div>
                 </div>
-                <Button variant="ghost" size="sm" iconOnly icon={X} aria-label="Close" onClick={() => setSelected(null)} />
+                <Button variant="ghost" size="sm" iconOnly icon={X} aria-label={t('shared.close', 'Close')} onClick={() => setSelected(null)} />
               </header>
               <div style={{ flex: 1, overflowY: 'auto', padding: '16px 18px' }}>
                 {(thread.messages || []).filter((m) => m.role !== 'system').map((m, i) => (
@@ -232,6 +234,7 @@ export default function AIChatHistoryPage() {
 }
 
 function HistoryMessage({ msg }) {
+  const { t } = useTranslation('ai');
   const isUser = msg.role === 'user';
   // Tool result rows often have empty .content but populated .tool_results
   const text = (msg.content || '').trim();
@@ -257,7 +260,7 @@ function HistoryMessage({ msg }) {
       <div style={{ marginBottom: 10 }}>
         {toolResults.map((tr, i) => (
           <div key={i} style={{ ...toolPillStyle, color: 'var(--text-tertiary)' }}>
-            <CheckCircle2 size={11} style={{ color: 'var(--success)' }} /> tool result
+            <CheckCircle2 size={11} style={{ color: 'var(--success)' }} /> {t('history.tool_result', 'tool result')}
           </div>
         ))}
       </div>

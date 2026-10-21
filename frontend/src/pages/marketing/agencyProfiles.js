@@ -22,29 +22,31 @@
  *   reviews[], contact { website, email, phone }
  */
 
+import { agencyProfiles_es } from './agencyProfiles.es';
+
 const AGENCIES = {
   // ──────────────────────────────────────────────────────────────────────
   'bluewave-agency': {
     slug: 'bluewave-agency',
     name: 'BlueWave Agency',
     tagline: 'Six humans. 120+ clients. Multi-tenant marketing at scale.',
-    accent: '#00CCF5',
+    accent: '#F5A623',
     location: 'Gurgaon, India',
     founded: 2021,
     size: '6 staff',
     industries: ['SaaS', 'D2C', 'Fintech'],
     services: ['Social media', 'WhatsApp campaigns', 'Reporting', 'Strategy'],
     languages: ['English', 'Hindi'],
-    badges: ['Verified', 'Top 1%', 'Social Stats Native'],
+    badges: ['Verified', 'Top 1%', 'Bop Social Native'],
     rating: { score: 4.9, count: 86 },
-    pricing: { from: '₹40K/mo', model: 'Retainer' },
+    pricing: { from: 'Custom', model: 'Retainer' },
     hero: {
       logoText: 'B',
-      cover: ['#00CCF5', '#0066FF'],
+      cover: ['#F5A623', '#2D3142'],
     },
     about: [
       'BlueWave is a 6-person agency based in Gurgaon that runs marketing for over 120 clients — primarily SaaS, D2C and fintech. Founded in 2021 by Rohit Mehta after a decade at larger agencies, BlueWave was built on a single idea: small teams, when properly tooled, can outperform 50-person shops.',
-      'BlueWave is a Social Stats Native partner — every client lives in their own multi-tenant workspace, every report is white-labelled, and every scheduled post is reviewed in-product. No PowerPoint exports. No spreadsheets to reconcile.',
+      'BlueWave is a Bop Social Native partner — every client lives in their own multi-tenant workspace, every report is white-labelled, and every scheduled post is reviewed in-product. No PowerPoint exports. No spreadsheets to reconcile.',
     ],
     metric: { value: '120+', label: 'clients managed' },
     stats: [
@@ -61,7 +63,7 @@ const AGENCIES = {
     ],
     portfolio: [
       { brand: 'Halcyon SaaS',     metric: '4.2x leads',   note: 'CTWA bot funnel'        },
-      { brand: 'Verve D2C',        metric: '+₹38L/mo',     note: 'WhatsApp catalogue'     },
+      { brand: 'Verve D2C',        metric: '+140% MoM',    note: 'WhatsApp catalogue'     },
       { brand: 'Lumen Fintech',    metric: '6.4x ROAS',    note: 'Composer + Meta ads'    },
       { brand: 'Ember Restaurants',metric: '+450 covers/wk',note:'Local Instagram strategy'},
     ],
@@ -85,13 +87,13 @@ const AGENCIES = {
     industries: ['E-commerce', 'D2C', 'Beauty'],
     services: ['Performance creative', 'Meta ads', 'AI Composer', 'Analytics'],
     languages: ['English', 'Kannada', 'Hindi'],
-    badges: ['Verified', 'Social Stats Native'],
+    badges: ['Verified', 'Bop Social Native'],
     rating: { score: 4.8, count: 142 },
-    pricing: { from: '₹85K/mo', model: 'Retainer + perf bonus' },
+    pricing: { from: 'Custom', model: 'Retainer + Performance' },
     hero: { logoText: 'H', cover: ['#8b5cf6', '#6d28d9'] },
     about: [
       'Halcyon is a 14-person Bengaluru agency that specialises in performance creative — the high-volume, AI-assisted ad iteration that modern D2C brands rely on. Founded in 2020 by Aditya Rao, Halcyon ships ~600 creative variants per month per client.',
-      'They were one of the first agencies to onboard onto the Social Stats Studio. Today the entire creative pipeline — brief → draft → approval → publish → measure → iterate — runs in Social Stats.',
+      'They were one of the first agencies to onboard onto the Bop Social AI Studio. Today the entire creative pipeline — brief → draft → approval → publish → measure → iterate — runs in Bop Social.',
     ],
     metric: { value: '7x', label: 'creative throughput' },
     stats: [
@@ -134,11 +136,11 @@ const AGENCIES = {
     languages: ['English', 'Hindi', 'Marathi'],
     badges: ['Verified', 'Top 5%'],
     rating: { score: 4.7, count: 198 },
-    pricing: { from: '₹120K/mo', model: 'Retainer' },
+    pricing: { from: 'Custom', model: 'Retainer' },
     hero: { logoText: 'V', cover: ['#f472b6', '#db2777'] },
     about: [
       'Verve is a Mumbai-based content agency for premium D2C brands. Founded in 2019, they have a deep specialisation in brand-voice work — taking a brand from "competent posts" to "instantly recognisable from a single line of copy."',
-      'Verve trains its writers on a proprietary methodology and uses Social Stats\'s brand-voice profiles to ensure consistency at scale.',
+      'Verve trains its writers on a proprietary methodology and uses Bop Social\'s brand-voice profiles to ensure consistency at scale.',
     ],
     metric: { value: '24h', label: 'creative turnaround' },
     stats: [
@@ -151,7 +153,7 @@ const AGENCIES = {
       { title: 'Brand voice systems', body: 'Multi-month brand-voice audits, vocabulary lists, do/don\'t guides.' },
       { title: 'Content production',  body: '20-40 posts/mo per client. Photography + copy + scheduling.' },
       { title: 'Influencer mgmt',     body: 'Tier-1 to micro influencers. Negotiation, briefing, measurement.' },
-      { title: 'Approval workflows',  body: 'Multi-stakeholder approvals via Social Stats. Average 24-hour turnaround.' },
+      { title: 'Approval workflows',  body: 'Multi-stakeholder approvals via Bop Social. Average 24-hour turnaround.' },
     ],
     portfolio: [
       { brand: 'Aurora Skincare', metric: '+450% reach',     note: 'Influencer + organic' },
@@ -180,10 +182,10 @@ const AGENCIES = {
     languages: ['English', 'Hindi'],
     badges: ['Verified', 'Compliance specialist'],
     rating: { score: 4.9, count: 64 },
-    pricing: { from: '₹60K/mo', model: 'Retainer' },
+    pricing: { from: 'Custom', model: 'Retainer' },
     hero: { logoText: 'L', cover: ['#10b981', '#059669'] },
     about: [
-      'Lumen specialises in regulated industries — finance, insurance, and professional services where every post needs compliance review. They\'ve built an internal review queue inside Social Stats that lawyers, compliance officers, and the marketing team share.',
+      'Lumen specialises in regulated industries — finance, insurance, and professional services where every post needs compliance review. They\'ve built an internal review queue inside Bop Social that lawyers, compliance officers, and the marketing team share.',
       'If you need to ship a LinkedIn post in a regulated category and not get a fine for it, Lumen is the agency.',
     ],
     metric: { value: '3x', label: 'client retention' },
@@ -226,16 +228,16 @@ const AGENCIES = {
     languages: ['English', 'Telugu', 'Hindi', 'Tamil'],
     badges: ['Verified', 'Multi-location'],
     rating: { score: 4.6, count: 91 },
-    pricing: { from: '₹25K/mo', model: 'Per-location pricing' },
+    pricing: { from: 'Custom', model: 'Per-location retainer' },
     hero: { logoText: 'E', cover: ['#f59e0b', '#d97706'] },
     about: [
-      'Ember runs the social presence for restaurant chains, multi-clinic networks, and retail brands that need consistent presence across many physical locations. They use Social Stats\'s multi-tenant architecture to manage 100+ Google Business profiles + 100+ Instagram accounts from one workspace.',
+      'Ember runs the social presence for restaurant chains, multi-clinic networks, and retail brands that need consistent presence across many physical locations. They use Bop Social\'s multi-tenant architecture to manage 100+ Google Business profiles + 100+ Instagram accounts from one workspace.',
       'If you have more than 5 physical locations, Ember is built for you.',
     ],
-    metric: { value: '+₹38L', label: 'monthly revenue lift' },
+    metric: { value: '+140%', label: 'monthly revenue lift' },
     stats: [
       { value: '100+', label: 'locations managed/client' },
-      { value: '+₹38L',label: 'avg. monthly revenue lift'},
+      { value: '+140%',label: 'avg. monthly revenue lift'},
       { value: '4.6',  label: 'avg. rating'              },
       { value: '14d',  label: 'avg. onboarding time'     },
     ],
@@ -252,7 +254,7 @@ const AGENCIES = {
     ],
     reviews: [
       { name: 'Vikram J.',       role: 'Director, Ember chain',     rating: 5, body: 'Ember runs all 14 of our locations. Saved 3 ops people.' },
-      { name: 'Dr. Anjali V.',   role: 'Founder, Sunrise Clinics',  rating: 4, body: 'Solid for multi-location healthcare. Some lag during festival surge.' },
+      { name: 'Dr. Anjali V.',   role: 'Founder, Sunrise Clinics',  rating: 4, body: 'Solid for multi-location healthcare. High volume during peak seasonal surges.' },
       { name: 'Sneha P.',        role: 'GM, Pulse Fitness',         rating: 5, body: 'They get hyper-local. Other agencies don\'t.' },
     ],
     contact: { website: 'ember.example', email: 'hi@ember.example', phone: '+91 90000 00005' },
@@ -272,10 +274,10 @@ const AGENCIES = {
     languages: ['English', 'Hindi', 'Bengali', 'Tamil'],
     badges: ['Verified', 'Top 1%', 'SOC 2'],
     rating: { score: 4.7, count: 312 },
-    pricing: { from: '₹250K/mo', model: 'MSA + retainer' },
+    pricing: { from: 'Custom', model: 'Enterprise agreement' },
     hero: { logoText: 'A', cover: ['#ef4444', '#dc2626'] },
     about: [
-      'Apex is the agency you call when stakes are high. Founded in 2015, they run enterprise social for Fortune 500 India entries — full MSAs, SLAs, security reviews, the works. They\'re SOC 2 audited and one of three Social Stats partners cleared for Tier-1 enterprise customers.',
+      'Apex is the agency you call when stakes are high. Founded in 2015, they run enterprise social for Fortune 500 India entries — full MSAs, SLAs, security reviews, the works. They\'re SOC 2 audited and one of three Bop Social partners cleared for Tier-1 enterprise customers.',
       'If you need an agency your General Counsel will sign off on, Apex is the answer.',
     ],
     metric: { value: '99.9%', label: 'SLA uptime' },
@@ -307,15 +309,52 @@ const AGENCIES = {
 
 export default AGENCIES;
 
-export function getAgency(slug) {
-  return AGENCIES[slug] || null;
+export function getAgency(slug, lang = 'en') {
+  const base = AGENCIES[slug];
+  if (!base) return null;
+  if (lang?.startsWith('es') && agencyProfiles_es[slug]) {
+    const es = agencyProfiles_es[slug];
+    return {
+      ...base,
+      ...es,
+      pricing: {
+        ...base.pricing,
+        ...(es.pricing || {}),
+      },
+      metric: {
+        ...base.metric,
+        ...(es.metric || {}),
+      },
+      stats: base.stats?.map((stat, idx) => ({
+        ...stat,
+        ...(es.stats?.[idx] || {}),
+      })),
+      services_detail: base.services_detail?.map((srv, idx) => ({
+        ...srv,
+        ...(es.services_detail?.[idx] || {}),
+      })),
+      portfolio: base.portfolio?.map((port, idx) => ({
+        ...port,
+        ...(es.portfolio?.[idx] || {}),
+      })),
+      reviews: base.reviews?.map((rev, idx) => ({
+        ...rev,
+        ...(es.reviews?.[idx] || {}),
+      })),
+    };
+  }
+  return base;
+}
+
+export function getAgencies(lang = 'en') {
+  return Object.keys(AGENCIES).map((slug) => getAgency(slug, lang));
 }
 
 export const AGENCY_LIST = Object.values(AGENCIES);
 
-export function listIndustries() {
-  return Array.from(new Set(AGENCY_LIST.flatMap((a) => a.industries))).sort();
+export function listIndustries(lang = 'en') {
+  return Array.from(new Set(getAgencies(lang).flatMap((a) => a.industries))).sort();
 }
-export function listServices() {
-  return Array.from(new Set(AGENCY_LIST.flatMap((a) => a.services))).sort();
+export function listServices(lang = 'en') {
+  return Array.from(new Set(getAgencies(lang).flatMap((a) => a.services))).sort();
 }

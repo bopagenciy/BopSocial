@@ -7,6 +7,7 @@
  *  Released under the MIT License — see LICENSE. Keep this notice.
  * ========================================================================== */
 import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 
 /**
  * Meta — imperative document head manager. No extra dependency.
@@ -22,40 +23,56 @@ import { useEffect } from 'react';
  * tags. Untouched tags (favicon, theme-color etc.) stay where they are.
  *
  * Props:
- *   title:       page-specific title (gets " · Social Stats" suffix unless `noSuffix`)
+ *   title:       page-specific title (gets " · Bop Social" suffix unless `noSuffix`)
  *   description: meta description / og:description / twitter:description
+ *   titleKey:    optional i18n key for title
+ *   descKey:     optional i18n key for description
  *   image:       og:image / twitter:image (absolute URL)
  *   url:         canonical / og:url (defaults to current location.href)
  *   type:        og:type (default 'website'; use 'article' for blog posts)
- *   noSuffix:    bool — drop the " · Social Stats" suffix (use for the home page)
+ *   noSuffix:    bool — drop the " · Bop Social" suffix (use for the home page)
  */
-const SITE_NAME = 'Social Stats';
-const DEFAULT_DESCRIPTION =
-  'Social Stats — the marketing OS for modern agencies. Manage analytics, messaging, and ads for every client from one beautiful dashboard.';
+const SITE_NAME = 'Bop Social';
+const DEFAULT_DESCRIPTION = {
+  en: 'Bop Social — the AI marketing OS for modern teams. Manage analytics, content, conversations, and ads across multiple platforms in one place.',
+  es: 'Bop Social — el sistema operativo de marketing con IA para equipos modernos. Administra analíticas, contenido, conversaciones y anuncios en múltiples plataformas desde un solo lugar.',
+};
 const DEFAULT_IMAGE = '/og-image.png';
 
 export default function Meta({
   title,
-  description = DEFAULT_DESCRIPTION,
+  description,
+  titleKey,
+  descKey,
   image = DEFAULT_IMAGE,
   url,
   type = 'website',
   noSuffix = false,
 }) {
+  const { t, i18n } = useTranslation('marketing');
+  const lang = i18n?.language?.startsWith('es') ? 'es' : 'en';
+
+  const defaultDesc = DEFAULT_DESCRIPTION[lang] || DEFAULT_DESCRIPTION.en;
+  const resolvedTitle = titleKey ? t(titleKey, title) : title;
+  const resolvedDesc = descKey ? t(descKey, description || defaultDesc) : (description || defaultDesc);
+
   useEffect(() => {
-    const fullTitle = title
-      ? (noSuffix ? title : `${title} · ${SITE_NAME}`)
-      : `${SITE_NAME} — The marketing OS for modern agencies`;
+    const fullTitle = resolvedTitle
+      ? (noSuffix ? resolvedTitle : `${resolvedTitle} · ${SITE_NAME}`)
+      : (lang === 'es' ? `${SITE_NAME} — El Sistema Operativo de Marketing para Equipos Modernos` : `${SITE_NAME} — The Marketing OS for Modern Teams`);
 
     document.title = fullTitle;
-    setMetaName('description', description);
+    if (typeof document !== 'undefined' && document.documentElement) {
+      document.documentElement.lang = lang;
+    }
+    setMetaName('description', resolvedDesc);
 
     const canonical = url || (typeof window !== 'undefined' ? window.location.href : '');
     setLink('canonical', canonical);
 
     // Open Graph
     setMetaProp('og:title',       fullTitle);
-    setMetaProp('og:description', description);
+    setMetaProp('og:description', resolvedDesc);
     setMetaProp('og:type',        type);
     setMetaProp('og:url',         canonical);
     setMetaProp('og:image',       absUrl(image));
@@ -66,7 +83,7 @@ export default function Meta({
     setMetaName('twitter:title',       fullTitle);
     setMetaName('twitter:description', description);
     setMetaName('twitter:image',       absUrl(image));
-    setMetaName('twitter:site',        '@socialstats');
+    setMetaName('twitter:site',        '@bopsocial');
   }, [title, description, image, url, type, noSuffix]);
 
   return null;

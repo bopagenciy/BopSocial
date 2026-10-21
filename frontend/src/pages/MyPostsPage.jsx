@@ -8,6 +8,7 @@
  * ========================================================================== */
 import { useMemo, useState } from 'react';
 import { ExternalLink, MessageCircle, Heart, Play, CalendarDays, Loader2, ChevronDown } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import PageHeader from '../components/layout/PageHeader';
 import DateRangePicker from '../components/ui/DateRangePicker';
 import PlatformTabs from '../components/ui/PlatformTabs';
@@ -15,18 +16,21 @@ import SocialPlatformIcon from '../components/ui/SocialPlatformIcon';
 import { useAuth } from '../hooks/useAuth';
 import { useDateRange, useOAuthStatus, usePosts, useLookups } from '../hooks/useData';
 import { PLATFORMS, fmt } from '../services/platforms';
+import { formatDate } from '../utils/formatters';
 
 function EmptyState() {
+  const { t } = useTranslation('content');
   return (
     <div style={styles.emptyState}>
       <CalendarDays size={28} style={{ color: 'var(--text-tertiary)' }} />
-      <h3 style={styles.emptyTitle}>No posts found</h3>
-      <p style={styles.emptyText}>Posts will appear here once your connected accounts have synced content.</p>
+      <h3 style={styles.emptyTitle}>{t('posts.empty_title', 'No posts found')}</h3>
+      <p style={styles.emptyText}>{t('posts.empty_desc', 'Posts will appear here once your connected accounts have synced content.')}</p>
     </div>
   );
 }
 
 export default function MyPostsPage() {
+  const { t } = useTranslation('content');
   const { user } = useAuth();
   const clientId = user?.client_id;
   const [range, setRange] = useDateRange(30);
@@ -55,13 +59,13 @@ export default function MyPostsPage() {
   return (
     <div className="app-page app-page--content app-page--xl">
       <PageHeader
-        title="My Posts"
-        subtitle="Review recent content performance across your connected accounts."
+        title={t('posts.title', 'My Posts')}
+        subtitle={t('posts.subtitle', 'Review recent content performance across your connected accounts.')}
         actions={<DateRangePicker range={range} onChange={setRange} />}
         meta={[
-          { label: 'Showing', value: `${posts.length} of ${total}` },
-          { label: 'Platforms', value: connectedPlatforms.length || 0 },
-          { label: 'View', value: platform === 'all' ? 'All Platforms' : (platformLabelMap[platform] || PLATFORMS[platform]?.label || platform) },
+          { label: t('posts.showing', 'Showing'), value: t('posts.showing_of', { current: posts.length, total, defaultValue: `${posts.length} of ${total}` }) },
+          { label: t('posts.platforms', 'Platforms'), value: connectedPlatforms.length || 0 },
+          { label: t('posts.view', 'View'), value: platform === 'all' ? t('posts.all_platforms', 'All Platforms') : (platformLabelMap[platform] || PLATFORMS[platform]?.label || platform) },
         ]}
       />
 
@@ -75,14 +79,15 @@ export default function MyPostsPage() {
       </div>
 
       {loading ? (
-        <div style={styles.loading}>Loading posts…</div>
+        <div style={styles.loading}>{t('posts.loading', 'Loading posts…')}</div>
       ) : posts.length === 0 ? (
         <EmptyState />
       ) : (
         <div style={styles.grid}>
           {posts.map((post) => {
             const postPlatformMeta = platformMeta(post.platform);
-            const title = post.caption || post.title || `${postPlatformMeta.label} ${post.post_type || 'post'} — ${post.published_at ? new Date(post.published_at).toLocaleDateString() : 'Draft'}`;
+            const dateLabel = post.published_at ? formatDate(post.published_at) : t('status.draft', 'Draft');
+            const title = post.caption || post.title || `${postPlatformMeta.label} ${post.post_type || 'post'} — ${dateLabel}`;
             const isVideo = post.video_views > 0 || post.post_type?.includes('video');
             return (
               <article key={post.id} style={styles.card}>
@@ -107,7 +112,7 @@ export default function MyPostsPage() {
                       </span>
                     </span>
                     <span style={styles.dateText}>
-                      {post.published_at ? new Date(post.published_at).toLocaleDateString() : 'Draft'}
+                      {dateLabel}
                     </span>
                   </div>
 
@@ -123,7 +128,7 @@ export default function MyPostsPage() {
                   {post.post_url && (
                     <a href={post.post_url} target="_blank" rel="noreferrer" style={styles.viewLink}>
                       <ExternalLink size={14} />
-                      View Post
+                      {t('posts.view_post', 'View Post')}
                     </a>
                   )}
                 </div>
@@ -138,9 +143,9 @@ export default function MyPostsPage() {
         <div style={styles.loadMoreWrap}>
           <button onClick={loadMore} disabled={loadingMore} style={styles.loadMoreBtn}>
             {loadingMore ? (
-              <><Loader2 size={15} style={{ animation: 'spin .8s linear infinite' }} /> Loading…</>
+              <><Loader2 size={15} style={{ animation: 'spin .8s linear infinite' }} /> {t('posts.loading', 'Loading…')}</>
             ) : (
-              <><ChevronDown size={15} /> Load More ({total - posts.length} remaining)</>
+              <><ChevronDown size={15} /> {t('posts.load_more', { remaining: total - posts.length, defaultValue: `Load More (${total - posts.length} remaining)` })}</>
             )}
           </button>
         </div>

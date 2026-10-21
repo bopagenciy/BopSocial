@@ -1,0 +1,373 @@
+{
+  "title": "Configuración",
+  "subtitle": "Gestiona tu cuenta, espacio de trabajo e integraciones",
+  "groups": {
+    "account": "Cuenta",
+    "workspace": "Espacio de trabajo",
+    "developer": "Desarrollador",
+    "privacy": "Privacidad"
+  },
+  "tabs": {
+    "profile": "Perfil",
+    "security": "Cuenta y seguridad",
+    "agency": "Agencia",
+    "notifications": "Notificaciones",
+    "appearance": "Apariencia",
+    "shortcuts": "Atajos de teclado",
+    "api": "Claves de API",
+    "webhooks": "Webhooks",
+    "data": "Datos y privacidad",
+    "more": "Más configuraciones"
+  },
+  "profile": {
+    "title": "Información del perfil",
+    "subtitle": "Actualiza tu nombre y foto de perfil.",
+    "photo": "Foto de perfil",
+    "photo_hint": "JPG, PNG o GIF · Máx. 5 MB",
+    "upload_photo": "Subir foto",
+    "first_name": "Nombre",
+    "last_name": "Apellido",
+    "email": "Dirección de correo",
+    "email_locked": "El correo no se puede cambiar aquí.",
+    "save_changes": "Guardar cambios",
+    "saving": "Guardando...",
+    "success": "Perfil actualizado correctamente.",
+    "required_first_name": "El nombre es obligatorio."
+  },
+  "security": {
+    "title": "Seguridad",
+    "subtitle": "Gestiona la contraseña de tu cuenta y la configuración de seguridad.",
+    "social_login_account": "Cuenta con inicio de sesión social",
+    "email_password_account": "Cuenta con correo y contraseña",
+    "social_login_desc": "Tu cuenta está vinculada a Google. El inicio de sesión con contraseña no está disponible.",
+    "password_login_desc": "Puedes cambiar tu contraseña a continuación.",
+    "google_managed_notice": "La gestión de contraseñas es administrada por Google. Para cambiar tu contraseña, visita la configuración de tu cuenta de Google.",
+    "current_password": "Contraseña actual",
+    "current_password_placeholder": "Introduce tu contraseña actual",
+    "new_password": "Nueva contraseña",
+    "new_password_placeholder": "Al menos 8 caracteres",
+    "confirm_new_password": "Confirmar nueva contraseña",
+    "confirm_new_password_placeholder": "Vuelve a introducir la nueva contraseña",
+    "change_password": "Cambiar contraseña",
+    "saving": "Guardando...",
+    "success": "Contraseña cambiada correctamente.",
+    "two_factor_auth": "Autenticación de dos factores",
+    "active_sessions": "Sesiones activas",
+    "errors": {
+      "required": "Todos los campos son obligatorios.",
+      "mismatch": "Las contraseñas nuevas no coinciden.",
+      "too_short": "La contraseña debe tener al menos 8 caracteres.",
+      "failed": "Error al cambiar la contraseña."
+    }
+  },
+  "mfa": {
+    "loading": "Cargando…",
+    "title": "Autenticación de dos factores (TOTP)",
+    "description": "Añade un segundo factor (un código de 6 dígitos desde tu aplicación de autenticación) además de tu contraseña. Muy recomendado para cuentas de administración.",
+    "starting": "Iniciando…",
+    "setup_btn": "Configurar 2FA",
+    "enrol_title": "Configurar 2FA — paso 1 de 2",
+    "enrol_desc": "Escanea el código QR con Google Authenticator, 1Password o cualquier app TOTP.",
+    "enter_manually": "O introduce manualmente:",
+    "code_placeholder": "123456",
+    "verify": "Verificar",
+    "verifying": "Verificando…",
+    "cancel": "Cancelar",
+    "backup_title": "Guarda estos códigos de recuperación — se muestran una sola vez",
+    "backup_desc": "Cada código solo puede usarse UNA VEZ si pierdes el acceso a tu app de autenticación. Guárdalos en un gestor de contraseñas.",
+    "copy_all": "Copiar todos",
+    "saved_them": "Los he guardado",
+    "enabled_title": "La autenticación de dos factores está activada",
+    "enabled_badge": "Activada",
+    "backup_remaining_one": "Queda 1 código de recuperación",
+    "backup_remaining_other": "Quedan {{count}} códigos de recuperación",
+    "last_used": "usado por última vez el {{date}}",
+    "never_used": "aún no se ha usado",
+    "regenerate_btn": "Regenerar códigos de recuperación",
+    "disable_btn": "Desactivar 2FA",
+    "prompt_regenerate": "Introduce tu código actual de 6 dígitos para regenerar los códigos de recuperación:",
+    "err_load": "No se pudo cargar el estado de 2FA",
+    "err_enter_code": "Introduce el código de 6 dígitos",
+    "err_verify_failed": "Error de verificación",
+    "err_regen_failed": "No se pudieron regenerar los códigos",
+    "success_disabled": "2FA desactivada",
+    "err_disable_failed": "No se pudo desactivar 2FA",
+    "copied": "Códigos de recuperación copiados",
+    "err_copy": "No se pudo copiar",
+    "disable_modal_title": "Desactivar 2FA",
+    "disable_modal_desc": "Requerimos tu contraseña Y un código actual de 6 dígitos para evitar que un intruso desactive 2FA desde una sesión robada.",
+    "password_placeholder": "Contraseña",
+    "disabling": "Desactivando…",
+    "disable_confirm_btn": "Desactivar 2FA"
+  },
+  "sessions": {
+    "loading": "Cargando sesiones…",
+    "title": "Sesiones activas",
+    "active_revoked_summary": "{{active}} activas · {{revoked}} revocadas (últimos 90 días)",
+    "sign_out_everywhere": "Cerrar sesión en todos los dispositivos",
+    "empty_title": "No hay sesiones todavía",
+    "empty_desc": "Tus sesiones activas aparecerán aquí.",
+    "unknown_browser": "Navegador desconocido",
+    "unknown_os": "SO desconocido",
+    "device": "dispositivo",
+    "revoked_badge": "Revocada",
+    "unknown_ip": "IP desconocida",
+    "ip_last_used": "{{ip}} · último uso el {{date}}",
+    "revoke_label": "Revocar sesión",
+    "confirm_revoke": "¿Revocar esta sesión? El dispositivo se desconectará de inmediato.",
+    "confirm_sign_out_all": "¿Cerrar sesión en todos los demás dispositivos? Esta acción no se puede deshacer.",
+    "err_load": "No se pudieron cargar las sesiones",
+    "success_revoked": "Sesión revocada",
+    "err_revoke": "No se pudo revocar",
+    "success_all_revoked": "{{count}} sesión(es) revocada(s)",
+    "err_sign_out_all": "No se pudo cerrar sesión en todos los dispositivos"
+  },
+  "agency": {
+    "title": "Conexión con la agencia",
+    "subtitle": "Gestiona tu conexión con tu agencia en Bop Social.",
+    "no_agency_connected": "Sin agencia conectada",
+    "no_agency_desc": "Actualmente no estás conectado a ninguna agencia.",
+    "connected_since": "Conectado desde el {{date}}",
+    "connected_badge": "Conectado",
+    "can_title": "Tu agencia puede:",
+    "perms": {
+      "analytics": "Ver tus estadísticas e informes",
+      "social_accounts": "Gestionar tus cuentas de redes sociales conectadas",
+      "posts": "Crear y programar publicaciones en tu nombre",
+      "ai_insights": "Generar análisis con IA para tu cuenta"
+    },
+    "disconnect_btn": "Desconectar de la agencia",
+    "confirm_title": "Confirmar desconexión",
+    "confirm_desc": "¿Seguro que quieres desconectarte de {{name}}? Perderán el acceso a tu cuenta y recibirán una notificación por correo.",
+    "confirm_yes": "Sí, desconectar",
+    "disconnecting": "Desconectando...",
+    "cancel": "Cancelar",
+    "error": "Error al desconectar. Inténtalo de nuevo."
+  },
+  "notifications": {
+    "title": "Notificaciones",
+    "subtitle": "Elige sobre qué eventos te gustaría recibir notificaciones y por qué canales.",
+    "save_btn": "Guardar preferencias",
+    "event_col": "Evento",
+    "channels": {
+      "in_app": "En la app",
+      "email": "Correo",
+      "browser": "Navegador"
+    },
+    "events": {
+      "mentions": {
+        "label": "Menciones",
+        "description": "Alguien mencionó una cuenta rastreada."
+      },
+      "alerts": {
+        "label": "Alertas de rendimiento",
+        "description": "Caídas de interacción o publicaciones virales."
+      },
+      "reports": {
+        "label": "Informes programados",
+        "description": "Correos de informes semanales y mensuales."
+      },
+      "team": {
+        "label": "Actividad del equipo",
+        "description": "Nuevos miembros, cambios de rol e invitaciones."
+      },
+      "token_expiry": {
+        "label": "Vencimiento de tokens",
+        "description": "Tokens de OAuth a punto de expirar."
+      }
+    },
+    "switch_aria": "Notificaciones por {{channel}} para {{event}}",
+    "saved": "Preferencias de notificaciones guardadas",
+    "err_save": "No se pudieron guardar las preferencias"
+  },
+  "appearance": {
+    "title": "Apariencia",
+    "subtitle": "Personaliza cómo se ve y se siente Bop Social.",
+    "theme_title": "Tema",
+    "theme_desc": "Elige un tema claro u oscuro. \"Sistema\" se sincroniza con la preferencia de tu sistema operativo.",
+    "themes": {
+      "light": "Claro",
+      "dark": "Oscuro",
+      "system": "Sistema"
+    },
+    "density_title": "Densidad",
+    "density_desc": "Muestra más o menos contenido por pantalla. \"Compacta\" reduce el espaciado y la altura de las filas.",
+    "density": {
+      "comfortable": "Cómoda",
+      "compact": "Compacta"
+    },
+    "density_set": "Densidad configurada en {{value}}"
+  },
+  "shortcuts": {
+    "title": "Atajos de teclado",
+    "subtitle": "Acelera tu flujo de trabajo con estos atajos de teclado.",
+    "categories": {
+      "global": "Global",
+      "navigation": "Navegación",
+      "composer": "Editor",
+      "inbox": "Bandeja de entrada"
+    },
+    "items": {
+      "cmd_k": "Abrir paleta de comandos",
+      "cmd_slash": "Mostrar atajos",
+      "esc": "Cerrar modal o paleta",
+      "cmd_j": "Abrir asistente de IA",
+      "g_d": "Ir al panel principal",
+      "g_a": "Ir a estadísticas",
+      "g_r": "Ir a informes",
+      "g_i": "Ir a la bandeja de entrada",
+      "cmd_enter": "Enviar editor o formulario",
+      "cmd_s": "Guardar borrador",
+      "cmd_shift_p": "Publicar ahora",
+      "r": "Responder",
+      "a": "Archivar conversación",
+      "shift_u": "Alternar no leído"
+    },
+    "hint": "Pronto podrás personalizar los atajos. Pulsa {{key}} desde cualquier lugar para ver esta lista."
+  },
+  "api_keys": {
+    "title": "Claves de API",
+    "subtitle": "Acceso programático para tus scripts e integraciones. Las claves se guardan como hashes SHA-256; nunca vemos el texto original después de su creación.",
+    "generate_title": "Generar una nueva clave",
+    "name_placeholder": "ej. \"Despliegue de producción\"",
+    "scopes_placeholder": "Permisos (separados por comas, ej. read:posts, write:leads)",
+    "creating": "Creando…",
+    "generate_btn": "Generar",
+    "hint": "Las claves se muestran una sola vez al generarse; cópialas y guárdalas en un lugar seguro.",
+    "warning_title": "Guarda esta clave ahora; no se volverá a mostrar",
+    "copy": "Copiar",
+    "saved_it": "La he guardado",
+    "loading": "Cargando…",
+    "empty_title": "Aún no hay claves de API",
+    "empty_desc": "Genera tu primera clave arriba para comenzar a integrar Bop Social con tus otras herramientas.",
+    "expired": "Caducada",
+    "revoked": "Revocada",
+    "created_at": "Creada el {{date}}",
+    "last_used_at": "Último uso el {{date}}",
+    "never_used": "Nunca usada",
+    "calls_count_one": "1 llamada",
+    "calls_count_other": "{{count}} llamadas",
+    "scopes_label": "Permisos: {{scopes}}",
+    "revoke_aria": "Revocar clave",
+    "err_name_required": "Asigna un nombre a la clave primero",
+    "created_success": "Clave de API creada",
+    "err_create": "No se pudo crear la clave",
+    "err_load": "No se pudieron cargar las claves de API",
+    "no_client_title": "Se requiere un espacio de trabajo de cliente",
+    "no_client_desc": "Las claves de API están asociadas a espacios de trabajo de clientes específicos. Selecciona o cambia a un espacio de trabajo de cliente para gestionar sus claves de API.",
+    "confirm_revoke": "¿Revocar esta clave? Cualquier aplicación que la use dejará de funcionar.",
+    "revoked_success": "Clave revocada",
+    "err_revoke": "No se pudo revocar",
+    "copied": "Copiado al portapapeles",
+    "err_copy": "No se pudo copiar"
+  },
+  "data_privacy": {
+    "title": "Datos y privacidad",
+    "subtitle": "Tus datos, tus derechos. Exporta todo, gestiona consentimientos, pausa el procesamiento o elimina tu cuenta.",
+    "loading": "Cargando…",
+    "export_title": "Exportar tus datos",
+    "export_desc": "Descarga un archivo ZIP con tu perfil, espacios de trabajo propios, registro de consentimientos e historial de solicitudes. Enviado por enlace de correo (caduca en 7 días).",
+    "queueing": "En cola…",
+    "request_export": "Solicitar exportación",
+    "download": "Descargar",
+    "consents_title": "Tus consentimientos",
+    "consents_desc": "Activa o desactiva preferencias de comunicación y seguimiento. Las revocaciones surten efecto de inmediato.",
+    "consent_labels": {
+      "marketing_emails": "Correos de marketing",
+      "product_emails": "Correos de novedades del producto",
+      "cookies_analytics": "Cookies analíticas",
+      "cookies_marketing": "Cookies de marketing",
+      "ai_processing_optout": "Procesamiento de IA — exclusión voluntaria",
+      "whatsapp_marketing": "Mensajes de marketing por WhatsApp",
+      "data_processing": "Procesamiento de datos del servicio principal"
+    },
+    "pause_title": "Pausar procesamiento de datos",
+    "pause_desc": "Cuando se pausa, las tareas de sincronización omiten tus espacios de trabajo, se desactivan las funciones de IA y el editor pasa a solo lectura. Puedes seguir iniciando sesión para ver los datos existentes.",
+    "delete_account_title": "Eliminar cuenta",
+    "delete_account_desc": "Elimina de forma permanente tu cuenta, sesiones, 2FA, claves de API y datos personales tras un periodo de gracia de 30 días. Los registros de auditoría se anonimizan pero se conservan por cumplimiento normativo.",
+    "deletion_scheduled": "Eliminación programada — finaliza el {{date}}",
+    "cancel_deletion": "Cancelar",
+    "delete_my_account": "Eliminar mi cuenta",
+    "export_queued": "Exportación en cola; te enviaremos un correo cuando esté lista",
+    "err_export": "No se pudo poner en cola la exportación",
+    "err_consent": "No se pudo guardar el consentimiento",
+    "processing_paused": "Procesamiento pausado",
+    "processing_resumed": "Procesamiento reanudado",
+    "err_update": "No se pudo actualizar",
+    "prompt_delete_reason": "Dinos el motivo (opcional). Tu cuenta se eliminará de forma permanente en 30 días a menos que se cancele.",
+    "deletion_scheduled_toast": "Eliminación programada; tienes 30 días para cancelar",
+    "err_schedule_deletion": "No se pudo programar la eliminación",
+    "deletion_canceled_toast": "Eliminación cancelada",
+    "err_cancel_deletion": "No se pudo cancelar"
+  },
+  "webhooks": {
+    "title": "Webhooks",
+    "subtitle": "Recibe notificaciones HTTP POST cuando ocurran eventos en tu espacio de trabajo.",
+    "add_title": "Añadir un endpoint",
+    "placeholder": "https://tu-servidor.com/webhooks/bopsocial",
+    "add_btn": "Añadir",
+    "empty_title": "No hay endpoints de webhook",
+    "empty_desc": "Añade un endpoint HTTPS arriba para comenzar a recibir eventos.",
+    "events_subscribed_one": "1 evento suscrito",
+    "events_subscribed_other": "{{count}} eventos suscritos",
+    "status_active": "Activo",
+    "status_paused": "Pausado",
+    "remove_aria": "Eliminar",
+    "err_https": "El endpoint debe usar HTTPS",
+    "endpoint_added": "Endpoint añadido",
+    "endpoint_removed": "Endpoint eliminado"
+  },
+  "more": {
+    "title": "Más configuraciones",
+    "subtitle": "Algunas secciones tienen sus propias páginas. Accede a ellas aquí.",
+    "links": {
+      "team": {
+        "label": "Equipo y permisos",
+        "desc": "Invita a compañeros, asigna roles y personaliza permisos."
+      },
+      "workspaces": {
+        "label": "Espacios de trabajo (clientes)",
+        "desc": "Gestiona cada cuenta de cliente de tu agencia."
+      },
+      "audit_log": {
+        "label": "Registro de auditoría",
+        "desc": "Busca cualquier acción realizada en tu cuenta."
+      },
+      "help_center": {
+        "label": "Centro de ayuda",
+        "desc": "Guías de configuración, resolución de problemas y preguntas frecuentes."
+      }
+    }
+  },
+  "danger_zone": {
+    "title": "Zona de peligro",
+    "delete_account": "Eliminar cuenta",
+    "description": "Elimina de forma permanente tu cuenta y todos los datos asociados. Esta acción no se puede deshacer.",
+    "delete_btn": "Eliminar cuenta",
+    "reason_title": "¿Por qué estás eliminando tu cuenta?",
+    "reason_desc": "Por favor, selecciona un motivo. Esto nos ayuda a mejorar Bop Social.",
+    "reasons": {
+      "no_longer_need": "Ya no necesito esta cuenta",
+      "privacy_concerns": "Preocupaciones sobre privacidad",
+      "switching_platform": "Cambiando a otra plataforma",
+      "too_many_notifications": "Demasiados correos o notificaciones",
+      "technical_issues": "Problemas técnicos",
+      "other": "Otro"
+    },
+    "continue": "Continuar",
+    "cancel": "Cancelar",
+    "confirm_title": "Esto eliminará todo de forma permanente",
+    "warnings": {
+      "analytics": "Todos tus datos de análisis e informes",
+      "social_accounts": "Todas las cuentas de redes sociales conectadas",
+      "calendar_posts": "Todas las publicaciones y programaciones del calendario",
+      "agency_connection": "La conexión y el historial con tu agencia",
+      "profile_credentials": "Tu perfil y credenciales de acceso"
+    },
+    "type_delete_prompt": "Escribe DELETE para confirmar:",
+    "type_delete_placeholder": "DELETE",
+    "deleting": "Eliminando...",
+    "permanently_delete": "Eliminar cuenta permanentemente",
+    "error": "Error al eliminar la cuenta. Inténtalo de nuevo."
+  }
+}

@@ -6,8 +6,9 @@
  *  Copyright (c) 2026 Chandrabhan Shekhawat / Gigai Kripa Services.
  *  Released under the MIT License — see LICENSE. Keep this notice.
  * ========================================================================== */
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { NavLink, useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../hooks/useAuth';
 import { useClientSummary, useTimeseries, usePosts, useDateRange, useOAuthStatus, useLookups } from '../hooks/useData';
 import { PLATFORMS, fmt } from '../services/platforms';
@@ -45,21 +46,22 @@ const PLATS = PLATFORMS;
 const TAB_IDS = ['overview', 'analytics', 'posts', 'calendar', 'roi'];
 const DEFAULT_TAB = 'overview';
 
-const TAB_ITEMS = [
-  { id: 'overview',  label: 'Overview'  },
-  { id: 'analytics', label: 'Analytics' },
-  { id: 'posts',     label: 'Posts'     },
-  { id: 'calendar',  label: 'Calendar'  },
-  { id: 'roi',       label: 'ROI'       },
-];
-
 export default function ClientDashboard({ clientId: propClientId }) {
+  const { t }                       = useTranslation('dashboard');
   const { user }                    = useAuth();
   const clientId                    = propClientId || user?.client_id;
   const [range, setRange]           = useDateRange(30);
   const [platform, setPlatform]     = useState('all');
   const [syncing, setSyncing]       = useState(false);
   const [shareOpen, setShareOpen]   = useState(false);
+
+  const tabItems = useMemo(() => [
+    { id: 'overview',  label: t('tabs.overview', 'Overview') },
+    { id: 'analytics', label: t('tabs.analytics', 'Analytics') },
+    { id: 'posts',     label: t('tabs.posts', 'Posts') },
+    { id: 'calendar',  label: t('tabs.calendar', 'Calendar') },
+    { id: 'roi',       label: t('tabs.roi', 'ROI') },
+  ], [t]);
 
   // ── URL-backed tab state ──────────────────────────────────────────────────
   // ?tab=analytics, ?tab=posts, etc. Omitted from URL on the default tab so
@@ -114,7 +116,7 @@ export default function ClientDashboard({ clientId: propClientId }) {
   };
 
   const handleExportPDF = () => {
-    exportPDF({ client, summary, dateRange: range, chartsElementId: 'charts-area', posts, timeseries, connectedPlatforms });
+    exportPDF({ client, summary, dateRange: range, chartsElementId: 'charts-area', posts, timeseries, connectedPlatforms, language: i18n?.language });
   };
 
   const tabProps = {
@@ -140,23 +142,23 @@ export default function ClientDashboard({ clientId: propClientId }) {
       `}</style>
 
       <PageHeader
-        title={client.company || 'Dashboard'}
-        subtitle="Social Media Analytics"
+        title={client.company || t('tabs.overview', 'Dashboard')}
+        subtitle={t('subtitle', 'Social Media Analytics')}
         actions={(
           <div style={S.headerActions}>
             <NotificationBell clientId={clientId} />
             <button onClick={handleSync} disabled={syncing} style={S.syncBtn}>
               <span style={S.btnInner}>
                 {syncing
-                  ? <><Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> Syncing…</>
-                  : <><RefreshCw size={15} /> Sync Now</>}
+                  ? <><Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> {t('syncing', 'Syncing…')}</>
+                  : <><RefreshCw size={15} /> {t('sync_now', 'Sync Now')}</>}
               </span>
             </button>
             <button onClick={() => setShareOpen(true)} style={S.shareBtn}>
-              <span style={S.btnInner}><Share2 size={15} /> Share</span>
+              <span style={S.btnInner}><Share2 size={15} /> {t('share', 'Share')}</span>
             </button>
             <button onClick={handleExportPDF} style={S.pdfBtn}>
-              <span style={S.btnInner}><FileText size={15} /> Export PDF</span>
+              <span style={S.btnInner}><FileText size={15} /> {t('export_pdf', 'Export PDF')}</span>
             </button>
           </div>
         )}
@@ -168,7 +170,7 @@ export default function ClientDashboard({ clientId: propClientId }) {
       {!sumLoading && client.company && <ClientProfileStrip client={client} />}
 
       <SegmentedTabs
-        items={TAB_ITEMS}
+        items={tabItems}
         active={activeTab}
         onChange={setTab}
         compact
@@ -187,6 +189,7 @@ export default function ClientDashboard({ clientId: propClientId }) {
 // ── Tab components ────────────────────────────────────────────────────────────
 
 function OverviewTab(p) {
+  const { t } = useTranslation('dashboard');
   const {
     clientId, user, range, setRange, platform, setPlatform,
     posts, lookups, totals, byPlatform,
@@ -201,8 +204,8 @@ function OverviewTab(p) {
       {/* Greeting */}
       <div style={S.greetWrap}>
         <div>
-          <div style={S.greetTitle}>Good morning 👋</div>
-          <div style={S.greetSub}>Here's a snapshot of your latest activity</div>
+          <div style={S.greetTitle}>{t('greeting.title', 'Good morning 👋')}</div>
+          <div style={S.greetSub}>{t('greeting.subtitle', "Here's a snapshot of your latest activity")}</div>
         </div>
       </div>
 
@@ -226,9 +229,9 @@ function OverviewTab(p) {
       {connectedCount === 0 ? (
         <EmptyState
           icon={<Activity size={32} color="var(--text-tertiary)" />}
-          title="No accounts connected yet"
-          body="Connect Facebook, Instagram, LinkedIn, YouTube, or Google My Business to start syncing your data."
-          actionLabel="Connect accounts"
+          title={t('empty_connections.title', 'No accounts connected yet')}
+          body={t('empty_connections.body', 'Connect Facebook, Instagram, LinkedIn, YouTube, or Google My Business to start syncing your data.')}
+          actionLabel={t('empty_connections.action', 'Connect accounts')}
           actionHref="/dashboard/settings"
         />
       ) : (
@@ -238,25 +241,25 @@ function OverviewTab(p) {
             <div style={S.highlightStrip} className="db-card client-highlight-strip">
               <HighlightTile
                 icon={<TrendingUp size={16} color="#22c55e" />}
-                label="Engagement Rate"
+                label={t('highlights.engagement_rate', 'Engagement Rate')}
                 value={totals.avg_engagement_rate != null ? `${totals.avg_engagement_rate.toFixed(2)}%` : '—'}
                 bg="#f0fdf4" border="#bbf7d0"
               />
               <HighlightTile
                 icon={<Bookmark size={16} color="#8b5cf6" />}
-                label="Total Saves"
+                label={t('highlights.total_saves', 'Total Saves')}
                 value={fmt(totals.total_saves)}
                 bg="#f5f3ff" border="#ddd6fe"
               />
               <HighlightTile
                 icon={<MessageCircle size={16} color="#0891b2" />}
-                label="Total Comments"
+                label={t('highlights.total_comments', 'Total Comments')}
                 value={fmt(totals.total_comments)}
                 bg="#f0f9ff" border="#bae6fd"
               />
               <HighlightTile
                 icon={<Share2 size={16} color="#f59e0b" />}
-                label="Total Shares"
+                label={t('highlights.total_shares', 'Total Shares')}
                 value={fmt(totals.total_shares)}
                 bg="#fffbeb" border="#fde68a"
               />
@@ -267,9 +270,9 @@ function OverviewTab(p) {
           {!hasAnalytics && (
             <EmptyState
               icon={<BarChart2 size={32} color="var(--text-tertiary)" />}
-              title="No analytics yet"
-              body="Your accounts are connected but we haven't pulled metrics yet. Click Sync Now to start."
-              actionLabel={syncing ? 'Syncing…' : 'Sync Now'}
+              title={t('empty_analytics.title', 'No analytics yet')}
+              body={t('empty_analytics.body', "Your accounts are connected but we haven't pulled metrics yet. Click Sync Now to start.")}
+              actionLabel={syncing ? t('syncing', 'Syncing…') : t('sync_now', 'Sync Now')}
               onAction={syncing ? undefined : handleSync}
               compact
             />
@@ -297,24 +300,24 @@ function OverviewTab(p) {
               <div style={S.quickLinks} className="db-card">
                 <div style={S.sectionHead}>
                   <Sparkles size={14} color="var(--text-secondary)" />
-                  <span style={S.sectionTitle}>Jump to</span>
+                  <span style={S.sectionTitle}>{t('quick_links.title', 'Jump to')}</span>
                 </div>
                 <div style={S.quickLinkRow}>
                   <button onClick={() => setTab('analytics')} style={S.quickLinkBtn}>
                     <BarChart2 size={14} color="#0891b2" />
-                    Full analytics
+                    {t('quick_links.full_analytics', 'Full analytics')}
                   </button>
                   <button onClick={() => setTab('posts')} style={S.quickLinkBtn}>
                     <FileText size={14} color="#8b5cf6" />
-                    All posts
+                    {t('quick_links.all_posts', 'All posts')}
                   </button>
                   <button onClick={() => setTab('calendar')} style={S.quickLinkBtn}>
                     <Clock size={14} color="#2563eb" />
-                    Calendar
+                    {t('quick_links.calendar', 'Calendar')}
                   </button>
                   <button onClick={() => setTab('roi')} style={S.quickLinkBtn}>
                     <TrendingUp size={14} color="#22c55e" />
-                    ROI
+                    {t('quick_links.roi', 'ROI')}
                   </button>
                 </div>
               </div>
@@ -327,7 +330,7 @@ function OverviewTab(p) {
                 <div style={S.platformCards} className="db-card">
                   <div style={S.sectionHead} className="client-section-heading">
                     <Activity size={14} color="var(--text-secondary)" />
-                    <span style={S.sectionTitle}>Platforms</span>
+                    <span style={S.sectionTitle}>{t('platforms_box.title', 'Platforms')}</span>
                   </div>
                   {byPlatform.map(pl => (
                     <div key={pl.platform} style={S.platformRow}>
@@ -337,12 +340,12 @@ function OverviewTab(p) {
                           {platformMeta(pl.platform).label}
                         </div>
                         <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
-                          {fmt(pl.impressions)} impr · {fmt(pl.reach)} reach
+                          {fmt(pl.impressions)} {t('platforms_box.impr', 'impr')} · {fmt(pl.reach)} {t('platforms_box.reach', 'reach')}
                         </div>
                       </div>
                       <div style={{ fontSize: 11, color: 'var(--text-secondary)', textAlign: 'right' }}>
-                        <div>{fmt(pl.likes)} likes</div>
-                        <div>{fmt(pl.followers)} new</div>
+                        <div>{fmt(pl.likes)} {t('platforms_box.likes', 'likes')}</div>
+                        <div>{fmt(pl.followers)} {t('platforms_box.new', 'new')}</div>
                       </div>
                     </div>
                   ))}
@@ -357,6 +360,7 @@ function OverviewTab(p) {
 }
 
 function AnalyticsTab(p) {
+  const { t } = useTranslation('dashboard');
   const {
     clientId, range, setRange, platform, setPlatform,
     timeseries, tsLoading, posts, lookups,
@@ -364,6 +368,17 @@ function AnalyticsTab(p) {
     connectedPlatforms, connectedCount, hasAnalytics,
     platformMeta,
   } = p;
+
+  const breakdownHeaders = [
+    { key: 'platform', label: t('breakdown.headers.platform', 'Platform') },
+    { key: 'reach', label: t('breakdown.headers.reach', 'Reach') },
+    { key: 'impressions', label: t('breakdown.headers.impressions', 'Impressions') },
+    { key: 'likes', label: t('breakdown.headers.likes', 'Likes') },
+    { key: 'comments', label: t('breakdown.headers.comments', 'Comments') },
+    { key: 'shares', label: t('breakdown.headers.shares', 'Shares') },
+    { key: 'video_views', label: t('breakdown.headers.video_views', 'Video Views') },
+    { key: 'followers', label: t('breakdown.headers.followers', 'Followers') },
+  ];
 
   return (
     <>
@@ -389,7 +404,7 @@ function AnalyticsTab(p) {
         {tsLoading ? (
           <div style={S.loadingBox}>
             <Loader2 size={22} style={{ animation: 'spin 1s linear infinite', color: '#00d7ff' }} />
-            <span style={{ color: 'var(--text-tertiary)', fontSize: 13 }}>Loading charts…</span>
+            <span style={{ color: 'var(--text-tertiary)', fontSize: 13 }}>{t('loading_charts', 'Loading charts…')}</span>
           </div>
         ) : hasAnalytics ? (
           <div id="charts-area" style={S.chartsGrid} className="db-card client-charts-grid">
@@ -400,11 +415,17 @@ function AnalyticsTab(p) {
               <PlatformCompareChart byPlatform={byPlatform} />
             )}
           </div>
+        ) : (platform === 'instagram' || (connectedPlatforms.length === 1 && connectedPlatforms[0] === 'instagram')) && (summary?.capabilities?.instagram?.analytics_level === 'basic' || !summary?.capabilities?.instagram?.supports_timeseries) ? (
+          <div style={S.emptyBox} className="db-card">
+            <BarChart2 size={36} style={{ color: '#00d7ff', marginBottom: 10 }} />
+            <p style={{ margin: 0, color: 'var(--text-primary)', fontWeight: 600 }}>{t('empty_charts.instagram_basic_title', 'Advanced Instagram insights unavailable for this connection')}</p>
+            <p style={{ margin: '6px 0 0', color: 'var(--text-tertiary)', fontSize: 13, maxWidth: 480 }}>{t('empty_charts.instagram_basic_body', 'Your Instagram connection is active with basic media access. Per-post engagement metrics are available in the Posts tab, while daily timeseries charts require advanced insights permissions.')}</p>
+          </div>
         ) : (
           <div style={S.emptyBox} className="db-card">
             <BarChart2 size={36} style={{ color: 'var(--text-quaternary)', marginBottom: 10 }} />
-            <p style={{ margin: 0, color: 'var(--text-tertiary)', fontWeight: 600 }}>No data yet</p>
-            <p style={{ margin: '6px 0 0', color: 'var(--text-quaternary)', fontSize: 13 }}>Connect your accounts and click Sync Now to pull in data.</p>
+            <p style={{ margin: 0, color: 'var(--text-tertiary)', fontWeight: 600 }}>{t('empty_charts.title', 'No data yet')}</p>
+            <p style={{ margin: '6px 0 0', color: 'var(--text-quaternary)', fontSize: 13 }}>{t('empty_charts.body', 'Connect your accounts and click Sync Now to pull in data.')}</p>
           </div>
         )}
       </section>
@@ -420,15 +441,15 @@ function AnalyticsTab(p) {
           <div style={S.sectionHead2} className="client-section-heading">
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <TrendingUp size={16} color="var(--text-secondary)" />
-              <span style={S.sectionTitle2}>Platform Breakdown</span>
+              <span style={S.sectionTitle2}>{t('breakdown.title', 'Platform Breakdown')}</span>
             </div>
           </div>
           <div style={{ overflowX: 'auto' }}>
             <table style={S.table}>
               <thead>
                 <tr>
-                  {['Platform','Reach','Impressions','Likes','Comments','Shares','Video Views','Followers'].map(h => (
-                    <th key={h} style={S.th}>{h}</th>
+                  {breakdownHeaders.map(h => (
+                    <th key={h.key} style={S.th}>{h.label}</th>
                   ))}
                 </tr>
               </thead>
@@ -460,6 +481,7 @@ function AnalyticsTab(p) {
 }
 
 function PostsTab(p) {
+  const { t } = useTranslation('dashboard');
   const {
     clientId, range, setRange, platform, setPlatform,
     posts, lookups,
@@ -486,9 +508,9 @@ function PostsTab(p) {
       {!hasPosts ? (
         <EmptyState
           icon={<Inbox size={32} color="var(--text-tertiary)" />}
-          title="No posts in this range"
-          body="Try widening the date range, or run a sync to pull the latest posts from your connected accounts."
-          actionLabel={syncing ? 'Syncing…' : 'Sync Now'}
+          title={t('empty_posts.title', 'No posts in this range')}
+          body={t('empty_posts.body', 'Try widening the date range, or run a sync to pull the latest posts from your connected accounts.')}
+          actionLabel={syncing ? t('syncing', 'Syncing…') : t('sync_now', 'Sync Now')}
           onAction={syncing ? undefined : handleSync}
           compact
         />
@@ -497,7 +519,7 @@ function PostsTab(p) {
           <div style={S.sectionHead2} className="client-section-heading">
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <BarChart2 size={16} color="var(--text-secondary)" />
-              <span style={S.sectionTitle2}>All Posts</span>
+              <span style={S.sectionTitle2}>{t('posts.title', 'All Posts')}</span>
               <span style={S.countBadge}>{posts.length}</span>
             </div>
           </div>
@@ -513,19 +535,20 @@ function PostsTab(p) {
 // ── Reusable building blocks ──────────────────────────────────────────────────
 
 function ControlBar({ range, setRange, platform, setPlatform, connectedPlatforms, platforms, postCount, connectedCount, hasAnalytics }) {
+  const { t } = useTranslation('dashboard');
   return (
     <div style={S.controlBar} className="db-card client-control-bar">
       <div style={S.controlTop}>
         <DateRangePicker range={range} onChange={setRange} />
         <div style={S.quickStats}>
-          <QuickStat icon={<Activity size={14} color="#00d7ff" />} num={connectedCount} label="Connected" />
+          <QuickStat icon={<Activity size={14} color="#00d7ff" />} num={connectedCount} label={t('stats.connected', 'Connected')} />
           <div style={S.qDivider} />
-          <QuickStat icon={<BarChart2 size={14} color="#8b5cf6" />} num={postCount} label="Posts" />
+          <QuickStat icon={<BarChart2 size={14} color="#8b5cf6" />} num={postCount} label={t('stats.posts', 'Posts')} />
           <div style={S.qDivider} />
           <QuickStat
             icon={<Zap size={14} color={hasAnalytics ? '#22c55e' : '#f59e0b'} />}
-            num={<span style={{ fontSize: 12, color: hasAnalytics ? '#22c55e' : '#f59e0b', fontWeight: 700 }}>{hasAnalytics ? 'Live' : 'Waiting'}</span>}
-            label="Data"
+            num={<span style={{ fontSize: 12, color: hasAnalytics ? '#22c55e' : '#f59e0b', fontWeight: 700 }}>{hasAnalytics ? t('stats.live', 'Live') : t('stats.waiting', 'Waiting')}</span>}
+            label={t('stats.data', 'Data')}
           />
         </div>
       </div>
@@ -540,68 +563,69 @@ function ControlBar({ range, setRange, platform, setPlatform, connectedPlatforms
 }
 
 function KPICards({ platform, totals }) {
+  const { t } = useTranslation('dashboard');
   if (platform === 'youtube') return (
     <>
-      <StatCard label="Video Views"      value={totals.total_video_views}                                                      icon={Play}          color="#ff0000" />
-      <StatCard label="Watch Time (min)" value={totals.total_watch_time_minutes}                                                icon={Clock}         color="#f59e0b" />
-      <StatCard label="Avg View (sec)"   value={totals.avg_view_duration != null ? Math.round(totals.avg_view_duration) : null} icon={Timer}         color="#8b5cf6" />
-      <StatCard label="Likes"            value={totals.total_likes}                                                             icon={Heart}         color="#ef4444" />
-      <StatCard label="Comments"         value={totals.total_comments}                                                          icon={MessageCircle} color="#22c55e" />
-      <StatCard label="Shares"           value={totals.total_shares}                                                            icon={Share2}        color="#0891b2" />
-      <StatCard label="Subscribers"      value={totals.total_followers}                                                         icon={UserPlus}      color="#8b5cf6" />
-      <StatCard label="Unsubs"           value={totals.total_subscribers_lost}                                                  icon={TrendingDown}  color="var(--text-tertiary)" />
+      <StatCard label={t('metrics.video_views', 'Video Views')}      value={totals.total_video_views}                                                      icon={Play}          color="#ff0000" />
+      <StatCard label={t('metrics.watch_time', 'Watch Time (min)')} value={totals.total_watch_time_minutes}                                                icon={Clock}         color="#f59e0b" />
+      <StatCard label={t('metrics.avg_view', 'Avg View (sec)')}   value={totals.avg_view_duration != null ? Math.round(totals.avg_view_duration) : null} icon={Timer}         color="#8b5cf6" />
+      <StatCard label={t('metrics.likes', 'Likes')}            value={totals.total_likes}                                                             icon={Heart}         color="#ef4444" />
+      <StatCard label={t('metrics.comments', 'Comments')}         value={totals.total_comments}                                                          icon={MessageCircle} color="#22c55e" />
+      <StatCard label={t('metrics.shares', 'Shares')}           value={totals.total_shares}                                                            icon={Share2}        color="#0891b2" />
+      <StatCard label={t('metrics.subscribers', 'Subscribers')}      value={totals.total_followers}                                                         icon={UserPlus}      color="#8b5cf6" />
+      <StatCard label={t('metrics.unsubs', 'Unsubs')}           value={totals.total_subscribers_lost}                                                  icon={TrendingDown}  color="var(--text-tertiary)" />
     </>
   );
   if (platform === 'facebook') return (
     <>
-      <StatCard label="Reach"          value={totals.total_reach}             icon={Radio}         color="#1877f2" />
-      <StatCard label="Engagements"    value={totals.total_likes}             icon={Heart}         color="#ef4444" />
-      <StatCard label="Page Views"     value={totals.total_profile_views}     icon={MousePointer2} color="#00d7ff" />
-      <StatCard label="Followers"      value={totals.total_followers}         icon={UserPlus}      color="#8b5cf6" />
-      <StatCard label="Unfollows"      value={totals.total_followers_lost}    icon={TrendingDown}  color="var(--text-tertiary)" />
-      <StatCard label="Video Views"    value={totals.total_fb_video_views}    icon={Video}         color="#f59e0b" />
-      <StatCard label="Comments"       value={totals.total_comments}          icon={MessageCircle} color="#22c55e" />
-      <StatCard label="Shares"         value={totals.total_shares}            icon={Share2}        color="#0891b2" />
+      <StatCard label={t('metrics.reach', 'Reach')}          value={totals.total_reach}             icon={Radio}         color="#1877f2" />
+      <StatCard label={t('metrics.engagements', 'Engagements')}    value={totals.total_likes}             icon={Heart}         color="#ef4444" />
+      <StatCard label={t('metrics.page_views', 'Page Views')}     value={totals.total_profile_views}     icon={MousePointer2} color="#00d7ff" />
+      <StatCard label={t('metrics.followers', 'Followers')}      value={totals.total_followers}         icon={UserPlus}      color="#8b5cf6" />
+      <StatCard label={t('metrics.unfollows', 'Unfollows')}      value={totals.total_followers_lost}    icon={TrendingDown}  color="var(--text-tertiary)" />
+      <StatCard label={t('metrics.video_views', 'Video Views')}    value={totals.total_fb_video_views}    icon={Video}         color="#f59e0b" />
+      <StatCard label={t('metrics.comments', 'Comments')}       value={totals.total_comments}          icon={MessageCircle} color="#22c55e" />
+      <StatCard label={t('metrics.shares', 'Shares')}         value={totals.total_shares}            icon={Share2}        color="#0891b2" />
     </>
   );
   if (platform === 'instagram') return (
     <>
-      <StatCard label="Reach"            value={totals.total_reach}               icon={Radio}         color="#e1306c" />
-      <StatCard label="Interactions"     value={totals.total_total_interactions}  icon={Heart}         color="#ef4444" />
-      <StatCard label="Accounts Engaged" value={totals.total_accounts_engaged}    icon={UserPlus}      color="#8b5cf6" />
-      <StatCard label="Profile Views"    value={totals.total_profile_views}       icon={MousePointer2} color="#00d7ff" />
-      <StatCard label="Website Clicks"   value={totals.total_website_clicks}      icon={Globe}         color="#0891b2" />
-      <StatCard label="Saves"            value={totals.total_saves}               icon={Bookmark}      color="#7c3aed" />
-      <StatCard label="Comments"         value={totals.total_comments}            icon={MessageCircle} color="#22c55e" />
-      <StatCard label="Shares"           value={totals.total_shares}              icon={Share2}        color="#f59e0b" />
-      <StatCard label="Email Clicks"     value={totals.total_email_contacts}      icon={Mail}          color="#f59e0b" />
-      <StatCard label="Phone Clicks"     value={totals.total_phone_call_clicks}   icon={Phone}         color="#059669" />
-      <StatCard label="Direction Clicks" value={totals.total_direction_clicks}    icon={Navigation}    color="#6366f1" />
-      <StatCard label="Unfollows"        value={totals.total_ig_followers_lost}   icon={TrendingDown}  color="var(--text-tertiary)" />
+      <StatCard label={t('metrics.reach', 'Reach')}            value={totals.total_reach}               icon={Radio}         color="#e1306c" />
+      <StatCard label={t('metrics.interactions', 'Interactions')}     value={totals.total_total_interactions}  icon={Heart}         color="#ef4444" />
+      <StatCard label={t('metrics.accounts_engaged', 'Accounts Engaged')} value={totals.total_accounts_engaged}    icon={UserPlus}      color="#8b5cf6" />
+      <StatCard label={t('metrics.profile_views', 'Profile Views')}    value={totals.total_profile_views}       icon={MousePointer2} color="#00d7ff" />
+      <StatCard label={t('metrics.website_clicks', 'Website Clicks')}   value={totals.total_website_clicks}      icon={Globe}         color="#0891b2" />
+      <StatCard label={t('metrics.saves', 'Saves')}            value={totals.total_saves}               icon={Bookmark}      color="#7c3aed" />
+      <StatCard label={t('metrics.comments', 'Comments')}         value={totals.total_comments}            icon={MessageCircle} color="#22c55e" />
+      <StatCard label={t('metrics.shares', 'Shares')}           value={totals.total_shares}              icon={Share2}        color="#f59e0b" />
+      <StatCard label={t('metrics.email_clicks', 'Email Clicks')}     value={totals.total_email_contacts}      icon={Mail}          color="#f59e0b" />
+      <StatCard label={t('metrics.phone_clicks', 'Phone Clicks')}     value={totals.total_phone_call_clicks}   icon={Phone}         color="#059669" />
+      <StatCard label={t('metrics.direction_clicks', 'Direction Clicks')} value={totals.total_direction_clicks}    icon={Navigation}    color="#6366f1" />
+      <StatCard label={t('metrics.unfollows', 'Unfollows')}        value={totals.total_ig_followers_lost}   icon={TrendingDown}  color="var(--text-tertiary)" />
     </>
   );
   if (platform === 'google_my_business') return (
     <>
-      <StatCard label="Search Impressions" value={totals.total_search_impressions}  icon={Eye}        color="#4285f4" />
-      <StatCard label="Maps Impressions"   value={totals.total_maps_impressions}    icon={MapPin}     color="#ea4335" />
-      <StatCard label="Website Clicks"     value={totals.total_website_clicks}      icon={Globe}      color="#0891b2" />
-      <StatCard label="Direction Requests" value={totals.total_direction_requests}  icon={Navigation} color="#34a853" />
-      <StatCard label="Phone Calls"        value={totals.total_phone_calls}         icon={Phone}      color="#059669" />
-      <StatCard label="Photo Views"        value={totals.total_photo_views}         icon={Eye}        color="#8b5cf6" />
+      <StatCard label={t('metrics.search_impressions', 'Search Impressions')} value={totals.total_search_impressions}  icon={Eye}        color="#4285f4" />
+      <StatCard label={t('metrics.maps_impressions', 'Maps Impressions')}   value={totals.total_maps_impressions}    icon={MapPin}     color="#ea4335" />
+      <StatCard label={t('metrics.website_clicks', 'Website Clicks')}     value={totals.total_website_clicks}      icon={Globe}      color="#0891b2" />
+      <StatCard label={t('metrics.direction_requests', 'Direction Requests')} value={totals.total_direction_requests}  icon={Navigation} color="#34a853" />
+      <StatCard label={t('metrics.phone_calls', 'Phone Calls')}        value={totals.total_phone_calls}         icon={Phone}      color="#059669" />
+      <StatCard label={t('metrics.photo_views', 'Photo Views')}        value={totals.total_photo_views}         icon={Eye}        color="#8b5cf6" />
     </>
   );
   return (
     <>
-      <StatCard label="Impressions"    value={totals.total_impressions}    icon={Eye}           color="#00d7ff" />
-      <StatCard label="Reach"          value={totals.total_reach}          icon={Radio}         color="#22c55e" />
-      <StatCard label="Clicks"         value={totals.total_clicks}         icon={MousePointer2} color="#00d7ff" />
-      <StatCard label="Likes"          value={totals.total_likes}          icon={Heart}         color="#ef4444" />
-      <StatCard label="Comments"       value={totals.total_comments}       icon={MessageCircle} color="#22c55e" />
-      <StatCard label="Shares"         value={totals.total_shares}         icon={Share2}        color="#f59e0b" />
-      <StatCard label="Video Views"    value={totals.total_video_views}    icon={Play}          color="#f59e0b" />
-      <StatCard label="Followers"      value={totals.total_followers}      icon={UserPlus}      color="#8b5cf6" />
-      <StatCard label="Website Clicks" value={totals.total_website_clicks} icon={Globe}         color="#0891b2" />
-      <StatCard label="Phone Calls"    value={totals.total_phone_calls}    icon={Phone}         color="#059669" />
+      <StatCard label={t('metrics.impressions', 'Impressions')}    value={totals.total_impressions}    icon={Eye}           color="#00d7ff" />
+      <StatCard label={t('metrics.reach', 'Reach')}          value={totals.total_reach}          icon={Radio}         color="#22c55e" />
+      <StatCard label={t('metrics.clicks', 'Clicks')}         value={totals.total_clicks}         icon={MousePointer2} color="#00d7ff" />
+      <StatCard label={t('metrics.likes', 'Likes')}          value={totals.total_likes}          icon={Heart}         color="#ef4444" />
+      <StatCard label={t('metrics.comments', 'Comments')}       value={totals.total_comments}       icon={MessageCircle} color="#22c55e" />
+      <StatCard label={t('metrics.shares', 'Shares')}         value={totals.total_shares}         icon={Share2}        color="#f59e0b" />
+      <StatCard label={t('metrics.video_views', 'Video Views')}    value={totals.total_video_views}    icon={Play}          color="#f59e0b" />
+      <StatCard label={t('metrics.followers', 'Followers')}      value={totals.total_followers}      icon={UserPlus}      color="#8b5cf6" />
+      <StatCard label={t('metrics.website_clicks', 'Website Clicks')} value={totals.total_website_clicks} icon={Globe}         color="#0891b2" />
+      <StatCard label={t('metrics.phone_calls', 'Phone Calls')}    value={totals.total_phone_calls}    icon={Phone}         color="#059669" />
     </>
   );
 }
@@ -692,6 +716,7 @@ function PostCard({ post }) {
 }
 
 function ClientProfileStrip({ client }) {
+  const { t } = useTranslation('dashboard');
   const [expanded, setExpanded] = useState(false);
   const initials = (client.company || 'C').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
 
@@ -735,19 +760,19 @@ function ClientProfileStrip({ client }) {
 
         {hasBrandInfo && (
           <button onClick={() => setExpanded(e => !e)} style={S.expandBtn}>
-            {expanded ? 'Hide ▲' : 'Brand Profile ▼'}
+            {expanded ? t('profile.hide', 'Hide ▲') : t('profile.brand_profile', 'Brand Profile ▼')}
           </button>
         )}
       </div>
 
       {hasBrandInfo && expanded && (
         <div style={S.brandGrid}>
-          {client.brand_description && <BrandBox label="About"           text={client.brand_description} />}
-          {client.usp               && <BrandBox label="USP"             text={client.usp} />}
-          {client.target_audience   && <BrandBox label="Target Audience" text={client.target_audience} />}
+          {client.brand_description && <BrandBox label={t('profile.about', 'About')}                     text={client.brand_description} />}
+          {client.usp               && <BrandBox label={t('profile.usp', 'USP')}                         text={client.usp} />}
+          {client.target_audience   && <BrandBox label={t('profile.target_audience', 'Target Audience')} text={client.target_audience} />}
           {(client.business_subcategories || []).length > 0 && (
             <div style={S.brandBox}>
-              <span style={S.brandLabel}>Subcategories</span>
+              <span style={S.brandLabel}>{t('profile.subcategories', 'Subcategories')}</span>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 4 }}>
                 {client.business_subcategories.map(s => <Chip key={s} label={s} color="var(--text-secondary)" />)}
               </div>
@@ -781,6 +806,7 @@ function BrandBox({ label, text }) {
 }
 
 function UpcomingPostsWidget({ clientId }) {
+  const { t } = useTranslation('dashboard');
   const { upcoming, loading } = useUpcomingPosts(clientId);
   if (loading || !upcoming.length) return null;
 
@@ -791,11 +817,11 @@ function UpcomingPostsWidget({ clientId }) {
           <div style={{ width: 28, height: 28, borderRadius: 8, background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Clock size={14} color="#2563eb" />
           </div>
-          <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-primary)' }}>Upcoming Posts</span>
+          <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-primary)' }}>{t('upcoming.title', 'Upcoming Posts')}</span>
           <span style={{ ...S.countBadge, background: '#eff6ff', color: '#2563eb' }}>{upcoming.length}</span>
         </div>
         <NavLink to="/dashboard/calendar" style={{ fontSize: 11, color: '#2563eb', fontWeight: 600, textDecoration: 'none' }}>
-          View all →
+          {t('upcoming.view_all', 'View all →')}
         </NavLink>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

@@ -19,6 +19,7 @@
  *     the preference but doesn't deliver yet (logged TODO).
  */
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation, Trans } from 'react-i18next';
 import {
   Bell, Save, Inbox, Mail, MessageCircle, Globe, Sparkles,
 } from 'lucide-react';
@@ -80,6 +81,7 @@ const SECTIONS = [
 
 
 export default function NotificationPreferencesPage() {
+  const { t } = useTranslation('agency_portal');
   const [matrix,  setMatrix]  = useState([]);
   const [draft,   setDraft]   = useState({});  // { event_type: { channel: bool } }
   const [loading, setLoading] = useState(true);
@@ -95,7 +97,7 @@ export default function NotificationPreferencesPage() {
         m.forEach((row) => { d[row.event_type] = { ...(row.channels || {}) }; });
         setDraft(d);
       })
-      .catch(() => toast.error('Could not load notification preferences'))
+      .catch(() => toast.error(t('end_user.notifications.err_load', 'Could not load notification preferences')))
       .finally(() => setLoading(false));
   }
 
@@ -138,15 +140,15 @@ export default function NotificationPreferencesPage() {
       const d = {};
       m.forEach((row) => { d[row.event_type] = { ...(row.channels || {}) }; });
       setDraft(d);
-      toast.success('Preferences saved');
+      toast.success(t('end_user.notifications.toast_saved', 'Preferences saved'));
     } catch (e) {
-      toast.error(e?.response?.data?.error || 'Could not save preferences');
+      toast.error(e?.response?.data?.error || t('end_user.notifications.err_save', 'Could not save preferences'));
     } finally {
       setSaving(false);
     }
   }
 
-  if (loading) return <div style={{ padding: 32, color: 'var(--text-tertiary)' }}>Loading…</div>;
+  if (loading) return <div style={{ padding: 32, color: 'var(--text-tertiary)' }}>{t('common.loading', 'Loading…')}</div>;
 
   return (
     <div style={{ maxWidth: 880, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 18 }}>
@@ -154,38 +156,40 @@ export default function NotificationPreferencesPage() {
         <span style={iconWrap}><Bell size={20} strokeWidth={2.2} /></span>
         <div style={{ flex: 1 }}>
           <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
-            Notifications
+            {t('end_user.notifications.title', 'Notifications')}
           </h1>
           <p style={{ margin: '4px 0 0', color: 'var(--text-secondary)', fontSize: 14 }}>
-            Choose how you want to be told about each thing that happens.
+            {t('end_user.notifications.subtitle', 'Choose how you want to be told about each thing that happens.')}
           </p>
         </div>
         <button type="button" onClick={save} disabled={!dirty || saving} style={dirty && !saving ? btnPrimary : btnDisabled}>
-          <Save size={13} /> {saving ? 'Saving…' : (dirty ? 'Save changes' : 'No changes')}
+          <Save size={13} /> {saving ? t('end_user.notifications.saving', 'Saving…') : (dirty ? t('end_user.notifications.save', 'Save changes') : t('end_user.notifications.no_changes', 'No changes'))}
         </button>
       </header>
 
       <p style={hint}>
         <Sparkles size={11} style={{ verticalAlign: '-1px', marginRight: 4, color: 'var(--brand-primary-hover)' }} />
-        WhatsApp and Push are <strong>coming soon</strong> — your preferences are saved and will activate the moment those channels go live.
+        <Trans i18nKey="end_user.notifications.channels_hint" t={t}>
+          WhatsApp and Push are <strong>coming soon</strong> — your preferences are saved and will activate the moment those channels go live.
+        </Trans>
       </p>
 
       {SECTIONS.map((section) => (
         <section key={section.title} style={card}>
-          <h2 style={sectionH}>{section.title}</h2>
+          <h2 style={sectionH}>{t(`end_user.notifications.sections.${section.title}`, section.title)}</h2>
           <div style={tableWrap}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
-                  <th style={{ ...th, width: '40%' }}>Event</th>
+                  <th style={{ ...th, width: '40%' }}>{t('end_user.notifications.event_column', 'Event')}</th>
                   {CHANNEL_META.map((c) => (
                     <th key={c.key} style={{ ...th, textAlign: 'center', width: '15%' }}>
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, justifyContent: 'center' }}>
-                        <c.icon size={12} /> {c.label}
+                        <c.icon size={12} /> {t(`end_user.notifications.channels.${c.key}`, c.label)}
                       </span>
                       {c.status === 'soon' && (
                         <div style={{ fontSize: 9, color: 'var(--text-tertiary)', fontWeight: 500, textTransform: 'none', letterSpacing: 0 }}>
-                          coming soon
+                          {t('end_user.notifications.channels.soon', 'coming soon')}
                         </div>
                       )}
                     </th>
@@ -196,22 +200,26 @@ export default function NotificationPreferencesPage() {
                 {section.events.map((ev) => {
                   const row = matrixByEvent[ev];
                   if (!row) return null;
+                  const eventLabel = t(`end_user.notifications.events.${ev}`, row.label);
                   return (
                     <tr key={ev} style={{ borderTop: '1px solid var(--border-subtle)' }}>
                       <td style={td}>
-                        <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{row.label}</div>
+                        <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{eventLabel}</div>
                         <div style={{ fontSize: 11, color: 'var(--text-tertiary)', fontFamily: 'var(--font-mono)' }}>{ev}</div>
                       </td>
-                      {CHANNEL_META.map((c) => (
-                        <td key={c.key} style={{ ...td, textAlign: 'center' }}>
-                          <input
-                            type="checkbox"
-                            checked={!!draft[ev]?.[c.key]}
-                            onChange={() => toggle(ev, c.key)}
-                            aria-label={`${row.label} via ${c.label}`}
-                          />
-                        </td>
-                      ))}
+                      {CHANNEL_META.map((c) => {
+                        const channelLabel = t(`end_user.notifications.channels.${c.key}`, c.label);
+                        return (
+                          <td key={c.key} style={{ ...td, textAlign: 'center' }}>
+                            <input
+                              type="checkbox"
+                              checked={!!draft[ev]?.[c.key]}
+                              onChange={() => toggle(ev, c.key)}
+                              aria-label={t('end_user.notifications.aria_cell', { event: eventLabel, channel: channelLabel })}
+                            />
+                          </td>
+                        );
+                      })}
                     </tr>
                   );
                 })}

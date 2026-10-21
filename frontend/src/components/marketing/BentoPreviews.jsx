@@ -15,6 +15,7 @@
  * `useReducedMotion` hook (used inside the bits that genuinely animate).
  */
 import { motion, useReducedMotion } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import {
   ArrowUpRight, Send, Zap, Bot, Sparkles, BarChart3,
   Calendar, FileText, MessageCircle, TrendingUp,
@@ -24,11 +25,12 @@ import {
 // 1. AI Assistant — chat with streaming reply
 // ─────────────────────────────────────────────────────────────────────────────
 export function AIAssistantPreview() {
+  const { t } = useTranslation('marketing');
   return (
     <div style={cardStyle}>
-      <Bubble side="user" tone="cyan">Write 3 posts for our new property launch</Bubble>
+      <Bubble side="user" tone="cyan">{t('bento_preview.ai_user', 'Write 3 posts for our new property launch')}</Bubble>
       <Bubble side="ai">
-        Here are three drafts tuned to your brand voice
+        {t('bento_preview.ai_response', 'Here are three drafts tuned to your brand voice')}
         <span style={dotsStyle}>
           <span style={dot(0)} /><span style={dot(0.15)} /><span style={dot(0.3)} />
         </span>
@@ -41,6 +43,7 @@ export function AIAssistantPreview() {
 // 2. Composer — multi-platform tabs
 // ─────────────────────────────────────────────────────────────────────────────
 export function ComposerPreview() {
+  const { t } = useTranslation('marketing');
   const platforms = [
     { name: 'Instagram', tone: '#E4405F', active: true },
     { name: 'Facebook',  tone: '#1877F2' },
@@ -66,11 +69,11 @@ export function ComposerPreview() {
         borderRadius: 'var(--radius-sm)',
         fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.5,
       }}>
-        New launch — luxury 3BHK at <strong style={{ color: 'var(--text-primary)' }}>Acme Heights</strong>. Rooftop pool, smart home, ready to move in. Site visits open this weekend 🌅
+        {t('bento_preview.composer_text', 'New launch — luxury 3BHK at Acme Heights. Rooftop pool, smart home, ready to move in. Site visits open this weekend 🌅')}
       </div>
       <div style={{ marginTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>Auto-resized for IG · 220 chars</span>
-        <Send size={11} style={{ color: '#00CCF5' }} />
+        <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{t('bento_preview.composer_meta', 'Auto-resized for IG · 220 chars')}</span>
+        <Send size={11} style={{ color: '#F5A623' }} />
       </div>
     </div>
   );
@@ -80,10 +83,11 @@ export function ComposerPreview() {
 // 3. Inbox — chat list across platforms
 // ─────────────────────────────────────────────────────────────────────────────
 export function InboxPreview() {
+  const { t } = useTranslation('marketing');
   const messages = [
-    { name: 'Priya S.',    plat: 'IG', text: 'Is this still available?',     tone: '#E4405F', delay: 0 },
-    { name: 'Acme Group',  plat: 'WA', text: 'Can we visit on Saturday?',    tone: '#25D366', delay: 0.15 },
-    { name: 'Rahul Verma', plat: 'FB', text: 'What is the price range?',     tone: '#1877F2', delay: 0.3 },
+    { name: 'Priya S.',    plat: 'IG', text: t('bento_preview.inbox_msg_1', 'Is this still available?'),     tone: '#E4405F', delay: 0 },
+    { name: 'Acme Group',  plat: 'WA', text: t('bento_preview.inbox_msg_2', 'Can we visit on Saturday?'),    tone: '#25D366', delay: 0.15 },
+    { name: 'Rahul Verma', plat: 'FB', text: t('bento_preview.inbox_msg_3', 'What is the price range?'),     tone: '#1877F2', delay: 0.3 },
   ];
   return (
     <div style={{ ...cardStyle, padding: 0, overflow: 'hidden' }}>
@@ -116,7 +120,7 @@ export function InboxPreview() {
           </div>
           <span style={{
             width: 8, height: 8, borderRadius: '50%',
-            background: '#00CCF5', flexShrink: 0,
+            background: '#F5A623', flexShrink: 0,
           }} />
         </motion.div>
       ))}
@@ -128,13 +132,14 @@ export function InboxPreview() {
 // 4. Bot Builder — node graph with edges
 // ─────────────────────────────────────────────────────────────────────────────
 export function BotBuilderPreview() {
+  const { t } = useTranslation('marketing');
   return (
     <svg viewBox="0 0 240 130" preserveAspectRatio="xMidYMid meet"
          style={{ width: '100%', height: '100%' }}>
       <defs>
         <linearGradient id="bb-edge" x1="0" x2="1">
-          <stop offset="0%"   stopColor="#00CCF5" />
-          <stop offset="100%" stopColor="#8b5cf6" />
+          <stop offset="0%"   stopColor="#F5A623" />
+          <stop offset="100%" stopColor="#E09612" />
         </linearGradient>
       </defs>
       {/* Edges */}
@@ -146,10 +151,10 @@ export function BotBuilderPreview() {
                    initial={{ pathLength: 0 }} whileInView={{ pathLength: 1 }} viewport={{ once: true }} transition={{ duration: 0.6, delay: 0.6 }} />
 
       {/* Nodes */}
-      <Node x={20}  y={30} label="Start"   tone="#00CCF5" />
-      <Node x={140} y={30} label="Ask"     tone="#a78bfa" delay={0.4} />
-      <Node x={200} y={65} label="Capture" tone="#34d399" delay={0.8} />
-      <Node x={80}  y={100} label="Reply"  tone="#fbbf24" delay={0.8} />
+      <Node x={20}  y={30} label={t('bento_preview.bot_start', 'Start')}     tone="#F5A623" />
+      <Node x={140} y={30} label={t('bento_preview.bot_ask', 'Ask')}         tone="#a78bfa" delay={0.4} />
+      <Node x={200} y={65} label={t('bento_preview.bot_capture', 'Capture')} tone="#34d399" delay={0.8} />
+      <Node x={80}  y={100} label={t('bento_preview.bot_reply', 'Reply')}    tone="#fbbf24" delay={0.8} />
     </svg>
   );
 }
@@ -178,6 +183,7 @@ function Node({ x, y, label, tone, delay = 0.1 }) {
 // 5. AI Insights — alert card with metric
 // ─────────────────────────────────────────────────────────────────────────────
 export function AIInsightPreview() {
+  const { t } = useTranslation('marketing');
   return (
     <div style={cardStyle}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
@@ -189,14 +195,14 @@ export function AIInsightPreview() {
         }}><Sparkles size={11} /></span>
         <span style={{ fontSize: 10, fontWeight: 700, color: '#f59e0b',
                        textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-          AI insight · just now
+          {t('bento_preview.insight_badge', 'AI insight · just now')}
         </span>
       </div>
       <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.45 }}>
-        Engagement dropped 30% on Tuesdays
+        {t('bento_preview.insight_title', 'Engagement dropped 30% on Tuesdays')}
       </div>
       <div style={{ marginTop: 6, fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.55 }}>
-        Try moving your Tuesday post to 7pm — your audience is most active then.
+        {t('bento_preview.insight_body', 'Try moving your Tuesday post to 7pm — your audience is most active then.')}
       </div>
     </div>
   );
@@ -206,21 +212,22 @@ export function AIInsightPreview() {
 // 6. Automations — IF/THEN rule chain
 // ─────────────────────────────────────────────────────────────────────────────
 export function AutomationsPreview() {
+  const { t } = useTranslation('marketing');
   return (
     <div style={cardStyle}>
       <div style={ruleRowStyle}>
         <span style={kindStyle('cyan')}>IF</span>
-        <span style={ruleTextStyle}>Comment matches keyword "price"</span>
+        <span style={ruleTextStyle}>{t('bento_preview.auto_if', 'Comment matches keyword "price"')}</span>
       </div>
       <ChainArrow />
       <div style={ruleRowStyle}>
         <span style={kindStyle('purple')}>THEN</span>
-        <span style={ruleTextStyle}>Reply with template <strong style={{ color: 'var(--text-primary)' }}>"Pricing"</strong></span>
+        <span style={ruleTextStyle}>{t('bento_preview.auto_then', 'Reply with template "Pricing"')}</span>
       </div>
       <ChainArrow />
       <div style={ruleRowStyle}>
         <span style={kindStyle('green')}>AND</span>
-        <span style={ruleTextStyle}>Tag contact as <strong style={{ color: 'var(--text-primary)' }}>hot lead</strong></span>
+        <span style={ruleTextStyle}>{t('bento_preview.auto_and', 'Tag contact as hot lead')}</span>
       </div>
     </div>
   );
@@ -231,7 +238,7 @@ function ChainArrow() {
     <div aria-hidden style={{ height: 14, marginLeft: 16, display: 'flex', alignItems: 'center' }}>
       <span style={{
         display: 'block', width: 1.5, height: '100%',
-        background: 'linear-gradient(to bottom, #00CCF5, #8b5cf6)',
+        background: 'linear-gradient(to bottom, #F5A623, #E09612)',
       }} />
     </div>
   );
@@ -241,12 +248,13 @@ function ChainArrow() {
 // 7. Analytics — sparkline chart
 // ─────────────────────────────────────────────────────────────────────────────
 export function AnalyticsPreview() {
+  const { t } = useTranslation('marketing');
   const reduced = useReducedMotion();
   const path = 'M 0 60 L 30 50 L 60 55 L 90 40 L 120 30 L 150 38 L 180 22 L 210 18 L 240 10';
   return (
     <div style={cardStyle}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-        <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)' }}>Reach · 30d</span>
+        <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)' }}>{t('bento_preview.analytics_reach', 'Reach · 30d')}</span>
         <span style={{
           display: 'inline-flex', alignItems: 'center', gap: 2,
           fontSize: 11, fontWeight: 700, color: 'var(--success)',
@@ -255,12 +263,12 @@ export function AnalyticsPreview() {
       <svg viewBox="0 0 240 80" style={{ width: '100%', height: 80 }}>
         <defs>
           <linearGradient id="ana-line" x1="0" x2="1">
-            <stop offset="0%"  stopColor="#00CCF5" />
-            <stop offset="100%" stopColor="#8b5cf6" />
+            <stop offset="0%"  stopColor="#F5A623" />
+            <stop offset="100%" stopColor="#E09612" />
           </linearGradient>
           <linearGradient id="ana-fill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%"  stopColor="#00CCF5" stopOpacity="0.35" />
-            <stop offset="100%" stopColor="#00CCF5" stopOpacity="0" />
+            <stop offset="0%"  stopColor="#F5A623" stopOpacity="0.35" />
+            <stop offset="100%" stopColor="#F5A623" stopOpacity="0" />
           </linearGradient>
         </defs>
         <motion.path d={path + ' L 240 80 L 0 80 Z'} fill="url(#ana-fill)"
@@ -281,6 +289,7 @@ export function AnalyticsPreview() {
 // 8. Reports — PDF preview card
 // ─────────────────────────────────────────────────────────────────────────────
 export function ReportsPreview() {
+  const { t } = useTranslation('marketing');
   return (
     <div style={{ ...cardStyle, position: 'relative', overflow: 'hidden' }}>
       <div style={{
@@ -294,18 +303,18 @@ export function ReportsPreview() {
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
           paddingBottom: 8, borderBottom: '1px solid #e2e8f0',
         }}>
-          <span style={{ fontSize: 11, fontWeight: 700 }}>Acme Realty · April</span>
+          <span style={{ fontSize: 11, fontWeight: 700 }}>{t('bento_preview.report_title', 'Acme Realty · April')}</span>
           <FileText size={11} style={{ color: '#64748b' }} />
         </div>
         <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-          <ReportStat label="Reach"  value="248K" />
-          <ReportStat label="Posts"  value="42"   />
-          <ReportStat label="Leads"  value="312"  />
+          <ReportStat label={t('bento_preview.report_stat_reach', 'Reach')}  value="248K" />
+          <ReportStat label={t('bento_preview.report_stat_posts', 'Posts')}  value="42"   />
+          <ReportStat label={t('bento_preview.report_stat_leads', 'Leads')}  value="312"  />
         </div>
-        <div style={{ marginTop: 8, height: 24, background: 'linear-gradient(90deg, #00CCF5 65%, #e2e8f0 65%)',
+        <div style={{ marginTop: 8, height: 24, background: 'linear-gradient(90deg, #F5A623 65%, #e2e8f0 65%)',
                       borderRadius: 4 }} />
         <div style={{ marginTop: 6, fontSize: 9, color: '#64748b' }}>
-          AI summary: Your reach grew 23% MoM, driven by Reels…
+          {t('bento_preview.report_summary', 'AI summary: Your reach grew 23% MoM, driven by Reels…')}
         </div>
       </div>
     </div>
@@ -335,7 +344,7 @@ const cardStyle = {
 
 function Bubble({ side, tone = 'plain', children }) {
   const isUser = side === 'user';
-  const cyan = tone === 'cyan';
+  const cyan = tone === 'cyan' || tone === 'gold';
   return (
     <div style={{
       alignSelf: isUser ? 'flex-end' : 'flex-start',
@@ -377,7 +386,8 @@ const ruleTextStyle = {
 
 const kindStyle = (tone) => {
   const colors = {
-    cyan:   { color: '#00CCF5', bg: 'rgba(0,204,245,0.1)' },
+    gold:   { color: '#F5A623', bg: 'rgba(245,166,35,0.12)' },
+    cyan:   { color: '#F5A623', bg: 'rgba(245,166,35,0.12)' },
     purple: { color: '#a78bfa', bg: 'rgba(139,92,246,0.1)' },
     green:  { color: '#34d399', bg: 'rgba(16,185,129,0.1)' },
   }[tone];

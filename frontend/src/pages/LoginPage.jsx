@@ -9,6 +9,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, AlertCircle, Briefcase, User as UserIcon, Shield } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 import AuthLayout from '../components/auth/AuthLayout';
 import Button from '../components/ui/Button';
@@ -24,13 +25,14 @@ const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
 // account. Safe to remove this block (and the panel below) once the demo
 // command is dropped — nothing else depends on it.
 const DEMO_LOGINS = [
-  { email: 'admin@demo.local',   label: 'Superadmin', icon: Shield,    landing: '/admin'     },
-  { email: 'agency@demo.local',  label: 'Agency',     icon: Briefcase, landing: '/dashboard' },
-  { email: 'enduser@demo.local', label: 'End user',   icon: UserIcon,  landing: '/u'         },
+  { email: 'admin@demo.local',   labelKey: 'login.demo_role_superadmin', label: 'Superadmin', icon: Shield,    landing: '/admin'     },
+  { email: 'agency@demo.local',  labelKey: 'login.demo_role_agency',     label: 'Agency',     icon: Briefcase, landing: '/dashboard' },
+  { email: 'enduser@demo.local', labelKey: 'login.demo_role_enduser',    label: 'End user',   icon: UserIcon,  landing: '/u'         },
 ];
 const DEMO_PASSWORD = 'demo';
 
 export default function LoginPage() {
+  const { t } = useTranslation('auth');
   const { login, loginMfa } = useAuth();
   const navigate = useNavigate();
 
@@ -51,9 +53,10 @@ export default function LoginPage() {
 
   function validate() {
     const e = {};
-    if (!email.trim()) e.email = 'Email is required.';
-    else if (!/\S+@\S+\.\S+/.test(email)) e.email = 'Enter a valid email address.';
-    if (!password.trim()) e.password = 'Password is required.';
+    if (!email.trim()) e.email = t('login.validation.email_required', 'Email is required.');
+    else if (!/\S+@\S+\.\S+/.test(email)) e.email = t('login.validation.email_invalid', 'Enter a valid email address.');
+    if (!password.trim()) e.password = t('login.validation.password_required', 'Password is required.');
+    if (!accepted) e.terms = t('login.validation.terms_required', 'You must accept the Terms of Service and Privacy Policy.');
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -74,10 +77,10 @@ export default function LoginPage() {
     }
   }
 
-  async function doLogin(emailVal, passwordVal) {
+  async function doLogin(emailVal, passwordVal, termsVal = true) {
     setLoading(true);
     try {
-      const user = await login(emailVal, passwordVal, true);
+      const user = await login(emailVal, passwordVal, termsVal);
       if (user?.mfa_required) {
         // Password verified; a TOTP or backup code is still needed.
         setMfaToken(user.mfa_token);
@@ -87,11 +90,19 @@ export default function LoginPage() {
       navigateFor(user);
     } catch (err) {
       const detail = err?.response?.data?.detail;
-      setServerError(
-        detail === 'email_not_verified'
-          ? 'Please verify your email before signing in. Check your inbox for the verification link.'
-          : 'Invalid email or password. Please try again.'
-      );
+      if (detail === 'email_not_verified') {
+        setServerError(
+          t('login.email_not_verified', 'Please verify your email before signing in. Check your inbox for the verification link.')
+        );
+      } else if (err?.response?.status === 400 && typeof detail === 'string' && detail.toLowerCase().includes('terms')) {
+        setServerError(
+          t('login.terms_required_server', 'You must accept the Terms of Service and Privacy Policy to sign in.')
+        );
+      } else {
+        setServerError(
+          t('login.invalid_credentials', 'Invalid email or password. Please try again.')
+        );
+      }
     } finally {
       setLoading(false);
     }
@@ -125,7 +136,7 @@ export default function LoginPage() {
     ev.preventDefault();
     setServerError('');
     if (!validate()) return;
-    await doLogin(email, password);
+    await doLogin(email, password, accepted);
   }
 
   async function signInAsDemo(demoEmail) {
@@ -133,7 +144,7 @@ export default function LoginPage() {
     setEmail(demoEmail);
     setPassword(DEMO_PASSWORD);
     setAccepted(true);
-    await doLogin(demoEmail, DEMO_PASSWORD);
+    await doLogin(demoEmail, DEMO_PASSWORD, true);
   }
 
   // ── MFA second-factor step ────────────────────────────────────────────────
@@ -159,18 +170,18 @@ export default function LoginPage() {
                 color: 'var(--text-primary)',
               }}
             >
-              Two-factor verification
+              {t('mfa.title', 'Two-factor verification')}
             </h1>
             <p style={{ margin: '6px 0 0', fontSize: 14, color: 'var(--text-secondary)' }}>
               {useBackupCode
                 ? 'Enter one of your backup codes.'
-                : 'Enter the 6-digit code from your authenticator app.'}
+                : t('mfa.subtitle', 'Enter the 6-digit code from your authenticator app.')}
             </p>
           </header>
 
           <form onSubmit={handleMfaSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <Input
-              label={useBackupCode ? 'Backup code' : 'Verification code'}
+              label={useBackupCode ? t('mfa.backup_label', 'Backup code') : t('mfa.code_label', 'Verification code')}
               type="text"
               inputMode={useBackupCode ? 'text' : 'numeric'}
               autoComplete="one-time-code"
@@ -203,7 +214,7 @@ export default function LoginPage() {
             )}
 
             <Button type="submit" size="lg" iconRight={ArrowRight} fullWidth loading={loading}>
-              Verify
+              {loading ? t('mfa.verifying', 'Verifying...') : t('mfa.verify_button', 'Verify')}
             </Button>
           </form>
 
@@ -213,14 +224,14 @@ export default function LoginPage() {
               onClick={() => { setUseBackupCode((v) => !v); setMfaCode(''); setServerError(''); }}
               style={{ background: 'none', border: 0, padding: 0, color: 'var(--text-link)', fontWeight: 500, cursor: 'pointer' }}
             >
-              {useBackupCode ? 'Use authenticator code' : 'Use a backup code'}
+              {useBackupCode ? t('mfa.use_totp', 'Use authenticator code') : t('mfa.use_backup', 'Use a backup code')}
             </button>
             <button
               type="button"
               onClick={() => { setMfaToken(''); setMfaCode(''); setServerError(''); }}
               style={{ background: 'none', border: 0, padding: 0, color: 'var(--text-secondary)', cursor: 'pointer' }}
             >
-              Back to sign in
+              {t('login.submit_button', 'Sign in')}
             </button>
           </div>
         </div>
@@ -232,9 +243,9 @@ export default function LoginPage() {
     <AuthLayout
       footer={
         <>
-          New to Social Stats?{' '}
+          {t('login.dont_have_account', "Don't have an account?")}{' '}
           <Link to="/signup" style={{ color: 'var(--text-link)', fontWeight: 600, textDecoration: 'none' }}>
-            Create an account
+            {t('login.sign_up_free', 'Sign up free')}
           </Link>
         </>
       }
@@ -258,21 +269,21 @@ export default function LoginPage() {
               color: 'var(--text-primary)',
             }}
           >
-            Welcome back
+            {t('login.title', 'Welcome back')}
           </h1>
           <p style={{ margin: '6px 0 0', fontSize: 14, color: 'var(--text-secondary)' }}>
-            Sign in to your Social Stats workspace.
+            {t('login.subtitle', 'Sign in to manage your social channels.')}
           </p>
         </header>
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <Input
-            label="Email"
+            label={t('login.email_label', 'Email')}
             type="email"
             autoComplete="email"
             value={email}
             onChange={(e) => { setEmail(e.target.value); if (errors.email) setErrors((p) => ({ ...p, email: undefined })); }}
-            placeholder="you@company.com"
+            placeholder={t('login.email_placeholder', 'you@agency.com')}
             error={errors.email}
             size="lg"
             autoFocus
@@ -280,12 +291,12 @@ export default function LoginPage() {
 
           <div>
             <Input
-              label="Password"
+              label={t('login.password_label', 'Password')}
               type="password"
               autoComplete="current-password"
               value={password}
               onChange={(e) => { setPassword(e.target.value); if (errors.password) setErrors((p) => ({ ...p, password: undefined })); }}
-              placeholder="Enter your password"
+              placeholder={t('login.password_placeholder', 'Enter your password')}
               error={errors.password}
               size="lg"
             />
@@ -294,23 +305,37 @@ export default function LoginPage() {
                 to="/forgot-password"
                 style={{ fontSize: 12, color: 'var(--text-link)', fontWeight: 500, textDecoration: 'none' }}
               >
-                Forgot password?
+                {t('login.forgot_password', 'Forgot password?')}
               </Link>
             </div>
           </div>
 
-          <Checkbox
-            checked={accepted}
-            onChange={(e) => setAccepted(e.target.checked)}
-            label={
-              <>
-                I agree to the{' '}
-                <Link to="/terms" style={{ color: 'var(--text-link)', fontWeight: 500 }}>Terms of Service</Link>
-                {' '}and{' '}
-                <Link to="/privacy" style={{ color: 'var(--text-link)', fontWeight: 500 }}>Privacy Policy</Link>
-              </>
-            }
-          />
+          <div>
+            <Checkbox
+              checked={accepted}
+              onChange={(e) => {
+                setAccepted(e.target.checked);
+                if (errors.terms) setErrors((p) => ({ ...p, terms: undefined }));
+              }}
+              label={
+                <>
+                  {t('login.terms_notice_pre', 'I agree to the')}{' '}
+                  <Link to="/terms" style={{ color: 'var(--text-link)', fontWeight: 500 }}>
+                    {t('login.terms_notice_terms', 'Terms of Service')}
+                  </Link>
+                  {' '}{t('login.terms_notice_and', 'and')}{' '}
+                  <Link to="/privacy" style={{ color: 'var(--text-link)', fontWeight: 500 }}>
+                    {t('login.terms_notice_privacy', 'Privacy Policy')}
+                  </Link>
+                </>
+              }
+            />
+            {errors.terms && (
+              <p role="alert" style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--danger)' }}>
+                {errors.terms}
+              </p>
+            )}
+          </div>
 
           {(serverError || urlError) && (
             <div
@@ -339,9 +364,9 @@ export default function LoginPage() {
             iconRight={ArrowRight}
             fullWidth
             loading={loading}
-            disabled={!accepted}
+            disabled={!accepted || loading}
           >
-            Sign in
+            {loading ? t('login.signing_in', 'Signing in...') : t('login.submit_button', 'Sign in')}
           </Button>
         </form>
 
@@ -357,7 +382,7 @@ export default function LoginPage() {
         >
           <span style={{ flex: 1, height: 1, background: 'var(--border-subtle)' }} />
           <span style={{ fontSize: 11, fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-            or continue with
+            {t('login.or_continue_with', 'or continue with')}
           </span>
           <span style={{ flex: 1, height: 1, background: 'var(--border-subtle)' }} />
         </div>
@@ -403,10 +428,10 @@ export default function LoginPage() {
               fontSize: 11, fontWeight: 700, letterSpacing: '0.08em',
               textTransform: 'uppercase', color: 'var(--brand-primary-hover)',
             }}>
-              Try the demo
+              {t('login.demo_accounts', 'Quick Demo Logins')}
             </span>
             <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
-              local only · password <code style={{ fontFamily: 'var(--font-mono)' }}>demo</code>
+              {t('login.demo_local_notice', 'local only')} · {t('login.demo_password_label', 'password')} <code style={{ fontFamily: 'var(--font-mono)' }}>demo</code>
             </span>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
@@ -434,7 +459,7 @@ export default function LoginPage() {
                   onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-default)'; }}
                 >
                   <Icon size={14} color="var(--brand-primary-hover)" />
-                  <span style={{ fontSize: 12, fontWeight: 600 }}>{d.label}</span>
+                  <span style={{ fontSize: 12, fontWeight: 600 }}>{t(d.labelKey, d.label)}</span>
                   <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{d.email}</span>
                 </button>
               );

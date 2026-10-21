@@ -6,6 +6,8 @@
  *  Copyright (c) 2026 Chandrabhan Shekhawat / Gigai Kripa Services.
  *  Released under the MIT License — see LICENSE. Keep this notice.
  * ========================================================================== */
+import { useTranslation } from 'react-i18next';
+
 const PRESETS = [
   { label: '7d',  days: 7  },
   { label: '30d', days: 30 },
@@ -19,6 +21,7 @@ function isPresetActive(range, days) {
 }
 
 export default function DateRangePicker({ range, onChange }) {
+  const { t } = useTranslation('common');
   return (
     <div style={styles.wrap}>
       {/* Preset pills */}
@@ -52,7 +55,7 @@ export default function DateRangePicker({ range, onChange }) {
       {/* Date inputs */}
       <div style={styles.dateGroup}>
         <div style={styles.dateField}>
-          <span style={styles.dateLabel}>From</span>
+          <span style={styles.dateLabel}>{t('labels.from', 'From')}</span>
           <input
             type="date"
             value={range.since}
@@ -63,7 +66,7 @@ export default function DateRangePicker({ range, onChange }) {
         </div>
         <span style={styles.arrow}>→</span>
         <div style={styles.dateField}>
-          <span style={styles.dateLabel}>To</span>
+          <span style={styles.dateLabel}>{t('labels.to', 'To')}</span>
           <input
             type="date"
             value={range.until}

@@ -6,8 +6,10 @@
  *  Copyright (c) 2026 Chandrabhan Shekhawat / Gigai Kripa Services.
  *  Released under the MIT License — see LICENSE. Keep this notice.
  * ========================================================================== */
+import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import { ArrowRight, Heart, Compass, Layers, Globe, Linkedin, Twitter } from 'lucide-react';
 
 import MarketingLayout from '../components/marketing/MarketingLayout';
@@ -16,54 +18,62 @@ import Badge from '../components/ui/Badge';
 import Avatar from '../components/ui/Avatar';
 import Meta from '../components/Meta';
 
-const VALUES = [
-  {
-    icon: Compass,
-    color: 'var(--module-analytics)',
-    title: 'Honest by default',
-    body:
-      'No dark patterns, no surprise charges, no manipulative onboarding. We believe trust compounds — and so do good products.',
-  },
-  {
-    icon: Layers,
-    color: 'var(--module-ai)',
-    title: 'Quality over scope',
-    body:
-      'Every feature ships only when it feels obvious in your hands. We\'d rather do five things beautifully than fifty halfway.',
-  },
-  {
-    icon: Heart,
-    color: '#ef4444',
-    title: 'Customers at the center',
-    body:
-      'We talk to customers every week. The roadmap reflects what real teams need, not what board decks want.',
-  },
-  {
-    icon: Globe,
-    color: '#f59e0b',
-    title: 'India-first, world-ready',
-    body:
-      'Built in India, for the world. Rupee billing, GST invoicing, DPDP compliance — and global infrastructure.',
-  },
-];
-
-// Team roles and timeline are intentionally generic until we have real
-// founders + milestones to feature publicly. We'd rather show nothing than
-// invent it.
+// Team roles are intentionally generic until we have real
+// founders + milestones to feature publicly.
 const TEAM = [];
 
-const TIMELINE = [
-  { date: '2024',  title: 'First prototype',    body: 'Social Stats started as a unified dashboard for analytics across the platforms agencies actually use.' },
-  { date: '2025',  title: 'Composer + Inbox',   body: 'Content composer with per-platform formatting and a unified inbox across DMs, comments, and reviews.' },
-  { date: '2026',  title: 'Marketing OS (you are here)', body: 'Unified control center across analytics, messaging, ads, AI, and automations.' },
-];
-
 export default function AboutPage() {
+  const { t } = useTranslation(['marketing', 'common']);
+
+  const values = useMemo(() => [
+    {
+      icon: Compass,
+      color: 'var(--module-analytics)',
+      title: t('about.values.honest.title', 'Honest by default'),
+      body: t('about.values.honest.body', 'No dark patterns, no surprise charges, no manipulative onboarding. We believe trust compounds — and so do good products.'),
+    },
+    {
+      icon: Layers,
+      color: 'var(--module-ai)',
+      title: t('about.values.quality.title', 'Quality over scope'),
+      body: t('about.values.quality.body', "Every feature ships only when it feels obvious in your hands. We'd rather do five things beautifully than fifty halfway."),
+    },
+    {
+      icon: Heart,
+      color: '#ef4444',
+      title: t('about.values.customers.title', 'Customers at the center'),
+      body: t('about.values.customers.body', 'We talk to customers every week. The roadmap reflects what real teams need, not what board decks want.'),
+    },
+    {
+      icon: Globe,
+      color: '#f59e0b',
+      title: t('about.values.universe.title', 'Built for the Bop Universe'),
+      body: t('about.values.universe.body', 'Engineered for multi-company architectures, global data privacy standards, and end-to-end operational clarity.'),
+    },
+  ], [t]);
+
+  const timeline = useMemo(() => [
+    {
+      date: t('about.timeline.t1.date', '2024'),
+      title: t('about.timeline.t1.title', 'First prototype'),
+      body: t('about.timeline.t1.body', 'Bop Social started as a unified dashboard for analytics across the platforms agencies actually use.'),
+    },
+    {
+      date: t('about.timeline.t2.date', '2025'),
+      title: t('about.timeline.t2.title', 'Composer + Inbox'),
+      body: t('about.timeline.t2.body', 'Content composer with per-platform formatting and a unified inbox across DMs, comments, and reviews.'),
+    },
+    {
+      date: t('about.timeline.t3.date', '2026'),
+      title: t('about.timeline.t3.title', 'Marketing OS (you are here)'),
+      body: t('about.timeline.t3.body', 'Unified control center across analytics, messaging, ads, AI, and automations.'),
+    },
+  ], [t]);
   return (
     <MarketingLayout>
       <Meta
-        title="About"
-        description="Social Stats is the marketing OS for modern teams — unified analytics, content, messaging, and AI across the 5 platforms that matter."
+        title={t('about.badge', 'About')}
+        description={t('about.hero_subtitle', 'Bop Social started with a frustrated founding team and a long list of broken marketing tools. We\'re building the unified product we wanted at our last company.')}
       />
       {/* Hero */}
       <section style={{ padding: '128px 32px 64px', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
@@ -76,7 +86,7 @@ export default function AboutPage() {
           }}
         />
         <div style={{ position: 'relative', maxWidth: 760, margin: '0 auto' }}>
-          <Badge variant="brand" size="md">About</Badge>
+          <Badge variant="brand" size="md">{t('about.badge', 'About')}</Badge>
           <h1 style={{
             margin: '20px 0 18px',
             fontSize: 'clamp(40px, 5vw, 56px)',
@@ -85,12 +95,10 @@ export default function AboutPage() {
             fontWeight: 600,
             color: 'var(--text-primary)',
           }}>
-            We're building the marketing OS we wanted at our last company.
+            {t('about.hero_title', "We're building the marketing OS we wanted at our last company.")}
           </h1>
           <p style={{ margin: 0, fontSize: 18, lineHeight: 1.65, color: 'var(--text-secondary)' }}>
-            Social Stats started with a frustrated founding team and a long list of broken
-            marketing tools. We're building the unified product we wanted at our
-            last company.
+            {t('about.hero_subtitle', "Bop Social started with a frustrated founding team and a long list of broken marketing tools. We're building the unified product we wanted at our last company.")}
           </p>
         </div>
       </section>
@@ -105,7 +113,7 @@ export default function AboutPage() {
             color: 'var(--brand-primary-hover)',
             marginBottom: 14,
           }}>
-            Our mission
+            {t('about.mission_badge', 'Our mission')}
           </div>
           <p style={{
             margin: 0,
@@ -115,8 +123,7 @@ export default function AboutPage() {
             color: 'var(--text-primary)',
             lineHeight: 1.4,
           }}>
-            Give every marketing team — from solo creators to global agencies — a single,
-            beautiful platform to <span style={{ color: 'var(--brand-primary-hover)' }}>understand, create, and grow</span>.
+            {t('about.mission_title', 'Give every marketing team — from solo creators to global agencies — a single, beautiful platform to understand, create, and grow.')}
           </p>
         </div>
       </section>
@@ -126,10 +133,10 @@ export default function AboutPage() {
         <div style={{ maxWidth: 'var(--container-xl)', margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: 48 }}>
             <h2 style={{ margin: 0, fontSize: 'clamp(28px, 3.4vw, 40px)', fontWeight: 600, letterSpacing: '-0.025em', color: 'var(--text-primary)' }}>
-              How we work.
+              {t('about.values_title', 'How we work.')}
             </h2>
             <p style={{ margin: '12px auto 0', maxWidth: 540, fontSize: 15, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-              Four values that show up in every product decision.
+              {t('about.values_subtitle', 'Four values that show up in every product decision.')}
             </p>
           </div>
           <div
@@ -140,7 +147,7 @@ export default function AboutPage() {
             }}
             className="about-values-grid"
           >
-            {VALUES.map((v, i) => (
+            {values.map((v, i) => (
               <motion.div
                 key={v.title}
                 initial={{ opacity: 0, y: 14 }}
@@ -185,12 +192,12 @@ export default function AboutPage() {
       <section style={{ padding: '96px 32px', background: 'var(--surface-card)', borderTop: '1px solid var(--border-subtle)', borderBottom: '1px solid var(--border-subtle)' }}>
         <div style={{ maxWidth: 'var(--container-xl)', margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: 48 }}>
-            <Badge variant="brand" size="md">Team</Badge>
+            <Badge variant="brand" size="md">{t('about.team_badge', 'Team')}</Badge>
             <h2 style={{ margin: '14px 0 12px', fontSize: 'clamp(28px, 3.4vw, 40px)', fontWeight: 600, letterSpacing: '-0.025em', color: 'var(--text-primary)' }}>
-              The humans behind Social Stats.
+              {t('about.team_title', 'The team behind Bop Social.')}
             </h2>
             <p style={{ margin: '0 auto', maxWidth: 540, fontSize: 15, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-              We're a small, experienced team based in Bangalore and remote.
+              {t('about.team_subtitle', "We're a small, experienced product and engineering team dedicated to building world-class marketing infrastructure.")}
             </p>
           </div>
 
@@ -241,18 +248,16 @@ export default function AboutPage() {
               maxWidth: 560, margin: '0 auto',
             }}>
               <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: 'var(--text-secondary)' }}>
-                Individual team profiles will appear here as we go public.
-                In the meantime, the easiest way to reach us is over email at{' '}
-                <a href="mailto:hello@socialstats.app" style={{ color: 'var(--text-link)', fontWeight: 600 }}>
-                  hello@socialstats.app
-                </a>.
+                {t('about.team_empty', 'Individual team profiles will appear here as we go public. In the meantime, the easiest way to reach us is over email at hello@bopsocial.com.')}
               </p>
             </div>
           )}
 
           <p style={{ marginTop: 32, textAlign: 'center', fontSize: 13, color: 'var(--text-tertiary)' }}>
-            We're hiring across engineering, design, and customer success.{' '}
-            <Link to="/contact" style={{ color: 'var(--text-link)', fontWeight: 600, textDecoration: 'none' }}>Get in touch →</Link>
+            {t('about.team_hiring', "We're hiring across engineering, design, and customer success.")}{' '}
+            <Link to="/contact" style={{ color: 'var(--text-link)', fontWeight: 600, textDecoration: 'none' }}>
+              {t('about.get_in_touch', 'Get in touch →')}
+            </Link>
           </p>
 
           <style>{`
@@ -266,9 +271,9 @@ export default function AboutPage() {
       <section style={{ padding: '96px 32px' }}>
         <div style={{ maxWidth: 760, margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: 48 }}>
-            <Badge variant="brand" size="md">Journey</Badge>
+            <Badge variant="brand" size="md">{t('about.timeline_badge', 'Journey')}</Badge>
             <h2 style={{ margin: '14px 0 12px', fontSize: 'clamp(28px, 3.4vw, 40px)', fontWeight: 600, letterSpacing: '-0.025em', color: 'var(--text-primary)' }}>
-              How we got here.
+              {t('about.timeline_title', 'How we got here.')}
             </h2>
           </div>
 
@@ -288,8 +293,8 @@ export default function AboutPage() {
                 opacity: 0.4,
               }}
             />
-            {TIMELINE.map((t) => (
-              <li key={t.date} style={{ position: 'relative', paddingLeft: 36, marginBottom: 32 }}>
+            {timeline.map((item) => (
+              <li key={item.date} style={{ position: 'relative', paddingLeft: 36, marginBottom: 32 }}>
                 <span
                   aria-hidden
                   style={{
@@ -302,13 +307,13 @@ export default function AboutPage() {
                   }}
                 />
                 <div style={{ fontSize: 12, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--brand-primary-hover)' }}>
-                  {t.date}
+                  {item.date}
                 </div>
                 <h3 style={{ margin: '4px 0 6px', fontSize: 17, fontWeight: 600, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>
-                  {t.title}
+                  {item.title}
                 </h3>
                 <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: 'var(--text-secondary)' }}>
-                  {t.body}
+                  {item.body}
                 </p>
               </li>
             ))}
@@ -319,14 +324,18 @@ export default function AboutPage() {
       {/* CTA */}
       <section style={{ padding: '0 32px 120px', textAlign: 'center' }}>
         <h2 style={{ margin: 0, fontSize: 'clamp(28px, 3.4vw, 40px)', fontWeight: 600, letterSpacing: '-0.025em', color: 'var(--text-primary)' }}>
-          Want to build with us?
+          {t('about.cta_title', 'Want to build with us?')}
         </h2>
         <p style={{ margin: '12px auto 28px', maxWidth: 480, fontSize: 16, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-          We're hiring across the stack. Or just say hi.
+          {t('about.cta_subtitle', "We're hiring across the stack. Or just say hi.")}
         </p>
         <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
-          <Button as={Link} to="/contact" size="lg" iconRight={ArrowRight}>Say hello</Button>
-          <Button as={Link} to="/signup"  variant="secondary" size="lg">Try Social Stats free</Button>
+          <Button as={Link} to="/contact" size="lg" iconRight={ArrowRight}>
+            {t('about.say_hello', 'Say hello')}
+          </Button>
+          <Button as={Link} to="/signup" variant="secondary" size="lg">
+            {t('about.try_free', 'Get started with Bop Social')}
+          </Button>
         </div>
       </section>
     </MarketingLayout>

@@ -92,9 +92,39 @@ def _create_notification(*, user, client, title, body, data, notif_type='system'
     Returns the Notification, or None if user is missing.
     """
     from social_stats.notification_dispatcher import dispatch
+    from social_stats.locale_helpers import resolve_user_language
 
     if user is None:
         return None
+
+    lang = resolve_user_language(user, client)
+    if lang == 'es':
+        if title.startswith('Post published on '):
+            title = 'Publicación realizada en ' + title[18:]
+        elif title == 'Post failed to publish':
+            title = 'Error al publicar el post'
+        elif title.startswith('New message on ') and ' from ' in title:
+            m_parts = title[15:].split(' from ', 1)
+            title = f'Nuevo mensaje en {m_parts[0]} de {m_parts[1]}'
+        elif title.startswith('New ') and ' review' in title:
+            rem = title[4:].replace(' review', '')
+            title = f'Nueva reseña en {rem}'
+        elif title.startswith('Bot handoff: '):
+            title = 'Transferencia del bot: ' + title[13:]
+        elif title.startswith('New lead: '):
+            title = 'Nuevo lead: ' + title[10:]
+        elif title.startswith('Lead assigned to you: '):
+            title = 'Lead asignado a ti: ' + title[22:]
+        elif title == 'Your request was granted':
+            title = 'Tu solicitud fue aprobada'
+        elif title == 'Your request was rejected':
+            title = 'Tu solicitud fue rechazada'
+        elif title.endswith(' authentication expired'):
+            plat = title[:-23]
+            title = f'Autenticación de {plat} expirada'
+        elif title.endswith(' sync failing repeatedly'):
+            plat = title[:-24]
+            title = f'Sincronización de {plat} fallando repetidamente'
 
     bus_event_type = (data or {}).get('event_type', '')
     dispatcher_event = _DISPATCHER_EVENT_TYPE.get(bus_event_type, 'system')

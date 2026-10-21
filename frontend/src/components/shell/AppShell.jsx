@@ -8,6 +8,7 @@
  * ========================================================================== */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { BarChart3, MessageCircle, Target, Menu, X } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -21,6 +22,7 @@ import MobileNav from './MobileNav';
 import AIFloatingTrigger from '../ai/AIFloatingTrigger';
 import SkipLink from '../ui/SkipLink';
 import ThemeToggle from '../ui/ThemeToggle';
+import LanguageSelector from '../ui/LanguageSelector';
 import useBreakpoint from '../../hooks/useBreakpoint';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -32,6 +34,7 @@ import { useAuth } from '../../hooks/useAuth';
  * isAdmin: bool — admin sees all 3 modules; client sees a filtered set
  */
 export default function AppShell({ children, isAdmin }) {
+  const { t } = useTranslation('app');
   const location = useLocation();
   const navigate = useNavigate();
   const { user, can } = useAuth();
@@ -54,27 +57,33 @@ export default function AppShell({ children, isAdmin }) {
     const d = event.data || {};
     switch (event.type) {
       case 'composer.post_published':
-        toast.success(`Published: ${d.title || 'post'}`);
+        toast.success(t('toasts.post_published', { title: d.title || t('toasts.default_post', 'post') }));
         break;
       case 'composer.post_partial':
-        toast(`Published partially (${d.success_count}/${(d.success_count||0) + (d.failed_count||0)})`,
-              { icon: '⚠️' });
+        toast(t('toasts.post_partial', {
+          success: d.success_count || 0,
+          total: (d.success_count || 0) + (d.failed_count || 0),
+        }), { icon: '⚠️' });
         break;
       case 'composer.post_failed':
-        toast.error(`Publish failed: ${d.title || 'post'}`);
+        toast.error(t('toasts.post_failed', { title: d.title || t('toasts.default_post', 'post') }));
         break;
       case 'inbox.new_message':
         if (d.preview) {
-          toast(`💬 ${d.contact_name || 'New message'}: ${String(d.preview).slice(0, 80)}`,
-                { duration: 3500 });
+          toast(t('toasts.new_message', {
+            sender: d.contact_name || t('toasts.default_new_message', 'New message'),
+            preview: String(d.preview).slice(0, 80),
+          }), { duration: 3500 });
         }
         break;
       case 'inbox.new_review':
-        toast(`⭐ New ${d.rating || ''}-star review${d.reviewer_name ? ' from ' + d.reviewer_name : ''}`,
-              { duration: 4000 });
+        toast(t('toasts.new_review', {
+          rating: d.rating || '',
+          from: d.reviewer_name ? t('toasts.from_reviewer', { name: d.reviewer_name }) : '',
+        }), { duration: 4000 });
         break;
       case 'credential.token_expired':
-        toast.error(`${d.platform || 'Platform'} token expired — please reconnect.`,
+        toast.error(t('toasts.token_expired', { platform: d.platform || t('toasts.default_platform', 'Platform') }),
                     { duration: 6000 });
         break;
       default:
@@ -87,20 +96,20 @@ export default function AppShell({ children, isAdmin }) {
   const modules = useMemo(() => {
     const all = [
       {
-        id: 'analytics', label: 'Analytics', icon: BarChart3,
+        id: 'analytics', label: t('modules.analytics.label', 'Analytics'), icon: BarChart3,
         enabled: true,  // always available
       },
       {
-        id: 'messaging', label: 'Messaging', icon: MessageCircle,
+        id: 'messaging', label: t('modules.messaging.label', 'Messaging'), icon: MessageCircle,
         enabled: isAdmin || can?.('whatsapp.view'),
       },
       {
-        id: 'ads', label: 'Ads', icon: Target,
+        id: 'ads', label: t('modules.ads.label', 'Ads'), icon: Target,
         enabled: false, comingSoon: true,
       },
     ];
     return all.filter((m) => m.enabled || m.comingSoon || isAdmin);
-  }, [isAdmin, can]);
+  }, [isAdmin, can, t]);
 
   const showRail    = !isMobile;
   const showSidebar = !isMobile;
@@ -199,6 +208,7 @@ export default function AppShell({ children, isAdmin }) {
 }
 
 function MobileTopBar({ basePath, onMenuOpen, onOpenPalette }) {
+  const { t } = useTranslation('app');
   const { user } = useAuth();
   const initial = ((user?.name || user?.email || 'U').trim()[0] || 'U').toUpperCase();
   const hue = hashHue(user?.email || user?.name || '');
@@ -220,13 +230,13 @@ function MobileTopBar({ basePath, onMenuOpen, onOpenPalette }) {
         paddingTop: 'env(safe-area-inset-top)',
       }}
     >
-      <button type="button" onClick={onMenuOpen} aria-label="Open menu" style={iconBtn}>
+      <button type="button" onClick={onMenuOpen} aria-label={t('topbar.open_menu', 'Open menu')} style={iconBtn}>
         <Menu size={18} strokeWidth={2} />
       </button>
       <button
         type="button"
         onClick={onOpenPalette}
-        aria-label="Search"
+        aria-label={t('topbar.search', 'Search')}
         style={{
           flex: 1, minWidth: 0,
           height: 36,
@@ -240,9 +250,10 @@ function MobileTopBar({ basePath, onMenuOpen, onOpenPalette }) {
           minHeight: 'unset',
         }}
       >
-        Search anything…
+        {t('topbar.search_placeholder', 'Search anything…')}
       </button>
       <ThemeToggle size="sm" />
+      <LanguageSelector size="sm" />
       <div style={{
         width: 32, height: 32,
         borderRadius: 999,
@@ -258,6 +269,7 @@ function MobileTopBar({ basePath, onMenuOpen, onOpenPalette }) {
 }
 
 function MobileDrawer({ open, onClose, modules, currentModule, basePath }) {
+  const { t } = useTranslation('app');
   const navigate = useNavigate();
   const drawerRef = useRef(null);
 
@@ -300,7 +312,7 @@ function MobileDrawer({ open, onClose, modules, currentModule, basePath }) {
         ref={drawerRef}
         role="dialog"
         aria-modal="true"
-        aria-label="Navigation drawer"
+        aria-label={t('drawer.navigation', 'Navigation drawer')}
         aria-hidden={!open}
         style={{
           position: 'fixed',
@@ -321,8 +333,8 @@ function MobileDrawer({ open, onClose, modules, currentModule, basePath }) {
           padding: '14px 16px',
           borderBottom: '1px solid var(--border-subtle)',
         }}>
-          <strong style={{ fontSize: 14, color: 'var(--text-primary)' }}>Navigation</strong>
-          <button type="button" onClick={onClose} aria-label="Close menu" style={iconBtn}>
+          <strong style={{ fontSize: 14, color: 'var(--text-primary)' }}>{t('drawer.navigation', 'Navigation')}</strong>
+          <button type="button" onClick={onClose} aria-label={t('drawer.close_menu', 'Close menu')} style={iconBtn}>
             <X size={16} />
           </button>
         </header>
@@ -337,6 +349,7 @@ function MobileDrawer({ open, onClose, modules, currentModule, basePath }) {
             const Icon = m.icon;
             const active = m.id === currentModule;
             const disabled = !m.enabled || m.comingSoon;
+            const label = t(`modules.${m.id}.label`, m.label);
             return (
               <button
                 key={m.id}
@@ -357,8 +370,8 @@ function MobileDrawer({ open, onClose, modules, currentModule, basePath }) {
                 }}
               >
                 <Icon size={18} />
-                {m.label}
-                {m.comingSoon && <span style={{ fontSize: 9, opacity: 0.7 }}>SOON</span>}
+                {label}
+                {m.comingSoon && <span style={{ fontSize: 9, opacity: 0.7 }}>{t('rail.soon', 'SOON')}</span>}
               </button>
             );
           })}

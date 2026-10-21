@@ -7,6 +7,7 @@
  *  Released under the MIT License — see LICENSE. Keep this notice.
  * ========================================================================== */
 import { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Plus, RefreshCw, Trash2, FileType, Loader2, AlertCircle, Send } from 'lucide-react';
 
 import PageHeader from '../components/layout/PageHeader';
@@ -29,40 +30,46 @@ const STATUS_BADGE = {
 };
 
 export default function WhatsAppTemplatesPage() {
+  const { t } = useTranslation('messaging');
   const { data, refetch, loading } = useWhatsAppTemplates();
   const [showDrawer, setShowDrawer] = useState(false);
+
+  const count = data?.length || 0;
+  const subtitle = count === 1
+    ? t('templates.subtitle', { count, defaultValue: '1 template' })
+    : t('templates.subtitle_plural', { count, defaultValue: `${count} templates` });
 
   return (
     <div style={{ paddingBottom: 32 }}>
       <PageHeader
-        title="Templates"
-        subtitle={`${data?.length || 0} templates`}
+        title={t('templates.title', 'Templates')}
+        subtitle={subtitle}
         action={
           <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={() => refetch()} style={btnSecondary}><RefreshCw size={14} /> Refresh</button>
-            <button onClick={() => setShowDrawer(true)} style={btnPrimary}><Plus size={14} /> New Template</button>
+            <button onClick={() => refetch()} style={btnSecondary}><RefreshCw size={14} /> {t('templates.refresh', 'Refresh')}</button>
+            <button onClick={() => setShowDrawer(true)} style={btnPrimary}><Plus size={14} /> {t('templates.new_template', 'New Template')}</button>
           </div>
         }
       />
 
       <div style={{ padding: '0 16px' }}>
-        {loading && <div style={emptyState}><Loader2 size={14} className="spin" /> Loading…</div>}
+        {loading && <div style={emptyState}><Loader2 size={14} className="spin" /> {t('templates.loading', 'Loading…')}</div>}
         {!loading && (data || []).length === 0 && (
           <div style={emptyState}>
             <FileType size={32} color={COLORS.muted} style={{ marginBottom: 8 }} />
-            <div style={{ fontWeight: 600, color: COLORS.text }}>No templates yet</div>
+            <div style={{ fontWeight: 600, color: COLORS.text }}>{t('templates.empty_title', 'No templates yet')}</div>
             <div style={{ fontSize: 13, color: COLORS.muted, marginBottom: 12 }}>
-              Templates are required for outbound messages outside the 24h window.
+              {t('templates.empty_desc', 'Templates are required for outbound messages outside the 24h window.')}
             </div>
             <button onClick={() => setShowDrawer(true)} style={btnPrimary}>
-              <Plus size={14} /> Create your first template
+              <Plus size={14} /> {t('templates.create_first', 'Create your first template')}
             </button>
           </div>
         )}
 
         <div style={grid}>
-          {(data || []).map((t) => (
-            <TemplateCard key={t.id} t={t} onChange={refetch} />
+          {(data || []).map((tpl) => (
+            <TemplateCard key={tpl.id} tpl={tpl} onChange={refetch} t={t} />
           ))}
         </div>
       </div>
@@ -79,55 +86,56 @@ export default function WhatsAppTemplatesPage() {
   );
 }
 
-function TemplateCard({ t, onChange }) {
-  const status = STATUS_BADGE[t.status] || STATUS_BADGE.draft;
+function TemplateCard({ tpl, onChange, t }) {
+  const status = STATUS_BADGE[tpl.status] || STATUS_BADGE.draft;
+  const statusLabel = t ? t(`statuses.${tpl.status}`, tpl.status) : tpl.status;
   return (
     <div style={card}>
       <div style={{ padding: 14, borderBottom: `1px solid ${COLORS.border}` }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 700, color: COLORS.text, wordBreak: 'break-all' }}>{t.name}</div>
+            <div style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 700, color: COLORS.text, wordBreak: 'break-all' }}>{tpl.name}</div>
             <div style={{ fontSize: 11, color: COLORS.muted, marginTop: 4 }}>
-              {t.category} · {t.language} · {t.template_type}
+              {tpl.category} · {tpl.language} · {tpl.template_type}
             </div>
           </div>
-          <span style={{ ...badge, background: status.bg, color: status.color }}>{t.status}</span>
+          <span style={{ ...badge, background: status.bg, color: status.color }}>{statusLabel}</span>
         </div>
       </div>
       <div style={{ padding: 14 }}>
         <div style={preview}
-             dangerouslySetInnerHTML={safeHtml(t.preview)} />
-        {t.footer && <div style={{ fontSize: 11, color: COLORS.muted, marginTop: 6 }}>{t.footer}</div>}
-        {t.rejection_reason && (
+             dangerouslySetInnerHTML={safeHtml(tpl.preview)} />
+        {tpl.rejection_reason && (
           <div style={{ ...errorBox, marginTop: 10 }}>
-            <AlertCircle size={14} /> {t.rejection_reason}
+            <AlertCircle size={14} /> {tpl.rejection_reason}
           </div>
         )}
         <div style={{ display: 'flex', gap: 6, marginTop: 12, flexWrap: 'wrap' }}>
-          {t.status !== 'approved' && (
+          {tpl.status !== 'approved' && (
             <button
-              onClick={async () => { await whatsappAPI.templates.submit(t.id); onChange(); }}
+              onClick={async () => { await whatsappAPI.templates.submit(tpl.id); onChange(); }}
               style={btnSecondary}
             >
-              <Send size={12} /> Resubmit
+              <Send size={12} /> {t ? t('campaigns.wizard.send_now', 'Resubmit') : 'Resubmit'}
             </button>
           )}
           <button
-            onClick={async () => { await whatsappAPI.templates.sync(t.id); onChange(); }}
+            onClick={async () => { await whatsappAPI.templates.sync(tpl.id); onChange(); }}
             style={btnSecondary}
           >
-            <RefreshCw size={12} /> Sync
+            <RefreshCw size={12} /> {t ? t('templates.refresh', 'Sync') : 'Sync'}
           </button>
           <button
             onClick={async () => {
-              if (window.confirm('Delete this template?')) {
-                await whatsappAPI.templates.delete(t.id);
+              const msg = t ? t('templates.delete_confirm', 'Delete template? This cannot be undone.') : 'Delete template?';
+              if (window.confirm(msg)) {
+                await whatsappAPI.templates.delete(tpl.id);
                 onChange();
               }
             }}
             style={{ ...btnSecondary, color: COLORS.danger, borderColor: '#fecaca' }}
           >
-            <Trash2 size={12} /> Delete
+            <Trash2 size={12} /> {t ? t('campaigns.delete', 'Delete') : 'Delete'}
           </button>
         </div>
       </div>
@@ -136,6 +144,7 @@ function TemplateCard({ t, onChange }) {
 }
 
 function CreateTemplateDrawer({ onClose, onCreated }) {
+  const { t } = useTranslation('messaging');
   const [form, setForm] = useState({
     name: '', category: 'utility', language: 'en_US',
     template_type: 'text', body: '', footer: '',
@@ -157,7 +166,7 @@ function CreateTemplateDrawer({ onClose, onCreated }) {
 
   async function save() {
     if (!form.name.trim() || !form.body.trim()) {
-      setError('Name and body are required.');
+      setError(t('templates.drawer.name_label', 'Name') + ' & ' + t('templates.drawer.body_label', 'Body') + ' required.');
       return;
     }
     setSaving(true);
@@ -179,42 +188,60 @@ function CreateTemplateDrawer({ onClose, onCreated }) {
           padding: 16, borderBottom: `1px solid ${COLORS.border}`,
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         }}>
-          <h3 style={{ margin: 0, fontSize: 16, color: COLORS.text }}>New Template</h3>
+          <h3 style={{ margin: 0, fontSize: 16, color: COLORS.text }}>{t('templates.drawer.title', 'New Template')}</h3>
           <button onClick={onClose} style={iconBtn}>×</button>
         </header>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 320px', gap: 16, padding: 16, overflow: 'auto', flex: 1 }}>
           {/* Form */}
           <div>
-            <Field label="Name (slug)" value={form.name}
-                   onChange={setName} placeholder="order_confirmation"
-                   helper="Lowercase, no spaces" />
+            <Field
+              label={t('templates.drawer.name_label', 'Name (slug)')}
+              value={form.name}
+              onChange={setName}
+              placeholder={t('templates.drawer.name_placeholder', 'order_confirmation')}
+              helper={t('templates.drawer.name_hint', 'Lowercase, no spaces')}
+            />
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
-              <SelectField label="Category" value={form.category}
-                           onChange={(v) => setForm({ ...form, category: v })}
-                           options={['utility', 'marketing', 'authentication']} />
-              <SelectField label="Language" value={form.language}
-                           onChange={(v) => setForm({ ...form, language: v })}
-                           options={['en_US', 'en', 'en_GB', 'es', 'pt_BR', 'fr', 'de', 'hi', 'ar']} />
-              <SelectField label="Type" value={form.template_type}
-                           onChange={(v) => setForm({ ...form, template_type: v })}
-                           options={['text', 'image', 'video', 'document']} />
+              <SelectField
+                label={t('templates.drawer.category_label', 'Category')}
+                value={form.category}
+                onChange={(v) => setForm({ ...form, category: v })}
+                options={['utility', 'marketing', 'authentication']}
+              />
+              <SelectField
+                label={t('templates.drawer.language_label', 'Language')}
+                value={form.language}
+                onChange={(v) => setForm({ ...form, language: v })}
+                options={['en_US', 'en', 'en_GB', 'es', 'pt_BR', 'fr', 'de', 'hi', 'ar']}
+              />
+              <SelectField
+                label={t('templates.drawer.header_type_label', 'Type')}
+                value={form.template_type}
+                onChange={(v) => setForm({ ...form, template_type: v })}
+                options={['text', 'image', 'video', 'document']}
+              />
             </div>
 
             <label style={{ display: 'block', marginTop: 8 }}>
-              <span style={fieldLabel}>Body (use <code style={code}>{'{{1}}'}</code> for variables)</span>
+              <span style={fieldLabel}>
+                {t('templates.drawer.body_label', 'Body')} ({t('templates.drawer.body_hint', 'use {{1}} for variables')})
+              </span>
               <textarea
                 rows={8}
                 value={form.body}
                 onChange={(e) => setForm({ ...form, body: e.target.value })}
-                placeholder="Hi {{1}}, your order #{{2}} is on the way!"
+                placeholder={t('templates.drawer.body_placeholder', 'Hi {{1}}, your order #{{2}} is on the way!')}
                 style={{ ...input, fontFamily: 'monospace' }}
               />
             </label>
 
-            <Field label="Footer (optional)" value={form.footer}
-                   onChange={(v) => setForm({ ...form, footer: v })}
-                   placeholder="Reply STOP to unsubscribe" />
+            <Field
+              label={t('templates.drawer.footer_label', 'Footer (optional)')}
+              value={form.footer}
+              onChange={(v) => setForm({ ...form, footer: v })}
+              placeholder={t('templates.drawer.footer_placeholder', 'Reply STOP to unsubscribe')}
+            />
 
             {error && <div style={{ ...errorBox, marginTop: 10 }}><AlertCircle size={14} /> {String(error)}</div>}
           </div>
@@ -222,7 +249,7 @@ function CreateTemplateDrawer({ onClose, onCreated }) {
           {/* Live preview */}
           <div style={{ position: 'sticky', top: 0 }}>
             <div style={{ fontSize: 12, fontWeight: 700, color: COLORS.muted, marginBottom: 8, textTransform: 'uppercase' }}>
-              Preview
+              {t('bot_templates.preview.title', 'Preview')}
             </div>
             <div style={whatsappBubble}>
               <div style={{ whiteSpace: 'pre-wrap' }}>{renderedPreview || 'Start typing your template body…'}</div>
@@ -235,9 +262,9 @@ function CreateTemplateDrawer({ onClose, onCreated }) {
           padding: 16, borderTop: `1px solid ${COLORS.border}`,
           display: 'flex', justifyContent: 'flex-end', gap: 8,
         }}>
-          <button onClick={onClose} style={btnSecondary}>Cancel</button>
+          <button onClick={onClose} style={btnSecondary}>{t('templates.drawer.cancel_btn', 'Cancel')}</button>
           <button onClick={save} disabled={saving} style={btnPrimary}>
-            {saving ? 'Submitting…' : 'Submit for Approval'}
+            {saving ? t('templates.drawer.submitting', 'Submitting…') : t('templates.drawer.submit_btn', 'Submit for Approval')}
           </button>
         </footer>
       </div>

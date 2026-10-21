@@ -16,9 +16,11 @@ import {
   Briefcase, Stethoscope, UtensilsCrossed, Palette, ShoppingBag, GraduationCap,
 } from 'lucide-react';
 
+import { useTranslation } from 'react-i18next';
 import Logo from '../ui/Logo';
 import Button from '../ui/Button';
 import ThemeToggle from '../ui/ThemeToggle';
+import LanguageSelector from '../ui/LanguageSelector';
 import SkipLink from '../ui/SkipLink';
 import { prefetchRoute } from '../../utils/prefetchRoute';
 
@@ -52,57 +54,59 @@ export default function MarketingLayout({ children }) {
 // Nav data
 // ─────────────────────────────────────────────────────────────────────────────
 const PRODUCT_MENU = [
-  { label: 'Analytics',     to: '/product/analytics',         icon: BarChart3,    desc: 'Cross-platform metrics' },
-  { label: 'Composer',      to: '/product/composer',          icon: PenSquare,    desc: 'Write once, publish 5x' },
-  { label: 'Inbox',         to: '/product/inbox',             icon: Inbox,        desc: 'Every conversation, one place' },
-  { label: 'WhatsApp',      to: '/product/whatsapp',          icon: MessageCircle,desc: 'Campaigns + two-way chat' },
-  { label: 'Bot Builder',   to: '/product/bot-builder',       icon: Bot,          desc: 'Visual CTWA flow editor' },
-  { label: 'AI Studio',     to: '/product/ai',                icon: Sparkles,     desc: 'Social Stats in every corner' },
-  { label: 'AI Assistant',  to: '/product/ai-assistant',      icon: MessagesSquare, desc: 'Cmd+J — talk to your data' },
-  { label: 'Reports',       to: '/product/reports',           icon: FileText,     desc: 'Reports that write themselves' },
-  { label: 'Automations',   to: '/product/automations',       icon: Zap,          desc: 'IF this, do that' },
-  { label: 'Marketplace',   to: '/product/marketplace-product', icon: Star,       desc: 'Two-sided marketplace' },
+  { label: 'Analytics',     labelKey: 'products.analytics',     to: '/product/analytics',         icon: BarChart3,    desc: 'Cross-platform metrics', descKey: 'products.analytics_desc' },
+  { label: 'Composer',      labelKey: 'products.composer',      to: '/product/composer',          icon: PenSquare,    desc: 'Write once, publish 5x', descKey: 'products.composer_desc' },
+  { label: 'Inbox',         labelKey: 'products.inbox',         to: '/product/inbox',             icon: Inbox,        desc: 'Every conversation, one place', descKey: 'products.inbox_desc' },
+  { label: 'WhatsApp',      labelKey: 'products.whatsapp',      to: '/product/whatsapp',          icon: MessageCircle,desc: 'Campaigns + two-way chat', descKey: 'products.whatsapp_desc' },
+  { label: 'Bot Builder',   labelKey: 'products.bot_builder',   to: '/product/bot-builder',       icon: Bot,          desc: 'Visual CTWA flow editor', descKey: 'products.bot_builder_desc' },
+  { label: 'AI Studio',     labelKey: 'products.ai_studio',     to: '/product/ai',                icon: Sparkles,     desc: 'Bop Social in every corner', descKey: 'products.ai_studio_desc' },
+  { label: 'AI Assistant',  labelKey: 'products.ai_assistant',  to: '/product/ai-assistant',      icon: MessagesSquare, desc: 'Cmd+J — talk to your data', descKey: 'products.ai_assistant_desc' },
+  { label: 'Reports',       labelKey: 'products.reports',       to: '/product/reports',           icon: FileText,     desc: 'Reports that write themselves', descKey: 'products.reports_desc' },
+  { label: 'Automations',   labelKey: 'products.automations',   to: '/product/automations',       icon: Zap,          desc: 'IF this, do that', descKey: 'products.automations_desc' },
+  { label: 'Marketplace',   labelKey: 'products.marketplace',   to: '/product/marketplace-product', icon: Star,       desc: 'Two-sided marketplace', descKey: 'products.marketplace_desc' },
 ];
 
 const SOLUTIONS_BY_ROLE = [
-  { label: 'For Agencies',   to: '/solutions/agencies',   icon: Briefcase, desc: 'Manage 100+ clients' },
-  { label: 'For Businesses', to: '/solutions/businesses', icon: Building2, desc: 'Take back control' },
-  { label: 'For Creators',   to: '/solutions/creators',   icon: Palette,   desc: 'Track your creator economy' },
+  { label: 'For Agencies',   labelKey: 'solutions.agencies',   to: '/solutions/agencies',   icon: Briefcase, desc: 'Manage 100+ clients', descKey: 'solutions.agencies_desc' },
+  { label: 'For Businesses', labelKey: 'solutions.businesses', to: '/solutions/businesses', icon: Building2, desc: 'Take back control', descKey: 'solutions.businesses_desc' },
+  { label: 'For Creators',   labelKey: 'solutions.creators',   to: '/solutions/creators',   icon: Palette,   desc: 'Track your creator economy', descKey: 'solutions.creators_desc' },
 ];
 
 const SOLUTIONS_BY_INDUSTRY = [
-  { label: 'Real Estate', to: '/solutions/real-estate', icon: Building2,        desc: 'Sell more properties' },
-  { label: 'Healthcare',  to: '/solutions/clinics',     icon: Stethoscope,      desc: 'Engage patients' },
-  { label: 'Restaurants', to: '/solutions/restaurants', icon: UtensilsCrossed,  desc: 'Fill more tables' },
-  { label: 'E-commerce',  to: '/solutions/ecommerce',   icon: ShoppingBag,      desc: 'Drive sales from social' },
-  { label: 'Education',   to: '/solutions/education',   icon: GraduationCap,    desc: 'Reach more students' },
+  { label: 'Real Estate', labelKey: 'solutions.real_estate', to: '/solutions/real-estate', icon: Building2,        desc: 'Sell more properties', descKey: 'solutions.real_estate_desc' },
+  { label: 'Healthcare',  labelKey: 'solutions.healthcare',  to: '/solutions/clinics',     icon: Stethoscope,      desc: 'Engage patients', descKey: 'solutions.healthcare_desc' },
+  { label: 'Restaurants', labelKey: 'solutions.restaurants', to: '/solutions/restaurants', icon: UtensilsCrossed,  desc: 'Fill more tables', descKey: 'solutions.restaurants_desc' },
+  { label: 'E-commerce',  labelKey: 'solutions.ecommerce',   to: '/solutions/ecommerce',   icon: ShoppingBag,      desc: 'Drive sales from social', descKey: 'solutions.ecommerce_desc' },
+  { label: 'Education',   labelKey: 'solutions.education',   to: '/solutions/education',   icon: GraduationCap,    desc: 'Reach more students', descKey: 'solutions.education_desc' },
 ];
 
 const SIMPLE_LINKS = [
-  { label: 'Customers',   to: '/customers' },
-  { label: 'Resources',   to: null,
+  { label: 'Customers', labelKey: 'nav.customers', to: '/customers' },
+  { label: 'Resources', labelKey: 'nav.resources', to: null,
     menu: { single: [
-      { label: 'Blog',          to: '/blog',         desc: 'Marketing tips + product updates' },
-      { label: 'Help Center',   to: '/help',         desc: 'Guides + how-tos' },
-      { label: 'Changelog',     to: '/changelog',    desc: 'What shipped this week' },
-      { label: 'Status',        to: '/status',       desc: 'System uptime' },
-      { label: 'Integrations',  to: '/integrations', desc: 'Connect your stack' },
-      { label: 'Contact',       to: '/contact',      desc: 'Sales + support' },
+      { label: 'Blog',          labelKey: 'resources.blog',         to: '/blog',         icon: FileText,       desc: 'Marketing tips + product updates', descKey: 'resources.blog_desc' },
+      { label: 'Help Center',   labelKey: 'resources.help_center',   to: '/help',         icon: Users,          desc: 'Guides + how-tos', descKey: 'resources.help_center_desc' },
+      { label: 'Changelog',     labelKey: 'resources.changelog',     to: '/changelog',    icon: Calendar,       desc: 'What shipped this week', descKey: 'resources.changelog_desc' },
+      { label: 'Status',        labelKey: 'resources.status',        to: '/status',       icon: Zap,            desc: 'System uptime', descKey: 'resources.status_desc' },
+      { label: 'Integrations',  labelKey: 'resources.integrations',  to: '/integrations', icon: Sparkles,       desc: 'Connect your stack', descKey: 'resources.integrations_desc' },
+      { label: 'Contact',       labelKey: 'resources.contact',       to: '/contact',      icon: MessagesSquare, desc: 'Sales + support', descKey: 'resources.contact_desc' },
     ]},
   },
-  { label: 'About',       to: '/about' },
+  { label: 'About', labelKey: 'nav.about', to: '/about' },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Nav
 // ─────────────────────────────────────────────────────────────────────────────
 function MarketingNav() {
+  const { t } = useTranslation('navigation');
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [openMenu, setOpenMenu] = useState(null);  // 'product' | 'solutions' | 'resources'
   const [isMobile, setIsMobile] = useState(() =>
     typeof window !== 'undefined' ? window.innerWidth < 1024 : false);
   const location = useLocation();
+  const headerRef = useRef(null);
 
   // Grace period for the mega-menu hover. Without it the menu closes
   // instantly when the pointer briefly leaves the trigger to reach the
@@ -128,26 +132,46 @@ function MarketingNav() {
   }, []);
 
   useEffect(() => {
-    const onResize = () => setIsMobile(window.innerWidth < 1024);
+    const onResize = () => {
+      const mobile = window.innerWidth < 1024;
+      setIsMobile(mobile);
+      if (!mobile) setMobileOpen(false);
+    };
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, []);
 
-  // Close mobile + mega-menu on navigation
+  // Close mega-menu on navigation
   useEffect(() => {
-    setMobileOpen(false);
     setOpenMenu(null);
+    setMobileOpen(false);
   }, [location.pathname]);
 
-  // Close mega-menu on Escape
+  // Escape key closes open menu
   useEffect(() => {
-    if (!openMenu) return;
-    const onKey = (e) => { if (e.key === 'Escape') setOpenMenu(null); };
+    const onKey = (e) => {
+      if (e.key === 'Escape') {
+        setOpenMenu(null);
+        setMobileOpen(false);
+      }
+    };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  // Close mega-menu on outside click
+  useEffect(() => {
+    if (!openMenu) return;
+    const onClickOutside = (e) => {
+      if (headerRef.current && !headerRef.current.contains(e.target)) {
+        setOpenMenu(null);
+      }
+    };
+    document.addEventListener('pointerdown', onClickOutside);
+    return () => document.removeEventListener('pointerdown', onClickOutside);
   }, [openMenu]);
 
-  // Lock body scroll when mobile menu open
+  // Lock scroll when mobile drawer is open
   useEffect(() => {
     if (mobileOpen) {
       const prev = document.body.style.overflow;
@@ -156,16 +180,20 @@ function MarketingNav() {
     }
   }, [mobileOpen]);
 
+  const isHomePage = location.pathname === '/';
+  const isDarkHeroNav = isHomePage && !scrolled && !openMenu;
+
   return (
     <header
+      ref={headerRef}
       style={{
         position: 'fixed',
         top: 0, left: 0, right: 0,
         zIndex: 'var(--z-sticky)',
-        background: scrolled || openMenu ? 'var(--surface-overlay)' : 'transparent',
-        backdropFilter: scrolled || openMenu ? 'blur(14px) saturate(180%)' : 'none',
-        WebkitBackdropFilter: scrolled || openMenu ? 'blur(14px) saturate(180%)' : 'none',
-        borderBottom: scrolled || openMenu ? '1px solid var(--border-subtle)' : '1px solid transparent',
+        background: openMenu ? 'var(--surface-card)' : (isDarkHeroNav ? 'transparent' : 'var(--surface-overlay)'),
+        backdropFilter: openMenu ? 'none' : (isDarkHeroNav ? 'none' : 'blur(14px) saturate(180%)'),
+        WebkitBackdropFilter: openMenu ? 'none' : (isDarkHeroNav ? 'none' : 'blur(14px) saturate(180%)'),
+        borderBottom: openMenu || !isDarkHeroNav ? '1px solid var(--border-subtle)' : '1px solid transparent',
         transition: 'background var(--transition-default), border-color var(--transition-default), backdrop-filter var(--transition-default)',
       }}
       onMouseLeave={scheduleClose}
@@ -182,39 +210,69 @@ function MarketingNav() {
           gap: 24,
         }}
       >
-        <Link to="/" style={{ display: 'inline-flex', alignItems: 'center' }} aria-label="Social Stats home">
-          <Logo variant="horizontal" height={isMobile ? 26 : 30} />
+        <Link
+          to="/"
+          style={{ display: 'inline-flex', alignItems: 'center' }}
+          aria-label="Bop Social home"
+          onMouseEnter={() => { cancelClose(); setOpenMenu(null); }}
+        >
+          <Logo variant="horizontal" height={isMobile ? 32 : 38} inverted={isDarkHeroNav} />
         </Link>
 
         {/* Desktop nav */}
         {!isMobile && (
           <nav style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <MegaTrigger label="Product"
+            <MegaTrigger label={t('nav.product', 'Product')}
                          active={openMenu === 'product'}
-                         onEnter={() => { cancelClose(); setOpenMenu('product'); }} />
-            <MegaTrigger label="Solutions"
+                         darkHero={isDarkHeroNav}
+                         onEnter={() => { cancelClose(); setOpenMenu('product'); }}
+                         onToggle={() => {
+                           cancelClose();
+                           setOpenMenu((prev) => (prev === 'product' ? null : 'product'));
+                         }} />
+            <MegaTrigger label={t('nav.solutions', 'Solutions')}
                          active={openMenu === 'solutions'}
-                         onEnter={() => { cancelClose(); setOpenMenu('solutions'); }} />
+                         darkHero={isDarkHeroNav}
+                         onEnter={() => { cancelClose(); setOpenMenu('solutions'); }}
+                         onToggle={() => {
+                           cancelClose();
+                           setOpenMenu((prev) => (prev === 'solutions' ? null : 'solutions'));
+                         }} />
             {SIMPLE_LINKS.map((l) => l.to ? (
               <NavLink key={l.label} to={l.to}
                        active={location.pathname === l.to}
+                       darkHero={isDarkHeroNav}
                        onMouseEnter={() => { cancelClose(); setOpenMenu(null); }}>
-                {l.label}
+                {l.labelKey ? t(l.labelKey, l.label) : l.label}
               </NavLink>
             ) : (
-              <MegaTrigger key={l.label} label={l.label}
+              <MegaTrigger key={l.label} label={l.labelKey ? t(l.labelKey, l.label) : l.label}
                            active={openMenu === l.label.toLowerCase()}
-                           onEnter={() => { cancelClose(); setOpenMenu(l.label.toLowerCase()); }} />
+                           darkHero={isDarkHeroNav}
+                           onEnter={() => { cancelClose(); setOpenMenu(l.label.toLowerCase()); }}
+                           onToggle={() => {
+                             cancelClose();
+                             const key = l.label.toLowerCase();
+                             setOpenMenu((prev) => (prev === key ? null : key));
+                           }} />
             ))}
           </nav>
         )}
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <LanguageSelector size="sm" darkHero={isDarkHeroNav} />
           <ThemeToggle size="sm" />
           {!isMobile && (
             <>
-              <Button as={Link} to="/login" variant="ghost" size="sm">Sign in</Button>
-              <Button as={Link} to="/signup" size="sm" variant="primary">Get started free</Button>
+              <Button as={Link} to="/login" variant="ghost" size="sm"
+                      onMouseEnter={() => { cancelClose(); setOpenMenu(null); }}
+                      style={{ color: isDarkHeroNav ? '#FFFFFF' : 'var(--text-primary)' }}>
+                {t('nav.sign_in', 'Sign in')}
+              </Button>
+              <Button as={Link} to="/signup" size="sm" variant="primary"
+                      onMouseEnter={() => { cancelClose(); setOpenMenu(null); }}>
+                {t('nav.get_started', 'Get started')}
+              </Button>
             </>
           )}
           {isMobile && (
@@ -253,13 +311,13 @@ function MarketingNav() {
         <MegaPanel onMouseEnter={cancelClose} onMouseLeave={scheduleClose}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32 }}>
             <div>
-              <MegaHeader>By role</MegaHeader>
+              <MegaHeader>{t('sections.by_role', 'By role')}</MegaHeader>
               <MegaGrid columns={1}>
                 {SOLUTIONS_BY_ROLE.map((item) => <MegaItem key={item.to} {...item} />)}
               </MegaGrid>
             </div>
             <div>
-              <MegaHeader>By industry</MegaHeader>
+              <MegaHeader>{t('sections.by_industry', 'By industry')}</MegaHeader>
               <MegaGrid columns={1}>
                 {SOLUTIONS_BY_INDUSTRY.map((item) => <MegaItem key={item.to} {...item} />)}
               </MegaGrid>
@@ -288,7 +346,11 @@ function MarketingNav() {
 // ─────────────────────────────────────────────────────────────────────────────
 // Nav primitives
 // ─────────────────────────────────────────────────────────────────────────────
-function NavLink({ to, active, children, onMouseEnter }) {
+function NavLink({ to, active, children, onMouseEnter, darkHero = false }) {
+  const normalColor = darkHero ? 'rgba(255, 255, 255, 0.88)' : (active ? 'var(--text-primary)' : 'var(--text-secondary)');
+  const hoverBg = darkHero ? 'rgba(255, 255, 255, 0.12)' : 'var(--surface-hover)';
+  const hoverColor = darkHero ? '#FFFFFF' : 'var(--text-primary)';
+  const activeBg = darkHero ? 'rgba(255, 255, 255, 0.14)' : 'var(--surface-hover)';
   return (
     <Link
       to={to}
@@ -297,19 +359,21 @@ function NavLink({ to, active, children, onMouseEnter }) {
       onFocus={() => prefetchRoute(to)}
       style={{
         padding: '8px 12px',
-        fontSize: 14, fontWeight: 500,
-        color: active ? 'var(--text-primary)' : 'var(--text-secondary)',
+        fontSize: 14,
+        fontWeight: active ? 600 : 500,
+        color: active ? (darkHero ? '#FFFFFF' : 'var(--text-primary)') : normalColor,
+        background: active ? activeBg : 'transparent',
         textDecoration: 'none',
         borderRadius: 'var(--radius-md)',
         transition: 'var(--transition-fast)',
       }}
       onMouseOver={(e) => {
-        e.currentTarget.style.color = 'var(--text-primary)';
-        e.currentTarget.style.background = 'var(--surface-hover)';
+        e.currentTarget.style.color = hoverColor;
+        e.currentTarget.style.background = hoverBg;
       }}
       onMouseOut={(e) => {
-        e.currentTarget.style.color = active ? 'var(--text-primary)' : 'var(--text-secondary)';
-        e.currentTarget.style.background = 'transparent';
+        e.currentTarget.style.color = active ? (darkHero ? '#FFFFFF' : 'var(--text-primary)') : normalColor;
+        e.currentTarget.style.background = active ? activeBg : 'transparent';
       }}
     >
       {children}
@@ -317,26 +381,40 @@ function NavLink({ to, active, children, onMouseEnter }) {
   );
 }
 
-function MegaTrigger({ label, active, onEnter }) {
+function MegaTrigger({ label, active, onEnter, onToggle, darkHero = false }) {
+  const normalColor = darkHero ? 'rgba(255, 255, 255, 0.88)' : (active ? 'var(--text-primary)' : 'var(--text-secondary)');
+  const activeBg = darkHero ? 'rgba(255, 255, 255, 0.14)' : 'var(--surface-hover)';
   return (
     <button
       type="button"
       onMouseEnter={onEnter}
       onFocus={onEnter}
-      onClick={onEnter}
+      onClick={onToggle || onEnter}
       aria-expanded={active}
       aria-haspopup="true"
       style={{
         padding: '8px 12px',
         fontSize: 14, fontWeight: 500,
-        color: active ? 'var(--text-primary)' : 'var(--text-secondary)',
-        background: active ? 'var(--surface-hover)' : 'transparent',
+        color: active ? (darkHero ? '#FFFFFF' : 'var(--text-primary)') : normalColor,
+        background: active ? activeBg : 'transparent',
         border: 'none',
         borderRadius: 'var(--radius-md)',
         cursor: 'pointer',
         display: 'inline-flex', alignItems: 'center', gap: 4,
         transition: 'var(--transition-fast)',
         fontFamily: 'inherit',
+      }}
+      onMouseOver={(e) => {
+        if (!active) {
+          e.currentTarget.style.color = darkHero ? '#FFFFFF' : 'var(--text-primary)';
+          e.currentTarget.style.background = darkHero ? 'rgba(255, 255, 255, 0.12)' : 'var(--surface-hover)';
+        }
+      }}
+      onMouseOut={(e) => {
+        if (!active) {
+          e.currentTarget.style.color = normalColor;
+          e.currentTarget.style.background = 'transparent';
+        }
       }}
     >
       {label}
@@ -356,7 +434,14 @@ function MegaPanel({ children, onMouseLeave, onMouseEnter }) {
       onMouseLeave={onMouseLeave}
       style={{
         position: 'absolute',
-        top: '100%', left: 0, right: 0,
+        top: '100%',
+        left: 0,
+        right: 0,
+        background: 'var(--surface-card)',
+        borderTop: '1px solid var(--border-subtle)',
+        borderBottom: '1px solid var(--border-default)',
+        boxShadow: '0 24px 48px -12px rgba(0, 0, 0, 0.28), 0 4px 16px rgba(0, 0, 0, 0.08)',
+        zIndex: 1000,
         animation: 'mkt-mega-fade 180ms var(--ease-out)',
       }}
     >
@@ -402,7 +487,10 @@ function MegaHeader({ children }) {
   );
 }
 
-function MegaItem({ to, label, desc, icon: Icon }) {
+function MegaItem({ to, label, desc, labelKey, descKey, icon: Icon }) {
+  const { t } = useTranslation('navigation');
+  const displayLabel = labelKey ? t(labelKey, label) : label;
+  const displayDesc = descKey ? t(descKey, desc) : desc;
   return (
     <Link
       to={to}
@@ -416,9 +504,12 @@ function MegaItem({ to, label, desc, icon: Icon }) {
         textDecoration: 'none',
         color: 'var(--text-primary)',
         transition: 'var(--transition-fast)',
+        outline: 'none',
       }}
       onMouseOver={(e) => { e.currentTarget.style.background = 'var(--surface-hover)'; }}
       onMouseOut={(e)  => { e.currentTarget.style.background = 'transparent'; }}
+      onFocus={(e)     => { e.currentTarget.style.background = 'var(--surface-hover)'; }}
+      onBlur={(e)      => { e.currentTarget.style.background = 'transparent'; }}
     >
       {Icon && (
         <span style={{
@@ -432,10 +523,10 @@ function MegaItem({ to, label, desc, icon: Icon }) {
         </span>
       )}
       <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{label}</div>
-        {desc && (
-          <div style={{ marginTop: 2, fontSize: 12, color: 'var(--text-tertiary)', lineHeight: 1.4 }}>
-            {desc}
+        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.3 }}>{displayLabel}</div>
+        {displayDesc && (
+          <div style={{ marginTop: 2, fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+            {displayDesc}
           </div>
         )}
       </div>
@@ -447,6 +538,7 @@ function MegaItem({ to, label, desc, icon: Icon }) {
 // Mobile drawer
 // ─────────────────────────────────────────────────────────────────────────────
 function MobileDrawer({ location, onClose }) {
+  const { t } = useTranslation('navigation');
   const [openSection, setOpenSection] = useState(null);
   const drawerRef = useRef(null);
 
@@ -471,25 +563,36 @@ function MobileDrawer({ location, onClose }) {
         animation: 'mkt-drawer-slide 220ms var(--ease-out)',
       }}
     >
-      <Accordion title="Product"
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '10px 14px 14px', borderBottom: '1px solid var(--border-subtle)',
+        marginBottom: 8,
+      }}>
+        <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>
+          {t('languages.select_language', 'Language')}
+        </span>
+        <LanguageSelector size="sm" />
+      </div>
+
+      <Accordion title={t('nav.product', 'Product')}
                  open={openSection === 'product'}
                  onToggle={() => setOpenSection((s) => s === 'product' ? null : 'product')}>
         {PRODUCT_MENU.map((item) => (
           <DrawerItem key={item.to} {...item} active={location.pathname === item.to} />
         ))}
       </Accordion>
-      <Accordion title="Solutions"
+      <Accordion title={t('nav.solutions', 'Solutions')}
                  open={openSection === 'solutions'}
                  onToggle={() => setOpenSection((s) => s === 'solutions' ? null : 'solutions')}>
         <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em',
                       textTransform: 'uppercase', color: 'var(--text-tertiary)',
-                      padding: '8px 14px 4px' }}>By role</div>
+                      padding: '8px 14px 4px' }}>{t('sections.by_role', 'By role')}</div>
         {SOLUTIONS_BY_ROLE.map((item) => (
           <DrawerItem key={item.to} {...item} active={location.pathname === item.to} />
         ))}
         <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em',
                       textTransform: 'uppercase', color: 'var(--text-tertiary)',
-                      padding: '12px 14px 4px' }}>By industry</div>
+                      padding: '12px 14px 4px' }}>{t('sections.by_industry', 'By industry')}</div>
         {SOLUTIONS_BY_INDUSTRY.map((item) => (
           <DrawerItem key={item.to} {...item} active={location.pathname === item.to} />
         ))}
@@ -507,9 +610,9 @@ function MobileDrawer({ location, onClose }) {
               borderRadius: 'var(--radius-md)',
               background: location.pathname === l.to ? 'var(--surface-hover)' : 'transparent',
             }}
-          >{l.label}</Link>
+          >{l.labelKey ? t(l.labelKey, l.label) : l.label}</Link>
         ) : (
-          <Accordion key={l.label} title={l.label}
+          <Accordion key={l.label} title={l.labelKey ? t(l.labelKey, l.label) : l.label}
                      open={openSection === l.label.toLowerCase()}
                      onToggle={() => setOpenSection((s) => s === l.label.toLowerCase() ? null : l.label.toLowerCase())}>
             {l.menu.single.map((item) => (
@@ -520,8 +623,8 @@ function MobileDrawer({ location, onClose }) {
       )}
       <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--border-subtle)',
                     display: 'grid', gap: 8 }}>
-        <Button as={Link} to="/login" variant="secondary" size="lg" fullWidth>Sign in</Button>
-        <Button as={Link} to="/signup" size="lg" fullWidth>Get started free</Button>
+        <Button as={Link} to="/login" variant="secondary" size="lg" fullWidth>{t('nav.sign_in', 'Sign in')}</Button>
+        <Button as={Link} to="/signup" size="lg" fullWidth>{t('nav.get_started_free', 'Get started free')}</Button>
       </div>
       <style>{`
         @keyframes mkt-drawer-slide {
@@ -564,7 +667,10 @@ function Accordion({ title, open, onToggle, children }) {
   );
 }
 
-function DrawerItem({ to, label, desc, icon: Icon, active }) {
+function DrawerItem({ to, label, desc, labelKey, descKey, icon: Icon, active }) {
+  const { t } = useTranslation('navigation');
+  const displayLabel = labelKey ? t(labelKey, label) : label;
+  const displayDesc = descKey ? t(descKey, desc) : desc;
   return (
     <Link
       to={to}
@@ -588,9 +694,9 @@ function DrawerItem({ to, label, desc, icon: Icon, active }) {
         </span>
       )}
       <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: 14, fontWeight: 500 }}>{label}</div>
-        {desc && (
-          <div style={{ marginTop: 1, fontSize: 12, color: 'var(--text-tertiary)' }}>{desc}</div>
+        <div style={{ fontSize: 14, fontWeight: 500 }}>{displayLabel}</div>
+        {displayDesc && (
+          <div style={{ marginTop: 1, fontSize: 12, color: 'var(--text-secondary)' }}>{displayDesc}</div>
         )}
       </div>
     </Link>
@@ -601,65 +707,66 @@ function DrawerItem({ to, label, desc, icon: Icon, active }) {
 // Footer — 6-column grid
 // ─────────────────────────────────────────────────────────────────────────────
 function MarketingFooter() {
+  const { t } = useTranslation('navigation');
   const year = new Date().getFullYear();
 
   const COLUMNS = [
     {
-      title: 'Product',
+      title: t('footer.product', 'Product'),
       links: [
-        { label: 'Analytics',     to: '/product/analytics' },
-        { label: 'Composer',      to: '/product/composer' },
-        { label: 'Inbox',         to: '/product/inbox' },
-        { label: 'WhatsApp',      to: '/product/whatsapp' },
-        { label: 'Bot Builder',   to: '/product/bot-builder' },
-        { label: 'AI Studio',     to: '/product/ai' },
-        { label: 'Reports',       to: '/product/reports' },
-        { label: 'Automations',   to: '/product/automations' },
-        { label: 'Marketplace',   to: '/product/marketplace-product' },
+        { label: t('products.analytics', 'Analytics'),     to: '/product/analytics' },
+        { label: t('products.composer', 'Composer'),      to: '/product/composer' },
+        { label: t('products.inbox', 'Inbox'),         to: '/product/inbox' },
+        { label: t('products.whatsapp', 'WhatsApp'),      to: '/product/whatsapp' },
+        { label: t('products.bot_builder', 'Bot Builder'),   to: '/product/bot-builder' },
+        { label: t('products.ai_studio', 'AI Studio'),     to: '/product/ai' },
+        { label: t('products.reports', 'Reports'),       to: '/product/reports' },
+        { label: t('products.automations', 'Automations'),   to: '/product/automations' },
+        { label: t('products.marketplace', 'Marketplace'),   to: '/product/marketplace-product' },
       ],
     },
     {
-      title: 'Solutions',
+      title: t('footer.solutions', 'Solutions'),
       links: [
-        { label: 'For Agencies',   to: '/solutions/agencies' },
-        { label: 'For Businesses', to: '/solutions/businesses' },
-        { label: 'Real Estate',    to: '/solutions/real-estate' },
-        { label: 'Healthcare',     to: '/solutions/clinics' },
-        { label: 'Restaurants',    to: '/solutions/restaurants' },
-        { label: 'Creators',       to: '/solutions/creators' },
-        { label: 'E-commerce',     to: '/solutions/ecommerce' },
+        { label: t('solutions.agencies', 'For Agencies'),   to: '/solutions/agencies' },
+        { label: t('solutions.businesses', 'For Businesses'), to: '/solutions/businesses' },
+        { label: t('solutions.real_estate', 'Real Estate'),    to: '/solutions/real-estate' },
+        { label: t('solutions.healthcare', 'Healthcare'),     to: '/solutions/clinics' },
+        { label: t('solutions.restaurants', 'Restaurants'),    to: '/solutions/restaurants' },
+        { label: t('solutions.creators', 'Creators'),       to: '/solutions/creators' },
+        { label: t('solutions.ecommerce', 'E-commerce'),     to: '/solutions/ecommerce' },
       ],
     },
     {
-      title: 'Resources',
+      title: t('footer.resources', 'Resources'),
       links: [
-        { label: 'Customers',     to: '/customers' },
-        { label: 'Blog',          to: '/blog' },
-        { label: 'Help Center',   to: '/help' },
-        { label: 'Changelog',     to: '/changelog' },
-        { label: 'Status',        to: '/status' },
-        { label: 'Integrations',  to: '/integrations' },
+        { label: t('nav.customers', 'Customers'),     to: '/customers' },
+        { label: t('resources.blog', 'Blog'),          to: '/blog' },
+        { label: t('resources.help_center', 'Help Center'),   to: '/help' },
+        { label: t('resources.changelog', 'Changelog'),     to: '/changelog' },
+        { label: t('resources.status', 'Status'),        to: '/status' },
+        { label: t('resources.integrations', 'Integrations'),  to: '/integrations' },
       ],
     },
     {
-      title: 'Company',
+      title: t('footer.company', 'Company'),
       links: [
-        { label: 'About',     to: '/about' },
-        { label: 'Customers', to: '/customers' },
-        { label: 'Contact',   to: '/contact' },
-        { label: 'Press',     to: '/about#press' },
-        { label: 'Careers',   to: '/about#careers' },
+        { label: t('nav.about', 'About'),     to: '/about' },
+        { label: t('nav.customers', 'Customers'), to: '/customers' },
+        { label: t('resources.contact', 'Contact'),   to: '/contact' },
+        { label: t('footer.press', 'Press'),     to: '/about#press' },
+        { label: t('footer.careers', 'Careers'),   to: '/about#careers' },
       ],
     },
     {
-      title: 'Legal',
+      title: t('footer.legal', 'Legal'),
       links: [
-        { label: 'Privacy',         to: '/privacy' },
-        { label: 'Terms',           to: '/terms' },
-        { label: 'Cookies',         to: '/cookies' },
-        { label: 'GDPR',            to: '/gdpr' },
-        { label: 'DPDP',            to: '/dpdp' },
-        { label: 'Security',        to: '/security' },
+        { label: t('footer.privacy', 'Privacy'),         to: '/privacy' },
+        { label: t('footer.terms', 'Terms'),           to: '/terms' },
+        { label: t('footer.cookies', 'Cookies'),         to: '/cookies' },
+        { label: t('footer.gdpr', 'GDPR'),            to: '/gdpr' },
+        { label: t('footer.dpdp', 'DPDP'),            to: '/dpdp' },
+        { label: t('footer.security', 'Security'),        to: '/security' },
       ],
     },
   ];
@@ -696,13 +803,13 @@ function MarketingFooter() {
               color: 'var(--text-secondary)',
               maxWidth: 280,
             }}>
-              The AI marketing OS for modern agencies. Analytics, content, conversations, and ads — for every client, in one place.
+              {t('footer.tagline', 'The AI marketing OS for modern agencies. Analytics, content, conversations, and ads — for every client, in one place.')}
             </p>
             <div style={{ display: 'flex', gap: 6 }}>
-              <SocialIconLink href="https://github.com/socialstats"            label="GitHub"   icon={Github} />
-              <SocialIconLink href="https://linkedin.com/company/socialstats"  label="LinkedIn" icon={Linkedin} />
-              <SocialIconLink href="https://twitter.com/socialstats"           label="Twitter"  icon={Twitter} />
-              <SocialIconLink href="https://youtube.com/@socialstats"          label="YouTube"  icon={Youtube} />
+              <SocialIconLink href="https://github.com/bopagenciy/BopSocial"   label="GitHub"   icon={Github} />
+              <SocialIconLink href="https://linkedin.com/company/bopsocial"   label="LinkedIn" icon={Linkedin} />
+              <SocialIconLink href="https://twitter.com/bopsocial"            label="Twitter"  icon={Twitter} />
+              <SocialIconLink href="https://youtube.com/@bopsocial"           label="YouTube"  icon={Youtube} />
             </div>
             {/* Geographic framing intentionally omitted from the global footer.
                 Office and contact information lives on /contact and /dpdp. */}
@@ -747,7 +854,7 @@ function MarketingFooter() {
           gap: 16, flexWrap: 'wrap',
           fontSize: 12, color: 'var(--text-tertiary)',
         }}>
-          <span>© {year} SocialStats. All rights reserved.</span>
+          <span>© {year} Bop Social. {t('footer.all_rights_reserved', 'All rights reserved.')}</span>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
             <Link to="/status" style={{
               display: 'inline-flex', alignItems: 'center', gap: 6,
@@ -758,13 +865,13 @@ function MarketingFooter() {
                 background: 'var(--success)',
                 boxShadow: '0 0 8px rgba(16,185,129,0.6)',
               }} />
-              All systems operational
+              {t('footer.systems_operational', 'All systems operational')}
             </Link>
             <span style={{
               display: 'inline-flex', alignItems: 'center', gap: 4,
               color: 'var(--text-tertiary)',
             }}>
-              <Sparkles size={11} /> Built with Social Stats
+              <Sparkles size={11} /> {t('footer.built_for_universe', 'Built for the Bop Universe')}
             </span>
           </div>
         </div>

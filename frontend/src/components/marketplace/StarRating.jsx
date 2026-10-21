@@ -13,20 +13,22 @@
  * read-only display. `size` is the icon size in px.
  */
 import { Star } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export default function StarRating({
   value = 0,
   onChange,
   size = 16,
   showNumber = false,
-  ariaLabel = 'Rating',
+  ariaLabel,
 }) {
+  const { t } = useTranslation('agency_portal');
   const isInteractive = typeof onChange === 'function';
 
   return (
     <span
       role={isInteractive ? 'radiogroup' : 'img'}
-      aria-label={isInteractive ? ariaLabel : `${value} out of 5 stars`}
+      aria-label={isInteractive ? (ariaLabel || t('reviews.rating_label', 'Rating')) : t('reviews.stars_out_of', '{{count}} out of 5 stars', { count: value })}
       style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}
     >
       {Array.from({ length: 5 }).map((_, i) => {
@@ -46,7 +48,7 @@ export default function StarRating({
             type="button"
             role="radio"
             aria-checked={value === i + 1}
-            aria-label={`${i + 1} star${i ? 's' : ''}`}
+            aria-label={t('reviews.star_count', '{{count}} star', { count: i + 1 })}
             onClick={() => onChange(i + 1)}
             style={{
               width: size + 6, height: size + 6,

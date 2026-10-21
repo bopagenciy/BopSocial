@@ -10,6 +10,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { addMonths, subMonths, format, parseISO } from 'date-fns';
 import { ChevronLeft, ChevronRight, Plus, Calendar, List, BarChart2 } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../hooks/useAuth';
 import { useClients } from '../hooks/useData';
 import {
@@ -17,6 +18,7 @@ import {
   useCreatePost, useUpcomingPosts,
 } from '../hooks/useCalendar';
 import { PLATFORMS, PLATFORM_LIST } from '../services/platforms';
+import { formatDate, formatTime, formatMonthYear } from '../utils/formatters';
 import CalendarGrid       from '../components/calendar/CalendarGrid';
 import PostDrawer         from '../components/calendar/PostDrawer';
 import PostFormDrawer     from '../components/calendar/PostFormDrawer';
@@ -60,6 +62,7 @@ const STATUS_BADGE = {
 
 // ── List view ─────────────────────────────────────────────────────────────────
 function ListView({ postsByDate, onPostClick, onEditPost, onDeletePost, onReschedule, isAdmin, month, year }) {
+  const { t } = useTranslation(['content', 'common']);
   // Build sorted date groups for the month
   const prefix = `${year}-${String(month).padStart(2, '0')}`;
   const entries = Object.entries(postsByDate)
@@ -71,9 +74,9 @@ function ListView({ postsByDate, onPostClick, onEditPost, onDeletePost, onResche
       <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-tertiary)' }}>
         <div style={{ fontSize: 48, marginBottom: 12 }}>📅</div>
         <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 8, color: 'var(--text-primary)' }}>
-          No posts this month
+          {t('calendar.no_posts_month')}
         </div>
-        <div style={{ fontSize: 13 }}>Schedule your first post using the "+" button above.</div>
+        <div style={{ fontSize: 13 }}>{t('calendar.no_posts_month_desc')}</div>
       </div>
     );
   }
@@ -89,17 +92,17 @@ function ListView({ postsByDate, onPostClick, onEditPost, onDeletePost, onResche
             borderBottom: '2px solid var(--border-default)', marginBottom: 8,
           }}>
             <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)' }}>
-              {format(parseISO(dateStr), 'EEEE, MMMM d')}
+              {formatDate(parseISO(dateStr), { weekday: 'long', month: 'long', day: 'numeric' })}
             </span>
             <span style={{ marginLeft: 8, fontSize: 12, color: 'var(--text-tertiary)' }}>
-              {posts.length} post{posts.length !== 1 ? 's' : ''}
+              {posts.length === 1 ? t('calendar.post_count', { count: 1 }) : t('calendar.post_count_plural', { count: posts.length })}
             </span>
           </div>
           {posts.map(post => {
             const p     = PLATFORMS[post.platform] || { color: 'var(--text-secondary)', label: post.platform };
             const badge = STATUS_BADGE[post.status] || STATUS_BADGE.draft;
             const timeStr = (post.scheduled_at || post.published_at)
-              ? format(parseISO(post.scheduled_at || post.published_at), 'h:mm a')
+              ? formatTime(parseISO(post.scheduled_at || post.published_at))
               : '';
             return (
               <div key={post.id} style={{
@@ -123,13 +126,13 @@ function ListView({ postsByDate, onPostClick, onEditPost, onDeletePost, onResche
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
                     <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-primary)' }}>
-                      {post.title || '(no title)'}
+                      {post.title || t('calendar.no_title')}
                     </span>
                     <span style={{
                       padding: '1px 8px', borderRadius: 20, fontSize: 10, fontWeight: 700,
                       background: badge.bg, color: badge.color,
                     }}>
-                      {post.status}
+                      {t(`status.${post.status}`, post.status)}
                     </span>
                   </div>
                   <div style={{
@@ -138,11 +141,11 @@ function ListView({ postsByDate, onPostClick, onEditPost, onDeletePost, onResche
                     WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
                     marginBottom: 4,
                   }}>
-                    {post.caption || '(no caption)'}
+                    {post.caption || t('calendar.no_caption')}
                   </div>
                   {post.hashtags && (
                     <div style={{ fontSize: 11, color: '#007a9a' }}>
-                      {post.hashtags.split(' ').filter(h => h.startsWith('#')).length} hashtags
+                      {t('calendar.hashtags_count', { count: post.hashtags.split(' ').filter(h => h.startsWith('#')).length })}
                     </div>
                   )}
                   {post.status === 'published' && (post.impressions > 0 || post.likes > 0) && (
@@ -160,15 +163,15 @@ function ListView({ postsByDate, onPostClick, onEditPost, onDeletePost, onResche
                     {timeStr}
                   </div>
                   <div style={{ display: 'flex', gap: 6 }}>
-                    <button onClick={() => onPostClick(post)} style={listBtnStyle}>View</button>
+                    <button onClick={() => onPostClick(post)} style={listBtnStyle}>{t('common:actions.view_all', 'View')}</button>
                     {isAdmin && post.status !== 'published' && (
                       <>
-                        <button onClick={() => onEditPost(post)} style={listBtnStyle}>Edit</button>
+                        <button onClick={() => onEditPost(post)} style={listBtnStyle}>{t('common:actions.edit', 'Edit')}</button>
                         <button
                           onClick={() => onDeletePost(post.id)}
                           style={{ ...listBtnStyle, color: '#EF4444', borderColor: '#FECACA' }}
                         >
-                          Delete
+                          {t('common:actions.delete', 'Delete')}
                         </button>
                       </>
                     )}
@@ -191,6 +194,7 @@ const listBtnStyle = {
 
 // ── Main CalendarPage ─────────────────────────────────────────────────────────
 export default function CalendarPage({ clientId: propClientId }) {
+  const { t } = useTranslation(['content', 'common', 'analytics']);
   const [searchParams, setSearchParams] = useSearchParams();
   const { user }     = useAuth();
   const { clients }  = useClients();
@@ -324,8 +328,8 @@ export default function CalendarPage({ clientId: propClientId }) {
       }}>
         <div style={{ maxWidth: 1480, margin: '0 auto' }}>
           <PageHeader
-            title="Content Calendar"
-            subtitle="Plan, review, and measure your scheduled content."
+            title={t('calendar.title')}
+            subtitle={t('calendar.subtitle')}
             actions={(
               <select
                 value=""
@@ -336,16 +340,16 @@ export default function CalendarPage({ clientId: propClientId }) {
                 }}
                 style={adminClientSelectStyle}
               >
-                <option value="">All Users</option>
+                <option value="">{t('analytics:all_users', 'All Users')}</option>
                 {clients.map(c => <option key={c.id} value={c.id}>{c.company}</option>)}
               </select>
             )}
           />
           <div style={{ padding: 40, maxWidth: 500, margin: '60px auto', textAlign: 'center' }}>
             <div style={{ fontSize: 48, marginBottom: 16 }}>📅</div>
-            <h2 style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 8 }}>Content Calendar</h2>
+            <h2 style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 8 }}>{t('calendar.title')}</h2>
             <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 0 }}>
-              Select a user from the top-right dropdown to view their content calendar.
+              {t('calendar.select_client_hint')}
             </p>
           </div>
         </div>
@@ -368,8 +372,8 @@ export default function CalendarPage({ clientId: propClientId }) {
         margin: isEmbedded ? '0' : '0 auto',
       }}>
         <PageHeader
-          title="Content Calendar"
-          subtitle="Plan, review, and measure your scheduled content."
+          title={t('calendar.title')}
+          subtitle={t('calendar.subtitle')}
           actions={showClientSelector ? (
             <select
               value={clientId || ''}
@@ -380,7 +384,7 @@ export default function CalendarPage({ clientId: propClientId }) {
               }}
               style={adminClientSelectStyle}
             >
-              <option value="">All Users</option>
+              <option value="">{t('analytics:all_users', 'All Users')}</option>
               {clients.map(c => <option key={c.id} value={c.id}>{c.company}</option>)}
             </select>
           ) : null}
@@ -404,7 +408,7 @@ export default function CalendarPage({ clientId: propClientId }) {
           flex: '1 1 260px',
           minWidth: 0,
         }}>
-          <button onClick={prevMonth} style={navBtnStyle}><ChevronLeft size={16} /></button>
+          <button onClick={prevMonth} aria-label={t('calendar.prev_month')} style={navBtnStyle}><ChevronLeft size={16} /></button>
           <div style={{
             fontWeight: 800,
             fontSize: 18,
@@ -412,14 +416,14 @@ export default function CalendarPage({ clientId: propClientId }) {
             minWidth: isEmbedded ? 140 : 160,
             textAlign: 'center',
           }}>
-            {format(currentDate, 'MMMM yyyy')}
+            {formatMonthYear(currentDate)}
           </div>
-          <button onClick={nextMonth} style={navBtnStyle}><ChevronRight size={16} /></button>
+          <button onClick={nextMonth} aria-label={t('calendar.next_month')} style={navBtnStyle}><ChevronRight size={16} /></button>
           <button onClick={goToday} style={{
             padding: '6px 12px', borderRadius: 8, background: 'var(--surface-page)',
             border: '1px solid var(--border-default)', cursor: 'pointer', fontSize: 12,
             fontWeight: 600, color: 'var(--text-secondary)',
-          }}>Today</button>
+          }}>{t('calendar.today')}</button>
         </div>
 
         {/* Platform filter */}
@@ -430,7 +434,7 @@ export default function CalendarPage({ clientId: propClientId }) {
           flex: '999 1 420px',
           minWidth: 0,
         }}>
-          {[{ key: 'all', label: 'All', color: '#00d7ff' },
+          {[{ key: 'all', label: t('calendar.all_platforms', 'All'), color: '#00d7ff' },
             ...PLATFORM_LIST.map(k => ({ key: k, ...PLATFORMS[k] }))
           ].map(p => (
             <button
@@ -448,7 +452,7 @@ export default function CalendarPage({ clientId: propClientId }) {
             >
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                 {p.key === 'all' ? null : <SocialPlatformIcon platform={p.key} size={14} />}
-                {p.label?.split(' ')[0] || 'All'}
+                {p.key === 'all' ? p.label : (p.label?.split(' ')[0] || 'All')}
               </span>
             </button>
           ))}
@@ -475,7 +479,7 @@ export default function CalendarPage({ clientId: propClientId }) {
                 whiteSpace: 'nowrap',
               }}
             >
-              <Plus size={16} /> Schedule Post
+              <Plus size={16} /> {t('calendar.schedule_post')}
             </button>
           )}
           <div style={{
@@ -500,7 +504,7 @@ export default function CalendarPage({ clientId: propClientId }) {
                   whiteSpace: 'nowrap',
                 }}
               >
-                {v.icon} {v.label}
+                {v.icon} {t(`calendar.views.${v.key}`, v.label)}
               </button>
             ))}
           </div>
@@ -510,7 +514,7 @@ export default function CalendarPage({ clientId: propClientId }) {
         {/* Loading state */}
         {postsLoading && (
           <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-tertiary)', fontSize: 14 }}>
-            Loading calendar…
+            {t('common:status.loading', 'Loading…')}
           </div>
         )}
 
@@ -538,7 +542,7 @@ export default function CalendarPage({ clientId: propClientId }) {
               padding: '16px 20px', marginBottom: 20,
             }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12 }}>
-                📅 Coming up this week
+                📅 {t('calendar.coming_up_week')}
               </div>
               <UpcomingPosts posts={upcoming} />
             </div>

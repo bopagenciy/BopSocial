@@ -36,6 +36,8 @@ from django.contrib.auth.models import User
 from django.db import models
 from django.utils import timezone
 
+from .currencies import CURRENCY_CHOICES, DEFAULT_CURRENCY
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Granular permissions an agency can be granted on a managed client
@@ -127,7 +129,7 @@ class Agency(models.Model):
     industries_served  = models.JSONField(default=list,   blank=True)
     services_offered   = models.JSONField(default=list,   blank=True)
     pricing_starting_at = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    pricing_currency   = models.CharField(max_length=3, default='INR')
+    pricing_currency   = models.CharField(max_length=3, choices=CURRENCY_CHOICES, default=DEFAULT_CURRENCY)
 
     # Verification
     is_verified            = models.BooleanField(default=False)
@@ -243,7 +245,7 @@ class AgencyClientRelation(models.Model):
 
     # Pricing (only used if billing is mediated by Social Stats; otherwise null)
     monthly_fee  = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    fee_currency = models.CharField(max_length=3, default='INR')
+    fee_currency = models.CharField(max_length=3, choices=CURRENCY_CHOICES, default=DEFAULT_CURRENCY)
 
     # Trust
     user_trust_level = models.CharField(max_length=20, choices=TRUST_LEVELS, default='medium')
@@ -442,6 +444,7 @@ class ManageRequest(models.Model):
     proposed_permissions = models.JSONField(default=default_relation_permissions, blank=True)
     proposed_message     = models.TextField(blank=True)
     proposed_pricing     = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    proposed_currency    = models.CharField(max_length=3, choices=CURRENCY_CHOICES, default=DEFAULT_CURRENCY)
     proposed_services    = models.JSONField(default=list, blank=True)
 
     status      = models.CharField(max_length=20, choices=STATUS_CHOICES, default='sent')
@@ -457,6 +460,14 @@ class ManageRequest(models.Model):
         related_name='+',
     )
     decline_reason = models.TextField(blank=True)
+
+    @property
+    def currency(self):
+        return self.proposed_currency
+
+    @currency.setter
+    def currency(self, val):
+        self.proposed_currency = val
 
     class Meta:
         app_label = 'social_stats'

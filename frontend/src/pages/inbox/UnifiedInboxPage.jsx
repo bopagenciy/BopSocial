@@ -13,6 +13,7 @@ import {
   Smile, Frown, Meh, Sparkles,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 
 import PageHeader from '../../components/layout/PageHeader';
 import Card from '../../components/ui/Card';
@@ -23,6 +24,7 @@ import AIReplySuggestions from '../../components/ai/AIReplySuggestions';
 import { useConversations, useConversation } from '../../hooks/useInbox';
 import { inboxAPI } from '../../services/api';
 import { useAuth } from '../../hooks/useAuth';
+import { formatDate, formatTime, formatRelativeTime } from '../../utils/formatters';
 
 const TYPE_FILTERS = [
   { id: '',         label: 'All',      icon: Inbox },
@@ -49,6 +51,7 @@ const SENTIMENT = {
 };
 
 export default function UnifiedInboxPage() {
+  const { t } = useTranslation('engagement');
   const [type, setType] = useState('');
   const [platform, setPlatform] = useState('');
   const [sentiment, setSentiment] = useState('');
@@ -88,7 +91,10 @@ export default function UnifiedInboxPage() {
 
   return (
     <div style={{ paddingBottom: 0 }}>
-      <PageHeader title="Inbox" subtitle="Comments, DMs and mentions across every platform" />
+      <PageHeader
+        title={t('inbox.title', 'Inbox')}
+        subtitle={t('inbox.subtitle', 'Comments, DMs and mentions across every platform')}
+      />
 
       <div className="inbox-grid" style={{
         display: 'grid',
@@ -138,6 +144,7 @@ function FiltersColumn({
   type, setType, platform, setPlatform, sentiment, setSentiment,
   unreadOnly, setUnreadOnly, starredOnly, setStarredOnly, search, setSearch,
 }) {
+  const { t } = useTranslation('engagement');
   return (
     <Card padding="none" style={{
       overflow: 'hidden', display: 'flex', flexDirection: 'column',
@@ -148,7 +155,7 @@ function FiltersColumn({
           <Search size={14} color="var(--text-tertiary)"
                   style={{ position: 'absolute', top: 11, left: 10 }} />
           <input
-            placeholder="Search…"
+            placeholder={t('inbox.search_placeholder', 'Search…')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             style={{
@@ -166,16 +173,22 @@ function FiltersColumn({
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', padding: 8 }}>
-        <SectionHeader>Type</SectionHeader>
+        <SectionHeader>{t('inbox.filter_sections.type', 'Type')}</SectionHeader>
         {TYPE_FILTERS.map((f) => (
-          <FilterRow key={f.id} icon={f.icon} label={f.label}
-                     active={type === f.id} onClick={() => setType(f.id)} />
+          <FilterRow
+            key={f.id}
+            icon={f.icon}
+            label={t(`inbox.types.${f.id || 'all'}`, f.label)}
+            active={type === f.id}
+            onClick={() => setType(f.id)}
+          />
         ))}
 
-        <SectionHeader>Platform</SectionHeader>
+        <SectionHeader>{t('inbox.filter_sections.platform', 'Platform')}</SectionHeader>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: '4px 10px 8px' }}>
           {PLATFORM_PILLS.map((p) => {
             const active = platform === p.id;
+            const label = p.id === '' ? t('inbox.types.all', 'All') : p.label;
             return (
               <button
                 key={p.id || 'all'}
@@ -191,28 +204,28 @@ function FiltersColumn({
                   transition: 'var(--transition-fast)',
                 }}
               >
-                {p.label}
+                {label}
               </button>
             );
           })}
         </div>
 
-        <SectionHeader>Sentiment</SectionHeader>
+        <SectionHeader>{t('inbox.filter_sections.sentiment', 'Sentiment')}</SectionHeader>
         {[
-          { id: '',         label: 'All' },
-          { id: 'positive', label: 'Positive', icon: Smile,  color: 'var(--success)' },
-          { id: 'neutral',  label: 'Neutral',  icon: Meh,    color: 'var(--text-tertiary)' },
-          { id: 'negative', label: 'Negative', icon: Frown,  color: 'var(--danger)' },
+          { id: '',         label: t('inbox.sentiments.all', 'All') },
+          { id: 'positive', label: t('inbox.sentiments.positive', 'Positive'), icon: Smile,  color: 'var(--success)' },
+          { id: 'neutral',  label: t('inbox.sentiments.neutral', 'Neutral'),  icon: Meh,    color: 'var(--text-tertiary)' },
+          { id: 'negative', label: t('inbox.sentiments.negative', 'Negative'), icon: Frown,  color: 'var(--danger)' },
         ].map((s) => (
           <FilterRow key={s.id || 'all'} icon={s.icon} label={s.label}
                      iconColor={s.color}
                      active={sentiment === s.id} onClick={() => setSentiment(s.id)} />
         ))}
 
-        <SectionHeader>Quick</SectionHeader>
-        <FilterRow icon={Inbox} label="Unread only"
+        <SectionHeader>{t('inbox.filter_sections.quick', 'Quick')}</SectionHeader>
+        <FilterRow icon={Inbox} label={t('inbox.quick.unread_only', 'Unread only')}
                     active={unreadOnly} onClick={() => setUnreadOnly((v) => !v)} />
-        <FilterRow icon={Star} label="Starred only"
+        <FilterRow icon={Star} label={t('inbox.quick.starred_only', 'Starred only')}
                     active={starredOnly} onClick={() => setStarredOnly((v) => !v)} />
       </div>
     </Card>
@@ -256,6 +269,7 @@ function FilterRow({ icon: Icon, label, active, onClick, iconColor }) {
 
 /* ── LIST COLUMN ───────────────────────────────────────────────────────── */
 function ListColumn({ conversations, activeId, onSelect, loading }) {
+  const { t } = useTranslation('engagement');
   return (
     <Card padding="none" style={{
       overflow: 'hidden', display: 'flex', flexDirection: 'column',
@@ -267,7 +281,9 @@ function ListColumn({ conversations, activeId, onSelect, loading }) {
       }}>
         <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)',
                        textTransform: 'uppercase', letterSpacing: 0.4 }}>
-          {conversations.length} {conversations.length === 1 ? 'conversation' : 'conversations'}
+          {conversations.length === 1
+            ? t('inbox.conversations_count_one', '1 conversation', { count: 1 })
+            : t('inbox.conversations_count_other', '{{count}} conversations', { count: conversations.length })}
         </span>
       </div>
       <div style={{ flex: 1, overflowY: 'auto' }}>
@@ -277,8 +293,11 @@ function ListColumn({ conversations, activeId, onSelect, loading }) {
           </div>
         )}
         {!loading && conversations.length === 0 && (
-          <EmptyState icon={Inbox} title="Inbox zero"
-                       description="You're all caught up. New comments and messages will appear here as they arrive." />
+          <EmptyState
+            icon={Inbox}
+            title={t('inbox.empty_title', 'Inbox zero')}
+            description={t('inbox.empty_desc', "You're all caught up. New comments and messages will appear here as they arrive.")}
+          />
         )}
         {conversations.map((c) => (
           <ConversationRow
@@ -295,6 +314,7 @@ function ListColumn({ conversations, activeId, onSelect, loading }) {
 }
 
 function ConversationRow({ conv, active, onClick }) {
+  const { t } = useTranslation('engagement');
   const platform = PLATFORM_PILLS.find((p) => p.id === conv.platform);
   const sent = SENTIMENT[conv.sentiment] || SENTIMENT.unknown;
   const initial = (conv.contact_name || conv.contact_handle || '?')[0].toUpperCase();
@@ -341,7 +361,7 @@ function ConversationRow({ conv, active, onClick }) {
             whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
             flex: 1,
           }}>
-            {conv.contact_name || conv.contact_handle || 'Unknown'}
+            {conv.contact_name || conv.contact_handle || t('inbox.unknown_contact', 'Unknown')}
           </span>
           {conv.is_starred && <Star size={11} color="var(--warning)" fill="var(--warning)" />}
           {conv.unread_count > 0 && (
@@ -375,6 +395,7 @@ function ConversationRow({ conv, active, onClick }) {
 
 /* ── THREAD COLUMN ─────────────────────────────────────────────────────── */
 function ThreadColumn({ thread, onAction }) {
+  const { t } = useTranslation('engagement');
   const { user } = useAuth();
   const scrollRef = useRef();
   const [replyText, setReplyText] = useState('');
@@ -393,8 +414,11 @@ function ThreadColumn({ thread, onAction }) {
         overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center',
         borderRadius: '0 var(--radius-lg) var(--radius-lg) 0', borderLeft: 'none',
       }}>
-        <EmptyState icon={MessageSquare} title="Select a conversation"
-                     description="Pick a conversation from the list to read it and reply." />
+        <EmptyState
+          icon={MessageSquare}
+          title={t('inbox.select_conversation_title', 'Select a conversation')}
+          description={t('inbox.select_conversation_desc', 'Pick a conversation from the list to read it and reply.')}
+        />
       </Card>
     );
   }
@@ -409,13 +433,13 @@ function ThreadColumn({ thread, onAction }) {
       await inboxAPI.conversations.reply(thread.id, text);
       setReplyText('');
       onAction?.();
-      toast.success('Reply sent');
+      toast.success(t('inbox.reply_sent', 'Reply sent'));
     } catch (e) {
       const code = e.response?.data?.code;
       if (code === 'token_expired') {
-        toast.error(`${thread.platform} token expired — please reconnect.`);
+        toast.error(t('inbox.token_expired', '{{platform}} token expired — please reconnect.', { platform: thread.platform }));
       } else {
-        toast.error(e.response?.data?.detail || 'Reply failed');
+        toast.error(e.response?.data?.detail || t('inbox.reply_failed', 'Reply failed'));
       }
     } finally {
       setSending(false);
@@ -463,12 +487,12 @@ function ThreadColumn({ thread, onAction }) {
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
-            {thread.contact_name || thread.contact_handle || 'Unknown'}
+            {thread.contact_name || thread.contact_handle || t('inbox.unknown_contact', 'Unknown')}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>
             <span style={{ color: platform?.color, fontWeight: 600 }}>{platform?.label}</span>
             <span>·</span>
-            <span>{thread.type}</span>
+            <span>{t(`inbox.types.${thread.type}`, thread.type)}</span>
             {thread.contact_handle && (
               <>
                 <span>·</span>
@@ -478,13 +502,24 @@ function ThreadColumn({ thread, onAction }) {
           </div>
         </div>
         <div style={{ display: 'flex', gap: 4 }}>
-          <ActionIcon icon={Star} active={thread.is_starred}
-                      onClick={toggleStar} ariaLabel="Star" />
-          <ActionIcon icon={thread.is_archived ? ArchiveRestore : Archive}
-                      active={thread.is_archived}
-                      onClick={toggleArchive} ariaLabel="Archive" />
-          <ActionIcon icon={CheckCircle2} active={thread.is_resolved}
-                      onClick={toggleResolve} ariaLabel="Resolve" />
+          <ActionIcon
+            icon={Star}
+            active={thread.is_starred}
+            onClick={toggleStar}
+            ariaLabel={thread.is_starred ? t('inbox.unstar', 'Unstar') : t('inbox.star', 'Star')}
+          />
+          <ActionIcon
+            icon={thread.is_archived ? ArchiveRestore : Archive}
+            active={thread.is_archived}
+            onClick={toggleArchive}
+            ariaLabel={thread.is_archived ? t('inbox.unarchive', 'Restore') : t('inbox.archive', 'Archive')}
+          />
+          <ActionIcon
+            icon={CheckCircle2}
+            active={thread.is_resolved}
+            onClick={toggleResolve}
+            ariaLabel={thread.is_resolved ? t('inbox.reopen', 'Reopen') : t('inbox.resolve', 'Resolve')}
+          />
         </div>
       </div>
 
@@ -499,7 +534,7 @@ function ThreadColumn({ thread, onAction }) {
 
       {/* Reply box */}
       <div style={{ padding: 12, borderTop: '1px solid var(--border-subtle)', background: 'var(--surface-card)' }}>
-        {/* Social Stats — 3 reply variants for the latest inbound message */}
+        {/* Suggested reply variants for the latest inbound message */}
         {lastInbound && !thread.is_resolved && (
           <AIReplySuggestions
             clientId={user?.client_id || thread.client}
@@ -527,7 +562,7 @@ function ThreadColumn({ thread, onAction }) {
             }}
           >
             <Sparkles size={11} />
-            AI suggests: {lastInbound.ai_suggested_reply.slice(0, 60)}…
+            {t('inbox.ai_suggests', 'AI suggests: {{preview}}…', { preview: lastInbound.ai_suggested_reply.slice(0, 60) })}
           </button>
         )}
         <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
@@ -537,7 +572,7 @@ function ThreadColumn({ thread, onAction }) {
             onKeyDown={(e) => {
               if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); send(); }
             }}
-            placeholder={thread.is_resolved ? 'Conversation resolved — reopen to reply' : 'Type a reply… (⌘↵ to send)'}
+            placeholder={thread.is_resolved ? t('inbox.resolved_placeholder', 'Conversation resolved — reopen to reply') : t('inbox.reply_placeholder', 'Type a reply… (⌘↵ to send)')}
             disabled={thread.is_resolved}
             rows={2}
             style={{
@@ -558,7 +593,7 @@ function ThreadColumn({ thread, onAction }) {
             loading={sending}
             disabled={!replyText.trim() || thread.is_resolved}
           >
-            Send
+            {t('inbox.send_reply', 'Send')}
           </Button>
         </div>
       </div>
@@ -589,6 +624,7 @@ function ActionIcon({ icon: Icon, active, onClick, ariaLabel }) {
 }
 
 function Bubble({ msg }) {
+  const { t } = useTranslation('engagement');
   const isOut = msg.direction === 'outbound';
   const sent = SENTIMENT[msg.sentiment] || SENTIMENT.unknown;
   return (
@@ -616,7 +652,7 @@ function Bubble({ msg }) {
             {msg.author_name}
           </div>
         )}
-        {msg.content || <em style={{ opacity: 0.7 }}>[no content]</em>}
+        {msg.content || <em style={{ opacity: 0.7 }}>{t('inbox.no_content', '[no content]')}</em>}
       </div>
       <div style={{
         display: 'flex', gap: 6, alignItems: 'center',
@@ -638,19 +674,14 @@ function Bubble({ msg }) {
 /* ── helpers ───────────────────────────────────────────────────────────── */
 function fmtTime(iso) {
   if (!iso) return '';
-  const d = new Date(iso);
-  const diff = Date.now() - d.getTime();
-  const min = Math.floor(diff / 60000);
-  if (min < 1)  return 'now';
-  if (min < 60) return `${min}m`;
-  if (min < 1440) return `${Math.floor(min / 60)}h`;
-  return d.toLocaleDateString();
+  return formatRelativeTime(iso);
 }
 
 function fmtDateTime(iso) {
   if (!iso) return '';
-  const d = new Date(iso);
-  return d.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const dateStr = formatDate(iso, { month: 'short', day: 'numeric' });
+  const timeStr = formatTime(iso, { hour: '2-digit', minute: '2-digit' });
+  return `${dateStr} ${timeStr}`;
 }
 
 function shade(hex, pct) {
@@ -665,3 +696,4 @@ function shade(hex, pct) {
   b = Math.max(0, Math.min(255, b));
   return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
 }
+

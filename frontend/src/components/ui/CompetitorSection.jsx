@@ -7,6 +7,7 @@
  *  Released under the MIT License — see LICENSE. Keep this notice.
  * ========================================================================== */
 import { Building2, Link2, Plus, Sparkles, Trash2, Trophy } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export default function CompetitorSection({
   competitors = [],
@@ -18,9 +19,14 @@ export default function CompetitorSection({
   onUpdateLink,
   onRemoveLink,
   maxCompetitors = 3,
-  title = 'Competitors',
-  subtitle = 'Add a few key competitors so we can understand your market and shape smarter content.',
+  title,
+  subtitle,
 }) {
+  const { t } = useTranslation('onboarding');
+
+  const displayTitle = title || t('competitors.title', 'Competitors');
+  const displaySubtitle = subtitle || t('competitors.subtitle_default', 'Add a few key competitors so we can understand your market and shape smarter content.');
+
   return (
     <div style={styles.shell}>
       <div style={styles.hero}>
@@ -28,8 +34,8 @@ export default function CompetitorSection({
           <Trophy size={18} />
         </div>
         <div>
-          <div style={styles.heroTitle}>{title}</div>
-          <p style={styles.heroText}>{subtitle}</p>
+          <div style={styles.heroTitle}>{displayTitle}</div>
+          <p style={styles.heroText}>{displaySubtitle}</p>
         </div>
       </div>
 
@@ -37,15 +43,15 @@ export default function CompetitorSection({
         <div style={styles.emptyState}>
           <div style={styles.emptyBadge}>
             <Sparkles size={16} />
-            Competitive Snapshot
+            {t('competitors.empty_badge', 'Competitive Snapshot')}
           </div>
-          <h3 style={styles.emptyTitle}>Start with one competitor</h3>
+          <h3 style={styles.emptyTitle}>{t('competitors.empty_title', 'Start with one competitor')}</h3>
           <p style={styles.emptyText}>
-            Add the brands your audience also watches so the onboarding and settings stay useful later.
+            {t('competitors.empty_text', 'Add the brands your audience also watches so the onboarding and settings stay useful later.')}
           </p>
           <button type="button" onClick={onAddCompetitor} style={styles.primaryAddBtn}>
             <Plus size={16} />
-            Add Competitor
+            {t('competitors.add_competitor', 'Add Competitor')}
           </button>
         </div>
       ) : (
@@ -56,39 +62,39 @@ export default function CompetitorSection({
                 <div style={styles.cardHeaderMain}>
                   <div style={styles.cardIndex}>{String(index + 1).padStart(2, '0')}</div>
                   <div>
-                    <div style={styles.cardTitle}>Competitor Profile</div>
-                    <div style={styles.cardSubtitle}>Track brand name and the channels they use most.</div>
+                    <div style={styles.cardTitle}>{t('competitors.profile_title', 'Competitor Profile')}</div>
+                    <div style={styles.cardSubtitle}>{t('competitors.profile_subtitle', 'Track brand name and the channels they use most.')}</div>
                   </div>
                 </div>
                 <button type="button" onClick={() => onRemoveCompetitor(index)} style={styles.removeCompetitorBtn}>
                   <Trash2 size={14} />
-                  Remove competitor
+                  {t('competitors.remove_competitor', 'Remove competitor')}
                 </button>
               </div>
 
               <div style={styles.nameField}>
                 <label style={styles.label}>
                   <Building2 size={14} />
-                  Competitor Name <span style={styles.requiredAsterisk}>*</span>
+                  {t('competitors.name_label', 'Competitor Name')} <span style={styles.requiredAsterisk}>*</span>
                 </label>
                 <input
                   type="text"
                   value={competitor.name}
                   onChange={(e) => onUpdateCompetitor(index, 'name', e.target.value)}
                   style={styles.input}
-                  placeholder="Competitor company name"
+                  placeholder={t('competitors.name_placeholder', 'Competitor company name')}
                 />
               </div>
 
               <div style={styles.linkPanel}>
                 <div style={styles.linkPanelHeader}>
                   <div>
-                    <div style={styles.linkPanelTitle}>Social Links</div>
-                    <div style={styles.linkPanelText}>Keep these neat and scannable. One row per channel works best.</div>
+                    <div style={styles.linkPanelTitle}>{t('competitors.social_links_title', 'Social Links')}</div>
+                    <div style={styles.linkPanelText}>{t('competitors.social_links_text', 'Keep these neat and scannable. One row per channel works best.')}</div>
                   </div>
                   <button type="button" onClick={() => onAddLink(index)} style={styles.addLinkBtn}>
                     <Plus size={14} />
-                    Add link
+                    {t('competitors.add_link', 'Add link')}
                   </button>
                 </div>
 
@@ -96,7 +102,7 @@ export default function CompetitorSection({
                   {(competitor.social_links || []).map((link, linkIndex) => (
                     <div key={`${index}-${linkIndex}`} style={styles.linkRow}>
                       <div style={styles.selectField}>
-                        <label style={styles.subLabel}>Platform</label>
+                        <label style={styles.subLabel}>{t('competitors.platform', 'Platform')}</label>
                         <select
                           value={link.platform}
                           onChange={(e) => onUpdateLink(index, linkIndex, 'platform', e.target.value)}
@@ -110,21 +116,21 @@ export default function CompetitorSection({
                       <div style={styles.urlField}>
                         <label style={styles.subLabel}>
                           <Link2 size={13} />
-                          Profile URL
+                          {t('competitors.profile_url', 'Profile URL')}
                         </label>
                         <input
                           type="url"
                           value={link.url}
                           onChange={(e) => onUpdateLink(index, linkIndex, 'url', e.target.value)}
                           style={styles.input}
-                          placeholder="https://instagram.com/competitor"
+                          placeholder={t('competitors.profile_url_placeholder', 'https://instagram.com/competitor')}
                         />
                       </div>
                       <button
                         type="button"
                         onClick={() => onRemoveLink(index, linkIndex)}
                         style={styles.removeLinkBtn}
-                        aria-label="Remove link"
+                        aria-label={t('competitors.remove_link', 'Remove link')}
                       >
                         <Trash2 size={14} />
                       </button>
@@ -140,7 +146,7 @@ export default function CompetitorSection({
       {competitors.length > 0 && competitors.length < maxCompetitors && (
         <button type="button" onClick={onAddCompetitor} style={styles.secondaryAddBtn}>
           <Plus size={16} />
-          Add Another Competitor
+          {t('competitors.add_another_competitor', 'Add Another Competitor')}
         </button>
       )}
     </div>

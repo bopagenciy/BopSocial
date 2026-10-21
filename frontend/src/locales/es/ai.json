@@ -1,0 +1,451 @@
+{
+  "studio": {
+    "title": "Estudio Bop Social",
+    "subtitle": "Cada superficie de Bop Social en un solo lugar",
+    "eyebrow": "✨ Impulsado por Bop Social",
+    "groups": {
+      "create": "Crear",
+      "engage": "Interacción",
+      "understand": "Comprender",
+      "chat": "Chat",
+      "admin": "Administración"
+    },
+    "cards": {
+      "compose": {
+        "title": "Compositor inteligente",
+        "body": "Genera publicaciones adaptadas a cada plataforma en segundos."
+      },
+      "caption": {
+        "title": "Redactor de copys",
+        "body": "Genera copys para todas tus plataformas."
+      },
+      "post_ideas": {
+        "title": "Ideas de contenido",
+        "body": "Calendario mensual de contenidos creado con IA."
+      },
+      "hashtags": {
+        "title": "Investigación de hashtags",
+        "body": "Investiga hashtags evaluando alcance y competencia."
+      },
+      "inbox": {
+        "title": "Sugerencias de respuesta con IA",
+        "body": "Candidatos de respuesta en tres tonos para cualquier mensaje."
+      },
+      "insights": {
+        "title": "Hallazgos de IA",
+        "body": "Hallazgos accionables basados en tus datos."
+      },
+      "brand_voice": {
+        "title": "Voz de marca",
+        "body": "Entrena a Bop Social con tus publicaciones anteriores."
+      },
+      "chat_history": {
+        "title": "Historial de chat",
+        "body": "Conversaciones anteriores con Bop Social."
+      },
+      "ai_usage": {
+        "title": "Uso de IA",
+        "body": "Paneles de costos con desglose por cliente y usuario."
+      }
+    },
+    "shortcut_banner": {
+      "text": "Presiona <kbd>⌘ J</kbd> desde cualquier lugar para chatear con Bop Social",
+      "description": "El asistente de chat puede consultar tus métricas, redactar publicaciones, buscar en tu bandeja y programar acciones, todo con confirmación previa ante cualquier cambio en datos reales."
+    }
+  },
+  "assistant": {
+    "floating_trigger": {
+      "aria_label": "Abrir Bop Social (Cmd+J)",
+      "title": "Bop Social (⌘J)"
+    },
+    "chat": {
+      "title": "Bop Social",
+      "aria_label": "Chat de Bop Social",
+      "welcome_title": "Hola, soy Bop Social",
+      "welcome_subtitle": "Pregúntame sobre tus datos, redacta publicaciones, responde a tu bandeja de entrada o solicita un resumen diario.",
+      "new": "Nuevo",
+      "history": "Historial",
+      "close": "Cerrar",
+      "back_to_chat": "Volver al chat",
+      "input_placeholder": "Pregunta lo que sea — o escribe / para comandos rápidos…",
+      "send": "Enviar",
+      "copy": "Copiar",
+      "copied": "Copiado",
+      "copy_failed": "Error al copiar",
+      "failed_load": "Error al cargar la conversación",
+      "pick_client": "Selecciona un cliente primero",
+      "unavailable": "Bop Social no está disponible",
+      "confirm_delete": "¿Eliminar esta conversación?",
+      "delete_failed": "No se pudo eliminar",
+      "confirm_action": "Confirmar acción",
+      "cancel": "Cancelar",
+      "confirm": "Confirmar",
+      "tool_label": "herramienta: {{name}}",
+      "conversations": "Conversaciones",
+      "empty_history": "Aún no hay conversaciones — comienza a chatear.",
+      "untitled": "Chat sin título",
+      "delete_conversation": "Eliminar conversación",
+      "quick_prompts": {
+        "instagram_perf": "¿Cómo rindió Instagram esta semana?",
+        "summer_launch": "Redacta 3 publicaciones de Instagram sobre nuestro lanzamiento de verano",
+        "best_time": "¿A qué hora debería publicar mañana?",
+        "unread_inbox": "Muéstrame los últimos mensajes no leídos de la bandeja de entrada"
+      }
+    }
+  },
+  "brand_voice": {
+    "title": "Voz de marca",
+    "subtitle": "Entrena a Bop Social con tus publicaciones anteriores para que cada generación suene como tú",
+    "studying": "Bop Social está estudiando tu voz…",
+    "pick_client_title": "Selecciona un cliente",
+    "pick_client_desc": "La voz de marca es por cliente. Abre un cliente específico para entrenar su voz.",
+    "status": {
+      "pending": "Aún no entrenada",
+      "training": "Entrenando…",
+      "ready": "Lista",
+      "failed": "Entrenamiento fallido"
+    },
+    "emoji": {
+      "heavy": "✨ Emojis frecuentes",
+      "moderate": "🙂 Moderado",
+      "minimal": "Mínimo",
+      "none": "Sin emojis"
+    },
+    "train_card": {
+      "title": "Entrenar con publicaciones de ejemplo",
+      "subtitle": "Pega entre 3 y 20 de tus publicaciones más representativas. Antiguas o recientes son bienvenidas.",
+      "sample_placeholder": "Publicación de ejemplo {{number}}…",
+      "remove_sample": "Eliminar ejemplo",
+      "add_sample": "Agregar ejemplo",
+      "sample_counter": "{{count}} / 20 ejemplos",
+      "business_hint_placeholder": "Negocio en 1 línea (opcional)",
+      "industry_placeholder": "Sector / Industria (opcional)",
+      "btn_train": "Entrenar voz de marca",
+      "btn_retrain": "Reentrenar voz de marca",
+      "btn_training": "Bop Social está estudiando tu voz…",
+      "training_failed_prefix": "Entrenamiento fallido:",
+      "validation_min_samples": "Agrega al menos 3 publicaciones de ejemplo (o pega una por fila)",
+      "success_trained": "Voz de marca entrenada",
+      "failed_train": "Falló el entrenamiento"
+    },
+    "profile_card": {
+      "title": "Perfil extraído",
+      "subtitle_ready": "Último entrenamiento {{date}}",
+      "subtitle_empty": "Entrena arriba para ver tu perfil de voz",
+      "empty_title": "Aún no hay voz entrenada",
+      "empty_desc": "Pega publicaciones de ejemplo a la izquierda y haz clic en Entrenar. Tu perfil aparecerá aquí en segundos.",
+      "persona": "Persona",
+      "tone": "Tono",
+      "vocabulary": "Vocabulario a favorecer",
+      "avoid": "Evitar",
+      "audience": "Audiencia objetivo",
+      "topics_avoid": "Temas a evitar",
+      "style_rules": "Reglas de estilo",
+      "hashtags": "Hashtags: {{style}}"
+    },
+    "validation_examples": {
+      "title": "Ejemplos de validación",
+      "subtitle": "Tres publicaciones breves redactadas con la voz recién entrenada. ¿Refleja tu estilo?",
+      "regenerate": "Regenerar"
+    },
+    "test_card": {
+      "title": "Probar la voz",
+      "subtitle": "Genera una publicación de ejemplo sobre cualquier tema para comprobar la voz entrenada.",
+      "placeholder": "ej. Nueva colección de verano, saludos de fin de año…",
+      "btn_generate": "Generar publicación de ejemplo",
+      "badge_trained": "En tu voz entrenada",
+      "badge_default": "Voz predeterminada",
+      "chars": "{{count}} caracteres",
+      "validation_topic": "Agrega un tema para probar",
+      "failed_test": "Falló la prueba"
+    }
+  },
+  "insights": {
+    "title": "Hallazgos de IA",
+    "subtitle": "Bop Social destaca lo importante de tus datos — actualiza cuando desees información fresca.",
+    "btn_generate": "Generar nuevos hallazgos",
+    "btn_generating": "Generando…",
+    "filters": {
+      "all": "Todos",
+      "critical": "Crítico",
+      "high": "Alto",
+      "medium": "Medio",
+      "low": "Bajo"
+    },
+    "show_dismissed": "Mostrar descartados",
+    "empty_title": "Aún no hay hallazgos",
+    "empty_desc": "Haz clic en “Generar nuevos hallazgos” para que Bop Social analice tus últimos 30 días de datos.",
+    "empty_filtered": "Nada coincide con ese filtro.",
+    "btn_generate_now": "Generar ahora",
+    "suggested_action": "Acción sugerida:",
+    "confidence": "· {{percent}}% de confianza",
+    "acted_upon": "Atendido",
+    "mark_done": "Marcar como hecho",
+    "mark_not_done": "Marcar como pendiente",
+    "dismiss": "Descartar",
+    "generated_success": "Se generó {{count}} hallazgo",
+    "generated_success_plural": "Se generaron {{count}} hallazgos",
+    "no_new_insights": "No hay nuevos hallazgos en este momento",
+    "generation_failed": "Falló la generación",
+    "update_failed": "No se pudo actualizar"
+  },
+  "usage": {
+    "title": "Uso de IA",
+    "subtitle": "Costo, tokens y volumen de peticiones en cada función de IA.",
+    "admin_only_title": "Acceso solo para administradores",
+    "admin_only_desc": "El panel de uso de IA está visible para superadministradores y personal.",
+    "periods": {
+      "day": "Hoy",
+      "week": "Esta semana",
+      "month": "Este mes"
+    },
+    "refresh": "Actualizar",
+    "budget": {
+      "monthly_budget": "Presupuesto mensual",
+      "used_of_cap": "{{used}} / {{cap}} consumido",
+      "remaining": "{{remaining}} restante"
+    },
+    "stats": {
+      "requests": "Peticiones",
+      "cost": "Costo (este período)",
+      "input_tokens": "Tokens de entrada",
+      "output_tokens": "Tokens de salida",
+      "cache_hit_rate": "Tasa de acierto de caché",
+      "errors": "Errores"
+    },
+    "features": {
+      "title": "Por función",
+      "subtitle": "Funciones principales por gasto en el período seleccionado",
+      "empty": "Aún no hay uso de IA en este período.",
+      "col_feature": "Función",
+      "col_requests": "Peticiones",
+      "col_input_tokens": "Tokens de entrada",
+      "col_output_tokens": "Tokens de salida",
+      "col_cost": "Costo"
+    },
+    "top_clients": {
+      "title": "Principales clientes",
+      "empty": "No hay uso por cliente en este período."
+    },
+    "top_users": {
+      "title": "Principales usuarios",
+      "empty": "No hay uso por usuario en este período."
+    },
+    "daily_activity": {
+      "title": "Actividad diaria",
+      "subtitle": "Costo (USD) por día en el período seleccionado"
+    }
+  },
+  "history": {
+    "title": "Historial de chat",
+    "subtitle": "Conversaciones anteriores con Bop Social",
+    "show_active": "Mostrar activos",
+    "show_archived": "Mostrar archivados",
+    "search_placeholder": "Buscar conversaciones…",
+    "no_archived": "No hay chats archivados",
+    "no_conversations": "Aún no hay conversaciones",
+    "empty_desc": "Presiona ⌘J en cualquier lugar para comenzar un chat con Bop Social.",
+    "untitled": "Chat sin título",
+    "restore": "Restaurar",
+    "archive": "Archivar",
+    "delete": "Eliminar",
+    "confirm_delete": "¿Eliminar esta conversación? Esta acción no se puede deshacer.",
+    "pick_conversation": "Selecciona una conversación",
+    "pick_desc": "Haz clic en un chat a la izquierda para leerlo.",
+    "not_found": "Conversación no encontrada",
+    "messages_count": "{{count}} mensaje",
+    "messages_count_plural": "{{count}} mensajes",
+    "tool_result": "resultado de herramienta",
+    "archived_toast": "Archivado",
+    "restored_toast": "Restaurado",
+    "deleted_toast": "Eliminado"
+  },
+  "audit": {
+    "title": "¿Qué hizo Bop Social por mí?",
+    "subtitle": "Cada petición de IA en esta cuenta de cliente — para transparencia y cumplimiento normativo.",
+    "refresh": "Actualizar",
+    "today_quota": "Cuota de IA de hoy",
+    "quota_used": "{{used}} / {{limit}} peticiones consumidas",
+    "quota_remaining": "({{remaining}} restantes)",
+    "filter_by_feature": "Filtrar por función",
+    "showing_one": "Mostrando una función",
+    "all_features": "Todas las funciones",
+    "activity_feed": "Registro de actividad",
+    "recent_subtitle": "{{count}} más recientes — las más nuevas primero",
+    "loading_activity": "Cargando actividad…",
+    "empty_title": "Aún no hay actividad de IA",
+    "empty_desc": "A medida que uses las funciones de Bop Social, cada petición aparecerá aquí.",
+    "columns": {
+      "feature": "Función",
+      "status": "Estado",
+      "model": "Modelo",
+      "tokens": "Tokens entrantes/salientes",
+      "cost": "Costo",
+      "when": "Cuándo"
+    },
+    "disclaimer": "Bop Social impulsa cada una de las solicitudes que se muestran a continuación. Registramos cada llamada para fines de cumplimiento y no entrenamos modelos con tus datos. El contenido generado por IA se indica con una etiqueta ✨ Asistido por IA en la interfaz. Los sectores sensibles (médico, legal, financiero) incluyen un descargo de responsabilidad normativo. La información sobre proveedores está en nuestra Política de privacidad.",
+    "failed_load": "Error al cargar la auditoría de IA"
+  },
+  "shared": {
+    "ai_badge": {
+      "cached": "IA · en caché",
+      "assisted": "Asistido por IA",
+      "title_cached": "Esto se entregó desde la caché de IA — no se incurrió en nuevos costos de generación",
+      "title_assisted": "Este contenido fue generado con la asistencia de Bop Social"
+    },
+    "ai_loading": {
+      "thinking": "Bop Social está pensando…",
+      "generating": "Generando…"
+    },
+    "chart_annotations": {
+      "explain": "Explicar esto",
+      "explain_short": "Explicar",
+      "refresh": "Actualizar",
+      "unavailable": "Narración de IA no disponible",
+      "title": "¿Qué significan estos datos?",
+      "from_bop": "De Bop Social",
+      "pick_client": "Selecciona un cliente primero",
+      "prompt_desc": "Haz clic en Explicar para que Bop Social interprete este gráfico en lenguaje sencillo."
+    },
+    "today_briefing": {
+      "title": "Resumen de hoy",
+      "subtitle": "De Bop Social · hallazgos más recientes",
+      "empty": "Aún no hay hallazgos — dale un momento a Bop Social para analizar tus datos.",
+      "surfaced_insights": "Bop Social identificó {{count}} nuevo hallazgo",
+      "surfaced_insights_plural": "Bop Social identificó {{count}} nuevos hallazgos",
+      "generate": "Generar",
+      "view_all": "Ver todo",
+      "unavailable": "La IA no está disponible en este momento"
+    }
+  },
+  "caption_writer": {
+    "title": "Redactor de copys con IA",
+    "subtitle": "Genera copys de alta conversión y hashtags para todas tus plataformas",
+    "tabs": {
+      "captions": "Generador de copys",
+      "hashtags": "Investigación de hashtags"
+    },
+    "loading_captions": "Bop Social está redactando tus copys…",
+    "loading_hashtags": "Bop Social está investigando hashtags…",
+    "form": {
+      "client_label": "Cliente",
+      "select_client": "Selecciona un cliente…",
+      "topic_label": "Tema / Descripción *",
+      "topic_placeholder": "¿De qué trata esta publicación? Incluye detalles clave, ofertas o temas…",
+      "tone_label": "Tono",
+      "post_type_label": "Tipo de publicación",
+      "platforms_label": "Plataformas objetivo *",
+      "include_hashtags": "Incluir hashtags",
+      "include_cta": "Incluir llamada a la acción (CTA)",
+      "include_emojis": "Incluir emojis",
+      "keywords_label": "Palabras clave a incluir (opcional)",
+      "cta_label": "Llamada a la acción (opcional)",
+      "generate_btn": "✨ Generar copys",
+      "generating_btn": "Generando… (5-10 segundos)"
+    },
+    "tones": {
+      "professional": "Profesional",
+      "casual": "Casual",
+      "funny": "Divertido",
+      "inspirational": "Inspiracional",
+      "urgent": "Urgente",
+      "friendly": "Amigable"
+    },
+    "post_types": {
+      "promotion": "Promoción",
+      "announcement": "Anuncio",
+      "educational": "Educativo",
+      "behind_scenes": "Detrás de escena",
+      "product": "Demostración de producto",
+      "event": "Evento",
+      "tip": "Consejo y sugerencia",
+      "general": "General"
+    },
+    "results": {
+      "heading": "Copys generados",
+      "copy_all": "Copiar todos los copys",
+      "copied": "¡Copiado!",
+      "copy": "Copiar",
+      "edit": "Editar",
+      "save": "Listo",
+      "cancel": "Cancelar",
+      "add_to_calendar": "Agregar al calendario",
+      "best_time": "Mejor horario para publicar:",
+      "empty_title": "Tus copys aparecerán aquí",
+      "empty_desc": "Completa el formulario y haz clic en Generar",
+      "copy_hashtags": "Copiar hashtags"
+    },
+    "hashtags": {
+      "title": "Investigación de hashtags con IA",
+      "subtitle": "Descubre los mejores hashtags para lograr el máximo alcance",
+      "keyword_label": "Palabra clave / Tema *",
+      "keyword_placeholder": "ej., fitness, marketing digital, café…",
+      "niche_label": "Tu nicho o industria",
+      "location_label": "Ubicación (opcional)",
+      "platform_label": "Plataforma",
+      "post_type_label": "Tipo de publicación",
+      "topic_label": "Tema de la publicación",
+      "research_btn": "# Investigar hashtags",
+      "researching_btn": "Investigando… (5-10 segundos)",
+      "copy_selected": "Copiar seleccionados ({{count}})",
+      "select_all": "Seleccionar todos",
+      "deselect_all": "Deseleccionar todos",
+      "empty_title": "La investigación de hashtags aparecerá aquí",
+      "empty_desc": "Haz clic en cada etiqueta para seleccionarla, luego copia o guarda tu conjunto",
+      "recommended_set": "Conjunto recomendado",
+      "caption_hashtags": "Hashtags para el texto",
+      "first_comment_hashtags": "Hashtags para el primer comentario",
+      "tags_to_avoid": "Etiquetas a evitar",
+      "no_tags": "No hay etiquetas en este nivel",
+      "save_modal_title": "Guardar conjunto de hashtags",
+      "save_set": "Guardar conjunto",
+      "clear": "Limpiar",
+      "recent_searches": "Búsquedas recientes",
+      "tiers": {
+        "mega": "Mega",
+        "large": "Grande",
+        "medium": "Medio",
+        "small": "Pequeño",
+        "local": "Local",
+        "branded": "De marca"
+      }
+    }
+  },
+  "post_ideas": {
+    "title": "Ideas de publicaciones con IA",
+    "subtitle": "Genera un mes completo de ideas estratégicas de contenido personalizadas para tu negocio",
+    "form": {
+      "client_label": "Cliente",
+      "select_client": "Seleccionar cliente…",
+      "month_label": "Mes",
+      "year_label": "Año",
+      "business_type_label": "Tipo de negocio *",
+      "select_business_type": "Seleccionar tipo de negocio…",
+      "location_label": "Ubicación / Ciudad (opcional)",
+      "location_placeholder": "ej., Austin, TX o Global / Online",
+      "audience_label": "Audiencia objetivo (opcional)",
+      "audience_placeholder": "ej., Jóvenes profesionales, madres trabajadoras, fundadores tech…",
+      "events_label": "Próximos eventos / Promociones (opcional)",
+      "events_placeholder": "ej., Rebajas de verano el día 15, nuevo platillo en el menú…",
+      "platforms_label": "Plataformas objetivo *",
+      "posts_per_week_label": "Publicaciones por semana",
+      "generate_btn": "Generar calendario de contenido"
+    },
+    "loading_sub": "Bop Social está diseñando ideas de publicaciones personalizadas para tu negocio",
+    "loading_steps": {
+      "step_1": "Analizando tu negocio…",
+      "step_2": "Investigando oportunidades del mes…",
+      "step_3": "Diseñando ideas de publicaciones…",
+      "step_4": "Construyendo tu calendario…"
+    },
+    "results": {
+      "regenerate": "Regenerar",
+      "new_plan": "Nuevo plan",
+      "history": "Historial",
+      "approve_all": "Aprobar todo",
+      "total_ideas": "{{count}} ideas de publicaciones",
+      "add_all_to_calendar": "Agregar todo al calendario",
+      "calendar_added": "Agregado al calendario"
+    }
+  }
+}

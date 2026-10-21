@@ -20,31 +20,15 @@ import { useNavigate } from 'react-router-dom';
 import {
   Sparkles, Copy, RefreshCw, X, ArrowRight, Bot, Filter,
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 import { botTemplateAPI } from '../../services/api';
 import { getNodeMeta } from '../../components/bot/nodeCatalog';
+import { getTemplateDisplayName, getTemplateDisplayDescription } from '../../components/bot/templateUtils';
 import toast from '../../components/ui/toast';
 
-const INDUSTRY_LABELS = {
-  real_estate:   'Real estate',
-  healthcare:    'Healthcare',
-  restaurant:    'Restaurant',
-  fitness:       'Fitness',
-  education:     'Education',
-  ecommerce:     'E-commerce',
-  professional:  'Professional services',
-  general:       'General',
-};
-const USE_CASE_LABELS = {
-  lead_capture:        'Lead capture',
-  appointment_booking: 'Appointments',
-  product_inquiry:     'Product inquiry',
-  feedback_collection: 'Feedback',
-  support:             'Support',
-  lead_magnet:         'Lead magnet',
-};
-
 export default function TemplatesGalleryPage() {
+  const { t } = useTranslation('messaging');
   const [templates, setTemplates] = useState([]);
   const [loading,   setLoading]   = useState(true);
   const [industry,  setIndustry]  = useState('');
@@ -58,7 +42,7 @@ export default function TemplatesGalleryPage() {
     if (useCase)  params.use_case = useCase;
     botTemplateAPI.list(params)
       .then((r) => setTemplates(r.data?.results || r.data || []))
-      .catch(() => toast.error('Could not load templates'))
+      .catch(() => toast.error(t('bot_templates.load_error')))
       .finally(() => setLoading(false));
   }
   useEffect(load, [industry, useCase]); // eslint-disable-line
@@ -88,22 +72,22 @@ export default function TemplatesGalleryPage() {
         </span>
         <div style={{ flex: 1 }}>
           <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
-            Bot flow templates
+            {t('bot_templates.title')}
           </h1>
           <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-secondary)' }}>
-            Pre-built flows for the most common CTWA use cases. Clone one to start in 30 seconds.
+            {t('bot_templates.subtitle')}
           </p>
         </div>
-        <button type="button" onClick={load} aria-label="Refresh" style={iconBtn}>
+        <button type="button" onClick={load} aria-label={t('bot_templates.refresh')} style={iconBtn}>
           <RefreshCw size={13} />
         </button>
       </header>
 
       {/* Featured strip */}
       {featured.length > 0 && !industry && !useCase && (
-        <Section title="Featured" icon={Sparkles}>
+        <Section title={t('bot_templates.featured')} icon={Sparkles}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
-            {featured.map((t) => <Card key={t.id} t={t} onPreview={() => setPreview(t)} featured />)}
+            {featured.map((item) => <Card key={item.id} template={item} onPreview={() => setPreview(item)} featured />)}
           </div>
         </Section>
       )}
@@ -117,36 +101,36 @@ export default function TemplatesGalleryPage() {
       }}>
         <Filter size={12} style={{ color: 'var(--text-tertiary)' }} />
         <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', letterSpacing: '0.06em', textTransform: 'uppercase', marginRight: 4 }}>
-          Industry
+          {t('bot_templates.industry')}
         </span>
-        <Chip active={!industry} onClick={() => setIndustry('')}>All</Chip>
+        <Chip active={!industry} onClick={() => setIndustry('')}>{t('bot_templates.all')}</Chip>
         {industries.map((i) => (
           <Chip key={i} active={industry === i} onClick={() => setIndustry(i)}>
-            {INDUSTRY_LABELS[i] || i}
+            {t(`bot_templates.industries.${i}`, i)}
           </Chip>
         ))}
         <span style={{ width: 1, height: 18, background: 'var(--border-default)', margin: '0 6px' }} />
         <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', letterSpacing: '0.06em', textTransform: 'uppercase', marginRight: 4 }}>
-          Use case
+          {t('bot_templates.use_case')}
         </span>
-        <Chip active={!useCase} onClick={() => setUseCase('')}>All</Chip>
+        <Chip active={!useCase} onClick={() => setUseCase('')}>{t('bot_templates.all')}</Chip>
         {useCases.map((u) => (
           <Chip key={u} active={useCase === u} onClick={() => setUseCase(u)}>
-            {USE_CASE_LABELS[u] || u}
+            {t(`bot_templates.use_cases.${u}`, u)}
           </Chip>
         ))}
       </div>
 
       {/* Grid */}
       {loading ? (
-        <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-tertiary)' }}>Loading…</div>
+        <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-tertiary)' }}>{t('bot_templates.loading')}</div>
       ) : templates.length === 0 ? (
         <Empty />
       ) : (
-        <Section title={industry || useCase ? 'Filtered' : 'All templates'}>
+        <Section title={industry || useCase ? t('bot_templates.filtered') : t('bot_templates.all_templates')}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>
-            {(industry || useCase ? templates : rest).map((t) => (
-              <Card key={t.id} t={t} onPreview={() => setPreview(t)} />
+            {(industry || useCase ? templates : rest).map((item) => (
+              <Card key={item.id} template={item} onPreview={() => setPreview(item)} />
             ))}
           </div>
         </Section>
@@ -159,7 +143,8 @@ export default function TemplatesGalleryPage() {
   );
 }
 
-function Card({ t, onPreview, featured }) {
+function Card({ template, onPreview, featured }) {
+  const { t } = useTranslation('messaging');
   return (
     <button type="button" onClick={onPreview} style={{
       padding: 14, textAlign: 'left',
@@ -179,10 +164,10 @@ function Card({ t, onPreview, featured }) {
         </span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {t.name}
+            {getTemplateDisplayName(template.name, t)}
           </div>
           <div style={{ marginTop: 2, fontSize: 11, color: 'var(--text-tertiary)' }}>
-            {INDUSTRY_LABELS[t.industry] || t.industry} · {USE_CASE_LABELS[t.use_case] || t.use_case}
+            {t(`bot_templates.industries.${template.industry}`, template.industry)} · {t(`bot_templates.use_cases.${template.use_case}`, template.use_case)}
           </div>
         </div>
         {featured && (
@@ -193,10 +178,10 @@ function Card({ t, onPreview, featured }) {
         margin: 0, fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.4,
         display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
         overflow: 'hidden', minHeight: '2.8em',
-      }}>{t.description}</p>
+      }}>{getTemplateDisplayDescription(template.name, template.description, t)}</p>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', fontSize: 11, color: 'var(--text-tertiary)' }}>
-        <span>{(t.nodes || []).length} nodes</span>
-        {t.use_count > 0 && <span>Used {t.use_count}× by agencies</span>}
+        <span>{t('bot_templates.nodes_count', { count: (template.nodes || []).length })}</span>
+        {template.use_count > 0 && <span>{t('bot_templates.used_count', { count: template.use_count })}</span>}
       </div>
     </button>
   );
@@ -234,6 +219,7 @@ function Section({ title, icon: Icon, children }) {
 }
 
 function Empty() {
+  const { t } = useTranslation('messaging');
   return (
     <div style={{
       padding: 36, textAlign: 'center',
@@ -242,19 +228,20 @@ function Empty() {
       borderRadius: 'var(--radius-md)',
       color: 'var(--text-tertiary)',
     }}>
-      No templates match these filters.
+      {t('bot_templates.empty')}
     </div>
   );
 }
 
 function PreviewModal({ template, onClose }) {
+  const { t } = useTranslation('messaging');
   const navigate = useNavigate();
-  const [name, setName] = useState(template.name);
+  const [name, setName] = useState(getTemplateDisplayName(template.name, t));
   const [busy, setBusy] = useState(false);
 
   // Build a one-line preview of the node sequence
   const nodeSummary = (template.nodes || []).map((n) => {
-    const meta = getNodeMeta(n.type);
+    const meta = getNodeMeta(n.type, t);
     return { id: n.id, label: meta.label, color: meta.color };
   });
 
@@ -262,10 +249,10 @@ function PreviewModal({ template, onClose }) {
     setBusy(true);
     try {
       const r = await botTemplateAPI.use(template.id, { name });
-      toast.success('Template cloned — opening editor…');
+      toast.success(t('bot_templates.preview.clone_success'));
       navigate(`/admin/bot-flows/${r.data.id}/edit`);
     } catch (e) {
-      toast.error(e?.response?.data?.error || 'Could not clone template');
+      toast.error(e?.response?.data?.error || t('bot_templates.preview.clone_error'));
     } finally { setBusy(false); }
   }
 
@@ -281,23 +268,23 @@ function PreviewModal({ template, onClose }) {
             <Bot size={15} />
           </span>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>{template.name}</h2>
+            <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>{getTemplateDisplayName(template.name, t)}</h2>
             <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
-              {INDUSTRY_LABELS[template.industry] || template.industry} · {USE_CASE_LABELS[template.use_case] || template.use_case}
+              {t(`bot_templates.industries.${template.industry}`, template.industry)} · {t(`bot_templates.use_cases.${template.use_case}`, template.use_case)}
             </div>
           </div>
-          <button type="button" onClick={onClose} aria-label="Close" style={iconBtn}>
+          <button type="button" onClick={onClose} aria-label={t('bot_templates.preview.close')} style={iconBtn}>
             <X size={14} />
           </button>
         </header>
 
         <div style={{ flex: 1, overflowY: 'auto', padding: 20 }}>
           <p style={{ margin: '0 0 16px', fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-            {template.description}
+            {getTemplateDisplayDescription(template.name, template.description, t)}
           </p>
 
           <div style={{ marginBottom: 16 }}>
-            <h3 style={miniH}>Flow shape</h3>
+            <h3 style={miniH}>{t('bot_templates.preview.flow_shape')}</h3>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
               {nodeSummary.map((n, i) => (
                 <span key={n.id} style={{
@@ -317,11 +304,11 @@ function PreviewModal({ template, onClose }) {
           </div>
 
           <div>
-            <h3 style={miniH}>Name your flow</h3>
+            <h3 style={miniH}>{t('bot_templates.preview.name_flow')}</h3>
             <input value={name} onChange={(e) => setName(e.target.value)}
                    style={inputStyle} />
             <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--text-tertiary)' }}>
-              You can rename + edit any node before publishing.
+              {t('bot_templates.preview.rename_hint')}
             </p>
           </div>
         </div>
@@ -332,12 +319,12 @@ function PreviewModal({ template, onClose }) {
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         }}>
           <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
-            Cloning creates a draft — nothing goes live until you publish.
+            {t('bot_templates.preview.draft_hint')}
           </span>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button type="button" onClick={onClose} style={btnGhost}>Cancel</button>
+            <button type="button" onClick={onClose} style={btnGhost}>{t('bot_templates.preview.cancel')}</button>
             <button type="button" onClick={clone} disabled={busy || !name.trim()} style={btnPrimary}>
-              <Copy size={13} /> {busy ? 'Cloning…' : 'Clone & open editor'}
+              <Copy size={13} /> {busy ? t('bot_templates.preview.cloning') : t('bot_templates.preview.clone_and_open')}
             </button>
           </div>
         </footer>

@@ -7,23 +7,13 @@
  *  Released under the MIT License — see LICENSE. Keep this notice.
  * ========================================================================== */
 import { Check, X, AlertTriangle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 /**
  * ComparisonTable — sticky-header pricing/feature comparison table.
- * The HIGHLIGHT_COLUMN gets a brand-color background that bleeds across the
- * full row vertically.
- *
- *   <ComparisonTable
- *     columns={['Social Stats', 'Hootsuite', ...]}
- *     highlightIndex={0}
- *     rows={[
- *       { feature: '...', cells: ['yes', 'yes', 'partial', 'no'] }
- *     ]}
- *   />
- *
- * Cell values: 'yes' / 'no' / 'partial' / any string.
  */
 export default function ComparisonTable({ columns = [], rows = [], highlightIndex = 0 }) {
+  const { t } = useTranslation('common');
   return (
     <div style={{
       width: '100%',
@@ -41,7 +31,7 @@ export default function ComparisonTable({ columns = [], rows = [], highlightInde
       }}>
         <thead>
           <tr>
-            <th style={headFeatureStyle}>Feature</th>
+            <th style={headFeatureStyle}>{t('comparison.feature', 'Feature')}</th>
             {columns.map((c, i) => (
               <th key={c}
                   style={{
@@ -52,9 +42,9 @@ export default function ComparisonTable({ columns = [], rows = [], highlightInde
                 {i === highlightIndex && (
                   <span style={{
                     display: 'block', marginTop: 4,
-                    fontSize: 10, fontWeight: 600,
-                    color: '#00CCF5', letterSpacing: '0.06em',
-                  }}>RECOMMENDED</span>
+                    fontSize: 10, fontWeight: 700,
+                    color: '#F5A623', letterSpacing: '0.06em',
+                  }}>{t('comparison.recommended', 'RECOMMENDED')}</span>
                 )}
               </th>
             ))}
@@ -124,10 +114,10 @@ const headCellStyle = {
 };
 
 const headHighlightStyle = {
-  background: 'linear-gradient(180deg, rgba(0,204,245,0.12), rgba(0,204,245,0.04))',
-  borderLeft: '1px solid rgba(0,204,245,0.3)',
-  borderRight: '1px solid rgba(0,204,245,0.3)',
-  borderTop: '2px solid #00CCF5',
+  background: 'linear-gradient(180deg, rgba(245,166,35,0.14), rgba(245,166,35,0.04))',
+  borderLeft: '1px solid rgba(245,166,35,0.35)',
+  borderRight: '1px solid rgba(245,166,35,0.35)',
+  borderTop: '2px solid #F5A623',
 };
 
 const featureCellStyle = {

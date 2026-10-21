@@ -1,0 +1,106 @@
+{
+  "title": "Informes",
+  "subtitle": "Gestiona enlaces de informes compartidos de clientes y resúmenes mensuales de ROI",
+  "all_clients": "Todos los clientes",
+  "tabs": {
+    "shared": "Enlaces compartidos",
+    "roi": "Informes de ROI"
+  },
+  "shared_links": {
+    "title": "Enlaces de informes compartidos",
+    "refresh": "Actualizar",
+    "loading": "Cargando enlaces…",
+    "empty_title": "Aún no hay enlaces compartidos",
+    "empty_body": "Abre un cliente y haz clic en \"Compartir informe\" para generar un enlace público.",
+    "user_prefix": "Usuario #{{id}}",
+    "expired": "VENCIDO",
+    "all_platforms": "Todas las plataformas",
+    "views_count_one": "{{count}} vista",
+    "views_count_other": "{{count}} vistas",
+    "created_at": "Creado {{time}}",
+    "expires_at": "Vence {{date}}",
+    "copy_link": "Copiar enlace",
+    "copied": "¡Copiado!",
+    "open_report": "Abrir informe",
+    "deactivate": "Desactivar"
+  },
+  "roi_reports": {
+    "title": "Informes de ROI",
+    "loading": "Cargando informes de ROI…",
+    "empty_title": "No hay informes de ROI para este período",
+    "empty_body": "Los informes se generan automáticamente el día 2 de cada mes.",
+    "table": {
+      "user": "Usuario",
+      "month": "Mes",
+      "roi_pct": "ROI %",
+      "investment": "Inversión",
+      "revenue": "Ingresos",
+      "leads": "Clientes potenciales",
+      "status": "Estado",
+      "view": "Ver →"
+    },
+    "badges": {
+      "excellent": "Excelente",
+      "good": "Bueno",
+      "average": "Promedio",
+      "review": "Revisión"
+    },
+    "months": {
+      "1": "Ene",
+      "2": "Feb",
+      "3": "Mar",
+      "4": "Abr",
+      "5": "May",
+      "6": "Jun",
+      "7": "Jul",
+      "8": "Ago",
+      "9": "Sep",
+      "10": "Oct",
+      "11": "Nov",
+      "12": "Dic"
+    }
+  },
+  "modal": {
+    "title": "Compartir informe",
+    "date_range": "Rango de fechas",
+    "platforms": "Plataformas",
+    "expiry": "Vencimiento",
+    "expiry_never": "Nunca",
+    "expiry_24h": "24 horas",
+    "expiry_7d": "7 días",
+    "expiry_30d": "30 días",
+    "password_protection": "Protección con contraseña",
+    "protect_with_password": "Proteger con contraseña",
+    "enter_password": "Ingresa la contraseña…",
+    "generate_link": "Generar enlace",
+    "creating": "Creando…",
+    "copy": "Copiar",
+    "copied": "¡Copiado!",
+    "open": "Abrir",
+    "url_hint": "Este enlace abre la página pública del informe HTML que puedes compartir con el cliente.",
+    "existing_links": "Enlaces existentes",
+    "errors": {
+      "date_range": "Por favor define un rango de fechas.",
+      "platforms": "Selecciona al menos una plataforma.",
+      "password": "Por favor ingresa una contraseña o desactiva la protección.",
+      "create_failed": "Error al crear el enlace."
+    }
+  },
+  "public": {
+    "loading": "Cargando informe…",
+    "load_error": "Este informe no pudo ser cargado.",
+    "password_required_err": "La contraseña es requerida.",
+    "password_incorrect_err": "Contraseña incorrecta. Por favor intenta de nuevo.",
+    "password_protected_notice": "Este informe está protegido con contraseña.",
+    "password_label": "Contraseña",
+    "view_report": "Ver informe",
+    "verifying": "Verificando…",
+    "header_subtitle": "Informe de redes sociales · {{dateRange}}",
+    "download_pdf": "Descargar PDF",
+    "overview": "Resumen general",
+    "by_platform": "Por plataforma",
+    "impressions_by_platform": "Impresiones por plataforma",
+    "impressions_over_time": "Impresiones a lo largo del tiempo",
+    "top_posts": "Publicaciones principales"
+  }
+}

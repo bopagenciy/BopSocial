@@ -9,6 +9,7 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Wrench, RefreshCw, Activity, Mail } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 import Logo from '../components/ui/Logo';
 import Button from '../components/ui/Button';
@@ -20,6 +21,7 @@ import Button from '../components/ui/Button';
  * Auto-refreshes every 60s while open so visitors don't have to.
  */
 export default function MaintenancePage({ expectedReturn }) {
+  const { t } = useTranslation(['marketing', 'common']);
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
@@ -84,10 +86,10 @@ export default function MaintenancePage({ expectedReturn }) {
           letterSpacing: '-0.025em',
           color: 'var(--text-primary)',
         }}>
-          We're upgrading Social Stats.
+          {t('errors.maintenance_title', 'System maintenance in progress')}
         </h1>
         <p style={{ margin: '12px auto 24px', maxWidth: 380, fontSize: 15, lineHeight: 1.65, color: 'var(--text-secondary)' }}>
-          We're making things faster and smoother. Sit tight — we'll be back shortly.
+          {t('errors.maintenance_desc', "We're currently performing scheduled platform maintenance to enhance reliability and performance.")}
         </p>
 
         {remaining != null && (
@@ -110,9 +112,9 @@ export default function MaintenancePage({ expectedReturn }) {
         )}
 
         <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
-          <Button onClick={() => window.location.reload()} size="md" icon={RefreshCw}>Refresh</Button>
-          <Button as="a" href="/status" variant="secondary" size="md" icon={Activity}>Check status</Button>
-          <Button as="a" href="mailto:hello@socialstats.app" variant="ghost" size="md" icon={Mail}>Email us</Button>
+          <Button onClick={() => window.location.reload()} size="md" icon={RefreshCw}>{t('errors.reload', 'Refresh')}</Button>
+          <Button as="a" href="/status" variant="secondary" size="md" icon={Activity}>{t('errors.check_status', 'Check status')}</Button>
+          <Button as="a" href="mailto:hello@bopsocial.com" variant="ghost" size="md" icon={Mail}>{t('resources.contact', 'Email us')}</Button>
         </div>
 
         <p style={{ marginTop: 24, fontSize: 12, color: 'var(--text-tertiary)' }}>

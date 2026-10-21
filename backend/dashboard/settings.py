@@ -9,11 +9,33 @@
 from pathlib import Path
 import os
 from dotenv import load_dotenv
+from django.core.exceptions import ImproperlyConfigured
 
 load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-change-in-production')
+DEBUG = os.environ.get('DEBUG', 'True') == 'True'
+
+# ── Security Fail-Safe for Production (SEC-02) ──────────────────────────────
+# Reject known insecure placeholder keys when running in production (DEBUG=False).
+KNOWN_INSECURE_SECRETS = {
+    'django-insecure-change-in-production',
+    'change-me-generate-a-real-secret-key',
+    'your-secret-key-change-this-in-production',
+    'secret',
+    'changeme',
+}
+
+if not DEBUG:
+    raw_secret = (SECRET_KEY or '').strip()
+    if not raw_secret or raw_secret in KNOWN_INSECURE_SECRETS or len(raw_secret) < 32:
+        raise ImproperlyConfigured(
+            "CRITICAL SECURITY CONFIGURATION ERROR (SEC-02): "
+            "In production (DEBUG=False), SECRET_KEY must be configured via environment "
+            "to a strong, unique secret (minimum 32 characters). "
+            "Default and placeholder keys are strictly rejected."
+        )
 
 # Independent keys for field-level encryption of OAuth tokens ( security).
 # Preferred form: FIELD_ENCRYPTION_KEYS — comma-separated, primary first.
@@ -27,7 +49,6 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-change-in-production'
 FIELD_ENCRYPTION_KEYS = os.environ.get('FIELD_ENCRYPTION_KEYS', '')
 FIELD_ENCRYPTION_KEY  = os.environ.get('FIELD_ENCRYPTION_KEY',  '')
 
-DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
 
 INSTALLED_APPS = [
@@ -59,6 +80,7 @@ MIDDLEWARE = [
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'social_stats.security.middleware.SecurityHeadersMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.locale.LocaleMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -150,7 +172,11 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'social_stats.security.validators.PasswordComplexityValidator'},
 ]
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'en'
+LANGUAGES = [
+    ('en', 'English'),
+    ('es', 'Spanish'),
+]
 TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
@@ -164,6 +190,31 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATIC_URL = '/static/'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+USE_X_ACCEL_REDIRECT = os.environ.get('USE_X_ACCEL_REDIRECT', 'False').lower() in ('true', '1', 'yes')
+
+# ── AWS S3 Storage (Bop Social Media Assets) ───────────
+AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID', '')
+AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY', '')
+
+AWS_STORAGE_BUCKET_NAME = os.environ.get(
+    'AWS_STORAGE_BUCKET_NAME',
+    os.environ.get('AWS_S3_BUCKET', '')
+)
+
+AWS_S3_BUCKET = AWS_STORAGE_BUCKET_NAME
+
+AWS_S3_REGION_NAME = os.environ.get(
+    'AWS_S3_REGION_NAME',
+    os.environ.get('AWS_S3_REGION', '')
+)
+
+AWS_S3_REGION = AWS_S3_REGION_NAME
+
+AWS_S3_CUSTOM_DOMAIN = os.environ.get('AWS_S3_CUSTOM_DOMAIN', '')
+
+AWS_PRESIGNED_URL_EXPIRY = int(
+    os.environ.get('AWS_PRESIGNED_URL_EXPIRY', '3600')
+)
 
 # ── Security headers + HTTPS enforcement () ──────────────────────────
 # Defaults flip ON when DEBUG is False. Each can still be overridden per env
@@ -246,8 +297,8 @@ SIMPLE_JWT = {
     'BLACKLIST_AFTER_ROTATION':    True,
     'UPDATE_LAST_LOGIN':           True,
     'AUTH_HEADER_TYPES':           ('Bearer',),
-    'AUDIENCE':                    os.environ.get('JWT_AUDIENCE', 'socialstats-app'),
-    'ISSUER':                      os.environ.get('JWT_ISSUER',   'socialstats.com'),
+    'AUDIENCE':                    os.environ.get('JWT_AUDIENCE', 'bopsocial-app'),
+    'ISSUER':                      os.environ.get('JWT_ISSUER',   'bopsocial.com'),
     # JTI claim is on by default in simplejwt — required for blacklist to work.
 }
 
@@ -280,6 +331,18 @@ CELERY_BEAT_SCHEDULER    = 'django_celery_beat.schedulers:DatabaseScheduler'
 # In development, run tasks synchronously (no Redis/worker needed)
 CELERY_TASK_ALWAYS_EAGER = DEBUG
 CELERY_TASK_EAGER_PROPAGATES = DEBUG
+
+CELERY_IMPORTS = (
+    'social_stats.tasks',
+    'social_stats.scheduler',
+    'social_stats.inbox_tasks',
+    'social_stats.competitor_tasks',
+    'social_stats.notification_watchers',
+    'social_stats.meta_capi_tasks',
+    'social_stats.whatsapp_tasks',
+    'social_stats.security.tasks',
+    'social_stats.security.privacy_tasks',
+)
 
 from celery.schedules import crontab
 CELERY_BEAT_SCHEDULE = {
@@ -314,6 +377,10 @@ CELERY_BEAT_SCHEDULE = {
     'composer-process-post-queues': {
         'task':     'social_stats.scheduler.process_post_queues',
         'schedule': crontab(minute='*'),
+    },
+    'composer-recover-orphaned-queued-posts': {
+        'task':     'social_stats.scheduler.recover_orphaned_queued_posts',
+        'schedule': crontab(minute='*/2'),
     },
     'inbox-sync-every-5min': {
         'task':     'social_stats.inbox_tasks.sync_inbox_for_all_clients',
@@ -377,11 +444,17 @@ EMAIL_HOST          = os.environ.get('EMAIL_HOST', 'smtp.zoho.in')
 EMAIL_PORT          = int(os.environ.get('EMAIL_PORT', 587))
 EMAIL_USE_TLS       = True
 EMAIL_USE_SSL       = False
-EMAIL_HOST_USER     = os.environ.get('EMAIL_HOST_USER', 'noreply@socialstats.app')
+EMAIL_HOST_USER     = os.environ.get('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
-DEFAULT_FROM_EMAIL  = os.environ.get('DEFAULT_FROM_EMAIL', 'Social Stats <noreply@socialstats.app>')
+DEFAULT_FROM_EMAIL  = os.environ.get('DEFAULT_FROM_EMAIL', 'Bop Social <noreply@bopsocial.com>')
+PRIVACY_EMAIL       = os.environ.get('PRIVACY_EMAIL', 'privacy@bopsocial.com')
 
-FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
+FRONTEND_URL        = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
+BACKEND_URL         = os.environ.get('BACKEND_URL', 'http://localhost:8000')
+BACKEND_PUBLIC_URL  = os.environ.get('BACKEND_PUBLIC_URL', '')
+
+FACEBOOK_CONSUMER_APP_ID       = os.environ.get('FACEBOOK_CONSUMER_APP_ID', '')
+FACEBOOK_CONSUMER_REDIRECT_URI = os.environ.get('FACEBOOK_CONSUMER_REDIRECT_URI', '')
 
 # ── Anthropic Claude API ──────────────────────────────
 ANTHROPIC_API_KEY = os.environ.get('ANTHROPIC_API_KEY', '')

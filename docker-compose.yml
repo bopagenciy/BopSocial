@@ -6,7 +6,7 @@
 #      docker compose pull && docker compose up -d
 #      docker compose exec backend python manage.py demo_setup   # optional demo data
 #
-#  App:            http://localhost:3000          (React SPA + API proxy)
+#  App:            http://localhost:3010          (React SPA + API proxy)
 #  Django admin:   http://localhost:8000/admin/   (backend service, direct)
 #
 #  Configuration: copy backend/.env.example → .env.docker and set at least
@@ -44,9 +44,9 @@ services:
       - path: .env.docker
         required: false
     environment: &backend-env
-      DEBUG: "False"
+      DEBUG: "${DEBUG:-False}"
       ALLOWED_HOSTS: "localhost,127.0.0.1,backend"
-      FRONTEND_URL: "${FRONTEND_URL:-http://localhost:3000}"
+      FRONTEND_URL: "${FRONTEND_URL:-http://localhost:3010}"
       SECRET_KEY: "${SECRET_KEY:-change-me-generate-a-real-secret-key}"
       DB_NAME: socialstats
       DB_USER: socialstats
@@ -66,7 +66,7 @@ services:
     volumes:
       - media:/app/media
     ports:
-      - "127.0.0.1:8000:8000"   # direct API + Django admin access
+      - "127.0.0.1:${BACKEND_PORT:-8000}:8000"   # direct API + Django admin access
     depends_on:
       postgres:
         condition: service_healthy
@@ -109,7 +109,7 @@ services:
     image: ghcr.io/cbsshekhawat18-lab/social-stats-frontend:latest
     build: ./frontend
     ports:
-      - "${FRONTEND_PORT:-3000}:80"
+      - "${FRONTEND_PORT:-3010}:80"
     volumes:
       - media:/srv/media:ro
     depends_on:

@@ -391,7 +391,16 @@ class CTWACampaignViewSet(TenantScopedMixin, viewsets.ModelViewSet):
         if client_id is None:
             from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied('No client context for this user.')
-        serializer.save(client_id=client_id)
+
+        # Priority hierarchy: 1. Ad account currency (if in payload) 2. Client.currency 3. 'USD'
+        currency = serializer.validated_data.get('currency')
+        if not currency:
+            from .models import Client
+            client = Client.objects.filter(pk=client_id).first()
+            currency = (getattr(client, 'currency', None) or 'USD') if client else 'USD'
+            serializer.save(client_id=client_id, currency=currency)
+        else:
+            serializer.save(client_id=client_id)
 
     @action(detail=True, methods=['get'])
     def analytics(self, request, pk=None):
@@ -414,6 +423,7 @@ class CTWACampaignViewSet(TenantScopedMixin, viewsets.ModelViewSet):
                 'leads':          camp.total_leads,
                 'spent':          float(camp.total_spent or 0),
                 'cpl':            round(cpl, 2) if cpl else None,
+                'currency':       camp.currency,
             },
             'leads_per_day':         list(leads_qs),
             'conversations_per_day': list(conv_qs),

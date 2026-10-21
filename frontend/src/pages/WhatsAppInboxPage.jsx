@@ -8,10 +8,12 @@
  * ========================================================================== */
 import { useState, useEffect, useRef } from 'react';
 import { Send, Check, CheckCheck, AlertCircle, Loader2, MessageCircle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 import PageHeader from '../components/layout/PageHeader';
 import { useWhatsAppInbox, useWhatsAppThread } from '../hooks/useWhatsApp';
 import { whatsappAPI } from '../services/api';
+import { formatTime } from '../utils/formatters';
 
 const COLORS = {
   primary: '#00CCF5', primaryD: '#00A8D8',
@@ -21,6 +23,7 @@ const COLORS = {
 };
 
 export default function WhatsAppInboxPage() {
+  const { t } = useTranslation('engagement');
   const { data: conversations, refetch: refetchInbox, loading } = useWhatsAppInbox();
   const [activeId, setActiveId] = useState(null);
   const { data: thread, refetch: refetchThread, loading: threadLoading } = useWhatsAppThread(activeId);
@@ -34,7 +37,10 @@ export default function WhatsAppInboxPage() {
 
   return (
     <div style={{ paddingBottom: 32 }}>
-      <PageHeader title="Inbox" subtitle="WhatsApp conversations" />
+      <PageHeader
+        title={t('whatsapp_inbox.title', 'Inbox')}
+        subtitle={t('whatsapp_inbox.subtitle', 'WhatsApp conversations')}
+      />
 
       <div style={{
         display: 'grid', gridTemplateColumns: '320px 1fr',
@@ -43,14 +49,14 @@ export default function WhatsAppInboxPage() {
         {/* Left: Conversations */}
         <aside style={{ ...card, borderRight: 'none', borderRadius: '12px 0 0 12px', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
           <header style={{ padding: '12px 14px', borderBottom: `1px solid ${COLORS.border}`, fontWeight: 700, color: COLORS.text }}>
-            Conversations ({conversations.length})
+            {t('whatsapp_inbox.header_count', 'Conversations ({{count}})', { count: conversations.length })}
           </header>
           <div style={{ flex: 1, overflow: 'auto' }}>
-            {loading && <div style={{ padding: 16, color: COLORS.muted }}><Loader2 size={14} className="spin" /> Loading…</div>}
+            {loading && <div style={{ padding: 16, color: COLORS.muted }}><Loader2 size={14} className="spin" /> {t('whatsapp_inbox.loading', 'Loading…')}</div>}
             {!loading && conversations.length === 0 && (
               <div style={{ padding: 24, color: COLORS.muted, textAlign: 'center' }}>
                 <MessageCircle size={28} style={{ opacity: 0.5 }} />
-                <div style={{ marginTop: 8, fontSize: 13 }}>No conversations yet</div>
+                <div style={{ marginTop: 8, fontSize: 13 }}>{t('whatsapp_inbox.empty_conversations', 'No conversations yet')}</div>
               </div>
             )}
             {conversations.map((c) => (
@@ -68,7 +74,7 @@ export default function WhatsAppInboxPage() {
         <section style={{ ...card, borderRadius: '0 12px 12px 0', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
           {!activeId && (
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: COLORS.muted }}>
-              Select a conversation
+              {t('whatsapp_inbox.select_conversation', 'Select a conversation')}
             </div>
           )}
           {activeId && (
@@ -123,6 +129,7 @@ function ConversationRow({ conv, active, onClick }) {
 }
 
 function Thread({ data, loading, onSent }) {
+  const { t } = useTranslation('engagement');
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState(null);
@@ -186,7 +193,7 @@ function Thread({ data, loading, onSent }) {
           background: within24h ? '#dcfce7' : 'var(--surface-sunken)',
           color: within24h ? '#15803d' : 'var(--text-secondary)',
         }}>
-          {within24h ? '24h window open' : '24h window closed'}
+          {within24h ? t('whatsapp_inbox.window_open', '24h window open') : t('whatsapp_inbox.window_closed', '24h window closed')}
         </span>
       </header>
 
@@ -202,7 +209,7 @@ function Thread({ data, loading, onSent }) {
       }}>
         {!within24h && (
           <div style={{ ...errorBox, marginBottom: 8 }}>
-            <AlertCircle size={14} /> 24h window closed. Send an approved template message instead.
+            <AlertCircle size={14} /> {t('whatsapp_inbox.window_closed_warning', '24h window closed. Send an approved template message instead.')}
           </div>
         )}
         {error && (
@@ -215,11 +222,11 @@ function Thread({ data, loading, onSent }) {
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && send()}
-            placeholder={within24h ? 'Type a message…' : 'Free-form replies disabled (24h window closed)'}
+            placeholder={within24h ? t('whatsapp_inbox.type_message', 'Type a message…') : t('whatsapp_inbox.window_closed_placeholder', 'Free-form replies disabled (24h window closed)')}
             disabled={!within24h || sending}
             style={input}
           />
-          <button onClick={send} disabled={!within24h || sending || !text.trim()} style={btnPrimary}>
+          <button onClick={send} disabled={!within24h || sending || !text.trim()} style={btnPrimary} aria-label={t('whatsapp_inbox.send', 'Send')}>
             {sending ? <Loader2 size={14} className="spin" /> : <Send size={14} />}
           </button>
         </div>
@@ -237,7 +244,7 @@ function Bubble({ msg }) {
       ? `[Template] ${msg.payload?.template?.name || ''}`
       : `[${msg.message_type}]`);
 
-  const time = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const time = formatTime(msg.created_at);
 
   return (
     <div style={{
@@ -262,10 +269,12 @@ function Bubble({ msg }) {
 }
 
 function Ticks({ status }) {
-  if (status === 'failed') return <AlertCircle size={12} color={COLORS.danger} />;
-  if (status === 'read')      return <CheckCheck size={12} color="#3b82f6" />;
-  if (status === 'delivered') return <CheckCheck size={12} color="#667781" />;
-  if (status === 'sent')      return <Check       size={12} color="#667781" />;
+  const { t } = useTranslation('engagement');
+  const title = t(`whatsapp_inbox.statuses.${status}`, status);
+  if (status === 'failed') return <span title={title}><AlertCircle size={12} color={COLORS.danger} /></span>;
+  if (status === 'read')      return <span title={title}><CheckCheck size={12} color="#3b82f6" /></span>;
+  if (status === 'delivered') return <span title={title}><CheckCheck size={12} color="#667781" /></span>;
+  if (status === 'sent')      return <span title={title}><Check       size={12} color="#667781" /></span>;
   return null; // queued
 }
 

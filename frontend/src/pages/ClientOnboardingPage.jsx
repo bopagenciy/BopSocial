@@ -8,6 +8,7 @@
  * ========================================================================== */
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../hooks/useAuth';
 import { clientsAPI } from '../services/api';
 import PageHeader from '../components/layout/PageHeader';
@@ -58,6 +59,7 @@ const GENDERS = [
 ];
 
 export default function ClientOnboardingPage() {
+  const { t } = useTranslation('onboarding');
   const { user, refreshUser } = useAuth();
   const navigate = useNavigate();
   const clientId = user?.client_id;
@@ -67,9 +69,18 @@ export default function ClientOnboardingPage() {
   const businessCategoryOptions = (lookups.business_categories || BUSINESS_CATEGORIES.map((label) => ({
     key: label.toLowerCase().replace(/[^a-z0-9]+/gi, '_'),
     label,
-  })));
-  const brandToneOptions = lookups.brand_tones?.map(item => ({ value: item.key, label: item.label })) || BRAND_TONES;
-  const genderOptions = lookups.genders?.map(item => ({ value: item.key, label: item.label })) || GENDERS;
+  }))).map(item => ({
+    ...item,
+    displayLabel: t(`options.categories.${item.key}`, item.label),
+  }));
+  const brandToneOptions = (lookups.brand_tones?.map(item => ({ value: item.key, label: item.label })) || BRAND_TONES).map(item => ({
+    ...item,
+    displayLabel: t(`options.tones.${item.value}`, item.label),
+  }));
+  const genderOptions = (lookups.genders?.map(item => ({ value: item.key, label: item.label })) || GENDERS).map(item => ({
+    ...item,
+    displayLabel: t(`options.genders.${item.value}`, item.label),
+  }));
   const socialPlatformOptions = lookups.platforms?.map(item => ({ value: item.key, label: item.label })) || SOCIAL_PLATFORMS;
   const getCategoryKey = (category) => businessCategoryOptions.find(item => item.label === category)?.key;
 
@@ -190,12 +201,12 @@ export default function ClientOnboardingPage() {
   };
 
   const steps = [
-    { id: 'business', title: 'Business Basics', description: 'Tell us about your company', icon: Building2, eyebrow: 'Foundation' },
-    { id: 'brand', title: 'Brand Profile', description: 'Define your brand identity', icon: Palette, eyebrow: 'Voice' },
-    { id: 'audience', title: 'Target Audience', description: 'Who is your ideal customer?', icon: Users, eyebrow: 'People' },
-    { id: 'assets', title: 'Brand Assets', description: 'Upload your visual assets', icon: ImagePlus, eyebrow: 'Visuals' },
-    { id: 'competitors', title: 'Competitors', description: 'Who are your main competitors?', icon: Globe2, eyebrow: 'Market' },
-    { id: 'connect', title: 'Connect Accounts', description: 'Link your social media accounts', icon: PlugZap, eyebrow: 'Launch' },
+    { id: 'business', title: t('onboarding.steps.business.title', 'Business Basics'), description: t('onboarding.steps.business.description', 'Tell us about your company'), icon: Building2, eyebrow: t('onboarding.steps.business.eyebrow', 'Foundation') },
+    { id: 'brand', title: t('onboarding.steps.brand.title', 'Brand Profile'), description: t('onboarding.steps.brand.description', 'Define your brand identity'), icon: Palette, eyebrow: t('onboarding.steps.brand.eyebrow', 'Voice') },
+    { id: 'audience', title: t('onboarding.steps.audience.title', 'Target Audience'), description: t('onboarding.steps.audience.description', 'Who is your ideal customer?'), icon: Users, eyebrow: t('onboarding.steps.audience.eyebrow', 'People') },
+    { id: 'assets', title: t('onboarding.steps.assets.title', 'Brand Assets'), description: t('onboarding.steps.assets.description', 'Upload your visual assets'), icon: ImagePlus, eyebrow: t('onboarding.steps.assets.eyebrow', 'Visuals') },
+    { id: 'competitors', title: t('onboarding.steps.competitors.title', 'Competitors'), description: t('onboarding.steps.competitors.description', 'Who are your main competitors?'), icon: Globe2, eyebrow: t('onboarding.steps.competitors.eyebrow', 'Market') },
+    { id: 'connect', title: t('onboarding.steps.connect.title', 'Connect Accounts'), description: t('onboarding.steps.connect.description', 'Link your social media accounts'), icon: PlugZap, eyebrow: t('onboarding.steps.connect.eyebrow', 'Launch') },
   ];
   const currentStepData = steps[currentStep];
   const progressPct = Math.round(((currentStep + 1) / steps.length) * 100);
@@ -317,35 +328,35 @@ export default function ClientOnboardingPage() {
     const nextErrors = {};
 
     if (stepIndex === 0) {
-      if (!formData.company.trim()) nextErrors.company = 'Business name is required.';
-      if (formData.email && !/\S+@\S+\.\S+/.test(formData.email)) nextErrors.email = 'Enter a valid email address.';
-      if (!isValidUrl(formData.website)) nextErrors.website = 'Use a full website URL like https://example.com';
-      if (!isValidUrl(formData.gmb_url)) nextErrors.gmb_url = 'Use a valid Google Business profile URL.';
+      if (!formData.company.trim()) nextErrors.company = t('onboarding.validation.company_required', 'Business name is required.');
+      if (formData.email && !/\S+@\S+\.\S+/.test(formData.email)) nextErrors.email = t('onboarding.validation.email_invalid', 'Enter a valid email address.');
+      if (!isValidUrl(formData.website)) nextErrors.website = t('onboarding.validation.website_invalid', 'Use a full website URL like https://example.com');
+      if (!isValidUrl(formData.gmb_url)) nextErrors.gmb_url = t('onboarding.validation.gmb_url_invalid', 'Use a valid Google Business profile URL.');
     }
 
     if (stepIndex === 1) {
-      if (!formData.business_category) nextErrors.business_category = 'Choose the category that best matches your business.';
-      if (!formData.brand_description.trim()) nextErrors.brand_description = 'Add a short brand description.';
-      if (!formData.usp.trim()) nextErrors.usp = 'Tell us what makes your business stand out.';
+      if (!formData.business_category) nextErrors.business_category = t('onboarding.validation.category_required', 'Choose the category that best matches your business.');
+      if (!formData.brand_description.trim()) nextErrors.brand_description = t('onboarding.validation.description_required', 'Add a short brand description.');
+      if (!formData.usp.trim()) nextErrors.usp = t('onboarding.validation.usp_required', 'Tell us what makes your business stand out.');
     }
 
     if (stepIndex === 2) {
-      if (!formData.target_audience.trim()) nextErrors.target_audience = 'Describe the audience you want to reach.';
-      if (!formData.business_location.trim()) nextErrors.business_location = 'Add your primary business location.';
-      if (!formData.target_locations.length) nextErrors.target_locations = 'Select at least one target location.';
+      if (!formData.target_audience.trim()) nextErrors.target_audience = t('onboarding.validation.audience_required', 'Describe the audience you want to reach.');
+      if (!formData.business_location.trim()) nextErrors.business_location = t('onboarding.validation.location_required', 'Add your primary business location.');
+      if (!formData.target_locations.length) nextErrors.target_locations = t('onboarding.validation.target_locations_required', 'Select at least one target location.');
     }
 
     if (stepIndex === 3) {
       if (formData.profile_image && !(formData.profile_image instanceof File)) {
-        nextErrors.profile_image = 'Please choose a valid image file.';
+        nextErrors.profile_image = t('onboarding.validation.profile_image_invalid', 'Please choose a valid image file.');
       }
       if ((formData.product_images || []).some((file) => !(file instanceof File))) {
-        nextErrors.product_images = 'One or more product images are invalid.';
+        nextErrors.product_images = t('onboarding.validation.product_images_invalid', 'One or more product images are invalid.');
       }
     }
 
     if (stepIndex === 5 && connectedAccountsCount < 1) {
-      nextErrors.social_connection = 'Connect at least one social media account before completing setup.';
+      nextErrors.social_connection = t('onboarding.validation.social_connection_required', 'Connect at least one social media account before completing setup.');
     }
 
     setErrors((prev) => ({ ...prev, ...nextErrors }));
@@ -409,7 +420,7 @@ export default function ClientOnboardingPage() {
     }
 
     if (firstInvalidStep !== -1) {
-      setSubmitError('Please fix the highlighted fields before finishing setup.');
+      setSubmitError(t('onboarding.validation.fix_highlighted', 'Please fix the highlighted fields before finishing setup.'));
       focusStep(firstInvalidStep);
       return;
     }
@@ -433,7 +444,7 @@ export default function ClientOnboardingPage() {
       setSubmitError(
         error.response?.data?.profile_image?.[0]
         || error.response?.data?.detail
-        || 'We could not save your onboarding details. Please review the highlighted sections and try again.'
+        || t('onboarding.validation.generic_error', 'We could not save your onboarding details. Please review the highlighted sections and try again.')
       );
     } finally {
       setLoading(false);
@@ -450,117 +461,117 @@ export default function ClientOnboardingPage() {
         return (
           <div style={styles.stepContent}>
             <div style={styles.stepIntro}>
-              <span style={styles.stepEyebrow}>Profile Setup</span>
-              <h2 style={styles.stepHeading}>Give your workspace a strong starting point</h2>
-              <p style={styles.stepSummary}>We’ll use these details across reporting, automations, and AI-generated content suggestions.</p>
+              <span style={styles.stepEyebrow}>{t('onboarding.step_0.eyebrow', 'Profile Setup')}</span>
+              <h2 style={styles.stepHeading}>{t('onboarding.step_0.heading', 'Give your workspace a strong starting point')}</h2>
+              <p style={styles.stepSummary}>{t('onboarding.step_0.summary', 'We’ll use these details across reporting, automations, and AI-generated content suggestions.')}</p>
             </div>
 
             <div style={styles.featureRow}>
               <div style={styles.featureCard}>
                 <Building2 size={16} />
                 <div>
-                  <div style={styles.featureTitle}>Business identity</div>
-                  <div style={styles.featureText}>Make your dashboard feel tailored from the first sync.</div>
+                  <div style={styles.featureTitle}>{t('onboarding.step_0.feature_identity_title', 'Business identity')}</div>
+                  <div style={styles.featureText}>{t('onboarding.step_0.feature_identity_text', 'Make your dashboard feel tailored from the first sync.')}</div>
                 </div>
               </div>
               <div style={styles.featureCard}>
                 <MessageCircle size={16} />
                 <div>
-                  <div style={styles.featureTitle}>Contact ready</div>
-                  <div style={styles.featureText}>Keep the basics available for captions, campaigns, and team handoff.</div>
+                  <div style={styles.featureTitle}>{t('onboarding.step_0.feature_contact_title', 'Contact ready')}</div>
+                  <div style={styles.featureText}>{t('onboarding.step_0.feature_contact_text', 'Keep the basics available for captions, campaigns, and team handoff.')}</div>
                 </div>
               </div>
             </div>
 
             <div style={styles.panelGrid}>
               <div style={styles.formPanel}>
-                <div style={styles.panelTitle}>Who you are</div>
+                <div style={styles.panelTitle}>{t('onboarding.step_0.panel_who', 'Who you are')}</div>
                 <div style={styles.row}>
                   <div style={styles.field}>
-                    <label style={styles.label}>Your Name</label>
+                    <label style={styles.label}>{t('fields.your_name', 'Your Name')}</label>
                     <input
                       type="text"
                       value={formData.name}
                       onChange={(e) => handleInputChange('name', e.target.value)}
                       style={styles.input}
-                      placeholder="Enter your full name"
+                      placeholder={t('fields.your_name_placeholder', 'Enter your full name')}
                     />
                     {getFieldError('name') && <div style={styles.errorTooltip}>{getFieldError('name')}</div>}
                   </div>
 
                   <div style={styles.field}>
-                    <label style={styles.label}>Business Name <span style={styles.requiredAsterisk}>*</span></label>
+                    <label style={styles.label}>{t('fields.business_name', 'Business Name')} <span style={styles.requiredAsterisk}>*</span></label>
                     <input
                       type="text"
                       value={formData.company}
                       onChange={(e) => handleInputChange('company', e.target.value)}
                       style={styles.input}
-                      placeholder="Your company name"
+                      placeholder={t('fields.business_name_placeholder', 'Your company name')}
                       required
                     />
                     {getFieldError('company') && <div style={styles.errorTooltip}>{getFieldError('company')}</div>}
                   </div>
                 </div>
                 <div style={styles.field}>
-                  <label style={styles.label}>Email</label>
+                  <label style={styles.label}>{t('fields.email', 'Email')}</label>
                   <input
                     type="email"
                     value={formData.email}
                     onChange={(e) => handleInputChange('email', e.target.value)}
                     style={styles.input}
-                    placeholder="business@email.com"
+                    placeholder={t('fields.email_placeholder', 'business@email.com')}
                   />
                   {getFieldError('email') && <div style={styles.errorTooltip}>{getFieldError('email')}</div>}
                 </div>
               </div>
 
               <div style={styles.formPanelAlt}>
-                <div style={styles.panelTitle}>Where people can reach you</div>
+                <div style={styles.panelTitle}>{t('onboarding.step_0.panel_contact', 'Where people can reach you')}</div>
                 <div style={styles.row}>
                   <div style={styles.field}>
-                    <label style={styles.label}>Phone Number</label>
+                    <label style={styles.label}>{t('fields.phone', 'Phone Number')}</label>
                     <input
                       type="tel"
                       value={formData.phone}
                       onChange={(e) => handleInputChange('phone', e.target.value)}
                       style={styles.input}
-                      placeholder="+1 (555) 123-4567"
+                      placeholder={t('fields.phone_placeholder', '+1 (555) 123-4567')}
                     />
                   </div>
 
                   <div style={styles.field}>
-                    <label style={styles.label}>WhatsApp Number</label>
+                    <label style={styles.label}>{t('fields.whatsapp', 'WhatsApp Number')}</label>
                     <input
                       type="tel"
                       value={formData.whatsapp_number}
                       onChange={(e) => handleInputChange('whatsapp_number', e.target.value)}
                       style={styles.input}
-                      placeholder="+1 (555) 123-4567"
+                      placeholder={t('fields.whatsapp_placeholder', '+1 (555) 123-4567')}
                     />
                   </div>
                 </div>
 
                 <div style={styles.row}>
                   <div style={styles.field}>
-                    <label style={styles.label}>Website</label>
+                    <label style={styles.label}>{t('fields.website', 'Website')}</label>
                     <input
                       type="url"
                       value={formData.website}
                       onChange={(e) => handleInputChange('website', e.target.value)}
                       style={styles.input}
-                      placeholder="https://yourwebsite.com"
+                      placeholder={t('fields.website_placeholder', 'https://yourwebsite.com')}
                     />
                     {getFieldError('website') && <div style={styles.errorTooltip}>{getFieldError('website')}</div>}
                   </div>
 
                   <div style={styles.field}>
-                    <label style={styles.label}>Google My Business URL</label>
+                    <label style={styles.label}>{t('fields.gmb_url', 'Google My Business URL')}</label>
                     <input
                       type="url"
                       value={formData.gmb_url}
                       onChange={(e) => handleInputChange('gmb_url', e.target.value)}
                       style={styles.input}
-                      placeholder="https://g.page/your-business"
+                      placeholder={t('fields.gmb_placeholder', 'https://g.page/your-business')}
                     />
                     {getFieldError('gmb_url') && <div style={styles.errorTooltip}>{getFieldError('gmb_url')}</div>}
                   </div>
@@ -574,32 +585,32 @@ export default function ClientOnboardingPage() {
         return (
           <div style={styles.stepContent}>
             <div style={styles.stepIntro}>
-              <span style={styles.stepEyebrow}>Brand System</span>
-              <h2 style={styles.stepHeading}>Shape the tone people should feel</h2>
-              <p style={styles.stepSummary}>These details guide the writing style, positioning, and creative direction across the platform.</p>
+              <span style={styles.stepEyebrow}>{t('onboarding.step_1.eyebrow', 'Brand System')}</span>
+              <h2 style={styles.stepHeading}>{t('onboarding.step_1.heading', 'Shape the tone people should feel')}</h2>
+              <p style={styles.stepSummary}>{t('onboarding.step_1.summary', 'These details guide the writing style, positioning, and creative direction across the platform.')}</p>
             </div>
 
             <div style={styles.panelGrid}>
               <div style={styles.formPanel}>
-                <div style={styles.panelTitle}>Category & voice</div>
+                <div style={styles.panelTitle}>{t('onboarding.step_1.panel_voice', 'Category & voice')}</div>
                 <div style={styles.row}>
                   <div style={styles.field}>
-                    <label style={styles.label}>Business Category <span style={styles.requiredAsterisk}>*</span></label>
+                    <label style={styles.label}>{t('fields.business_category', 'Business Category')} <span style={styles.requiredAsterisk}>*</span></label>
                     <select
                       value={formData.business_category}
                       onChange={(e) => handleInputChange('business_category', e.target.value)}
                       style={styles.select}
                     >
-                      <option value="">Select a category</option>
+                      <option value="">{t('fields.select_category', 'Select a category')}</option>
                       {businessCategoryOptions.map(item => (
-                        <option key={item.key} value={item.label}>{item.label}</option>
+                        <option key={item.key} value={item.label}>{item.displayLabel || item.label}</option>
                       ))}
                     </select>
                     {getFieldError('business_category') && <div style={styles.errorTooltip}>{getFieldError('business_category')}</div>}
                   </div>
 
                   <div style={styles.field}>
-                    <label style={styles.label}>Brand Tone</label>
+                    <label style={styles.label}>{t('fields.brand_tone', 'Brand Tone')}</label>
                     <div style={styles.choiceGrid}>
                       {brandToneOptions.map(tone => {
                         const active = formData.brand_tone === tone.value;
@@ -610,7 +621,7 @@ export default function ClientOnboardingPage() {
                             onClick={() => handleInputChange('brand_tone', tone.value)}
                             style={{ ...styles.choiceCard, ...(active ? styles.choiceCardActive : {}) }}
                           >
-                            <span style={styles.choiceTitle}>{tone.label}</span>
+                            <span style={styles.choiceTitle}>{tone.displayLabel || tone.label}</span>
                           </button>
                         );
                       })}
@@ -620,7 +631,7 @@ export default function ClientOnboardingPage() {
 
                 {formData.business_category && getSubcategoriesForCategory(formData.business_category).length > 0 && (
                   <div style={styles.field}>
-                    <label style={styles.label}>Subcategories</label>
+                    <label style={styles.label}>{t('fields.subcategories', 'Subcategories')}</label>
                     <div style={styles.checkboxGrid}>
                       {getSubcategoriesForCategory(formData.business_category).map(sub => (
                         <label
@@ -645,26 +656,26 @@ export default function ClientOnboardingPage() {
               </div>
 
               <div style={styles.formPanelAlt}>
-                <div style={styles.panelTitle}>Brand story</div>
+                <div style={styles.panelTitle}>{t('onboarding.step_1.panel_story', 'Brand story')}</div>
                 <div style={styles.field}>
-                  <label style={styles.label}>Brand Description <span style={styles.requiredAsterisk}>*</span></label>
+                  <label style={styles.label}>{t('fields.brand_description', 'Brand Description')} <span style={styles.requiredAsterisk}>*</span></label>
                   <textarea
                     value={formData.brand_description}
                     onChange={(e) => handleInputChange('brand_description', e.target.value)}
                     style={styles.textarea}
-                    placeholder="Describe your brand in a few sentences..."
+                    placeholder={t('fields.brand_description_placeholder', 'Describe your brand in a few sentences...')}
                     rows={4}
                   />
                   {getFieldError('brand_description') && <div style={styles.errorTooltip}>{getFieldError('brand_description')}</div>}
                 </div>
 
                 <div style={styles.field}>
-                  <label style={styles.label}>Unique Selling Points (USP) <span style={styles.requiredAsterisk}>*</span></label>
+                  <label style={styles.label}>{t('fields.usp', 'Unique Selling Points (USP)')} <span style={styles.requiredAsterisk}>*</span></label>
                   <textarea
                     value={formData.usp}
                     onChange={(e) => handleInputChange('usp', e.target.value)}
                     style={styles.textarea}
-                    placeholder="What makes your business unique?"
+                    placeholder={t('fields.usp_placeholder', 'What makes your business unique?')}
                     rows={4}
                   />
                   {getFieldError('usp') && <div style={styles.errorTooltip}>{getFieldError('usp')}</div>}
@@ -678,27 +689,27 @@ export default function ClientOnboardingPage() {
         return (
           <div style={styles.stepContent}>
             <div style={styles.stepIntro}>
-              <span style={styles.stepEyebrow}>Audience Map</span>
-              <h2 style={styles.stepHeading}>Define who you want to attract</h2>
-              <p style={styles.stepSummary}>A little audience clarity helps the platform recommend better campaigns, content themes, and targeting ideas.</p>
+              <span style={styles.stepEyebrow}>{t('onboarding.step_2.eyebrow', 'Audience Map')}</span>
+              <h2 style={styles.stepHeading}>{t('onboarding.step_2.heading', 'Define who you want to attract')}</h2>
+              <p style={styles.stepSummary}>{t('onboarding.step_2.summary', 'A little audience clarity helps the platform recommend better campaigns, content themes, and targeting ideas.')}</p>
             </div>
 
             <div style={styles.panelGrid}>
               <div style={styles.formPanel}>
-                <div style={styles.panelTitle}>Customer snapshot</div>
+                <div style={styles.panelTitle}>{t('onboarding.step_2.panel_snapshot', 'Customer snapshot')}</div>
                 <div style={styles.field}>
-                  <label style={styles.label}>Target Audience Description <span style={styles.requiredAsterisk}>*</span></label>
+                  <label style={styles.label}>{t('fields.target_audience', 'Target Audience Description')} <span style={styles.requiredAsterisk}>*</span></label>
                   <textarea
                     value={formData.target_audience}
                     onChange={(e) => handleInputChange('target_audience', e.target.value)}
                     style={styles.textarea}
-                    placeholder="Describe your ideal customers..."
+                    placeholder={t('fields.target_audience_placeholder', 'Describe your ideal customers...')}
                     rows={5}
                   />
                   {getFieldError('target_audience') && <div style={styles.errorTooltip}>{getFieldError('target_audience')}</div>}
                 </div>
                 <div style={styles.field}>
-                  <label style={styles.label}>Primary Gender</label>
+                  <label style={styles.label}>{t('fields.primary_gender', 'Primary Gender')}</label>
                   <div style={styles.choiceGrid}>
                     {genderOptions.map(gender => {
                       const active = formData.gender === gender.value;
@@ -709,7 +720,7 @@ export default function ClientOnboardingPage() {
                           onClick={() => handleInputChange('gender', gender.value)}
                           style={{ ...styles.choiceCard, ...(active ? styles.choiceCardActive : {}) }}
                         >
-                          <span style={styles.choiceTitle}>{gender.label}</span>
+                          <span style={styles.choiceTitle}>{gender.displayLabel || gender.label}</span>
                         </button>
                       );
                     })}
@@ -718,37 +729,42 @@ export default function ClientOnboardingPage() {
               </div>
 
               <div style={styles.formPanelAlt}>
-                <div style={styles.panelTitle}>Where they are</div>
+                <div style={styles.panelTitle}>{t('onboarding.step_2.panel_location', 'Where they are')}</div>
                 <div style={styles.field}>
-                  <label style={styles.label}>Business Location <span style={styles.requiredAsterisk}>*</span></label>
+                  <label style={styles.label}>{t('fields.business_location', 'Business Location')} <span style={styles.requiredAsterisk}>*</span></label>
                   <input
                     type="text"
                     value={formData.business_location}
                     onChange={(e) => handleInputChange('business_location', e.target.value)}
                     style={styles.input}
-                    placeholder="City, State/Country"
+                    placeholder={t('fields.business_location_placeholder', 'City, State/Country')}
                   />
                   {getFieldError('business_location') && <div style={styles.errorTooltip}>{getFieldError('business_location')}</div>}
                 </div>
 
                 <div style={styles.field}>
-                  <label style={styles.label}>Target Locations <span style={styles.requiredAsterisk}>*</span></label>
+                  <label style={styles.label}>{t('fields.target_locations', 'Target Locations')} <span style={styles.requiredAsterisk}>*</span></label>
                   <div style={styles.checkboxGrid}>
-                    {['Local (Same City)', 'Regional (Same State/Province)', 'National', 'International'].map(loc => (
+                    {[
+                      { value: 'Local (Same City)', key: 'local' },
+                      { value: 'Regional (Same State/Province)', key: 'regional' },
+                      { value: 'National', key: 'national' },
+                      { value: 'International', key: 'international' },
+                    ].map(loc => (
                       <label
-                        key={loc}
+                        key={loc.value}
                         style={{
                           ...styles.checkboxPill,
-                          ...(formData.target_locations.includes(loc) ? styles.checkboxPillActive : {}),
+                          ...(formData.target_locations.includes(loc.value) ? styles.checkboxPillActive : {}),
                         }}
                       >
                         <input
                           type="checkbox"
-                          checked={formData.target_locations.includes(loc)}
-                          onChange={() => handleLocationToggle(loc)}
+                          checked={formData.target_locations.includes(loc.value)}
+                          onChange={() => handleLocationToggle(loc.value)}
                           style={styles.checkbox}
                         />
-                        {loc}
+                        {t(`options.locations.${loc.key}`, loc.value)}
                       </label>
                     ))}
                   </div>
@@ -763,15 +779,15 @@ export default function ClientOnboardingPage() {
         return (
           <div style={styles.stepContent}>
             <div style={styles.stepIntro}>
-              <span style={styles.stepEyebrow}>Visual Identity</span>
-              <h2 style={styles.stepHeading}>Bring your brand to life visually</h2>
-              <p style={styles.stepSummary}>Upload a few assets now so your workspace, reports, and generated content feel unmistakably yours.</p>
+              <span style={styles.stepEyebrow}>{t('onboarding.step_3.eyebrow', 'Visual Identity')}</span>
+              <h2 style={styles.stepHeading}>{t('onboarding.step_3.heading', 'Bring your brand to life visually')}</h2>
+              <p style={styles.stepSummary}>{t('onboarding.step_3.summary', 'Upload a few assets now so your workspace, reports, and generated content feel unmistakably yours.')}</p>
             </div>
 
             <div style={styles.panelGrid}>
               <div style={styles.assetCard}>
-                <div style={styles.assetCardTitle}>Profile Image</div>
-                <div style={styles.assetCardText}>Use your logo or a strong brand mark.</div>
+                <div style={styles.assetCardTitle}>{t('fields.profile_image', 'Profile Image')}</div>
+                <div style={styles.assetCardText}>{t('fields.profile_image_desc_onboarding', 'Use your logo or a strong brand mark.')}</div>
                 <div style={styles.fileUpload}>
                   <input
                     type="file"
@@ -782,14 +798,14 @@ export default function ClientOnboardingPage() {
                   />
                   <label htmlFor="profile-image" style={styles.fileLabel}>
                     <Upload size={16} />
-                    Choose Profile Image
+                    {t('fields.choose_profile_image', 'Choose Profile Image')}
                   </label>
                   {getFieldError('profile_image') && <div style={styles.errorTooltip}>{getFieldError('profile_image')}</div>}
                   {formData.profile_image && (
                     <div style={styles.singlePreviewCard}>
                       <div style={styles.filePreview}>
                         <img src={URL.createObjectURL(formData.profile_image)} alt="Profile" style={styles.previewImgLarge} />
-                        <button onClick={() => removeFile('profile_image')} style={styles.removeBtn}>
+                        <button onClick={() => removeFile('profile_image')} style={styles.removeBtn} aria-label={t('fields.remove_image', 'Remove image')}>
                           <X size={14} />
                         </button>
                       </div>
@@ -799,8 +815,8 @@ export default function ClientOnboardingPage() {
               </div>
 
               <div style={styles.assetCardAlt}>
-                <div style={styles.assetCardTitle}>Product Images</div>
-                <div style={styles.assetCardText}>Add up to 5 images to train future creative work.</div>
+                <div style={styles.assetCardTitle}>{t('fields.product_images', 'Product Images')}</div>
+                <div style={styles.assetCardText}>{t('fields.product_images_desc_onboarding', 'Add up to 5 images to train future creative work.')}</div>
                 <div style={styles.fileUpload}>
                   <input
                     type="file"
@@ -812,14 +828,14 @@ export default function ClientOnboardingPage() {
                   />
                   <label htmlFor="product-images" style={styles.fileLabel}>
                     <Upload size={16} />
-                    Choose Product Images
+                    {t('fields.choose_product_images', 'Choose Product Images')}
                   </label>
                   {getFieldError('product_images') && <div style={styles.errorTooltip}>{getFieldError('product_images')}</div>}
                   <div style={styles.imageGrid}>
                     {formData.product_images.map((file, index) => (
                       <div key={index} style={styles.filePreview}>
                         <img src={URL.createObjectURL(file)} alt={`Product ${index + 1}`} style={styles.previewImgLarge} />
-                        <button onClick={() => removeFile('product_images', index)} style={styles.removeBtn}>
+                        <button onClick={() => removeFile('product_images', index)} style={styles.removeBtn} aria-label={t('fields.remove_image', 'Remove image')}>
                           <X size={14} />
                         </button>
                       </div>
@@ -844,8 +860,8 @@ export default function ClientOnboardingPage() {
               onUpdateLink={updateCompetitorLink}
               onRemoveLink={removeCompetitorLink}
               maxCompetitors={3}
-              title="Competitive Landscape"
-              subtitle="Add the brands your audience compares you against so we can shape smarter positioning from day one."
+              title={t('competitors.title_landscape', 'Competitive Landscape')}
+              subtitle={t('competitors.subtitle_onboarding', 'Add the brands your audience compares you against so we can shape smarter positioning from day one.')}
             />
           </div>
         );
@@ -855,23 +871,23 @@ export default function ClientOnboardingPage() {
           <div style={styles.stepContent}>
             <div style={styles.connectHero}>
               <div style={styles.connectHeroCopy}>
-                <span style={styles.stepEyebrow}>Final Step</span>
-                <h2 style={styles.connectTitle}>Connect your channels and go live</h2>
+                <span style={styles.stepEyebrow}>{t('onboarding.step_5.eyebrow', 'Final Step')}</span>
+                <h2 style={styles.connectTitle}>{t('onboarding.step_5.heading', 'Connect your channels and go live')}</h2>
                 <p style={styles.connectDesc}>
-                  Link your accounts to start syncing data automatically. Facebook and Instagram can connect together, and YouTube can pair with Google My Business.
+                  {t('onboarding.step_5.summary', 'Link your accounts to start syncing data automatically. Facebook and Instagram can connect together, and YouTube can pair with Google My Business.')}
                 </p>
                 <div style={styles.connectChecklist}>
-                  <div style={styles.connectPoint}><CheckCircle2 size={15} /> Data sync for analytics and reports</div>
-                  <div style={styles.connectPoint}><CheckCircle2 size={15} /> Better post ideas and recommendations</div>
-                  <div style={styles.connectPoint}><CheckCircle2 size={15} /> Faster setup once your dashboard opens</div>
+                  <div style={styles.connectPoint}><CheckCircle2 size={15} /> {t('onboarding.step_5.point_analytics', 'Data sync for analytics and reports')}</div>
+                  <div style={styles.connectPoint}><CheckCircle2 size={15} /> {t('onboarding.step_5.point_ideas', 'Better post ideas and recommendations')}</div>
+                  <div style={styles.connectPoint}><CheckCircle2 size={15} /> {t('onboarding.step_5.point_setup', 'Faster setup once your dashboard opens')}</div>
                 </div>
               </div>
               <div style={styles.connectHeroCard}>
                 <div style={styles.connectMiniStat}>
                   <div style={styles.connectMiniValue}>{Object.values(oauthStatus || {}).filter(Boolean).length}</div>
-                  <div style={styles.connectMiniLabel}>Accounts ready</div>
+                  <div style={styles.connectMiniLabel}>{t('onboarding.step_5.accounts_ready', 'Accounts ready')}</div>
                 </div>
-                <div style={styles.connectMiniNote}>You can still finish setup now and connect more later from Settings.</div>
+                <div style={styles.connectMiniNote}>{t('onboarding.step_5.connect_later_note', 'You can still finish setup now and connect more later from Settings.')}</div>
               </div>
             </div>
 
@@ -888,7 +904,7 @@ export default function ClientOnboardingPage() {
 
               <div style={styles.syncNote}>
                 <CheckCircle2 size={16} style={{ color: '#16a34a', marginRight: 8 }} />
-                Once connected, click "Sync Now" in your dashboard to pull your first data.
+                {t('onboarding.step_5.sync_note', 'Once connected, click "Sync Now" in your dashboard to pull your first data.')}
               </div>
             </div>
           </div>
@@ -942,28 +958,28 @@ export default function ClientOnboardingPage() {
   return (
     <div className="app-page app-page--content app-page--lg">
       <PageHeader
-        title="Complete Your Profile"
-        subtitle="Set up your business profile to get the most out of Social Stats"
+        title={t('onboarding.page_title', 'Complete Your Profile')}
+        subtitle={t('onboarding.page_subtitle', 'Set up your business profile to get the most out of Bop Social')}
       />
 
       <div style={styles.heroShell}>
         <div style={styles.heroCopy}>
-          <span style={styles.heroBadge}>Onboarding Flow</span>
-          <h2 style={styles.heroTitle}>Build a dashboard that already feels tailored to your business</h2>
+          <span style={styles.heroBadge}>{t('onboarding.badge', 'Onboarding Flow')}</span>
+          <h2 style={styles.heroTitle}>{t('onboarding.hero_title', 'Build a dashboard that already feels tailored to your business')}</h2>
           <p style={styles.heroText}>
-            Move through the essentials once, and we’ll use them to personalize reports, social planning, ROI, and AI-powered content.
+            {t('onboarding.hero_text', 'Move through the essentials once, and we’ll use them to personalize reports, social planning, ROI, and AI-powered content.')}
           </p>
         </div>
         <div style={styles.heroMeter}>
           <div style={styles.heroMeterTop}>
-            <span style={styles.heroMeterLabel}>Setup progress</span>
+            <span style={styles.heroMeterLabel}>{t('onboarding.setup_progress', 'Setup progress')}</span>
             <span style={styles.heroMeterValue}>{progressPct}%</span>
           </div>
           <div style={styles.heroProgressTrack}>
             <div style={{ ...styles.heroProgressFill, width: `${progressPct}%` }} />
           </div>
           <div style={styles.heroMeterFoot}>
-            Step {currentStep + 1} of {steps.length}
+            {t('onboarding.step_counter', 'Step {{current}} of {{total}}', { current: currentStep + 1, total: steps.length })}
           </div>
         </div>
       </div>
@@ -1013,7 +1029,7 @@ export default function ClientOnboardingPage() {
             style={styles.skipBtn}
             disabled={loading}
           >
-            Skip for now
+            {t('onboarding.navigation.skip', 'Skip for now')}
           </button>
 
           <div style={styles.navRight}>
@@ -1023,7 +1039,7 @@ export default function ClientOnboardingPage() {
                 style={styles.backBtn}
                 disabled={loading}
               >
-                Back
+                {t('onboarding.navigation.back', 'Back')}
               </button>
             )}
 
@@ -1033,7 +1049,7 @@ export default function ClientOnboardingPage() {
                 style={styles.nextBtn}
                 disabled={loading}
               >
-                Next
+                {t('onboarding.navigation.next', 'Next')}
                 <ArrowRight size={16} />
               </button>
             ) : (
@@ -1045,11 +1061,11 @@ export default function ClientOnboardingPage() {
                 {loading ? (
                   <>
                     <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
-                    Saving...
+                    {t('onboarding.navigation.saving', 'Saving...')}
                   </>
                 ) : (
                   <>
-                    Complete Setup
+                    {t('onboarding.navigation.complete', 'Complete Setup')}
                     <ArrowRight size={16} />
                   </>
                 )}

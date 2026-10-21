@@ -1,5 +1,5 @@
 /* ============================================================================
- *  Social Stats — Social Media Management & Marketing Platform
+ *  Bop Social — Social Media Management & Marketing Platform
  *  Author    : Chandrabhan Shekhawat
  *  Company   : Gigai Kripa Services
  *  Website   : https://gigaikripaservices.com/
@@ -7,22 +7,21 @@
  *  Released under the MIT License — see LICENSE. Keep this notice.
  * ========================================================================== */
 /**
- *
- * These cover surfaces that are useful immediately and don't require new
- * backend endpoints (they all read/write to localStorage or wrap existing
- * flows). When real APIs come online, swap the local-state hooks for the
- * relevant API call.
+ * SettingsSections — Sub-sections for UserSettingsPage
+ * Notifications, Appearance, Keyboard Shortcuts, API Keys, Data Privacy, Webhooks, Cross-links
  */
 
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Sun, Moon, Monitor, Plus, Copy, Trash2, Eye, EyeOff,
-  Download, AlertTriangle, ExternalLink, Bell, Mail, Smartphone,
+  Sun, Moon, Monitor, Plus, Copy, Trash2, Key,
+  Download, AlertTriangle, Bell, Mail, Smartphone,
   Sparkles, ArrowRight, Webhook,
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 import { useTheme } from '../../hooks/useTheme';
+import { useAuth } from '../../hooks/useAuth';
 import Button from '../../components/ui/Button';
 import Switch from '../../components/ui/Switch';
 import Card from '../../components/ui/Card';
@@ -37,17 +36,17 @@ import { apiKeysAPI, privacyAPI } from '../../services/api';
 // 1. Notifications — per-channel × per-event matrix
 // ─────────────────────────────────────────────────────────────────────────
 const NOTIF_CHANNELS = [
-  { id: 'in_app',    icon: Bell,       label: 'In-app' },
-  { id: 'email',     icon: Mail,       label: 'Email' },
-  { id: 'browser',   icon: Smartphone, label: 'Browser' },
+  { id: 'in_app',    icon: Bell,       labelKey: 'notifications.channels.in_app', fallback: 'In-app' },
+  { id: 'email',     icon: Mail,       labelKey: 'notifications.channels.email', fallback: 'Email' },
+  { id: 'browser',   icon: Smartphone, labelKey: 'notifications.channels.browser', fallback: 'Browser' },
 ];
 
 const NOTIF_EVENTS = [
-  { id: 'mentions',         label: 'Mentions',                description: 'Someone mentioned a tracked account.' },
-  { id: 'alerts',           label: 'Performance alerts',      description: 'Engagement drops or viral posts.' },
-  { id: 'reports',          label: 'Scheduled reports',       description: 'Weekly + monthly report emails.' },
-  { id: 'team',             label: 'Team activity',           description: 'New members, role changes, invitations.' },
-  { id: 'token_expiry',     label: 'Token expiry',            description: 'OAuth tokens about to expire.' },
+  { id: 'mentions',         labelKey: 'notifications.events.mentions.label',       descKey: 'notifications.events.mentions.description',       fallbackLabel: 'Mentions',           fallbackDesc: 'Someone mentioned a tracked account.' },
+  { id: 'alerts',           labelKey: 'notifications.events.alerts.label',         descKey: 'notifications.events.alerts.description',         fallbackLabel: 'Performance alerts', fallbackDesc: 'Engagement drops or viral posts.' },
+  { id: 'reports',          labelKey: 'notifications.events.reports.label',        descKey: 'notifications.events.reports.description',        fallbackLabel: 'Scheduled reports',  fallbackDesc: 'Weekly + monthly report emails.' },
+  { id: 'team',             labelKey: 'notifications.events.team.label',           descKey: 'notifications.events.team.description',           fallbackLabel: 'Team activity',      fallbackDesc: 'New members, role changes, invitations.' },
+  { id: 'token_expiry',     labelKey: 'notifications.events.token_expiry.label',   descKey: 'notifications.events.token_expiry.description',   fallbackLabel: 'Token expiry',       fallbackDesc: 'OAuth tokens about to expire.' },
 ];
 
 const NOTIF_KEY = 'socialstats_notif_prefs';
@@ -57,6 +56,7 @@ const NOTIF_DEFAULT = NOTIF_EVENTS.reduce((acc, e) => {
 }, {});
 
 export function NotificationsSection() {
+  const { t } = useTranslation('settings');
   const [prefs, setPrefs] = useState(() => {
     try {
       const raw = localStorage.getItem(NOTIF_KEY);
@@ -74,28 +74,28 @@ export function NotificationsSection() {
   function save() {
     try {
       localStorage.setItem(NOTIF_KEY, JSON.stringify(prefs));
-      toast.success('Notification preferences saved');
+      toast.success(t('notifications.saved', 'Notification preferences saved'));
     } catch {
-      toast.error('Could not save preferences');
+      toast.error(t('notifications.err_save', 'Could not save preferences'));
     }
   }
 
   return (
     <SectionContainer
-      title="Notifications"
-      description="Choose which events you'd like to be notified about, and where."
-      action={<Button onClick={save} size="sm">Save preferences</Button>}
+      title={t('notifications.title', 'Notifications')}
+      description={t('notifications.subtitle', "Choose which events you'd like to be notified about, and where.")}
+      action={<Button onClick={save} size="sm">{t('notifications.save_btn', 'Save preferences')}</Button>}
     >
       <Card padding="none">
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 560 }}>
             <thead>
               <tr style={{ background: 'var(--surface-sunken)' }}>
-                <th scope="col" style={notifThStyle}>Event</th>
+                <th scope="col" style={notifThStyle}>{t('notifications.event_col', 'Event')}</th>
                 {NOTIF_CHANNELS.map((c) => (
                   <th key={c.id} scope="col" style={{ ...notifThStyle, textAlign: 'center' }}>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                      <c.icon size={12} /> {c.label}
+                      <c.icon size={12} /> {t(c.labelKey, c.fallback)}
                     </span>
                   </th>
                 ))}
@@ -105,19 +105,23 @@ export function NotificationsSection() {
               {NOTIF_EVENTS.map((e, i) => (
                 <tr key={e.id} style={{ borderTop: i > 0 ? '1px solid var(--border-subtle)' : 'none' }}>
                   <td style={{ padding: '14px 16px', verticalAlign: 'top' }}>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{e.label}</div>
-                    <div style={{ marginTop: 2, fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{e.description}</div>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{t(e.labelKey, e.fallbackLabel)}</div>
+                    <div style={{ marginTop: 2, fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{t(e.descKey, e.fallbackDesc)}</div>
                   </td>
-                  {NOTIF_CHANNELS.map((c) => (
-                    <td key={c.id} style={{ padding: '14px 16px', textAlign: 'center' }}>
-                      <Switch
-                        checked={!!prefs[e.id]?.[c.id]}
-                        onChange={() => toggle(e.id, c.id)}
-                        size="sm"
-                        aria-label={`${c.label} notifications for ${e.label}`}
-                      />
-                    </td>
-                  ))}
+                  {NOTIF_CHANNELS.map((c) => {
+                    const channelLabel = t(c.labelKey, c.fallback);
+                    const eventLabel = t(e.labelKey, e.fallbackLabel);
+                    return (
+                      <td key={c.id} style={{ padding: '14px 16px', textAlign: 'center' }}>
+                        <Switch
+                          checked={!!prefs[e.id]?.[c.id]}
+                          onChange={() => toggle(e.id, c.id)}
+                          size="sm"
+                          aria-label={t('notifications.switch_aria', { channel: channelLabel, event: eventLabel, defaultValue: `${channelLabel} notifications for ${eventLabel}` })}
+                        />
+                      </td>
+                    );
+                  })}
                 </tr>
               ))}
             </tbody>
@@ -142,6 +146,7 @@ const notifThStyle = {
 const DENSITY_KEY = 'socialstats_density';
 
 export function AppearanceSection() {
+  const { t } = useTranslation('settings');
   const { preference, setTheme } = useTheme();
   const [density, setDensity] = useState(() => {
     try { return localStorage.getItem(DENSITY_KEY) || 'comfortable'; }
@@ -153,36 +158,36 @@ export function AppearanceSection() {
     try {
       localStorage.setItem(DENSITY_KEY, value);
       document.documentElement.dataset.density = value;
-      toast.success(`Density set to ${value}`);
+      toast.success(t('appearance.density_set', { value, defaultValue: `Density set to ${value}` }));
     } catch {}
   }
 
   return (
     <SectionContainer
-      title="Appearance"
-      description="Customise how Social Stats looks and feels."
+      title={t('appearance.title', 'Appearance')}
+      description={t('appearance.subtitle', 'Customise how Bop Social looks and feels.')}
     >
       <Card padding="md">
-        <div style={{ marginBottom: 8, fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>Theme</div>
+        <div style={{ marginBottom: 8, fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{t('appearance.theme_title', 'Theme')}</div>
         <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--text-secondary)' }}>
-          Choose a light or dark theme. "System" matches your OS preference.
+          {t('appearance.theme_desc', 'Choose a light or dark theme. "System" matches your OS preference.')}
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12 }}>
-          <ThemeCard active={preference === 'light'}  icon={Sun}     label="Light"  onClick={() => setTheme('light')} />
-          <ThemeCard active={preference === 'dark'}   icon={Moon}    label="Dark"   onClick={() => setTheme('dark')} />
-          <ThemeCard active={preference === 'system'} icon={Monitor} label="System" onClick={() => setTheme('system')} />
+          <ThemeCard active={preference === 'light'}  icon={Sun}     label={t('appearance.themes.light', 'Light')}   onClick={() => setTheme('light')} />
+          <ThemeCard active={preference === 'dark'}   icon={Moon}    label={t('appearance.themes.dark', 'Dark')}    onClick={() => setTheme('dark')} />
+          <ThemeCard active={preference === 'system'} icon={Monitor} label={t('appearance.themes.system', 'System')}  onClick={() => setTheme('system')} />
         </div>
       </Card>
 
       <Card padding="md" style={{ marginTop: 16 }}>
-        <div style={{ marginBottom: 8, fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>Density</div>
+        <div style={{ marginBottom: 8, fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{t('appearance.density_title', 'Density')}</div>
         <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--text-secondary)' }}>
-          Show more or less content per screen. "Compact" reduces row heights and padding.
+          {t('appearance.density_desc', 'Show more or less content per screen. "Compact" reduces row heights and padding.')}
         </p>
         <div style={{ display: 'flex', gap: 8 }}>
           {[
-            { value: 'comfortable', label: 'Comfortable' },
-            { value: 'compact',     label: 'Compact' },
+            { value: 'comfortable', label: t('appearance.density.comfortable', 'Comfortable') },
+            { value: 'compact',     label: t('appearance.density.compact', 'Compact') },
           ].map((d) => (
             <button
               key={d.value}
@@ -239,31 +244,33 @@ function ThemeCard({ active, icon: Icon, label, onClick }) {
 // 3. Keyboard Shortcuts — list of all shortcuts
 // ─────────────────────────────────────────────────────────────────────────
 const SHORTCUTS = [
-  { keys: 'cmd+k',         label: 'Open command palette',       category: 'Global' },
-  { keys: 'cmd+/',         label: 'Show shortcuts',             category: 'Global' },
-  { keys: 'esc',           label: 'Close modal / palette',      category: 'Global' },
-  { keys: 'cmd+j',         label: 'Open AI assistant',          category: 'Global' },
-  { keys: 'g+d',           label: 'Go to dashboard',            category: 'Navigation' },
-  { keys: 'g+a',           label: 'Go to analytics',            category: 'Navigation' },
-  { keys: 'g+r',           label: 'Go to reports',              category: 'Navigation' },
-  { keys: 'g+i',           label: 'Go to inbox',                category: 'Navigation' },
-  { keys: 'cmd+enter',     label: 'Submit composer / form',     category: 'Composer' },
-  { keys: 'cmd+s',         label: 'Save draft',                 category: 'Composer' },
-  { keys: 'cmd+shift+p',   label: 'Publish now',                category: 'Composer' },
-  { keys: 'r',             label: 'Reply',                       category: 'Inbox' },
-  { keys: 'a',             label: 'Archive conversation',        category: 'Inbox' },
-  { keys: 'shift+u',       label: 'Toggle unread',               category: 'Inbox' },
+  { keys: 'cmd+k',         id: 'cmd_k',        category: 'global',     fallback: 'Open command palette' },
+  { keys: 'cmd+/',         id: 'cmd_slash',    category: 'global',     fallback: 'Show shortcuts' },
+  { keys: 'esc',           id: 'esc',          category: 'global',     fallback: 'Close modal / palette' },
+  { keys: 'cmd+j',         id: 'cmd_j',        category: 'global',     fallback: 'Open AI assistant' },
+  { keys: 'g+d',           id: 'g_d',          category: 'navigation', fallback: 'Go to dashboard' },
+  { keys: 'g+a',           id: 'g_a',          category: 'navigation', fallback: 'Go to analytics' },
+  { keys: 'g+r',           id: 'g_r',          category: 'navigation', fallback: 'Go to reports' },
+  { keys: 'g+i',           id: 'g_i',          category: 'navigation', fallback: 'Go to inbox' },
+  { keys: 'cmd+enter',     id: 'cmd_enter',    category: 'composer',   fallback: 'Submit composer / form' },
+  { keys: 'cmd+s',         id: 'cmd_s',        category: 'composer',   fallback: 'Save draft' },
+  { keys: 'cmd+shift+p',   id: 'cmd_shift_p',  category: 'composer',   fallback: 'Publish now' },
+  { keys: 'r',             id: 'r',            category: 'inbox',      fallback: 'Reply' },
+  { keys: 'a',             id: 'a',            category: 'inbox',      fallback: 'Archive conversation' },
+  { keys: 'shift+u',       id: 'shift_u',      category: 'inbox',      fallback: 'Toggle unread' },
 ];
 
 export function KeyboardShortcutsSection() {
+  const { t } = useTranslation('settings');
   const grouped = SHORTCUTS.reduce((acc, s) => {
     (acc[s.category] = acc[s.category] || []).push(s);
     return acc;
   }, {});
+
   return (
     <SectionContainer
-      title="Keyboard Shortcuts"
-      description="Speed up your workflow with these keyboard shortcuts."
+      title={t('shortcuts.title', 'Keyboard Shortcuts')}
+      description={t('shortcuts.subtitle', 'Speed up your workflow with these keyboard shortcuts.')}
     >
       {Object.entries(grouped).map(([cat, items]) => (
         <Card key={cat} padding="none" style={{ marginBottom: 14 }}>
@@ -275,7 +282,7 @@ export function KeyboardShortcutsSection() {
             color: 'var(--text-tertiary)',
             background: 'var(--surface-sunken)',
           }}>
-            {cat}
+            {t(`shortcuts.categories.${cat}`, cat)}
           </div>
           {items.map((s, i) => (
             <div
@@ -286,14 +293,14 @@ export function KeyboardShortcutsSection() {
                 borderTop: i > 0 ? '1px solid var(--border-subtle)' : 'none',
               }}
             >
-              <span style={{ fontSize: 13, color: 'var(--text-primary)' }}>{s.label}</span>
+              <span style={{ fontSize: 13, color: 'var(--text-primary)' }}>{t(`shortcuts.items.${s.id}`, s.fallback)}</span>
               <KeyboardShortcut keys={s.keys} size="md" />
             </div>
           ))}
         </Card>
       ))}
       <p style={{ marginTop: 12, fontSize: 12, color: 'var(--text-tertiary)' }}>
-        Custom keybindings coming soon. Press <KeyboardShortcut keys="cmd+/" size="sm" /> from anywhere to view this list.
+        {t('shortcuts.hint', { key: 'cmd+/', defaultValue: 'Custom keybindings coming soon. Press cmd+/ from anywhere to view this list.' })}
       </p>
     </SectionContainer>
   );
@@ -302,7 +309,10 @@ export function KeyboardShortcutsSection() {
 // ─────────────────────────────────────────────────────────────────────────
 // 4. API Keys — generate / revoke (: now wired to /api/api-keys/)
 // ─────────────────────────────────────────────────────────────────────────
-export function APIKeysSection() {
+export function APIKeysSection({ user }) {
+  const { t, i18n } = useTranslation('settings');
+  const auth = useAuth();
+  const currentUser = user || auth?.user;
   const [keys, setKeys] = useState([]);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState('');
@@ -310,18 +320,39 @@ export function APIKeysSection() {
   // The plaintext key is shown ONCE on creation. After that, only key_prefix.
   const [justCreated, setJustCreated] = useState(null);
   const [creating, setCreating] = useState(false);
+  const [missingContext, setMissingContext] = useState(false);
 
   function load() {
+    if (currentUser?.role === 'superadmin' && !currentUser?.client_id) {
+      setMissingContext(true);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     apiKeysAPI.list()
-      .then((r) => setKeys(r.data?.keys || []))
-      .catch(() => toast.error('Could not load API keys'))
+      .then((r) => {
+        setKeys(r.data?.keys || []);
+        setMissingContext(false);
+      })
+      .catch((err) => {
+        // Distinguish missing client context from genuine loading failures
+        if (err?.response?.status === 403 && (err?.response?.data?.error === 'no client context' || !currentUser?.client_id)) {
+          setMissingContext(true);
+          setKeys([]);
+        } else {
+          toast.error(t('api_keys.err_load', 'Could not load API keys'));
+        }
+      })
       .finally(() => setLoading(false));
   }
   useEffect(() => { load(); }, []);
 
   async function generate() {
-    if (!name.trim()) { toast.error('Give the key a name first'); return; }
+    if (missingContext) {
+      toast.error(t('api_keys.no_client_desc', 'API keys are scoped to specific client workspaces. Please select or switch to a client workspace to manage its API keys.'));
+      return;
+    }
+    if (!name.trim()) { toast.error(t('api_keys.err_name_required', 'Give the key a name first')); return; }
     setCreating(true);
     try {
       const payload = {
@@ -333,123 +364,157 @@ export function APIKeysSection() {
       setKeys((ks) => [r.data, ...ks]);
       setName('');
       setScopes('');
-      toast.success('API key created');
+      toast.success(t('api_keys.created_success', 'API key created'));
     } catch (e) {
-      toast.error(e?.response?.data?.error || 'Could not create key');
+      toast.error(e?.response?.data?.error || t('api_keys.err_create', 'Could not create key'));
     } finally { setCreating(false); }
   }
 
   async function revoke(id) {
-    if (!window.confirm('Revoke this key? Any application using it will stop working.')) return;
+    if (missingContext) return;
+    if (!window.confirm(t('api_keys.confirm_revoke', 'Revoke this key? Any application using it will stop working.'))) return;
     try {
       await apiKeysAPI.revoke(id);
-      toast.success('Key revoked');
+      toast.success(t('api_keys.revoked_success', 'Key revoked'));
       load();
-    } catch { toast.error('Could not revoke'); }
+    } catch { toast.error(t('api_keys.err_revoke', 'Could not revoke')); }
   }
 
   function copyKey(value) {
-    try { navigator.clipboard.writeText(value); toast.success('Copied to clipboard'); }
-    catch { toast.error('Could not copy'); }
+    try { navigator.clipboard.writeText(value); toast.success(t('api_keys.copied', 'Copied to clipboard')); }
+    catch { toast.error(t('api_keys.err_copy', 'Could not copy')); }
   }
 
   return (
     <SectionContainer
-      title="API Keys"
-      description="Programmatic access for your scripts and integrations. Keys are stored as SHA-256 hashes — we never see the plaintext after creation."
+      title={t('api_keys.title', 'API Keys')}
+      description={t('api_keys.subtitle', 'Programmatic access for your scripts and integrations. Keys are stored as SHA-256 hashes — we never see the plaintext after creation.')}
     >
-      <Card padding="md" style={{ marginBottom: 16 }}>
-        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8 }}>
-          Generate a new key
-        </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap' }}>
-          <div style={{ flex: '2 1 220px', minWidth: 0 }}>
-            <Input size="md" placeholder='e.g. "Production deploy"'
-                   value={name} onChange={(e) => setName(e.target.value)} />
+      {missingContext ? (
+        <Card padding="md" style={{ background: 'var(--surface-sunken)', border: '1px solid var(--border-default)' }}>
+          <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+            <span style={{
+              display: 'inline-flex', flexShrink: 0,
+              width: 40, height: 40, borderRadius: 'var(--radius-md)',
+              background: 'var(--brand-primary-soft)', color: 'var(--brand-primary-hover)',
+              alignItems: 'center', justifyContent: 'center',
+            }}><Key size={18} strokeWidth={2.2} /></span>
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>
+                {t('api_keys.no_client_title', 'Client workspace required')}
+              </div>
+              <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                {t('api_keys.no_client_desc', 'API keys are scoped to specific client workspaces. Please select or switch to a client workspace to manage its API keys.')}
+              </p>
+            </div>
           </div>
-          <div style={{ flex: '2 1 220px', minWidth: 0 }}>
-            <Input size="md" placeholder='Scopes (comma-separated, e.g. read:posts, write:leads)'
-                   value={scopes} onChange={(e) => setScopes(e.target.value)} />
-          </div>
-          <Button onClick={generate} icon={Plus} size="md" disabled={creating}>
-            {creating ? 'Creating…' : 'Generate'}
-          </Button>
-        </div>
-        <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--text-tertiary)' }}>
-          Keys are shown once at generation — copy and store them securely.
-        </p>
-      </Card>
-
-      {justCreated && justCreated.plaintext_key && (
-        <Card padding="md" style={{ marginBottom: 16, borderColor: 'var(--warning)', background: 'var(--warning-bg)' }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--warning)', marginBottom: 8,
-                        display: 'flex', alignItems: 'center', gap: 6 }}>
-            <AlertTriangle size={14} /> Save this key now — it will not be shown again
-          </div>
-          <div style={{
-            fontFamily: 'var(--font-mono)', fontSize: 12,
-            background: 'var(--surface-sunken)', padding: '8px 12px',
-            borderRadius: 'var(--radius-xs)',
-            wordBreak: 'break-all', userSelect: 'all',
-          }}>{justCreated.plaintext_key}</div>
-          <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
-            <Button size="sm" icon={Copy} onClick={() => copyKey(justCreated.plaintext_key)}>
-              Copy
-            </Button>
-            <Button size="sm" variant="ghost" onClick={() => setJustCreated(null)}>
-              I've saved it
-            </Button>
-          </div>
-        </Card>
-      )}
-
-      {loading ? (
-        <Card padding="md"><div style={{ color: 'var(--text-tertiary)', fontSize: 13 }}>Loading…</div></Card>
-      ) : keys.length === 0 ? (
-        <Card padding="none">
-          <EmptyState icon={Sparkles} title="No API keys yet"
-                      description="Generate your first key above to start integrating Social Stats with your other tools."
-                      compact />
         </Card>
       ) : (
-        <Card padding="none">
-          {keys.map((k, i) => (
-            <div key={k.id} style={{
-              display: 'grid', gridTemplateColumns: '1fr auto', gap: 12,
-              alignItems: 'center', padding: '14px 18px',
-              borderTop: i > 0 ? '1px solid var(--border-subtle)' : 'none',
-              opacity: k.is_active ? 1 : 0.6,
-            }}>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
-                  {k.name}
-                  {!k.is_active && (
-                    <Badge style={{ marginLeft: 8 }}>{k.is_expired ? 'Expired' : 'Revoked'}</Badge>
-                  )}
-                </div>
-                <div style={{ marginTop: 2, fontSize: 12, color: 'var(--text-tertiary)',
-                              display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                  <span>Created {new Date(k.created_at).toLocaleDateString()}</span>
-                  <span>{k.last_used_at ? `Last used ${new Date(k.last_used_at).toLocaleDateString()}` : 'Never used'}</span>
-                  <span>{k.use_count} call{k.use_count === 1 ? '' : 's'}</span>
-                  {k.scopes?.length > 0 && <span>Scopes: {k.scopes.join(', ')}</span>}
-                </div>
-                <div style={{
-                  marginTop: 6, fontFamily: 'var(--font-mono)', fontSize: 12,
-                  color: 'var(--text-secondary)', background: 'var(--surface-sunken)',
-                  padding: '4px 8px', borderRadius: 'var(--radius-xs)',
-                  display: 'inline-block',
-                }}>
-                  {k.key_prefix}{'•'.repeat(24)}
-                </div>
-              </div>
-              {k.is_active && (
-                <Button variant="ghost" size="sm" iconOnly icon={Trash2}
-                        aria-label="Revoke key" onClick={() => revoke(k.id)} />
-              )}
+        <>
+          <Card padding="md" style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8 }}>
+              {t('api_keys.generate_title', 'Generate a new key')}
             </div>
-          ))}
-        </Card>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+              <div style={{ flex: '2 1 220px', minWidth: 0 }}>
+                <Input size="md" placeholder={t('api_keys.name_placeholder', 'e.g. "Production deploy"')}
+                       value={name} onChange={(e) => setName(e.target.value)} />
+              </div>
+              <div style={{ flex: '2 1 220px', minWidth: 0 }}>
+                <Input size="md" placeholder={t('api_keys.scopes_placeholder', 'Scopes (comma-separated, e.g. read:posts, write:leads)')}
+                       value={scopes} onChange={(e) => setScopes(e.target.value)} />
+              </div>
+              <Button onClick={generate} icon={Plus} size="md" disabled={creating}>
+                {creating ? t('api_keys.creating', 'Creating…') : t('api_keys.generate_btn', 'Generate')}
+              </Button>
+            </div>
+            <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--text-tertiary)' }}>
+              {t('api_keys.hint', 'Keys are shown once at generation — copy and store them securely.')}
+            </p>
+          </Card>
+
+          {justCreated && justCreated.plaintext_key && (
+            <Card padding="md" style={{ marginBottom: 16, borderColor: 'var(--warning)', background: 'var(--warning-bg)' }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--warning)', marginBottom: 8,
+                            display: 'flex', alignItems: 'center', gap: 6 }}>
+                <AlertTriangle size={14} /> {t('api_keys.warning_title', 'Save this key now — it will not be shown again')}
+              </div>
+              <div style={{
+                fontFamily: 'var(--font-mono)', fontSize: 12,
+                background: 'var(--surface-sunken)', padding: '8px 12px',
+                borderRadius: 'var(--radius-xs)',
+                wordBreak: 'break-all', userSelect: 'all',
+              }}>{justCreated.plaintext_key}</div>
+              <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
+                <Button size="sm" icon={Copy} onClick={() => copyKey(justCreated.plaintext_key)}>
+                  {t('api_keys.copy', 'Copy')}
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setJustCreated(null)}>
+                  {t('api_keys.saved_it', "I've saved it")}
+                </Button>
+              </div>
+            </Card>
+          )}
+
+          {loading ? (
+            <Card padding="md"><div style={{ color: 'var(--text-tertiary)', fontSize: 13 }}>{t('api_keys.loading', 'Loading…')}</div></Card>
+          ) : keys.length === 0 ? (
+            <Card padding="none">
+              <EmptyState icon={Sparkles} title={t('api_keys.empty_title', 'No API keys yet')}
+                          description={t('api_keys.empty_desc', 'Generate your first key above to start integrating Bop Social with your other tools.')}
+                          compact />
+            </Card>
+          ) : (
+            <Card padding="none">
+              {keys.map((k, i) => {
+                const dateStr = new Date(k.created_at).toLocaleDateString(i18n.language?.startsWith('es') ? 'es-ES' : 'en-US');
+                const lastUsedStr = k.last_used_at
+                  ? t('api_keys.last_used_at', { date: new Date(k.last_used_at).toLocaleDateString(i18n.language?.startsWith('es') ? 'es-ES' : 'en-US'), defaultValue: `Last used ${new Date(k.last_used_at).toLocaleDateString()}` })
+                  : t('api_keys.never_used', 'Never used');
+                const callsText = k.use_count === 1
+                  ? t('api_keys.calls_count_one', '1 call')
+                  : t('api_keys.calls_count_other', { count: k.use_count, defaultValue: `${k.use_count} calls` });
+
+                return (
+                  <div key={k.id} style={{
+                    display: 'grid', gridTemplateColumns: '1fr auto', gap: 12,
+                    alignItems: 'center', padding: '14px 18px',
+                    borderTop: i > 0 ? '1px solid var(--border-subtle)' : 'none',
+                    opacity: k.is_active ? 1 : 0.6,
+                  }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
+                        {k.name}
+                        {!k.is_active && (
+                          <Badge style={{ marginLeft: 8 }}>{k.is_expired ? t('api_keys.expired', 'Expired') : t('api_keys.revoked', 'Revoked')}</Badge>
+                        )}
+                      </div>
+                      <div style={{ marginTop: 2, fontSize: 12, color: 'var(--text-tertiary)',
+                                    display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                        <span>{t('api_keys.created_at', { date: dateStr, defaultValue: `Created ${dateStr}` })}</span>
+                        <span>{lastUsedStr}</span>
+                        <span>{callsText}</span>
+                        {k.scopes?.length > 0 && <span>{t('api_keys.scopes_label', { scopes: k.scopes.join(', '), defaultValue: `Scopes: ${k.scopes.join(', ')}` })}</span>}
+                      </div>
+                      <div style={{
+                        marginTop: 6, fontFamily: 'var(--font-mono)', fontSize: 12,
+                        color: 'var(--text-secondary)', background: 'var(--surface-sunken)',
+                        padding: '4px 8px', borderRadius: 'var(--radius-xs)',
+                        display: 'inline-block',
+                      }}>
+                        {k.key_prefix}{'•'.repeat(24)}
+                      </div>
+                    </div>
+                    {k.is_active && (
+                      <Button variant="ghost" size="sm" iconOnly icon={Trash2}
+                              aria-label={t('api_keys.revoke_aria', 'Revoke key')} onClick={() => revoke(k.id)} />
+                    )}
+                  </div>
+                );
+              })}
+            </Card>
+          )}
+        </>
       )}
     </SectionContainer>
   );
@@ -458,17 +523,18 @@ export function APIKeysSection() {
 // ─────────────────────────────────────────────────────────────────────────
 // 5. Data & Privacy — export + delete account
 // ─────────────────────────────────────────────────────────────────────────
-const CONSENT_LABELS = {
-  marketing_emails:     'Marketing emails',
-  product_emails:       'Product update emails',
-  cookies_analytics:    'Analytics cookies',
-  cookies_marketing:    'Marketing cookies',
-  ai_processing_optout: 'AI processing — opt out',
-  whatsapp_marketing:   'WhatsApp marketing messages',
-  data_processing:      'Core service data processing',
-};
+const CONSENT_KEYS = [
+  'marketing_emails',
+  'product_emails',
+  'cookies_analytics',
+  'cookies_marketing',
+  'ai_processing_optout',
+  'whatsapp_marketing',
+  'data_processing',
+];
 
 export function DataPrivacySection() {
+  const { t, i18n } = useTranslation('settings');
   const [exports, setExports] = useState([]);
   const [exportBusy, setExportBusy] = useState(false);
   const [consents, setConsents] = useState({});
@@ -488,7 +554,7 @@ export function DataPrivacySection() {
       const ws = ps.data?.workspaces || [];
       setProcessingPaused(ws.length > 0 && ws.every(w => w.is_processing_paused));
       // Canceled deletions get filtered out client-side; "queued" is the actionable one.
-      const queued = (ex.data?.requests || []).find(() => false);  // exports list, not deletions
+      const queued = (ex.data?.requests || []).find(() => false);
       setPendingDeletion(queued || null);
     }).finally(() => setLoading(false));
   }
@@ -498,10 +564,10 @@ export function DataPrivacySection() {
     setExportBusy(true);
     try {
       await privacyAPI.exportRequest();
-      toast.success('Export queued — we will email you when it is ready');
+      toast.success(t('data_privacy.export_queued', 'Export queued — we will email you when it is ready'));
       loadAll();
     } catch (e) {
-      toast.error(e?.response?.data?.error || 'Could not queue export');
+      toast.error(e?.response?.data?.error || t('data_privacy.err_export', 'Could not queue export'));
     } finally { setExportBusy(false); }
   }
 
@@ -509,26 +575,26 @@ export function DataPrivacySection() {
     try {
       await privacyAPI.setConsent(type, given);
       setConsents((c) => ({ ...c, [type]: given }));
-    } catch { toast.error('Could not save consent'); }
+    } catch { toast.error(t('data_privacy.err_consent', 'Could not save consent')); }
   }
 
   async function toggleProcessing(paused) {
     try {
       await privacyAPI.setProcessingPaused(paused);
       setProcessingPaused(paused);
-      toast.success(paused ? 'Processing paused' : 'Processing resumed');
-    } catch { toast.error('Could not update'); }
+      toast.success(paused ? t('data_privacy.processing_paused', 'Processing paused') : t('data_privacy.processing_resumed', 'Processing resumed'));
+    } catch { toast.error(t('data_privacy.err_update', 'Could not update')); }
   }
 
   async function deleteAccount() {
-    const reason = window.prompt('Tell us why (optional). Your account will be permanently deleted in 30 days unless canceled.');
+    const reason = window.prompt(t('data_privacy.prompt_delete_reason', 'Tell us why (optional). Your account will be permanently deleted in 30 days unless canceled.'));
     if (reason === null) return;
     try {
       const r = await privacyAPI.deleteAccount(reason || '');
       setPendingDeletion(r.data);
-      toast.success('Deletion scheduled — you have 30 days to cancel');
+      toast.success(t('data_privacy.deletion_scheduled_toast', 'Deletion scheduled — you have 30 days to cancel'));
     } catch (e) {
-      toast.error(e?.response?.data?.error || 'Could not schedule deletion');
+      toast.error(e?.response?.data?.error || t('data_privacy.err_schedule_deletion', 'Could not schedule deletion'));
     }
   }
 
@@ -536,18 +602,18 @@ export function DataPrivacySection() {
     try {
       await privacyAPI.cancelDeleteAccount();
       setPendingDeletion(null);
-      toast.success('Deletion canceled');
-    } catch { toast.error('Could not cancel'); }
+      toast.success(t('data_privacy.deletion_canceled_toast', 'Deletion canceled'));
+    } catch { toast.error(t('data_privacy.err_cancel_deletion', 'Could not cancel')); }
   }
 
   if (loading) {
-    return <SectionContainer title="Data & Privacy" description="Loading…"><Card padding="md" /></SectionContainer>;
+    return <SectionContainer title={t('data_privacy.title', 'Data & Privacy')} description={t('data_privacy.loading', 'Loading…')}><Card padding="md" /></SectionContainer>;
   }
 
   return (
     <SectionContainer
-      title="Data & Privacy"
-      description="Your data, your rights. Export everything, manage consents, pause processing, or delete your account."
+      title={t('data_privacy.title', 'Data & Privacy')}
+      description={t('data_privacy.subtitle', 'Your data, your rights. Export everything, manage consents, pause processing, or delete your account.')}
     >
       {/* Export */}
       <Card padding="md" style={{ marginBottom: 14 }}>
@@ -559,13 +625,12 @@ export function DataPrivacySection() {
             alignItems: 'center', justifyContent: 'center',
           }}><Download size={18} strokeWidth={2.2} /></span>
           <div style={{ minWidth: 0, flex: 1 }}>
-            <div style={{ fontSize: 15, fontWeight: 600 }}>Export your data</div>
+            <div style={{ fontSize: 15, fontWeight: 600 }}>{t('data_privacy.export_title', 'Export your data')}</div>
             <p style={{ margin: '4px 0 12px', fontSize: 13, color: 'var(--text-secondary)' }}>
-              Download a ZIP with your profile, owned workspaces, consent log, and request history.
-              Delivered via email link (expires in 7 days).
+              {t('data_privacy.export_desc', 'Download a ZIP with your profile, owned workspaces, consent log, and request history. Delivered via email link (expires in 7 days).')}
             </p>
             <Button size="sm" icon={Download} disabled={exportBusy} onClick={requestExport}>
-              {exportBusy ? 'Queueing…' : 'Request export'}
+              {exportBusy ? t('data_privacy.queueing', 'Queueing…') : t('data_privacy.request_export', 'Request export')}
             </Button>
             {exports.length > 0 && (
               <ul style={{ margin: '12px 0 0', padding: 0, listStyle: 'none',
@@ -573,10 +638,10 @@ export function DataPrivacySection() {
                 {exports.slice(0, 3).map((e) => (
                   <li key={e.id} style={{ padding: '4px 0' }}>
                     #{e.id} · {e.status}
-                    {e.completed_at && <> · {new Date(e.completed_at).toLocaleDateString()}</>}
+                    {e.completed_at && <> · {new Date(e.completed_at).toLocaleDateString(i18n.language?.startsWith('es') ? 'es-ES' : 'en-US')}</>}
                     {e.download_url && e.status === 'completed' && (
                       <> · <a href={e.download_url} target="_blank" rel="noreferrer"
-                              style={{ color: 'var(--brand-primary-hover)' }}>Download</a></>
+                              style={{ color: 'var(--brand-primary-hover)' }}>{t('data_privacy.download', 'Download')}</a></>
                     )}
                   </li>
                 ))}
@@ -588,17 +653,17 @@ export function DataPrivacySection() {
 
       {/* Consents */}
       <Card padding="md" style={{ marginBottom: 14 }}>
-        <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 8 }}>Your consents</div>
+        <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 8 }}>{t('data_privacy.consents_title', 'Your consents')}</div>
         <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--text-secondary)' }}>
-          Toggle communication and tracking preferences. Withdrawals take effect immediately.
+          {t('data_privacy.consents_desc', 'Toggle communication and tracking preferences. Withdrawals take effect immediately.')}
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {Object.entries(CONSENT_LABELS).map(([key, label]) => (
+          {CONSENT_KEYS.map((key) => (
             <div key={key} style={{
               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
               padding: '8px 0', borderBottom: '1px solid var(--border-subtle)',
             }}>
-              <span style={{ fontSize: 13 }}>{label}</span>
+              <span style={{ fontSize: 13 }}>{t(`data_privacy.consent_labels.${key}`)}</span>
               <Switch checked={!!consents[key]} onChange={(v) => toggleConsent(key, v)} />
             </div>
           ))}
@@ -609,10 +674,9 @@ export function DataPrivacySection() {
       <Card padding="md" style={{ marginBottom: 14 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 15, fontWeight: 600 }}>Pause data processing</div>
+            <div style={{ fontSize: 15, fontWeight: 600 }}>{t('data_privacy.pause_title', 'Pause data processing')}</div>
             <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-secondary)' }}>
-              When paused, sync tasks skip your workspaces, AI features are disabled, and
-              the composer goes read-only. You can still log in to view existing data.
+              {t('data_privacy.pause_desc', 'When paused, sync tasks skip your workspaces, AI features are disabled, and the composer goes read-only. You can still log in to view existing data.')}
             </p>
           </div>
           <Switch checked={processingPaused} onChange={toggleProcessing} />
@@ -629,10 +693,9 @@ export function DataPrivacySection() {
             alignItems: 'center', justifyContent: 'center',
           }}><AlertTriangle size={18} strokeWidth={2.2} /></span>
           <div style={{ minWidth: 0, flex: 1 }}>
-            <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--danger)' }}>Delete account</div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--danger)' }}>{t('data_privacy.delete_account_title', 'Delete account')}</div>
             <p style={{ margin: '4px 0 12px', fontSize: 13, color: 'var(--text-secondary)' }}>
-              Permanently delete your account, sessions, MFA, API keys, and personal data
-              after a 30-day grace period. Audit logs are anonymised but retained for compliance.
+              {t('data_privacy.delete_account_desc', 'Permanently delete your account, sessions, MFA, API keys, and personal data after a 30-day grace period. Audit logs are anonymised but retained for compliance.')}
             </p>
             {pendingDeletion ? (
               <div style={{
@@ -641,13 +704,15 @@ export function DataPrivacySection() {
                 border: '1px solid var(--warning)', borderRadius: 'var(--radius-sm)',
                 fontSize: 12, marginBottom: 8,
               }}>
-                Deletion scheduled — completes on{' '}
-                {new Date(pendingDeletion.grace_until).toLocaleDateString()}
-                {' '}<Button size="xs" variant="ghost" onClick={cancelDeletion}>Cancel</Button>
+                {t('data_privacy.deletion_scheduled', {
+                  date: new Date(pendingDeletion.grace_until).toLocaleDateString(i18n.language?.startsWith('es') ? 'es-ES' : 'en-US'),
+                  defaultValue: `Deletion scheduled — completes on ${new Date(pendingDeletion.grace_until).toLocaleDateString()}`,
+                })}
+                {' '}<Button size="xs" variant="ghost" onClick={cancelDeletion}>{t('data_privacy.cancel_deletion', 'Cancel')}</Button>
               </div>
             ) : (
               <Button variant="danger" size="sm" icon={Trash2} onClick={deleteAccount}>
-                Delete my account
+                {t('data_privacy.delete_my_account', 'Delete my account')}
               </Button>
             )}
           </div>
@@ -670,6 +735,7 @@ const WEBHOOK_EVENTS = [
 ];
 
 export function WebhooksSection() {
+  const { t } = useTranslation('settings');
   const [endpoints, setEndpoints] = useState(() => {
     try { return JSON.parse(localStorage.getItem(WEBHOOK_KEY) || '[]'); }
     catch { return []; }
@@ -682,37 +748,37 @@ export function WebhooksSection() {
   }
 
   function add() {
-    if (!/^https:\/\//.test(url)) { toast.error('Endpoint must use HTTPS'); return; }
+    if (!/^https:\/\//.test(url)) { toast.error(t('webhooks.err_https', 'Endpoint must use HTTPS')); return; }
     save([{ id: `wh_${Date.now()}`, url: url.trim(), events: WEBHOOK_EVENTS, active: true }, ...endpoints]);
     setUrl('');
-    toast.success('Endpoint added');
+    toast.success(t('webhooks.endpoint_added', 'Endpoint added'));
   }
 
   function remove(id) {
     save(endpoints.filter((e) => e.id !== id));
-    toast.success('Endpoint removed');
+    toast.success(t('webhooks.endpoint_removed', 'Endpoint removed'));
   }
 
   return (
     <SectionContainer
-      title="Webhooks"
-      description="Receive HTTP POST notifications when events happen in your workspace."
+      title={t('webhooks.title', 'Webhooks')}
+      description={t('webhooks.subtitle', 'Receive HTTP POST notifications when events happen in your workspace.')}
     >
       <Card padding="md" style={{ marginBottom: 14 }}>
         <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8 }}>
-          Add an endpoint
+          {t('webhooks.add_title', 'Add an endpoint')}
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap' }}>
           <div style={{ flex: '1 1 280px', minWidth: 0 }}>
             <Input
               size="md"
               type="url"
-              placeholder="https://your-server.com/webhooks/socialstats"
+              placeholder={t('webhooks.placeholder', 'https://your-server.com/webhooks/bopsocial')}
               value={url}
               onChange={(e) => setUrl(e.target.value)}
             />
           </div>
-          <Button onClick={add} icon={Plus} size="md">Add</Button>
+          <Button onClick={add} icon={Plus} size="md">{t('webhooks.add_btn', 'Add')}</Button>
         </div>
       </Card>
 
@@ -720,41 +786,47 @@ export function WebhooksSection() {
         <Card padding="none">
           <EmptyState
             icon={Webhook}
-            title="No webhook endpoints"
-            description="Add an HTTPS endpoint above to start receiving events."
+            title={t('webhooks.empty_title', 'No webhook endpoints')}
+            description={t('webhooks.empty_desc', 'Add an HTTPS endpoint above to start receiving events.')}
             compact
           />
         </Card>
       ) : (
         <Card padding="none">
-          {endpoints.map((e, i) => (
-            <div
-              key={e.id}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 12,
-                padding: '14px 18px',
-                borderTop: i > 0 ? '1px solid var(--border-subtle)' : 'none',
-              }}
-            >
-              <span style={{ flex: 1, minWidth: 0 }}>
-                <div style={{
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: 13,
-                  color: 'var(--text-primary)',
-                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                }}>
-                  {e.url}
-                </div>
-                <div style={{ marginTop: 4, fontSize: 12, color: 'var(--text-tertiary)' }}>
-                  {e.events.length} events subscribed
-                </div>
-              </span>
-              <Badge variant={e.active ? 'success' : 'default'} size="sm" dot>
-                {e.active ? 'Active' : 'Paused'}
-              </Badge>
-              <Button variant="ghost" size="sm" iconOnly icon={Trash2} aria-label="Remove" onClick={() => remove(e.id)} />
-            </div>
-          ))}
+          {endpoints.map((e, i) => {
+            const countText = e.events.length === 1
+              ? t('webhooks.events_subscribed_one', '1 event subscribed')
+              : t('webhooks.events_subscribed_other', { count: e.events.length, defaultValue: `${e.events.length} events subscribed` });
+
+            return (
+              <div
+                key={e.id}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  padding: '14px 18px',
+                  borderTop: i > 0 ? '1px solid var(--border-subtle)' : 'none',
+                }}
+              >
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: 13,
+                    color: 'var(--text-primary)',
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  }}>
+                    {e.url}
+                  </div>
+                  <div style={{ marginTop: 4, fontSize: 12, color: 'var(--text-tertiary)' }}>
+                    {countText}
+                  </div>
+                </span>
+                <Badge variant={e.active ? 'success' : 'default'} size="sm" dot>
+                  {e.active ? t('webhooks.status_active', 'Active') : t('webhooks.status_paused', 'Paused')}
+                </Badge>
+                <Button variant="ghost" size="sm" iconOnly icon={Trash2} aria-label={t('webhooks.remove_aria', 'Remove')} onClick={() => remove(e.id)} />
+              </div>
+            );
+          })}
         </Card>
       )}
     </SectionContainer>
@@ -765,20 +837,21 @@ export function WebhooksSection() {
 // 7. Cross-link cards — for sections that live as separate pages
 // ─────────────────────────────────────────────────────────────────────────
 export function CrossLinksSection({ user }) {
+  const { t } = useTranslation('settings');
   const isStaff = user?.role === 'superadmin' || user?.role === 'staff';
   const base = isStaff ? '/admin' : '/dashboard';
 
   const LINKS = [
-    { to: `${base}/management`, label: 'Team & permissions',  description: 'Invite teammates, assign roles, override permissions.', staffOnly: true },
-    { to: `${base}/clients`,    label: 'Workspaces (clients)', description: 'Manage every client account in your agency.',         staffOnly: true },
-    { to: `${base}/analytics/audit-log`, label: 'Audit log',     description: 'Search every action across your account.',             staffOnly: true },
-    { to: '/help',              label: 'Help center',          description: 'Setup guides, troubleshooting, FAQs.',                  staffOnly: false },
+    { to: `${base}/management`, id: 'team', staffOnly: true, fallbackLabel: 'Team & permissions', fallbackDesc: 'Invite teammates, assign roles, override permissions.' },
+    { to: `${base}/clients`,    id: 'workspaces', staffOnly: true, fallbackLabel: 'Workspaces (clients)', fallbackDesc: 'Manage every client account in your agency.' },
+    { to: `${base}/analytics/audit-log`, id: 'audit_log', staffOnly: true, fallbackLabel: 'Audit log', fallbackDesc: 'Search every action across your account.' },
+    { to: '/help',              id: 'help_center', staffOnly: false, fallbackLabel: 'Help center', fallbackDesc: 'Setup guides, troubleshooting, FAQs.' },
   ].filter((l) => !l.staffOnly || isStaff);
 
   return (
     <SectionContainer
-      title="More settings"
-      description="Some areas live as their own pages. Jump to them here."
+      title={t('more.title', 'More settings')}
+      description={t('more.subtitle', 'Some areas live as their own pages. Jump to them here.')}
     >
       <div style={{ display: 'grid', gap: 10 }}>
         {LINKS.map((l) => (
@@ -799,8 +872,8 @@ export function CrossLinksSection({ user }) {
             onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-subtle)'; e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'var(--shadow-xs)'; }}
           >
             <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{l.label}</div>
-              <div style={{ marginTop: 2, fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{l.description}</div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{t(`more.links.${l.id}.label`, l.fallbackLabel)}</div>
+              <div style={{ marginTop: 2, fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{t(`more.links.${l.id}.desc`, l.fallbackDesc)}</div>
             </div>
             <ArrowRight size={14} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
           </Link>

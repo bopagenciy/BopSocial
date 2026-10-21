@@ -64,25 +64,39 @@ class WhatsAppAccountSerializer(serializers.ModelSerializer):
 
 # ── Contact ───────────────────────────────────────────────────────────────────
 class WhatsAppContactSerializer(serializers.ModelSerializer):
+    bop_contact_id = serializers.UUIDField(read_only=True)
     within_24h_window = serializers.BooleanField(read_only=True)
 
     class Meta:
         model  = WhatsAppContact
         fields = [
-            'id', 'client',
+            'id', 'bop_contact_id', 'client',
             'phone', 'name', 'email', 'tags', 'custom_fields',
             'opt_in_status', 'opt_in_source', 'opt_in_at',
             'last_message_at', 'last_inbound_at', 'within_24h_window',
             'created_at', 'updated_at',
         ]
-        read_only_fields = ['last_message_at', 'last_inbound_at', 'created_at', 'updated_at']
+        read_only_fields = ['bop_contact_id', 'last_message_at', 'last_inbound_at', 'created_at', 'updated_at']
+
+    def validate(self, attrs):
+        if self.instance and hasattr(self, 'initial_data') and isinstance(self.initial_data, dict):
+            if 'bop_contact_id' in self.initial_data:
+                attempted = str(self.initial_data['bop_contact_id']).strip().lower()
+                current = str(self.instance.bop_contact_id).strip().lower()
+                if attempted != current:
+                    raise serializers.ValidationError({
+                        "bop_contact_id": "bop_contact_id is immutable once assigned."
+                    })
+        return super().validate(attrs)
 
 
 class WhatsAppContactSummarySerializer(serializers.ModelSerializer):
     """Compact representation for nesting inside messages/campaigns."""
+    bop_contact_id = serializers.UUIDField(read_only=True)
+
     class Meta:
         model  = WhatsAppContact
-        fields = ['id', 'phone', 'name', 'opt_in_status']
+        fields = ['id', 'bop_contact_id', 'phone', 'name', 'opt_in_status']
 
 
 # ── Contact List ──────────────────────────────────────────────────────────────

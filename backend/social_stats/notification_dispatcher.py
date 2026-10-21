@@ -102,7 +102,10 @@ def is_channel_enabled(user: User, event_type: str, channel: str) -> bool:
 def _send_email(user: User, subject: str, title: str, body: str, cta_url: str = '', cta_label: str = ''):
     if not user.email:
         return
+    from .locale_helpers import resolve_user_language
+    lang = resolve_user_language(user)
     frontend = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
+    default_cta = 'Abrir Bop Social' if lang == 'es' else 'Open Bop Social'
     body_html = (
         f'<p style="margin:0 0 12px;font-size:15px;color:#1e293b;line-height:1.7;">{body}</p>'
         if body else ''
@@ -112,15 +115,16 @@ def _send_email(user: User, subject: str, title: str, body: str, cta_url: str = 
         greeting=title,
         body_html=body_html,
         cta_url=cta_url or frontend,
-        cta_label=cta_label or 'Open SocialStats',
+        cta_label=cta_label or default_cta,
         expiry_note='',
         frontend_url=frontend,
+        lang=lang,
     )
     plain = f'{title}\n\n{body}\n\n{cta_url or frontend}\n'
     try:
         send_mail(
             subject, plain,
-            getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@socialstats.app'),
+            getattr(settings, 'DEFAULT_FROM_EMAIL', 'Bop Social <noreply@bopsocial.com>'),
             [user.email],
             html_message=html, fail_silently=True,
         )

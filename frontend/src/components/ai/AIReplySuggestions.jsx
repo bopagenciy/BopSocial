@@ -8,6 +8,7 @@
  * ========================================================================== */
 import { useEffect, useRef, useState } from 'react';
 import { Sparkles, RefreshCw, Loader2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 import Button from '../ui/Button';
 import AILoading from './AILoading';
@@ -50,6 +51,7 @@ export default function AIReplySuggestions({
   onPick,
   autoLoad = true,
 }) {
+  const { t } = useTranslation('engagement');
   const [loading, setLoading] = useState(false);
   const [suggestions, setSuggestions] = useState([]);
   const [summary, setSummary] = useState('');
@@ -76,7 +78,7 @@ export default function AIReplySuggestions({
       setSummary(res.data?.summary || '');
     } catch (e) {
       if (myReq !== reqIdRef.current) return;
-      const msg = e?.response?.data?.error || 'AI suggestions unavailable';
+      const msg = e?.response?.data?.error || t('ai_replies.unavailable', 'AI suggestions unavailable');
       setError(msg);
     } finally {
       if (myReq === reqIdRef.current) setLoading(false);
@@ -85,13 +87,13 @@ export default function AIReplySuggestions({
 
   useEffect(() => {
     if (!autoLoad) return;
-    const t = setTimeout(load, 250);
-    return () => clearTimeout(t);
+    const tTimer = setTimeout(load, 250);
+    return () => clearTimeout(tTimer);
   }, [messageId, conversationId, autoLoad]);
 
   function pick(s) {
     onPick?.(s.text || '');
-    toast.success('Suggestion inserted');
+    toast.success(t('ai_replies.inserted', 'Suggestion inserted'));
   }
 
   if (!clientId) return null;
@@ -111,12 +113,12 @@ export default function AIReplySuggestions({
         color: 'var(--text-tertiary)',
       }}>
         <Sparkles size={11} style={{ color: 'var(--brand-primary-hover)' }} />
-        Social Stats · suggested replies
+        {t('ai_replies.title', 'Suggested replies')}
       </span>
       <button
         type="button"
         onClick={load}
-        aria-label="Regenerate suggestions"
+        aria-label={t('ai_replies.regenerate', 'Regenerate suggestions')}
         disabled={loading}
         style={{
           minHeight: 'auto', minWidth: 'auto',
@@ -141,7 +143,7 @@ export default function AIReplySuggestions({
       <div style={wrapperStyle}>
         {Header}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
-          <AILoading variant="inline" label="Drafting three options for you…" />
+          <AILoading variant="inline" label={t('ai_replies.drafting', 'Drafting three options for you…')} />
           <AILoading height={36} />
           <AILoading height={36} />
           <AILoading height={36} />
@@ -171,7 +173,9 @@ export default function AIReplySuggestions({
       )}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {suggestions.map((s, i) => {
-          const style = TONE_STYLES[(s.tone || '').toLowerCase()] || TONE_STYLES.professional;
+          const toneKey = (s.tone || '').toLowerCase();
+          const style = TONE_STYLES[toneKey] || TONE_STYLES.professional;
+          const toneLabel = t(`ai_replies.tones.${toneKey}`, style.label);
           const isRecommended = !!s.recommended;
           return (
             <button
@@ -205,7 +209,7 @@ export default function AIReplySuggestions({
                   color: style.color, background: style.bg,
                   padding: '2px 6px', borderRadius: 'var(--radius-pill)',
                 }}>
-                  {style.label}
+                  {toneLabel}
                 </span>
                 {isRecommended && (
                   <span style={{
@@ -213,7 +217,7 @@ export default function AIReplySuggestions({
                     color: 'var(--brand-primary-hover)',
                     letterSpacing: '0.04em', textTransform: 'uppercase',
                   }}>
-                    · Recommended
+                    {t('ai_replies.recommended', '· Recommended')}
                   </span>
                 )}
               </div>

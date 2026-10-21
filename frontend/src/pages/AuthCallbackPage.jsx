@@ -13,9 +13,11 @@
  */
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { authAPI } from '../services/api';
 
 export default function AuthCallbackPage() {
+  const { t } = useTranslation('auth');
   const navigate = useNavigate();
   const [error, setError] = useState('');
 
@@ -32,7 +34,7 @@ export default function AuthCallbackPage() {
     }
 
     if (!access || !refresh) {
-      setError('Missing tokens. Redirecting to login…');
+      setError(t('callback.missing_tokens', 'Missing tokens. Redirecting to login...'));
       setTimeout(() => navigate('/login'), 2000);
       return;
     }
@@ -59,10 +61,10 @@ export default function AuthCallbackPage() {
       })
       .catch(() => {
         localStorage.clear();
-        setError('Authentication failed. Redirecting to login…');
+        setError(t('callback.auth_failed', 'Authentication failed. Redirecting to login...'));
         setTimeout(() => navigate('/login'), 2000);
       });
-  }, [navigate]);
+  }, [navigate, t]);
 
 
   return (
@@ -76,7 +78,7 @@ export default function AuthCallbackPage() {
         ) : (
           <>
             <div style={styles.spinner} />
-            <p style={styles.msg}>Signing you in…</p>
+            <p style={styles.msg}>{t('callback.signing_in', 'Signing you in...')}</p>
           </>
         )}
       </div>

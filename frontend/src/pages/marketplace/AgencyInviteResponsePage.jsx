@@ -20,6 +20,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   Sparkles, Building2, ChevronRight, Check, X, AlertTriangle,
   CalendarClock,
@@ -32,6 +33,7 @@ import toast from '../../components/ui/toast';
 
 
 export default function AgencyInviteResponsePage() {
+  const { t } = useTranslation('agency_portal');
   const { token } = useParams();
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -46,10 +48,10 @@ export default function AgencyInviteResponsePage() {
     setLoading(true);
     agencyInviteAPI.invite(token)
       .then((r) => { if (!cancelled) setInvite(r.data); })
-      .catch((e) => { if (!cancelled) setError(e?.response?.data?.error || 'Could not load invitation'); })
+      .catch((e) => { if (!cancelled) setError(e?.response?.data?.error || t('invitations.agency_invite.err_load', 'Could not load invitation')); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [token]);
+  }, [token, t]);
 
   const grantedCount = useMemo(
     () => Object.values(invite?.proposed_permissions || {}).filter(Boolean).length,
@@ -64,10 +66,10 @@ export default function AgencyInviteResponsePage() {
     setBusy(true);
     try {
       await agencyInviteAPI.accept(token);
-      toast.success('Invitation accepted');
+      toast.success(t('invitations.agency_invite.toast_accepted', 'Invitation accepted'));
       navigate('/admin');  // agency-side dashboard (existing)
     } catch (e) {
-      toast.error(e?.response?.data?.error || 'Could not accept');
+      toast.error(e?.response?.data?.error || t('common.error', 'Could not accept'));
     } finally {
       setBusy(false);
     }
@@ -78,21 +80,21 @@ export default function AgencyInviteResponsePage() {
       navigate(`/login?next=/agency-invite/${token}`);
       return;
     }
-    if (!window.confirm('Decline this invitation?')) return;
+    if (!window.confirm(t('invitations.manage_invite.decline_modal.title', 'Decline this invitation?'))) return;
     setBusy(true);
     try {
       await agencyInviteAPI.decline(token);
-      toast.success('Invitation declined');
+      toast.success(t('invitations.agency_invite.toast_declined', 'Invitation declined'));
       navigate('/');
     } catch (e) {
-      toast.error(e?.response?.data?.error || 'Could not decline');
+      toast.error(e?.response?.data?.error || t('common.error', 'Could not decline'));
     } finally {
       setBusy(false);
     }
   }
 
   if (loading || authLoading) {
-    return <Center><span style={{ color: 'var(--text-tertiary)', fontSize: 13 }}>Loading invitation…</span></Center>;
+    return <Center><span style={{ color: 'var(--text-tertiary)', fontSize: 13 }}>{t('common.loading', 'Loading invitation…')}</span></Center>;
   }
 
   if (error || !invite) {
@@ -101,8 +103,8 @@ export default function AgencyInviteResponsePage() {
         <div style={errorBox}>
           <AlertTriangle size={20} style={{ color: 'var(--danger)' }} />
           <div>
-            <strong style={{ color: 'var(--text-primary)' }}>Invitation unavailable</strong>
-            <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-secondary)' }}>{error || 'Unknown error'}</p>
+            <strong style={{ color: 'var(--text-primary)' }}>{t('invitations.agency_invite.err_unavailable', 'Invitation unavailable')}</strong>
+            <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-secondary)' }}>{error || t('common.unknown_error', 'Unknown error')}</p>
           </div>
         </div>
       </Center>
@@ -118,7 +120,7 @@ export default function AgencyInviteResponsePage() {
         <div style={topbarStyle}>
           <Link to="/" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, textDecoration: 'none', color: 'inherit' }}>
             <span style={brandMark}><Sparkles size={14} strokeWidth={2.4} /></span>
-            <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>Social Stats</span>
+            <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>Bop Social</span>
           </Link>
         </div>
 
@@ -127,13 +129,13 @@ export default function AgencyInviteResponsePage() {
             <span style={clientAvatar}><Building2 size={20} strokeWidth={2} /></span>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--brand-primary-hover)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                Manage-account request
+                {t('invitations.agency_invite.badge', 'Manage-account request')}
               </div>
               <h1 style={{ margin: '2px 0 0', fontSize: 20, fontWeight: 700, color: 'var(--text-primary)' }}>
-                {invite.client_company} wants you to manage their social
+                {t('invitations.agency_invite.title', '{{client}} wants you to manage their social', { client: invite.client_company })}
               </h1>
               <div style={{ marginTop: 6, fontSize: 12, color: 'var(--text-tertiary)' }}>
-                from <strong style={{ color: 'var(--text-secondary)' }}>{invite.inviter_user_name}</strong> · {invite.inviter_user_email}
+                {t('invitations.agency_invite.from', 'from {{name}} · {{email}}', { name: invite.inviter_user_name, email: invite.inviter_user_email })}
                 {invite.client_industry && <> · {invite.client_industry}</>}
               </div>
             </div>
@@ -142,7 +144,7 @@ export default function AgencyInviteResponsePage() {
           {invite.message && (
             <div style={messageBox}>
               <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--brand-primary-hover)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                Message
+                {t('invitations.agency_invite.message', 'Message')}
               </div>
               <p style={{ margin: '4px 0 0', fontSize: 14, color: 'var(--text-primary)', lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>
                 {invite.message}
@@ -153,7 +155,7 @@ export default function AgencyInviteResponsePage() {
           {(invite.budget_range || (invite.desired_services && invite.desired_services.length > 0)) && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
               {invite.budget_range && (
-                <span style={chipNeutral}>Budget · {invite.budget_range}</span>
+                <span style={chipNeutral}>{t('invitations.invite_modal.review_budget', 'Budget')} · {invite.budget_range}</span>
               )}
               {(invite.desired_services || []).map((s) => (
                 <span key={s} style={chipNeutral}>{s}</span>
@@ -163,14 +165,13 @@ export default function AgencyInviteResponsePage() {
 
           <section>
             <div style={sectionHead}>
-              <span>Proposed access</span>
+              <span>{t('invitations.agency_invite.perms_head', 'Proposed access')}</span>
               <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-tertiary)' }}>
-                {grantedCount} granted
+                {t('invitations.agency_invite.perms_granted', '{{count}} granted', { count: grantedCount })}
               </span>
             </div>
             <p style={{ ...hintText, marginTop: 4 }}>
-              The client picked these — you can't widen them at accept time. If you need different access,
-              decline this and send them a manage-request from your agency dashboard with your own proposal.
+              {t('invitations.agency_invite.perms_desc', "The client picked these — you can't widen them at accept time. If you need different access, decline this and send them a manage-request from your agency dashboard with your own proposal.")}
             </p>
             <div style={{ marginTop: 12 }}>
               <PermissionMatrix
@@ -186,14 +187,14 @@ export default function AgencyInviteResponsePage() {
             <footer style={{ display: 'flex', gap: 10, marginTop: 22, justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
               <span style={{ fontSize: 12, color: 'var(--text-tertiary)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                 <CalendarClock size={12} />
-                {invite.expires_at ? `Expires ${new Date(invite.expires_at).toLocaleDateString()}` : ''}
+                {invite.expires_at ? t('invitations.manage_invite.expires', 'Expires {{date}}', { date: new Date(invite.expires_at).toLocaleDateString() }) : ''}
               </span>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button type="button" onClick={decline} disabled={busy} style={btnGhost}>
-                  <X size={14} /> Decline
+                  <X size={14} /> {t('invitations.agency_invite.decline', 'Decline')}
                 </button>
                 <button type="button" onClick={accept} disabled={busy} style={btnPrimary}>
-                  {busy ? 'Working…' : <>Accept <ChevronRight size={14} /></>}
+                  {busy ? t('invitations.agency_invite.working', 'Working…') : <>{t('invitations.agency_invite.accept', 'Accept')} <ChevronRight size={14} /></>}
                 </button>
               </div>
             </footer>
@@ -203,11 +204,11 @@ export default function AgencyInviteResponsePage() {
             <div style={resolvedBox}>
               <Check size={18} style={{ color: 'var(--success)' }} />
               <div>
-                <strong style={{ color: 'var(--text-primary)' }}>Already {invite.status}</strong>
+                <strong style={{ color: 'var(--text-primary)' }}>{t('invitations.manage_invite.already_title', 'Already {{status}}', { status: invite.status })}</strong>
                 <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-secondary)' }}>
-                  {invite.status === 'accepted' && 'You are now managing this client.'}
-                  {invite.status === 'declined' && 'You declined this invitation.'}
-                  {invite.status === 'expired' && 'This invitation expired.'}
+                  {invite.status === 'accepted' && t('invitations.agency_invite.status_accepted', 'You are now managing this client.')}
+                  {invite.status === 'declined' && t('invitations.agency_invite.status_declined', 'You declined this invitation.')}
+                  {invite.status === 'expired' && t('invitations.agency_invite.status_expired', 'This invitation expired.')}
                 </p>
               </div>
             </div>
@@ -215,7 +216,7 @@ export default function AgencyInviteResponsePage() {
         </div>
 
         <p style={{ marginTop: 18, textAlign: 'center', fontSize: 12, color: 'var(--text-tertiary)' }}>
-          Both sides keep full visibility into every action taken on this account.
+          {t('invitations.agency_invite.footer_notice', 'Both sides keep full visibility into every action taken on this account.')}
         </p>
       </div>
     </div>

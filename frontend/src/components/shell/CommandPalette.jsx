@@ -8,6 +8,7 @@
  * ========================================================================== */
 import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Command } from 'cmdk';
 import {
   LayoutDashboard, LineChart, FileText, Search, Send, Inbox, Users2,
@@ -31,6 +32,7 @@ const RECENTS_MAX = 6;
  *   basePath             — '/admin' or '/dashboard'
  */
 export default function CommandPalette({ open, onOpenChange, basePath }) {
+  const { t } = useTranslation('app');
   const navigate = useNavigate();
   const [recents, setRecents] = useState(() => readRecents());
   const [inputValue, setInputValue] = useState('');
@@ -57,9 +59,9 @@ export default function CommandPalette({ open, onOpenChange, basePath }) {
     if (!open) setInputValue('');
   }, [open]);
 
-  const pages = useMemo(() => buildPages(basePath), [basePath]);
-  const actions = useMemo(() => buildActions(basePath), [basePath]);
-  const links = useMemo(() => buildLinks(), []);
+  const pages = useMemo(() => buildPages(basePath, t), [basePath, t]);
+  const actions = useMemo(() => buildActions(basePath, t), [basePath, t]);
+  const links = useMemo(() => buildLinks(t), [t]);
 
   function pick(id, fn) {
     fn();
@@ -115,7 +117,7 @@ export default function CommandPalette({ open, onOpenChange, basePath }) {
             autoFocus
             value={inputValue}
             onValueChange={setInputValue}
-            placeholder="Search pages, posts, leads, conversations…"
+            placeholder={t('command_palette.placeholder', 'Search pages, posts, leads, conversations…')}
             style={{
               flex: 1, border: 'none', outline: 'none',
               background: 'transparent',
@@ -125,10 +127,10 @@ export default function CommandPalette({ open, onOpenChange, basePath }) {
           />
           {searchFetching && (
             <span
-              aria-label="Searching"
+              aria-label={t('command_palette.searching', 'Searching…')}
               style={{ fontSize: 11, color: 'var(--text-tertiary)' }}
             >
-              Searching…
+              {t('command_palette.searching', 'Searching…')}
             </span>
           )}
         </div>
@@ -138,7 +140,7 @@ export default function CommandPalette({ open, onOpenChange, basePath }) {
             padding: '32px 16px', textAlign: 'center',
             color: 'var(--text-tertiary)', fontSize: 13,
           }}>
-            No results found.
+            {t('command_palette.no_results', 'No results found.')}
           </Command.Empty>
 
           {/* Cross-feature search results render before static navigation
@@ -151,7 +153,7 @@ export default function CommandPalette({ open, onOpenChange, basePath }) {
           )}
 
           {recents.length > 0 && !hasSearchQuery && (
-            <Group heading="Recent">
+            <Group heading={t('command_palette.recent', 'Recent')}>
               {recents.map((r) => {
                 const item = [...pages, ...actions].find((p) => p.id === r);
                 if (!item) return null;
@@ -162,31 +164,36 @@ export default function CommandPalette({ open, onOpenChange, basePath }) {
             </Group>
           )}
 
-          <Group heading="Pages">
+          <Group heading={t('command_palette.pages', 'Pages')}>
             {pages.map((p) => (
               <Item key={p.id} item={p} onSelect={() => pick(p.id, () => navigate(p.path))} />
             ))}
           </Group>
 
-          <Group heading="Quick actions">
+          <Group heading={t('command_palette.quick_actions', 'Quick actions')}>
             {actions.map((a) => (
               <Item key={a.id} item={a} onSelect={() => pick(a.id, a.run)} />
             ))}
           </Group>
 
           {(clients || []).length > 0 && (
-            <Group heading="Clients">
+            <Group heading={t('command_palette.clients', 'Clients')}>
               {(clients || []).slice(0, 8).map((c) => (
                 <Item
                   key={`client-${c.id}`}
-                  item={{ id: `client-${c.id}`, label: c.company, hint: 'Switch to client', icon: Users2 }}
+                  item={{
+                    id: `client-${c.id}`,
+                    label: c.company,
+                    hint: t('command_palette.switch_to_client', 'Switch to client'),
+                    icon: Users2,
+                  }}
                   onSelect={() => pick(`client-${c.id}`, () => navigate(`/admin/client/${c.id}`))}
                 />
               ))}
             </Group>
           )}
 
-          <Group heading="Help & resources">
+          <Group heading={t('command_palette.help_resources', 'Help & resources')}>
             {links.map((l) => (
               <Item
                 key={l.id}
@@ -204,8 +211,8 @@ export default function CommandPalette({ open, onOpenChange, basePath }) {
           fontSize: 11, color: 'var(--text-tertiary)',
           display: 'flex', justifyContent: 'space-between',
         }}>
-          <span>↑↓ to navigate · ↵ to select</span>
-          <span>esc to close</span>
+          <span>{t('command_palette.nav_hint', '↑↓ to navigate · ↵ to select')}</span>
+          <span>{t('command_palette.close_hint', 'esc to close')}</span>
         </div>
       </Command>
     </div>
@@ -220,10 +227,11 @@ export default function CommandPalette({ open, onOpenChange, basePath }) {
  * conditionally skip categories — passing the full payload is enough.
  */
 function SearchResultGroups({ results, onPick }) {
+  const { t } = useTranslation('app');
   return (
     <>
       {(results.posts || []).length > 0 && (
-        <Group heading="Posts">
+        <Group heading={t('command_palette.posts', 'Posts')}>
           {results.posts.map((p) => (
             <Item
               key={`s-post-${p.id}`}
@@ -239,7 +247,7 @@ function SearchResultGroups({ results, onPick }) {
         </Group>
       )}
       {(results.leads || []).length > 0 && (
-        <Group heading="Leads">
+        <Group heading={t('command_palette.leads', 'Leads')}>
           {results.leads.map((l) => (
             <Item
               key={`s-lead-${l.id}`}
@@ -255,7 +263,7 @@ function SearchResultGroups({ results, onPick }) {
         </Group>
       )}
       {(results.conversations || []).length > 0 && (
-        <Group heading="Conversations">
+        <Group heading={t('command_palette.conversations', 'Conversations')}>
           {results.conversations.map((c) => (
             <Item
               key={`s-conv-${c.id}`}
@@ -271,7 +279,7 @@ function SearchResultGroups({ results, onPick }) {
         </Group>
       )}
       {(results.contacts || []).length > 0 && (
-        <Group heading="Contacts">
+        <Group heading={t('command_palette.contacts', 'Contacts')}>
           {results.contacts.map((ct) => (
             <Item
               key={`s-contact-${ct.id}`}
@@ -348,67 +356,70 @@ function Item({ item, onSelect }) {
   );
 }
 
-function buildPages(basePath) {
+function buildPages(basePath, t) {
+  const tr = (k, d) => t ? t(k, d) : d;
   return [
     // Analytics
-    { id: 'analytics-dashboard', label: 'Dashboard',     hint: 'Analytics overview',     icon: LayoutDashboard, path: `${basePath}/analytics/dashboard` },
-    { id: 'analytics-analytics', label: 'Analytics',     hint: 'Deep metrics',           icon: LineChart,       path: `${basePath}/analytics/analytics` },
-    { id: 'analytics-reports',   label: 'Reports',       hint: 'PDF reports',            icon: FileText,        path: `${basePath}/analytics/reports` },
-    { id: 'analytics-calendar',  label: 'Content Calendar', hint: 'Plan & schedule',     icon: CalendarDays,    path: `${basePath}/analytics/calendar` },
-    { id: 'analytics-roi',       label: 'ROI Calculator', hint: 'Revenue forecasting',   icon: TrendingUp,      path: `${basePath}/analytics/roi` },
-    { id: 'analytics-alerts',    label: 'Alerts',         hint: 'Anomaly notifications', icon: AlertCircle,     path: `${basePath}/analytics/alerts` },
-    { id: 'analytics-caption',   label: 'Caption Writer', hint: 'AI-powered captions',   icon: Wand2,           path: `${basePath}/analytics/caption-writer` },
-    { id: 'analytics-ideas',     label: 'Post Ideas',     hint: 'AI content brainstorm', icon: Lightbulb,       path: `${basePath}/analytics/post-ideas` },
+    { id: 'analytics-dashboard', label: tr('sidebar.items.dashboard', 'Dashboard'), hint: 'Analytics overview', icon: LayoutDashboard, path: `${basePath}/analytics/dashboard` },
+    { id: 'analytics-analytics', label: tr('sidebar.items.analytics', 'Analytics'), hint: 'Deep metrics', icon: LineChart, path: `${basePath}/analytics/analytics` },
+    { id: 'analytics-reports', label: tr('sidebar.items.reports', 'Reports'), hint: 'PDF reports', icon: FileText, path: `${basePath}/analytics/reports` },
+    { id: 'analytics-calendar', label: tr('sidebar.items.calendar', 'Content Calendar'), hint: 'Plan & schedule', icon: CalendarDays, path: `${basePath}/analytics/calendar` },
+    { id: 'analytics-roi', label: tr('sidebar.items.roi_calculator', 'ROI Calculator'), hint: 'Revenue forecasting', icon: TrendingUp, path: `${basePath}/analytics/roi` },
+    { id: 'analytics-alerts', label: tr('sidebar.items.alerts', 'Alerts'), hint: 'Anomaly notifications', icon: AlertCircle, path: `${basePath}/analytics/alerts` },
+    { id: 'analytics-caption', label: tr('sidebar.items.caption_writer', 'Caption Writer'), hint: 'AI-powered captions', icon: Wand2, path: `${basePath}/analytics/caption-writer` },
+    { id: 'analytics-ideas', label: tr('sidebar.items.post_ideas', 'Post Ideas'), hint: 'AI content brainstorm', icon: Lightbulb, path: `${basePath}/analytics/post-ideas` },
     // Messaging
-    { id: 'messaging-dashboard', label: 'Messaging dashboard', hint: 'WhatsApp overview', icon: MessageCircle,   path: `${basePath}/messaging` },
-    { id: 'messaging-inbox',     label: 'Inbox',           hint: 'Conversations',         icon: Inbox,           path: `${basePath}/messaging/inbox` },
-    { id: 'messaging-campaigns', label: 'Campaigns',       hint: 'Broadcast outreach',    icon: Send,            path: `${basePath}/messaging/campaigns` },
-    { id: 'messaging-templates', label: 'Templates',       hint: 'Approved templates',    icon: FileType,        path: `${basePath}/messaging/templates` },
-    { id: 'messaging-contacts',  label: 'Contacts',        hint: 'Audience',              icon: Users2,          path: `${basePath}/messaging/contacts` },
-    { id: 'messaging-account',   label: 'Pinbot account',  hint: 'WhatsApp setup',        icon: Settings,        path: `${basePath}/messaging/account` },
+    { id: 'messaging-dashboard', label: tr('modules.messaging.label', 'Messaging dashboard'), hint: 'WhatsApp overview', icon: MessageCircle, path: `${basePath}/messaging` },
+    { id: 'messaging-inbox', label: tr('sidebar.items.inbox', 'Inbox'), hint: 'Conversations', icon: Inbox, path: `${basePath}/messaging/inbox` },
+    { id: 'messaging-campaigns', label: tr('sidebar.items.campaigns', 'Campaigns'), hint: 'Broadcast outreach', icon: Send, path: `${basePath}/messaging/campaigns` },
+    { id: 'messaging-templates', label: tr('sidebar.items.templates', 'Templates'), hint: 'Approved templates', icon: FileType, path: `${basePath}/messaging/templates` },
+    { id: 'messaging-contacts', label: tr('sidebar.items.contacts', 'Contacts'), hint: 'Audience', icon: Users2, path: `${basePath}/messaging/contacts` },
+    { id: 'messaging-account', label: tr('sidebar.items.account', 'Pinbot account'), hint: 'WhatsApp setup', icon: Settings, path: `${basePath}/messaging/account` },
   ];
 }
 
-function buildActions(basePath) {
+function buildActions(basePath, t) {
+  const tr = (k, d) => t ? t(k, d) : d;
   return [
     {
       id: 'action-new-campaign',
-      label: 'Send a message',
-      hint: 'Open inbox to compose',
+      label: tr('command_palette.actions.send_message', 'Send a message'),
+      hint: tr('command_palette.actions.send_message_hint', 'Open inbox to compose'),
       icon: Send,
       run: () => location.assign(`${basePath}/messaging/inbox`),
     },
     {
       id: 'action-create-campaign',
-      label: 'Create a campaign',
-      hint: 'New broadcast',
+      label: tr('command_palette.actions.create_campaign', 'Create a campaign'),
+      hint: tr('command_palette.actions.create_campaign_hint', 'New broadcast'),
       icon: Plus,
       run: () => location.assign(`${basePath}/messaging/campaigns?new=1`),
     },
     {
       id: 'action-upload-contacts',
-      label: 'Upload contacts',
-      hint: 'Import a CSV',
+      label: tr('command_palette.actions.upload_contacts', 'Upload contacts'),
+      hint: tr('command_palette.actions.upload_contacts_hint', 'Import a CSV'),
       icon: Upload,
       run: () => location.assign(`${basePath}/messaging/contacts?import=1`),
     },
     {
       id: 'action-new-template',
-      label: 'Create a template',
-      hint: 'WhatsApp template',
+      label: tr('command_palette.actions.new_template', 'Create a template'),
+      hint: tr('command_palette.actions.new_template_hint', 'WhatsApp template'),
       icon: FileType,
       run: () => location.assign(`${basePath}/messaging/templates?new=1`),
     },
   ];
 }
 
-function buildLinks() {
+function buildLinks(t) {
+  const tr = (k, d) => t ? t(k, d) : d;
   return [
-    { id: 'link-changelog', label: "What's new",        hint: 'Recent product updates', icon: Sparkles,    path: '/changelog' },
-    { id: 'link-help',      label: 'Help center',       hint: 'Guides + troubleshooting', icon: BookOpen,    path: '/help' },
-    { id: 'link-status',    label: 'System status',     hint: 'Live uptime + incidents', icon: Activity,    path: '/status' },
-    { id: 'link-security',  label: 'Security & compliance', hint: 'GDPR, DPDP, certifications', icon: ShieldCheck, path: '/security' },
-    { id: 'link-contact',   label: 'Contact support',   hint: 'Send us a message',       icon: ExternalLink, path: '/contact' },
+    { id: 'link-changelog', label: tr('command_palette.links.changelog', "What's new"), hint: tr('command_palette.links.changelog_hint', 'Recent product updates'), icon: Sparkles, path: '/changelog' },
+    { id: 'link-help', label: tr('command_palette.links.help', 'Help center'), hint: tr('command_palette.links.help_hint', 'Guides + troubleshooting'), icon: BookOpen, path: '/help' },
+    { id: 'link-status', label: tr('command_palette.links.status', 'System status'), hint: tr('command_palette.links.status_hint', 'Live uptime + incidents'), icon: Activity, path: '/status' },
+    { id: 'link-security', label: tr('command_palette.links.security', 'Security & compliance'), hint: tr('command_palette.links.security_hint', 'GDPR, DPDP, certifications'), icon: ShieldCheck, path: '/security' },
+    { id: 'link-contact', label: tr('command_palette.links.contact', 'Contact support'), hint: tr('command_palette.links.contact_hint', 'Send us a message'), icon: ExternalLink, path: '/contact' },
   ];
 }
 

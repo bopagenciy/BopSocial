@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from rest_framework import serializers
 
+from .currencies import SUPPORTED_CURRENCIES
 from .models import (
     BotConversation, BotConversationStep, BotFlow, BotFlowTemplate,
     CTWACampaign, Lead, LeadActivity,
@@ -121,6 +122,7 @@ class LeadActivitySerializer(serializers.ModelSerializer):
 
 
 class LeadListSerializer(serializers.ModelSerializer):
+    bop_contact_id = serializers.UUIDField(source='contact.bop_contact_id', read_only=True)
     contact_name = serializers.CharField(source='contact.name', read_only=True)
     contact_phone = serializers.CharField(source='contact.phone', read_only=True)
     assigned_email = serializers.CharField(source='assigned_to.email', read_only=True, default='')
@@ -129,13 +131,13 @@ class LeadListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Lead
         fields = [
-            'id', 'name', 'phone', 'email', 'interest', 'budget', 'location',
+            'id', 'bop_contact_id', 'name', 'phone', 'email', 'interest', 'budget', 'location',
             'contact', 'contact_name', 'contact_phone',
             'status', 'quality_score', 'tags',
             'assigned_to', 'assigned_email',
             'source_flow', 'source_flow_name',
             'source_ad_id', 'source_ad_name', 'source_campaign_id', 'source_campaign_name',
-            'created_at', 'converted_at', 'conversion_value',
+            'created_at', 'converted_at', 'conversion_value', 'currency', 'conversion_currency',
         ]
 
 
@@ -159,6 +161,11 @@ class LeadDetailSerializer(LeadListSerializer):
 # ─────────────────────────────────────────────────────────────────────────────
 class CTWACampaignSerializer(serializers.ModelSerializer):
     flow_name = serializers.CharField(source='flow.name', read_only=True, default='')
+    currency = serializers.CharField(
+        max_length=10,
+        required=False,
+        help_text="Meta Ad Account currency (ISO 4217 code, e.g. USD, COP, EUR)",
+    )
     cpl = serializers.SerializerMethodField()
 
     class Meta:
@@ -166,6 +173,7 @@ class CTWACampaignSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'name', 'flow', 'flow_name',
             'ad_account_id', 'campaign_id', 'campaign_name',
+            'currency',
             'adset_ids', 'ad_ids', 'pre_filled_message',
             'is_active',
             'total_clicks', 'total_conversations', 'total_leads', 'total_spent', 'cpl',
@@ -175,6 +183,22 @@ class CTWACampaignSerializer(serializers.ModelSerializer):
             'total_clicks', 'total_conversations', 'total_leads', 'total_spent',
             'last_synced_at', 'created_at', 'updated_at',
         ]
+
+    def to_internal_value(self, data):
+        ret = super().to_internal_value(data)
+        if 'currency' in ret and isinstance(ret['currency'], str):
+            ret['currency'] = ret['currency'].strip().upper()
+        return ret
+
+    def validate_currency(self, value):
+        if not value:
+            return value
+        cleaned = value.strip().upper()
+        if cleaned not in SUPPORTED_CURRENCIES:
+            raise serializers.ValidationError(
+                f"Unsupported currency code '{cleaned}'. Supported: {', '.join(SUPPORTED_CURRENCIES)}"
+            )
+        return cleaned
 
     def get_cpl(self, obj):
         if obj.total_leads and obj.total_spent:

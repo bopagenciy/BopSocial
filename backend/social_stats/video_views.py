@@ -41,6 +41,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from . import media_service
+from .video_probe import VideoProbeError
 from .composer_serializers import MediaAssetSerializer
 from .models import Client, MediaAsset, PlatformCredential
 
@@ -114,12 +115,15 @@ def upload_video(request):
     alt    = (request.data.get('alt_text') or '').strip()
 
     if upload:
-        asset = media_service.upload_media(
-            upload, client_id=client.id,
-            uploaded_by_id=request.user.id,
-            folder=folder, alt_text=alt,
-        )
-        return Response(MediaAssetSerializer(asset).data, status=201)
+        try:
+            asset = media_service.upload_media(
+                upload, client_id=client.id,
+                uploaded_by_id=request.user.id,
+                folder=folder, alt_text=alt,
+            )
+            return Response(MediaAssetSerializer(asset).data, status=201)
+        except (ValueError, VideoProbeError) as e:
+            return Response({'error': str(e)}, status=400)
 
     if src_url:
         return _import_from_url(client, request.user, src_url, folder, alt)

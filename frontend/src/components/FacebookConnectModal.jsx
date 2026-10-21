@@ -39,6 +39,7 @@
  * ===========================================================================*/
 
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { BrandMark } from './ui/BrandLogo';
 
 const FB_APP_ID = 'YOUR_FACEBOOK_APP_ID';
@@ -118,8 +119,9 @@ export default function FacebookConnectModal({
   onContinue,
   onConnect,
   onError,
-  appName = 'our app',
+  appName = 'Bop Social',
 }) {
+  const { t } = useTranslation('connections');
   const isControlled = typeof controlledOpen === 'boolean';
 
   const [internalOpen, setInternalOpen] = useState(false);
@@ -155,14 +157,14 @@ export default function FacebookConnectModal({
       })
       .catch((err) => {
         if (!cancelled) {
-          setErrorMsg('Could not load Facebook. Please refresh and try again.');
+          setErrorMsg(t('errors.load_facebook', 'Could not load Facebook. Please refresh and try again.'));
           if (onError) onError(err);
         }
       });
     return () => {
       cancelled = true;
     };
-  }, [useSdk, onError]);
+  }, [useSdk, onError, t]);
 
   const handleOpen = useCallback(() => {
     lastFocusedRef.current =
@@ -249,7 +251,7 @@ export default function FacebookConnectModal({
     }
 
     if (!sdkReady || !window.FB) {
-      setErrorMsg('Loading Facebook…');
+      setErrorMsg(t('actions.loading_facebook', 'Loading Facebook…'));
       return;
     }
     setSubmitting(true);
@@ -268,7 +270,7 @@ export default function FacebookConnectModal({
               } else {
                 const message =
                   (userResp && userResp.error && userResp.error.message) ||
-                  'Could not fetch your profile.';
+                  t('errors.profile_fetch', 'Could not fetch your profile.');
                 setErrorMsg(message);
                 if (onError) onError(userResp && userResp.error);
               }
@@ -278,8 +280,8 @@ export default function FacebookConnectModal({
           setSubmitting(false);
           const message =
             response && response.status === 'not_authorized'
-              ? 'You denied one or more required permissions.'
-              : 'Facebook login was canceled.';
+              ? t('errors.denied_permissions', 'You denied one or more required permissions.')
+              : t('errors.login_canceled', 'Facebook login was canceled.');
           setErrorMsg(message);
           if (onError) onError(response);
         }
@@ -294,10 +296,10 @@ export default function FacebookConnectModal({
     (useSdk && !sdkReady);
 
   const continueLabel = submitting
-    ? 'Connecting…'
+    ? t('actions.connecting', 'Connecting…')
     : useSdk && !sdkReady
-    ? 'Loading Facebook…'
-    : 'Continue with Facebook';
+    ? t('actions.loading_facebook', 'Loading Facebook…')
+    : t('actions.continue_facebook', 'Continue with Facebook');
 
   return (
     <>
@@ -305,11 +307,11 @@ export default function FacebookConnectModal({
         <button
           type="button"
           onClick={handleOpen}
-          aria-label="Connect Facebook and Instagram"
+          aria-label={t('actions.trigger_connect', 'Connect Facebook & Instagram')}
           style={styles.triggerBtn}
         >
           <FbGlyph size={16} />
-          Connect Facebook &amp; Instagram
+          {t('actions.trigger_connect', 'Connect Facebook & Instagram')}
         </button>
       )}
 
@@ -330,7 +332,7 @@ export default function FacebookConnectModal({
                 ref={firstFocusableRef}
                 type="button"
                 onClick={closeAndNotify}
-                aria-label="Close dialog"
+                aria-label={t('modal.close_dialog', 'Close dialog')}
                 style={styles.closeBtn}
               >
                 <CloseGlyph />
@@ -339,16 +341,15 @@ export default function FacebookConnectModal({
                 <BrandMark size={48} />
               </div>
               <h2 id="fb-connect-title" style={styles.title}>
-                Connect Your Facebook &amp; Instagram
+                {t('modal.title', 'Connect Your Facebook & Instagram')}
               </h2>
               <p id="fb-connect-desc" style={styles.subtitle}>
-                To continue, please review and approve the permissions below.
-                You&apos;ll be redirected to Facebook to confirm.
+                {t('modal.subtitle', "To continue, please review and approve the permissions below. You'll be redirected to Facebook to confirm.")}
               </p>
             </div>
 
             <div style={styles.body}>
-              <SectionLabel>Required Permissions</SectionLabel>
+              <SectionLabel>{t('modal.required_permissions', 'Required Permissions')}</SectionLabel>
               <ul style={styles.list}>
                 {REQUIRED_PERMISSIONS.map((p) => (
                   <PermissionRow
@@ -369,11 +370,11 @@ export default function FacebookConnectModal({
                 <>
                   <div style={styles.divider}>
                     <span style={styles.dividerLine} />
-                    <span style={styles.dividerText}>Optional</span>
+                    <span style={styles.dividerText}>{t('modal.optional_badge', 'Optional')}</span>
                     <span style={styles.dividerLine} />
                   </div>
 
-                  <SectionLabel>Optional Permissions</SectionLabel>
+                  <SectionLabel>{t('modal.optional_permissions', 'Optional Permissions')}</SectionLabel>
                   <ul style={styles.list}>
                     {OPTIONAL_PERMISSIONS.map((p) => (
                       <PermissionRow
@@ -403,16 +404,16 @@ export default function FacebookConnectModal({
                 <button
                   type="button"
                   onClick={closeAndNotify}
-                  aria-label="Cancel and close dialog"
+                  aria-label={t('modal.cancel_aria', 'Cancel and close dialog')}
                   style={styles.cancelBtn}
                 >
-                  Cancel
+                  {t('actions.cancel', 'Cancel')}
                 </button>
                 <button
                   type="button"
                   onClick={handleContinue}
                   disabled={continueDisabled}
-                  aria-label="Continue with Facebook login"
+                  aria-label={t('modal.continue_aria', 'Continue with Facebook login')}
                   aria-disabled={continueDisabled}
                   style={
                     continueDisabled
@@ -425,11 +426,11 @@ export default function FacebookConnectModal({
                 </button>
               </div>
               <p style={styles.legalNote}>
-                By continuing, you agree to our{' '}
-                <a href="/terms" style={styles.legalLink}>Terms of Service</a>{' '}
-                and{' '}
-                <a href="/privacy" style={styles.legalLink}>Privacy Policy</a>
-                . You can revoke access anytime in your Facebook settings.
+                {t('modal.legal_prefix', 'By continuing, you agree to our')}{' '}
+                <a href="/terms" style={styles.legalLink}>{t('modal.terms_of_service', 'Terms of Service')}</a>{' '}
+                {t('modal.and', 'and')}{' '}
+                <a href="/privacy" style={styles.legalLink}>{t('modal.privacy_policy', 'Privacy Policy')}</a>
+                {t('modal.legal_suffix', '. You can revoke access anytime in your Facebook settings.')}
               </p>
             </div>
           </div>
@@ -457,6 +458,7 @@ function SectionLabel({ children }) {
 }
 
 function PermissionRow({ perm, required = false, checked, onToggle, tooltipOpen, onTooltipToggle }) {
+  const { t } = useTranslation('connections');
   const inputId = `fb-perm-${perm.scope}`;
   return (
     <li>
@@ -474,9 +476,9 @@ function PermissionRow({ perm, required = false, checked, onToggle, tooltipOpen,
         />
         <div style={styles.rowBody}>
           <div style={styles.rowHead}>
-            <span style={styles.rowLabel}>{perm.label}</span>
+            <span style={styles.rowLabel}>{t(`permissions.${perm.scope}.label`, perm.label)}</span>
             {required && (
-              <span aria-label="required" style={styles.requiredStar}>*</span>
+              <span aria-label={t('modal.required', 'required')} style={styles.requiredStar}>*</span>
             )}
             <code style={styles.scopeName}>{perm.scope}</code>
             <button
@@ -486,7 +488,7 @@ function PermissionRow({ perm, required = false, checked, onToggle, tooltipOpen,
                 e.stopPropagation();
                 onTooltipToggle();
               }}
-              aria-label={`Technical info about ${perm.scope}`}
+              aria-label={t('modal.technical_info', { scope: perm.scope, defaultValue: `Technical info about ${perm.scope}` })}
               aria-expanded={tooltipOpen}
               style={styles.infoBtn}
             >
@@ -494,9 +496,9 @@ function PermissionRow({ perm, required = false, checked, onToggle, tooltipOpen,
             </button>
           </div>
           <p id={`${inputId}-desc`} style={styles.rowDesc}>
-            {perm.description}
+            {t(`permissions.${perm.scope}.description`, perm.description)}
           </p>
-          {tooltipOpen && <p style={styles.tooltip}>{perm.technical}</p>}
+          {tooltipOpen && <p style={styles.tooltip}>{t(`permissions.${perm.scope}.technical`, perm.technical)}</p>}
         </div>
       </label>
     </li>

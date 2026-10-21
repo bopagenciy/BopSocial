@@ -15,7 +15,7 @@ export default function PrivacyPolicyPage() {
       title="Privacy Policy"
       effectiveDate="2026-01-01"
       lastUpdated="2026-04-15"
-      intro="Social Stats is built by people who hate dark patterns. This page explains, in plain English, what data we collect, why we need it, and how we keep it safe."
+      intro="Bop Social is built by people who hate dark patterns. This page explains, in plain English, what data we collect, why we need it, and how we keep it safe."
       sections={[
         {
           id: 'who',
@@ -23,13 +23,13 @@ export default function PrivacyPolicyPage() {
           body: (
             <>
               <p>
-                Social Stats is operated by Gigai Kripa Services, an early-stage product team
+                Bop Social is operated by Gigai Kripa Services, an early-stage product team
                 building marketing tooling. For corporate / registration details, write to
-                <a href="mailto:privacy@socialstats.app"> privacy@socialstats.app</a>.
+                <a href="mailto:privacy@bopsocial.com"> privacy@bopsocial.com</a>.
               </p>
               <p>
-                This policy applies to <strong>socialstats.app</strong>, the Social Stats web app, our mobile apps, and any
-                related services. For business customers (agencies, brands, creators), Social Stats is the
+                This policy applies to <strong>bopsocial.com</strong>, the Bop Social web app, our mobile apps, and any
+                related services. For business customers (agencies, brands, creators), Bop Social is the
                 <strong> data processor</strong> for content and audience data they upload — they remain the data
                 controller for that data.
               </p>
@@ -43,7 +43,7 @@ export default function PrivacyPolicyPage() {
             <>
               <p>We collect only what we need to run the product. There are four buckets:</p>
               <h3>a. Account data</h3>
-              <p>Name, email, phone (optional), password hash, organization name, and role. Social Stats is free and open source — we do not process payments or store any card/billing details.</p>
+              <p>Name, email, phone (optional), password hash, organization name, and role. Bop Social provides unified social media management — we do not store unencrypted billing details.</p>
               <h3>b. Connected-account data</h3>
               <p>When you connect Facebook, Instagram, YouTube, Google Business, LinkedIn, or WhatsApp, we receive OAuth tokens, your platform username and ID, and access to the data scopes you authorise. Tokens are encrypted (AES-256 / Fernet) at rest.</p>
               <h3>c. Content data</h3>
@@ -77,7 +77,7 @@ export default function PrivacyPolicyPage() {
           body: (
             <>
               <p>
-                Social Stats uses Anthropic's Claude API to power the AI Assistant, Composer drafts, brand-voice training,
+                Bop Social uses Anthropic's Claude API to power the AI Assistant, Composer drafts, brand-voice training,
                 and analytics summaries. When you use these features:
               </p>
               <ul>
@@ -179,9 +179,9 @@ export default function PrivacyPolicyPage() {
           title: '10. Children',
           body: (
             <p>
-              SocialStats is a B2B product not intended for children under 18. We do not knowingly collect data from
+              Bop Social is a B2B product not intended for children under 18. We do not knowingly collect data from
               minors. If you believe a child has created an account, email{' '}
-              <a href="mailto:privacy@socialstats.app">privacy@socialstats.app</a> and we'll delete it.
+              <a href="mailto:privacy@bopsocial.com">privacy@bopsocial.com</a> and we'll delete it.
             </p>
           ),
         },
@@ -213,7 +213,7 @@ export default function PrivacyPolicyPage() {
             <>
               <p>
                 Questions? Reach our DPO (Data Protection Officer) at{' '}
-                <a href="mailto:privacy@socialstats.app">privacy@socialstats.app</a> or our postal address:
+                <a href="mailto:privacy@bopsocial.com">privacy@bopsocial.com</a> or our postal address:
               </p>
               <p>
                 <strong>Gigai Kripa Services</strong><br />

@@ -12,6 +12,7 @@ from django.db import transaction
 from django.contrib.auth.models import User
 from django.utils import timezone
 from datetime import timedelta
+from .currencies import CURRENCY_CHOICES
 from .fields import EncryptedTextField
 
 PLATFORM_CHOICES = [
@@ -32,6 +33,7 @@ SYNC_STATUS = [
     ('pending', 'Pending'),
     ('running', 'Running'),
     ('success', 'Success'),
+    ('partial', 'Partial'),
     ('failed',  'Failed'),
 ]
 
@@ -95,6 +97,25 @@ class Client(models.Model):
     # IANA timezone for accurate scheduled-post timing per client.
     timezone = models.CharField(max_length=64, blank=True, default='')
 
+    # Workspace/tenant default language when user has not set an explicit preference.
+    default_language = models.CharField(
+        max_length=10,
+        choices=[('en', 'English'), ('es', 'Spanish')],
+        null=True,
+        blank=True,
+        default=None,
+        help_text="Tenant default language ('en' or 'es'). Unset/None falls back to browser/system fallback.",
+    )
+
+    # Canonical workspace/tenant default currency (ISO 4217).
+    CURRENCY_CHOICES = CURRENCY_CHOICES
+    currency = models.CharField(
+        max_length=3,
+        choices=CURRENCY_CHOICES,
+        default='USD',
+        help_text="Workspace canonical currency code (ISO 4217).",
+    )
+
     # ── Marketplace ownership ────────────────────────────────────
     # Who owns this workspace? Existing rows backfill to 'agency_owned' so the
     # legacy agency-managed flow stays untouched. End-user self-signups create
@@ -150,6 +171,24 @@ class Client(models.Model):
     # return 423. The user can still log in to view existing data.
     is_processing_paused = models.BooleanField(default=False)
 
+    # ── Canonical Bop Universe Identity ──────────────────────────
+    bop_organization_id = models.UUIDField(
+        default=uuid.uuid4,
+        unique=True,
+        editable=False,
+        db_index=True,
+        help_text="Canonical Bop Universe organization identifier (UUIDv4).",
+    )
+
+    def save(self, *args, **kwargs):
+        if not self.bop_organization_id:
+            self.bop_organization_id = uuid.uuid4()
+        elif self.pk:
+            orig = Client.objects.filter(pk=self.pk).values('bop_organization_id').first()
+            if orig and orig['bop_organization_id'] and str(orig['bop_organization_id']) != str(self.bop_organization_id):
+                raise ValueError("bop_organization_id is immutable once assigned.")
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"{self.company} ({self.name})"
 
@@ -192,6 +231,14 @@ class UserProfile(models.Model):
     terms_accepted_at = models.DateTimeField(null=True, blank=True)
     is_self_registered = models.BooleanField(default=False)
     email_verified     = models.BooleanField(default=True)   # False for email/password signups until verified
+    language           = models.CharField(
+        max_length=10,
+        choices=[('en', 'English'), ('es', 'Spanish')],
+        null=True,
+        blank=True,
+        default=None,
+        help_text="Explicit user language preference ('en' or 'es'). Unset/None falls back to tenant default or browser.",
+    )
     agency             = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='managed_clients')
 
     # ── Marketplace account type ────────────────────────────────
@@ -358,6 +405,19 @@ class PlatformCredential(models.Model):
         if self.is_expired:
             return 'expired'
         return 'active'
+
+    def get_scopes(self) -> list[str]:
+        """Return granted scopes as a sorted list of unique scope strings."""
+        if not self.scope:
+            return []
+        return [s.strip().lower() for s in self.scope.split(',') if s.strip()]
+
+    def has_scope(self, scope_name: str) -> bool:
+        """Check whether a specific scope was granted to this credential."""
+        if not scope_name:
+            return False
+        return scope_name.strip().lower() in self.get_scopes()
+
 
 
 class ManualCredentialExtras(models.Model):
@@ -806,6 +866,7 @@ class ROIReport(models.Model):
     client            = models.ForeignKey(Client, on_delete=models.CASCADE, related_name='roi_reports')
     month             = models.IntegerField()
     year              = models.IntegerField()
+    currency          = models.CharField(max_length=3, choices=CURRENCY_CHOICES, default='USD')
     total_investment  = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     agency_fee        = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     total_clicks      = models.BigIntegerField(default=0)
@@ -1533,6 +1594,24 @@ class WhatsAppContact(models.Model):
     created_at      = models.DateTimeField(auto_now_add=True)
     updated_at      = models.DateTimeField(auto_now=True)
 
+    # ── Canonical Bop Universe Identity ──────────────────────────
+    bop_contact_id = models.UUIDField(
+        default=uuid.uuid4,
+        unique=True,
+        editable=False,
+        db_index=True,
+        help_text="Canonical Bop Universe contact identifier (UUIDv4).",
+    )
+
+    def save(self, *args, **kwargs):
+        if not self.bop_contact_id:
+            self.bop_contact_id = uuid.uuid4()
+        elif self.pk:
+            orig = WhatsAppContact.objects.filter(pk=self.pk).values('bop_contact_id').first()
+            if orig and orig['bop_contact_id'] and str(orig['bop_contact_id']) != str(self.bop_contact_id):
+                raise ValueError("bop_contact_id is immutable once assigned.")
+        super().save(*args, **kwargs)
+
     class Meta:
         unique_together = ('client', 'phone')
         ordering = ['-updated_at']
@@ -1784,12 +1863,24 @@ AUTOMATION_ACTION_CHOICES = [
 
 
 # ── Composer & Publishing ─────────────────────────────────────────────────────
+def media_asset_upload_path(instance, filename):
+    now = timezone.now()
+    client_id = getattr(instance, 'client_id', None) or 'shared'
+    return f"media_assets/tenant_{client_id}/{now.year:04d}/{now.month:02d}/{filename}"
+
+
+def media_asset_thumb_upload_path(instance, filename):
+    now = timezone.now()
+    client_id = getattr(instance, 'client_id', None) or 'shared'
+    return f"media_assets/thumbs/tenant_{client_id}/{now.year:04d}/{now.month:02d}/{filename}"
+
+
 class MediaAsset(models.Model):
     """Uploaded media library — photos, videos, gifs available to the composer."""
     client       = models.ForeignKey(Client, on_delete=models.CASCADE, related_name='media_assets')
     uploaded_by  = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='uploaded_media')
-    file         = models.FileField(upload_to='media_assets/%Y/%m/')
-    thumbnail    = models.ImageField(upload_to='media_assets/thumbs/%Y/%m/', null=True, blank=True)
+    file         = models.FileField(upload_to=media_asset_upload_path)
+    thumbnail    = models.ImageField(upload_to=media_asset_thumb_upload_path, null=True, blank=True)
     mime_type    = models.CharField(max_length=100, blank=True)
     file_size    = models.BigIntegerField(default=0)
     width        = models.IntegerField(default=0)
@@ -1798,6 +1889,7 @@ class MediaAsset(models.Model):
     alt_text     = models.CharField(max_length=500, blank=True)
     tags         = models.JSONField(default=list, blank=True)
     folder       = models.CharField(max_length=100, blank=True)
+    technical_metadata = models.JSONField(default=dict, blank=True)
     is_used      = models.BooleanField(default=False)
     created_at   = models.DateTimeField(auto_now_add=True)
 
@@ -1810,6 +1902,31 @@ class MediaAsset(models.Model):
 
     def __str__(self):
         return f"{self.client.company} — {self.file.name}"
+
+    def get_authorized_url(self, request=None, thumb=False) -> str:
+        from .media_access import generate_media_asset_url
+        return generate_media_asset_url(self, request=request, thumb=thumb)
+
+    def get_public_publishing_url(self, expires_in=172800) -> str:
+        from .media_access import generate_public_publishing_token
+        from django.conf import settings
+        token = generate_public_publishing_token(self.id, self.client_id, max_age=expires_in)
+        base = (getattr(settings, 'BACKEND_PUBLIC_URL', '') or getattr(settings, 'FRONTEND_URL', '')).rstrip('/')
+        return f"{base}/api/media/public/{token}/"
+
+    def delete(self, *args, **kwargs):
+        from . import media_service
+        if media_service._s3_enabled():
+            if self.file and self.file.name:
+                media_service.delete_s3_object(self.file.name)
+            if self.thumbnail and self.thumbnail.name:
+                media_service.delete_s3_object(self.thumbnail.name)
+        else:
+            if self.file:
+                self.file.delete(save=False)
+            if self.thumbnail:
+                self.thumbnail.delete(save=False)
+        return super().delete(*args, **kwargs)
 
 
 class UnifiedPost(models.Model):
@@ -1825,6 +1942,7 @@ class UnifiedPost(models.Model):
     platform_overrides = models.JSONField(default=dict, blank=True, help_text='{platform: {content, media_urls, hashtags}}')
     status            = models.CharField(max_length=20, choices=UNIFIED_POST_STATUS_CHOICES, default='draft')
     scheduled_at      = models.DateTimeField(null=True, blank=True)
+    queued_at         = models.DateTimeField(null=True, blank=True)
     published_at      = models.DateTimeField(null=True, blank=True)
     created_at        = models.DateTimeField(auto_now_add=True)
     updated_at        = models.DateTimeField(auto_now=True)
@@ -1834,6 +1952,8 @@ class UnifiedPost(models.Model):
     recurrence_rule   = models.CharField(max_length=500, blank=True, help_text='RFC 5545 RRULE')
     approved_by       = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='approved_unified_posts')
     approved_at       = models.DateTimeField(null=True, blank=True)
+    source_queue      = models.ForeignKey('social_stats.PostQueue', on_delete=models.SET_NULL, null=True, blank=True, related_name='unified_posts')
+    source_queued_item = models.ForeignKey('social_stats.QueuedItem', on_delete=models.SET_NULL, null=True, blank=True, related_name='materialized_posts')
 
     class Meta:
         ordering = ['-created_at']
@@ -1860,6 +1980,17 @@ class PlatformPublishLog(models.Model):
     completed_at       = models.DateTimeField(null=True, blank=True)
     engagement_synced_at = models.DateTimeField(null=True, blank=True)
     raw_response       = models.JSONField(default=dict, blank=True)
+
+    # BS-3I Traceability & Provider Reconciliation
+    provider_request_id    = models.CharField(max_length=255, blank=True, default='', db_index=True)
+    provider_container_id  = models.CharField(max_length=255, blank=True, default='', db_index=True)
+    provider_attempt_token = models.CharField(max_length=100, blank=True, default='')
+
+    # BS-3J Ambiguous Provider Reconciliation
+    last_reconciled_at           = models.DateTimeField(null=True, blank=True)
+    reconciliation_status        = models.CharField(max_length=50, blank=True, default='')
+    reconciliation_evidence_type = models.CharField(max_length=80, blank=True, default='')
+    reconciliation_reference     = models.CharField(max_length=255, blank=True, default='')
 
     class Meta:
         unique_together = ('unified_post', 'platform')
@@ -1909,6 +2040,13 @@ class PostQueue(models.Model):
     def __str__(self):
         return f"{self.client.company} — {self.name}"
 
+    def save(self, *args, **kwargs):
+        if self.pk:
+            orig = PostQueue.objects.filter(pk=self.pk).values('platforms').first()
+            if orig and set(orig.get('platforms') or []) != set(self.platforms or []):
+                self.items.filter(status='waiting').update(approved_by=None, approved_at=None)
+        super().save(*args, **kwargs)
+
 
 class QueuedItem(models.Model):
     """A pre-written post sitting in a PostQueue waiting to be dispatched."""
@@ -1920,6 +2058,8 @@ class QueuedItem(models.Model):
     status       = models.CharField(max_length=20, choices=QUEUED_ITEM_STATUS_CHOICES, default='waiting')
     used_at      = models.DateTimeField(null=True, blank=True)
     unified_post = models.ForeignKey(UnifiedPost, on_delete=models.SET_NULL, null=True, blank=True, related_name='source_queue_item')
+    approved_by  = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='approved_queue_items')
+    approved_at  = models.DateTimeField(null=True, blank=True)
     created_at   = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -1928,6 +2068,28 @@ class QueuedItem(models.Model):
 
     def __str__(self):
         return f"{self.queue.name} #{self.sort_order} ({self.status})"
+
+    @property
+    def is_approved(self) -> bool:
+        return self.approved_by_id is not None and self.approved_at is not None
+
+    def save(self, *args, **kwargs):
+        if self.pk:
+            orig = QueuedItem.objects.filter(pk=self.pk).values(
+                'content', 'media_urls', 'hashtags', 'approved_by_id', 'approved_at',
+            ).first()
+            if orig and (orig['approved_by_id'] is not None or orig['approved_at'] is not None):
+                content_changed = self.content != orig['content']
+                media_changed = self.media_urls != orig['media_urls']
+                hashtags_changed = self.hashtags != orig['hashtags']
+                if content_changed or media_changed or hashtags_changed:
+                    self.approved_by = None
+                    self.approved_at = None
+                    if 'update_fields' in kwargs and kwargs['update_fields'] is not None:
+                        fields = set(kwargs['update_fields'])
+                        fields.update(['approved_by', 'approved_at'])
+                        kwargs['update_fields'] = list(fields)
+        super().save(*args, **kwargs)
 
 
 # ── Inbox & Engagement ────────────────────────────────────────────────────────

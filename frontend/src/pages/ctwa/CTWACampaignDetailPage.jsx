@@ -24,11 +24,14 @@ import {
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend,
 } from 'recharts';
+import { useTranslation } from 'react-i18next';
 
 import { ctwaAPI } from '../../services/api';
+import { formatCurrency } from '../../utils/formatters';
 import toast from '../../components/ui/toast';
 
 export default function CTWACampaignDetailPage() {
+  const { t, i18n } = useTranslation('messaging');
   const { id } = useParams();
   const [camp,    setCamp]    = useState(null);
   const [data,    setData]    = useState(null);
@@ -42,36 +45,38 @@ export default function CTWACampaignDetailPage() {
     setLoading(true);
     Promise.all([ctwaAPI.get(id), ctwaAPI.analytics(id)])
       .then(([cr, ar]) => { setCamp(cr.data); setData(ar.data); })
-      .catch(() => toast.error('Could not load campaign'))
+      .catch(() => toast.error(t('ctwa.detail.load_error')))
       .finally(() => setLoading(false));
   }
-  useEffect(load, [id]);
+  useEffect(load, [id]); // eslint-disable-line
 
   function fetchAdBreakdown() {
     setAdBusy(true);
     ctwaAPI.adBreakdown(id)
       .then((r) => setAdBreakdown(r.data))
-      .catch(() => toast.error('Could not fetch per-ad insights'))
+      .catch(() => toast.error(t('ctwa.detail.fetch_error')))
       .finally(() => setAdBusy(false));
   }
+
+  const currency = (camp?.currency || data?.totals?.currency || 'USD').toUpperCase();
 
   async function syncMeta() {
     setSyncing(true);
     try {
       const r = await ctwaAPI.syncMeta(id);
       if (r.data?.ok) {
-        toast.success(`Synced from Meta — spent ₹${(r.data.total_spent || 0).toLocaleString()}`);
+        toast.success(t('ctwa.detail.synced_success', { amount: formatCurrency(r.data.total_spent || 0, currency, i18n?.language) }));
       } else {
-        toast.error(r.data?.error || 'Meta sync failed');
+        toast.error(r.data?.error || t('ctwa.detail.sync_failed'));
       }
       load();
     } catch (e) {
-      toast.error(e?.response?.data?.error || 'Could not sync');
+      toast.error(e?.response?.data?.error || t('ctwa.detail.sync_error'));
     } finally { setSyncing(false); }
   }
 
   if (loading || !camp || !data) {
-    return <div style={{ padding: 32, color: 'var(--text-tertiary)' }}>Loading…</div>;
+    return <div style={{ padding: 32, color: 'var(--text-tertiary)' }}>{t('ctwa.loading')}</div>;
   }
 
   // Merge daily series so the chart has both lines aligned by date
@@ -92,7 +97,7 @@ export default function CTWACampaignDetailPage() {
         display: 'inline-flex', alignItems: 'center', gap: 4,
         fontSize: 13, color: 'var(--text-secondary)', textDecoration: 'none', alignSelf: 'flex-start',
       }}>
-        <ArrowLeft size={14} /> All campaigns
+        <ArrowLeft size={14} /> {t('ctwa.detail.back')}
       </Link>
 
       {/* Hero */}
@@ -116,38 +121,38 @@ export default function CTWACampaignDetailPage() {
             {camp.name}
           </h1>
           <div style={{ marginTop: 6, display: 'flex', gap: 12, flexWrap: 'wrap', fontSize: 13, color: 'var(--text-secondary)' }}>
-            <span>Flow: <Link to={`/admin/bot-flows/${camp.flow}/edit`} style={{ color: 'var(--brand-primary-hover)', fontWeight: 600 }}>{camp.flow_name}</Link></span>
-            <span>Meta campaign: <code>{camp.campaign_id}</code></span>
-            <span>{(camp.ad_ids || []).length} ad{(camp.ad_ids || []).length === 1 ? '' : 's'}</span>
+            <span>{t('ctwa.detail.flow_label')}: <Link to={`/admin/bot-flows/${camp.flow}/edit`} style={{ color: 'var(--brand-primary-hover)', fontWeight: 600 }}>{camp.flow_name}</Link></span>
+            <span>{t('ctwa.detail.meta_campaign')}: <code>{camp.campaign_id}</code></span>
+            <span>{(camp.ad_ids || []).length === 1 ? t('ctwa.detail.ads_count_singular') : t('ctwa.detail.ads_count_plural', { count: (camp.ad_ids || []).length })}</span>
           </div>
           {camp.last_synced_at && (
             <div style={{ marginTop: 4, fontSize: 11, color: 'var(--text-tertiary)' }}>
-              Last synced: {new Date(camp.last_synced_at).toLocaleString()}
+              {t('ctwa.detail.last_synced', { date: new Date(camp.last_synced_at).toLocaleString() })}
             </div>
           )}
         </div>
         <div style={{ display: 'flex', gap: 6 }}>
           <button type="button" onClick={syncMeta} disabled={syncing} style={btnGhost}>
-            <RefreshCw size={13} /> {syncing ? 'Syncing…' : 'Sync Meta'}
+            <RefreshCw size={13} /> {syncing ? t('ctwa.detail.syncing') : t('ctwa.detail.sync_meta')}
           </button>
         </div>
       </header>
 
       {/* KPI cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
-        <KPI label="Clicks"        n={data.totals.clicks.toLocaleString()} />
-        <KPI label="Conversations" n={data.totals.conversations.toLocaleString()} color="var(--brand-primary)" />
-        <KPI label="Leads"         n={data.totals.leads.toLocaleString()}  color="var(--success)" />
-        <KPI label="Spent"         n={`₹${Number(data.totals.spent || 0).toLocaleString()}`} />
-        <KPI label="CPL"
-             n={data.totals.cpl != null ? `₹${data.totals.cpl}` : '—'}
+        <KPI label={t('ctwa.stats.clicks')}        n={data.totals.clicks.toLocaleString()} />
+        <KPI label={t('ctwa.stats.conversations')} n={data.totals.conversations.toLocaleString()} color="var(--brand-primary)" />
+        <KPI label={t('ctwa.stats.leads')}         n={data.totals.leads.toLocaleString()}  color="var(--success)" />
+        <KPI label={t('ctwa.stats.spent')}         n={formatCurrency(data.totals.spent || 0, currency, i18n?.language)} />
+        <KPI label={t('ctwa.detail.cpl')}
+             n={data.totals.cpl != null ? formatCurrency(data.totals.cpl, currency, i18n?.language) : '—'}
              color={data.totals.cpl != null && data.totals.cpl < 200 ? 'var(--success)' : 'var(--warning)'} />
       </div>
 
       {/* Daily series */}
-      <Section title="Last 30 days" subtitle="Conversations started vs leads captured per day">
+      <Section title={t('ctwa.detail.chart_title_30d')} subtitle={t('ctwa.detail.chart_subtitle_30d')}>
         {series.length === 0 ? (
-          <Empty>No daily activity yet — once your ads start running, this chart populates.</Empty>
+          <Empty>{t('ctwa.detail.chart_empty')}</Empty>
         ) : (
           <div style={{ height: 260 }}>
             <ResponsiveContainer width="100%" height="100%">
@@ -174,9 +179,9 @@ export default function CTWACampaignDetailPage() {
                     <stop offset="95%" stopColor="var(--success)" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <Area type="monotone" dataKey="convs" name="Conversations"
+                <Area type="monotone" dataKey="convs" name={t('ctwa.detail.chart_conversations')}
                       stroke="var(--brand-primary)" fill="url(#conv-gradient)" strokeWidth={2} />
-                <Area type="monotone" dataKey="leads" name="Leads"
+                <Area type="monotone" dataKey="leads" name={t('ctwa.detail.chart_leads')}
                       stroke="var(--success)" fill="url(#leads-gradient)" strokeWidth={2} />
               </AreaChart>
             </ResponsiveContainer>
@@ -185,33 +190,35 @@ export default function CTWACampaignDetailPage() {
       </Section>
 
       {/* Per-ad performance breakdown */}
-      <Section title="Per-ad performance"
-               subtitle="Spend, clicks and CTR pulled directly from Meta Insights (last 30 days)">
+      <Section title={t('ctwa.detail.ad_breakdown_title')}
+               subtitle={t('ctwa.detail.ad_breakdown_subtitle')}>
         {!adBreakdown ? (
           <div style={{ padding: 12, textAlign: 'center' }}>
             <button type="button" onClick={fetchAdBreakdown} disabled={adBusy} style={btnGhost}>
-              {adBusy ? 'Loading…' : 'Load per-ad insights'}
+              {adBusy ? t('ctwa.loading') : t('ctwa.detail.fetch_breakdown')}
             </button>
           </div>
         ) : !adBreakdown.ok ? (
           <Empty>
             {adBreakdown.error === 'meta ads not connected'
-              ? 'Connect Facebook to pull per-ad insights.'
-              : `Couldn't load: ${adBreakdown.error}`}
+              ? t('ctwa.detail.not_connected_fb')
+              : adBreakdown.error === 'no client context'
+                ? t('ctwa.health_banner.no_client_context')
+                : t('ctwa.detail.could_not_load', { error: adBreakdown.error })}
           </Empty>
         ) : (adBreakdown.ads || []).length === 0 ? (
-          <Empty>No ad-level data available yet — Meta typically lags by ~6h.</Empty>
+          <Empty>{t('ctwa.detail.no_ad_data')}</Empty>
         ) : (
           <div style={{ overflow: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
               <thead>
                 <tr style={{ background: 'var(--surface-sunken)', textAlign: 'left' }}>
-                  <th style={th}>Ad</th>
-                  <th style={{ ...th, textAlign: 'right' }}>Impressions</th>
-                  <th style={{ ...th, textAlign: 'right' }}>Clicks</th>
-                  <th style={{ ...th, textAlign: 'right' }}>CTR</th>
-                  <th style={{ ...th, textAlign: 'right' }}>CPC</th>
-                  <th style={{ ...th, textAlign: 'right' }}>Spend</th>
+                  <th style={th}>{t('ctwa.detail.th_ad')}</th>
+                  <th style={{ ...th, textAlign: 'right' }}>{t('ctwa.detail.th_impressions')}</th>
+                  <th style={{ ...th, textAlign: 'right' }}>{t('ctwa.detail.th_clicks')}</th>
+                  <th style={{ ...th, textAlign: 'right' }}>{t('ctwa.detail.th_ctr')}</th>
+                  <th style={{ ...th, textAlign: 'right' }}>{t('ctwa.detail.th_cpc')}</th>
+                  <th style={{ ...th, textAlign: 'right' }}>{t('ctwa.detail.th_spent')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -231,10 +238,10 @@ export default function CTWACampaignDetailPage() {
                       {a.ctr ? `${a.ctr.toFixed(2)}%` : '—'}
                     </td>
                     <td style={{ ...td, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                      {a.cpc ? `₹${a.cpc.toFixed(2)}` : '—'}
+                      {a.cpc ? formatCurrency(a.cpc, a.currency || currency, i18n?.language) : '—'}
                     </td>
                     <td style={{ ...td, textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
-                      ₹{a.spend.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                      {formatCurrency(a.spend || 0, a.currency || currency, i18n?.language)}
                     </td>
                   </tr>
                 ))}
@@ -243,16 +250,16 @@ export default function CTWACampaignDetailPage() {
             <button type="button" onClick={fetchAdBreakdown} disabled={adBusy} style={{
               ...btnGhost, marginTop: 8, fontSize: 11,
             }}>
-              <RefreshCw size={11} /> {adBusy ? 'Refreshing…' : 'Refresh'}
+              <RefreshCw size={11} /> {adBusy ? t('ctwa.detail.refreshing') : t('ctwa.detail.refresh')}
             </button>
           </div>
         )}
       </Section>
 
       {/* Linked ads */}
-      <Section title="Linked Meta ads" subtitle="Ads that trigger this flow when clicked">
+      <Section title={t('ctwa.detail.linked_ads_title')} subtitle={t('ctwa.detail.linked_ads_subtitle')}>
         {(camp.ad_ids || []).length === 0 ? (
-          <Empty>No ads linked yet — edit the campaign to link CTWA ads from your ad account.</Empty>
+          <Empty>{t('ctwa.detail.no_linked_ads')}</Empty>
         ) : (
           <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
             {camp.ad_ids.map((adId) => (
@@ -269,7 +276,7 @@ export default function CTWACampaignDetailPage() {
                 <a href={`https://www.facebook.com/ads/manager/?act=${(camp.ad_account_id || '').replace('act_', '')}`}
                    target="_blank" rel="noreferrer"
                    style={{ marginLeft: 'auto', color: 'var(--brand-primary-hover)', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
-                  Ads Manager <ExternalLink size={11} />
+                  {t('ctwa.detail.ads_manager')} <ExternalLink size={11} />
                 </a>
               </li>
             ))}
@@ -281,7 +288,7 @@ export default function CTWACampaignDetailPage() {
       <Link to={`/admin/leads?source_campaign_id=${encodeURIComponent(camp.campaign_id)}`} style={{
         ...btnPrimary, alignSelf: 'flex-start',
       }}>
-        View all leads from this campaign <ChevronRight size={13} />
+        {t('ctwa.detail.view_all_leads')} <ChevronRight size={13} />
       </Link>
     </div>
   );

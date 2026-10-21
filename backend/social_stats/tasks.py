@@ -17,6 +17,14 @@ from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
+# Ensure sub-task modules are imported and registered with Celery app
+from . import scheduler  # noqa: F401
+from . import inbox_tasks  # noqa: F401
+from . import competitor_tasks  # noqa: F401
+from . import notification_watchers  # noqa: F401
+from . import meta_capi_tasks  # noqa: F401
+from . import whatsapp_tasks  # noqa: F401
+
 
 def _date_range(days=30):
     today = date.today()
@@ -39,72 +47,150 @@ def _refresh_google_token(cred):
     return cred.access_token
 
 
+FACEBOOK_PAGE_METRICS = [
+    'page_post_engagements',    # engagements -> likes
+    'page_views_total',         # page views -> profile_views
+    'page_daily_follows',       # new followers -> followers
+    'page_daily_unfollows',     # unfollows -> followers_lost
+    'page_video_views',         # video views -> fb_video_views
+    'page_total_actions',       # total actions on page -> clicks
+]
+
+
+def _fetch_facebook_page_insights(page_id, metrics, access_token, since_str, until_str):
+    """
+    Fetch Facebook Page insights with fallback if a metric is deprecated/invalid in Graph API.
+    Returns (data_list, warnings_list).
+    """
+    warnings = []
+    data = []
+    url = f"https://graph.facebook.com/v21.0/{page_id}/insights"
+
+    # 1. Attempt batch fetch first (fast, single HTTP call in standard conditions)
+    try:
+        resp = requests.get(
+            url,
+            params={
+                'metric': ','.join(metrics),
+                'period': 'day',
+                'since':  since_str,
+                'until':  until_str,
+                'access_token': access_token,
+            }, timeout=15
+        )
+        body = resp.json()
+        if resp.status_code == 200 and 'data' in body:
+            return body.get('data', []), warnings
+
+        err = body.get('error', {})
+        err_msg = err.get('message', f'HTTP {resp.status_code}')
+        logger.warning(
+            f"Facebook page insights batch failed for page {page_id} (code {err.get('code')}): {err_msg}. "
+            "Falling back to individual metric requests."
+        )
+        warnings.append(f"Batch insights query failed ({err.get('code', resp.status_code)}): {err_msg[:120]}")
+    except Exception as e:
+        logger.warning(f"Facebook page insights batch network error for page {page_id}: {e}")
+        warnings.append(f"Batch insights network error: {str(e)[:120]}")
+
+    # 2. Fallback: Query each metric individually so that one invalid metric does not discard valid metrics
+    for m in metrics:
+        try:
+            r = requests.get(
+                url,
+                params={
+                    'metric': m,
+                    'period': 'day',
+                    'since':  since_str,
+                    'until':  until_str,
+                    'access_token': access_token,
+                }, timeout=10
+            )
+            item_body = r.json()
+            if r.status_code == 200 and 'data' in item_body:
+                data.extend(item_body.get('data', []))
+            else:
+                m_err = item_body.get('error', {}).get('message', f'HTTP {r.status_code}')
+                warnings.append(f"Metric '{m}' unavailable: {m_err[:100]}")
+        except Exception as e:
+            warnings.append(f"Metric '{m}' network error: {str(e)[:100]}")
+
+    return data, warnings
+
+
 # ── Facebook ──────────────────────────────────────────────────────────────────
 @shared_task(bind=True, max_retries=3, default_retry_delay=300)
 def sync_facebook(self, client_id, days=30):
-    from .models import Client, PlatformCredential, DailyMetric, SyncLog
+    from .models import Client, PlatformCredential, DailyMetric, PostMetric, SyncLog
     log = SyncLog.objects.create(platform='facebook', client_id=client_id, status='running')
+    warnings = []
+    daily_count = 0
+    post_success_count = 0
+    post_fail_count = 0
+    cred = None
+
     try:
-        cred  = PlatformCredential.objects.get(client_id=client_id, platform='facebook', is_active=True)
+        cred = PlatformCredential.objects.get(client_id=client_id, platform='facebook', is_active=True)
         since, until = _date_range(days)
+        since_str = since.isoformat()
+        until_str = (until + timedelta(days=1)).isoformat()
 
-        # page_impressions, page_fan_adds/removes, page_consumptions,
-        # page_negative_feedback, page_video_view_time deprecated in v18+
-        metrics_to_fetch = ','.join([
-            'page_impressions_unique',  # daily reach (impressions deprecated)
-            'page_post_engagements',    # engagements
-            'page_views_total',         # page views
-            'page_daily_follows',       # new followers (page_fan_adds deprecated)
-            'page_daily_unfollows',     # unfollows (page_fan_removes deprecated)
-            'page_video_views',         # video views
-            'page_total_actions',       # total actions on page
-        ])
-
-        insights = requests.get(
-            f"https://graph.facebook.com/v21.0/{cred.page_id}/insights",
-            params={
-                'metric': metrics_to_fetch,
-                'period': 'day',
-                'since':  since.isoformat(),
-                'until':  (until + timedelta(days=1)).isoformat(),
-                'access_token': cred.access_token,
-            }, timeout=15
-        ).json()
+        # Fetch page-level daily insights (hardened with single-metric fallback)
+        insights_data, page_warnings = _fetch_facebook_page_insights(
+            page_id=cred.page_id,
+            metrics=FACEBOOK_PAGE_METRICS,
+            access_token=cred.access_token,
+            since_str=since_str,
+            until_str=until_str,
+        )
+        warnings.extend(page_warnings)
 
         # Fetch reactions breakdown separately
-        reactions_resp = requests.get(
-            f"https://graph.facebook.com/v21.0/{cred.page_id}/insights",
-            params={
-                'metric': 'page_actions_post_reactions_total',
-                'period': 'day',
-                'since':  since.isoformat(),
-                'until':  (until + timedelta(days=1)).isoformat(),
-                'access_token': cred.access_token,
-            }, timeout=15
-        ).json()
+        reactions_resp = {}
+        try:
+            r_resp = requests.get(
+                f"https://graph.facebook.com/v21.0/{cred.page_id}/insights",
+                params={
+                    'metric': 'page_actions_post_reactions_total',
+                    'period': 'day',
+                    'since':  since_str,
+                    'until':  until_str,
+                    'access_token': cred.access_token,
+                }, timeout=15
+            )
+            reactions_resp = r_resp.json()
+            if r_resp.status_code != 200 or 'error' in reactions_resp:
+                r_err = reactions_resp.get('error', {}).get('message', f'HTTP {r_resp.status_code}')
+                warnings.append(f"Reactions query failed: {r_err[:100]}")
+        except Exception as e:
+            warnings.append(f"Reactions network error: {str(e)[:100]}")
 
         daily = {}
         metric_map = {
-            'page_impressions_unique': 'reach',
-            'page_post_engagements':   'likes',
-            'page_views_total':        'profile_views',
-            'page_daily_follows':      'followers',
-            'page_daily_unfollows':    'followers_lost',
-            'page_video_views':        'fb_video_views',
-            'page_total_actions':      'clicks',
+            'page_post_engagements': 'likes',
+            'page_views_total':      'profile_views',
+            'page_daily_follows':    'followers',
+            'page_daily_unfollows':  'followers_lost',
+            'page_video_views':      'fb_video_views',
+            'page_total_actions':    'clicks',
         }
-        for m in insights.get('data', []):
-            key = metric_map.get(m['name'])
-            if not key: continue
+        for m in insights_data:
+            key = metric_map.get(m.get('name'))
+            if not key:
+                continue
             for v in m.get('values', []):
-                day = v['end_time'][:10]
+                day = v.get('end_time', '')[:10]
+                if not day:
+                    continue
                 val = v.get('value', 0)
                 daily.setdefault(day, {})[key] = val if isinstance(val, (int, float)) else 0
 
         # Merge reactions
         for m in reactions_resp.get('data', []):
             for v in m.get('values', []):
-                day = v['end_time'][:10]
+                day = v.get('end_time', '')[:10]
+                if not day:
+                    continue
                 val = v.get('value', {})
                 if isinstance(val, dict) and val:
                     daily.setdefault(day, {})['reactions'] = {
@@ -116,26 +202,34 @@ def sync_facebook(self, client_id, days=30):
                         'angry': val.get('angry', 0),
                     }
 
-        count = 0
         for day_str, vals in daily.items():
             DailyMetric.objects.update_or_create(
                 client_id=client_id, platform='facebook', date=day_str,
                 defaults=vals
             )
-            count += 1
+            daily_count += 1
 
         # ── Per-post metrics ──────────────────────────────────────────────────
-        from .models import PostMetric
-        fb_posts = requests.get(
-            f"https://graph.facebook.com/v21.0/{cred.page_id}/posts",
-            params={
-                'fields': 'id,message,story,created_time,permalink_url,full_picture',
-                'limit':  25,
-                'access_token': cred.access_token,
-            }, timeout=15
-        ).json()
+        posts_data = []
+        try:
+            fb_posts_resp = requests.get(
+                f"https://graph.facebook.com/v21.0/{cred.page_id}/posts",
+                params={
+                    'fields': 'id,message,story,created_time,permalink_url,full_picture',
+                    'limit':  25,
+                    'access_token': cred.access_token,
+                }, timeout=15
+            )
+            fb_posts = fb_posts_resp.json()
+            if fb_posts_resp.status_code != 200 or 'error' in fb_posts:
+                p_err = fb_posts.get('error', {}).get('message', f'HTTP {fb_posts_resp.status_code}')
+                warnings.append(f"Post listing failed: {p_err[:120]}")
+            else:
+                posts_data = fb_posts.get('data', [])
+        except Exception as e:
+            warnings.append(f"Post listing network error: {str(e)[:120]}")
 
-        for post in fb_posts.get('data', []):
+        for post in posts_data:
             try:
                 # v21+ only supports post_impressions_unique and post_clicks
                 pi = requests.get(
@@ -176,15 +270,58 @@ def sync_facebook(self, client_id, days=30):
                         'shares':        shares,
                     }
                 )
-            except Exception:
-                pass
+                post_success_count += 1
+            except Exception as e:
+                post_fail_count += 1
+                logger.warning(f"Failed to sync Facebook post {post.get('id')}: {e}")
 
-        log.status = 'success'; log.records_synced = count
+        if post_fail_count > 0:
+            warnings.append(f"{post_fail_count} post(s) failed insight fetch")
+
+        # Determine final status and records_synced
+        total_records = daily_count + post_success_count
+        log.records_synced = total_records
+
+        has_any_data = (daily_count > 0 or post_success_count > 0)
+        has_warnings = bool(warnings)
+
+        if has_any_data and not has_warnings:
+            log.status = 'success'
+            log.error_message = ''
+        elif has_any_data and has_warnings:
+            log.status = 'partial'
+            log.error_message = "; ".join(warnings)[:500]
+        else:
+            # 0 records synced
+            if has_warnings:
+                log.status = 'failed'
+                log.error_message = "; ".join(warnings)[:500]
+            else:
+                # Clean empty page (no posts, no daily metrics in period)
+                log.status = 'success'
+                log.error_message = ''
+
     except Exception as e:
-        log.status = 'failed'; log.error_message = str(e)
+        log.status = 'failed'
+        msg = str(e)
+        if cred and getattr(cred, 'access_token', None):
+            msg = msg.replace(cred.access_token, '[REDACTED]')
+        log.error_message = msg[:500]
         raise self.retry(exc=e)
     finally:
-        log.finished_at = timezone.now(); log.save()
+        log.finished_at = timezone.now()
+        log.save()
+
+
+def _has_instagram_insights_capability(cred):
+    """
+    Check if the Instagram credential has scope for advanced insights (instagram_manage_insights).
+    Without this scope, /{ig_user_id}/insights and /{media_id}/insights return HTTP 400 OAuthException 10.
+    """
+    if not cred or not cred.scope:
+        return False
+    scopes = [s.strip().lower() for s in cred.scope.replace(',', ' ').split() if s.strip()]
+    return 'instagram_manage_insights' in scopes
 
 
 # ── Instagram ─────────────────────────────────────────────────────────────────
@@ -192,131 +329,179 @@ def sync_facebook(self, client_id, days=30):
 def sync_instagram(self, client_id, days=30):
     from .models import PlatformCredential, DailyMetric, PostMetric, SyncLog
     log = SyncLog.objects.create(platform='instagram', client_id=client_id, status='running')
+    warnings = []
+    daily_count = 0
+    post_success_count = 0
+    post_fail_count = 0
+    cred = None
+
     try:
-        cred  = PlatformCredential.objects.get(client_id=client_id, platform='instagram', is_active=True)
-        since, until = _date_range(days)
+        cred = PlatformCredential.objects.get(client_id=client_id, platform='instagram', is_active=True)
+        has_insights_cap = _has_instagram_insights_capability(cred)
 
-        # In API v18+, metrics are split into two groups:
-        # Group 1: period=day (standard)
-        # Group 2: period=day + metric_type=total_value (new requirement)
-
-        # Group 1 — standard day metrics
-        day_insights = requests.get(
-            f"https://graph.facebook.com/v21.0/{cred.instagram_account_id}/insights",
-            params={
-                'metric': 'reach,follower_count',
-                'period': 'day',
-                'since':  since.isoformat(),
-                'until':  (until + timedelta(days=1)).isoformat(),
-                'access_token': cred.access_token,
-            }, timeout=15
-        ).json()
-
-        # Group 2 — total_value metrics (profile_views, website_clicks, etc.)
-        total_insights = requests.get(
-            f"https://graph.facebook.com/v21.0/{cred.instagram_account_id}/insights",
-            params={
-                'metric': ','.join([
-                    'profile_views', 'website_clicks', 'accounts_engaged',
-                    'total_interactions', 'likes', 'comments', 'shares', 'saves',
-                    'follows_and_unfollows',
-                ]),
-                'period':      'day',
-                'metric_type': 'total_value',
-                'since':  since.isoformat(),
-                'until':  (until + timedelta(days=1)).isoformat(),
-                'access_token': cred.access_token,
-            }, timeout=15
-        ).json()
-
-        daily = {}
-
-        # Parse Group 1 (standard values array)
-        for m in day_insights.get('data', []):
-            name = m['name']
-            for v in m.get('values', []):
-                day = v['end_time'][:10]
-                daily.setdefault(day, {})[name] = v.get('value', 0)
-
-        # Parse Group 2 (total_value — each item has a single value dict)
-        for m in total_insights.get('data', []):
-            name = m['name']
-            for v in m.get('values', []):
-                day = v['end_time'][:10]
-                val = v.get('value', 0)
-                if name == 'follows_and_unfollows' and isinstance(val, dict):
-                    daily.setdefault(day, {})['ig_followers_lost'] = val.get('unfollows', 0)
-                    daily.setdefault(day, {})['followers_gained'] = val.get('follows', 0)
-                else:
-                    daily.setdefault(day, {})[name] = val if isinstance(val, (int, float)) else 0
-
-        count = 0
-        for day_str, vals in daily.items():
-            DailyMetric.objects.update_or_create(
-                client_id=client_id, platform='instagram', date=day_str,
-                defaults={
-                    'impressions':        vals.get('total_interactions', 0),
-                    'reach':              vals.get('reach', 0),
-                    'profile_views':      vals.get('profile_views', 0),
-                    'website_clicks':     vals.get('website_clicks', 0),
-                    'followers':          vals.get('follower_count', 0),
-                    'accounts_engaged':   vals.get('accounts_engaged', 0),
-                    'total_interactions': vals.get('total_interactions', 0),
-                    'likes':              vals.get('likes', 0),
-                    'comments':           vals.get('comments', 0),
-                    'shares':             vals.get('shares', 0),
-                    'saves':              vals.get('saves', 0),
-                    'ig_followers_lost':  vals.get('ig_followers_lost', 0),
-                }
+        if not has_insights_cap:
+            warnings.append(
+                "Instagram advanced insights unavailable for current credential "
+                "(instagram_manage_insights not granted); basic media metrics synced."
             )
-            count += 1
+
+        if has_insights_cap:
+            since, until = _date_range(days)
+
+            # In API v18+, metrics are split into two groups:
+            # Group 1: period=day (standard)
+            # Group 2: period=day + metric_type=total_value (new requirement)
+
+            # Group 1 — standard day metrics
+            day_insights = {}
+            try:
+                resp1 = requests.get(
+                    f"https://graph.facebook.com/v21.0/{cred.instagram_account_id}/insights",
+                    params={
+                        'metric': 'reach,follower_count',
+                        'period': 'day',
+                        'since':  since.isoformat(),
+                        'until':  (until + timedelta(days=1)).isoformat(),
+                        'access_token': cred.access_token,
+                    }, timeout=15
+                )
+                day_insights = resp1.json()
+                if resp1.status_code != 200 or 'error' in day_insights:
+                    err_m = day_insights.get('error', {}).get('message', f'HTTP {resp1.status_code}')
+                    warnings.append(f"Day insights failed: {err_m[:100]}")
+            except Exception as e:
+                warnings.append(f"Day insights network error: {str(e)[:100]}")
+
+            # Group 2 — total_value metrics (profile_views, website_clicks, etc.)
+            total_insights = {}
+            try:
+                resp2 = requests.get(
+                    f"https://graph.facebook.com/v21.0/{cred.instagram_account_id}/insights",
+                    params={
+                        'metric': ','.join([
+                            'profile_views', 'website_clicks', 'accounts_engaged',
+                            'total_interactions', 'likes', 'comments', 'shares', 'saves',
+                            'follows_and_unfollows',
+                        ]),
+                        'period':      'day',
+                        'metric_type': 'total_value',
+                        'since':  since.isoformat(),
+                        'until':  (until + timedelta(days=1)).isoformat(),
+                        'access_token': cred.access_token,
+                    }, timeout=15
+                )
+                total_insights = resp2.json()
+                if resp2.status_code != 200 or 'error' in total_insights:
+                    err_m = total_insights.get('error', {}).get('message', f'HTTP {resp2.status_code}')
+                    warnings.append(f"Total insights failed: {err_m[:100]}")
+            except Exception as e:
+                warnings.append(f"Total insights network error: {str(e)[:100]}")
+
+            daily = {}
+
+            # Parse Group 1 (standard values array)
+            for m in day_insights.get('data', []):
+                name = m.get('name')
+                for v in m.get('values', []):
+                    day = v.get('end_time', '')[:10]
+                    if day:
+                        daily.setdefault(day, {})[name] = v.get('value', 0)
+
+            # Parse Group 2 (total_value — each item has a single value dict)
+            for m in total_insights.get('data', []):
+                name = m.get('name')
+                for v in m.get('values', []):
+                    day = v.get('end_time', '')[:10]
+                    if not day:
+                        continue
+                    val = v.get('value', 0)
+                    if name == 'follows_and_unfollows' and isinstance(val, dict):
+                        daily.setdefault(day, {})['ig_followers_lost'] = val.get('unfollows', 0)
+                        daily.setdefault(day, {})['followers_gained'] = val.get('follows', 0)
+                    else:
+                        daily.setdefault(day, {})[name] = val if isinstance(val, (int, float)) else 0
+
+            for day_str, vals in daily.items():
+                DailyMetric.objects.update_or_create(
+                    client_id=client_id, platform='instagram', date=day_str,
+                    defaults={
+                        'impressions':        vals.get('total_interactions', 0),
+                        'reach':              vals.get('reach', 0),
+                        'profile_views':      vals.get('profile_views', 0),
+                        'website_clicks':     vals.get('website_clicks', 0),
+                        'followers':          vals.get('follower_count', 0),
+                        'accounts_engaged':   vals.get('accounts_engaged', 0),
+                        'total_interactions': vals.get('total_interactions', 0),
+                        'likes':              vals.get('likes', 0),
+                        'comments':           vals.get('comments', 0),
+                        'shares':             vals.get('shares', 0),
+                        'saves':              vals.get('saves', 0),
+                        'ig_followers_lost':  vals.get('ig_followers_lost', 0),
+                    }
+                )
+                daily_count += 1
 
         # Per-post metrics
-        posts = requests.get(
-            f"https://graph.facebook.com/v21.0/{cred.instagram_account_id}/media",
-            params={
-                'fields': 'id,caption,media_type,permalink,timestamp,media_url,thumbnail_url',
-                'limit':  25,
-                'access_token': cred.access_token,
-            }, timeout=15
-        ).json()
+        posts_resp = {}
+        try:
+            r_posts = requests.get(
+                f"https://graph.facebook.com/v21.0/{cred.instagram_account_id}/media",
+                params={
+                    'fields': 'id,caption,media_type,permalink,timestamp,media_url,thumbnail_url',
+                    'limit':  25,
+                    'access_token': cred.access_token,
+                }, timeout=15
+            )
+            posts_resp = r_posts.json()
+            if r_posts.status_code != 200 or 'error' in posts_resp:
+                err_msg = posts_resp.get('error', {}).get('message', f'HTTP {r_posts.status_code}')
+                warnings.append(f"Media fetch failed: {err_msg[:100]}")
+        except Exception as e:
+            warnings.append(f"Media fetch network error: {str(e)[:100]}")
 
-        for post in posts.get('data', []):
+        for post in posts_resp.get('data', []):
             try:
                 media_type = post.get('media_type', '').upper()  # IMAGE, VIDEO, CAROUSEL_ALBUM, REEL
                 thumb = post.get('thumbnail_url') or post.get('media_url', '')
 
-                # In v18.0, valid metrics differ by media type:
-                # - IMAGE/CAROUSEL: reach, saved, shares  (impressions deprecated)
-                # - VIDEO: reach, saved, shares, video_views
-                # - REEL: reach, saved, shares, plays  (impressions/video_views not valid)
-                if media_type == 'VIDEO':
-                    insight_metrics = 'reach,saved,shares,video_views'
-                elif media_type in ('REEL', 'IG_REEL'):
-                    insight_metrics = 'reach,saved,shares,plays'
-                else:
-                    insight_metrics = 'reach,saved,shares'
-
-                pi = requests.get(
-                    f"https://graph.facebook.com/v21.0/{post['id']}/insights",
-                    params={
-                        'metric': insight_metrics,
-                        'access_token': cred.access_token,
-                    }, timeout=10
-                ).json()
+                # Fetch per-media insights only if credential has advanced insights scope
                 m = {}
-                for x in pi.get('data', []):
-                    vals = x.get('values', [])
-                    m[x['name']] = vals[0]['value'] if vals else 0
+                if has_insights_cap:
+                    if media_type == 'VIDEO':
+                        insight_metrics = 'reach,saved,shares,video_views'
+                    elif media_type in ('REEL', 'IG_REEL'):
+                        insight_metrics = 'reach,saved,shares,plays'
+                    else:
+                        insight_metrics = 'reach,saved,shares'
+
+                    try:
+                        pi_resp = requests.get(
+                            f"https://graph.facebook.com/v21.0/{post['id']}/insights",
+                            params={
+                                'metric': insight_metrics,
+                                'access_token': cred.access_token,
+                            }, timeout=10
+                        )
+                        pi = pi_resp.json()
+                        for x in pi.get('data', []):
+                            vals = x.get('values', [])
+                            m[x['name']] = vals[0]['value'] if vals else 0
+                    except Exception as e:
+                        warnings.append(f"Insights for post {post['id']} error: {str(e)[:80]}")
 
                 # likes and comments come from the media node directly in v18+
-                post_detail = requests.get(
-                    f"https://graph.facebook.com/v21.0/{post['id']}",
-                    params={
-                        'fields': 'like_count,comments_count',
-                        'access_token': cred.access_token,
-                    }, timeout=10
-                ).json()
+                post_detail = {}
+                try:
+                    pd_resp = requests.get(
+                        f"https://graph.facebook.com/v21.0/{post['id']}",
+                        params={
+                            'fields': 'like_count,comments_count',
+                            'access_token': cred.access_token,
+                        }, timeout=10
+                    )
+                    post_detail = pd_resp.json()
+                except Exception:
+                    post_detail = {}
 
                 PostMetric.objects.update_or_create(
                     client_id=client_id, platform='instagram', post_id=post['id'],
@@ -335,15 +520,46 @@ def sync_instagram(self, client_id, days=30):
                         'shares':        m.get('shares', 0),
                     }
                 )
-            except Exception:
-                pass
+                post_success_count += 1
+            except Exception as e:
+                post_fail_count += 1
+                warnings.append(f"Failed to record metrics for post {post.get('id')}: {str(e)[:100]}")
 
-        log.status = 'success'; log.records_synced = count
+        if post_fail_count > 0:
+            warnings.append(f"{post_fail_count} post(s) failed metric save")
+
+        # Determine final status and records_synced
+        total_records = daily_count + post_success_count
+        log.records_synced = total_records
+
+        has_any_data = (daily_count > 0 or post_success_count > 0)
+        has_warnings = bool(warnings)
+
+        if has_any_data and not has_warnings:
+            log.status = 'success'
+            log.error_message = ''
+        elif has_any_data and has_warnings:
+            log.status = 'partial'
+            log.error_message = "; ".join(warnings)[:500]
+        else:
+            # 0 records synced
+            if has_warnings:
+                log.status = 'failed'
+                log.error_message = "; ".join(warnings)[:500]
+            else:
+                log.status = 'success'
+                log.error_message = ''
+
     except Exception as e:
-        log.status = 'failed'; log.error_message = str(e)
+        log.status = 'failed'
+        msg = str(e)
+        if cred and getattr(cred, 'access_token', None):
+            msg = msg.replace(cred.access_token, '[REDACTED]')
+        log.error_message = msg[:500]
         raise self.retry(exc=e)
     finally:
-        log.finished_at = timezone.now(); log.save()
+        log.finished_at = timezone.now()
+        log.save()
 
 
 # ── YouTube ───────────────────────────────────────────────────────────────────
@@ -1027,9 +1243,15 @@ def generate_monthly_roi_reports():
     for client in clients_with_settings:
         try:
             result = calculate_roi(client.id, month, year)
+            roi_cur = (
+                getattr(getattr(client, 'roi_settings', None), 'currency', None)
+                or getattr(client, 'currency', None)
+                or 'USD'
+            )
             ROIReport.objects.update_or_create(
                 client=client, month=month, year=year,
                 defaults={
+                    'currency':           roi_cur,
                     'total_investment':   Decimal(str(result['total_investment'])),
                     'agency_fee':         Decimal(str(result['agency_fee'])),
                     'total_clicks':       result['total_clicks'],
@@ -1154,7 +1376,7 @@ def send_scheduling_reminders():
         send_mail(
             subject=f"📅 Tomorrow: {posts.count()} post(s) going live",
             message=body,
-            from_email=getattr(djsettings, 'DEFAULT_FROM_EMAIL', 'noreply@socialstats.app'),
+            from_email=getattr(djsettings, 'DEFAULT_FROM_EMAIL', 'Bop Social <noreply@bopsocial.com>'),
             recipient_list=admins,
             fail_silently=True,
         )

@@ -11,10 +11,19 @@ import {
   startOfMonth, endOfMonth, eachDayOfInterval,
   format, isSameMonth, isToday, getDay, isBefore, startOfDay,
 } from 'date-fns';
+import { useTranslation } from 'react-i18next';
 import PostPill from './PostPill';
 import NoteTooltip from './NoteTooltip';
 
-const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const WEEKDAYS = [
+  { key: 'mon', fallback: 'Mon' },
+  { key: 'tue', fallback: 'Tue' },
+  { key: 'wed', fallback: 'Wed' },
+  { key: 'thu', fallback: 'Thu' },
+  { key: 'fri', fallback: 'Fri' },
+  { key: 'sat', fallback: 'Sat' },
+  { key: 'sun', fallback: 'Sun' },
+];
 
 // date-fns getDay returns 0=Sun…6=Sat, convert to 0=Mon…6=Sun
 function getMondayIndex(d) {
@@ -25,6 +34,7 @@ export default function CalendarGrid({
   month, year, postsByDate, notesByDate,
   onDayClick, onPostClick, selectedPlatform,
 }) {
+  const { t } = useTranslation('content');
   const [hoveredNote, setHoveredNote] = useState(null);
   const [notePos,     setNotePos]     = useState({ x: 0, y: 0 });
 
@@ -69,11 +79,11 @@ export default function CalendarGrid({
         width: '100%',
       }}>
         {WEEKDAYS.map(d => (
-          <div key={d} style={{
+          <div key={d.key} style={{
             padding: '10px 8px', textAlign: 'center',
             fontSize: 11, fontWeight: 700, color: '#64748B',
             letterSpacing: '.04em', textTransform: 'uppercase',
-          }}>{d}</div>
+          }}>{t(`calendar.weekdays.${d.key}`, d.fallback)}</div>
         ))}
       </div>
 

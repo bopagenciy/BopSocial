@@ -14,6 +14,7 @@
  */
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation, Trans } from 'react-i18next';
 import {
   Sparkles, Plug, Users2, ArrowRight, BarChart3, MessageSquare, Calendar,
 } from 'lucide-react';
@@ -22,6 +23,7 @@ import { endUserAPI } from '../../services/api';
 import { useAuth } from '../../hooks/useAuth';
 
 export default function EndUserDashboard() {
+  const { t } = useTranslation('agency_portal');
   const { user } = useAuth();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -42,10 +44,19 @@ export default function EndUserDashboard() {
       <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
         <div>
           <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
-            Hi, {firstName} 👋
+            {t('end_user.dashboard.greeting', 'Hi, {{name}} 👋', { name: firstName })}
           </h1>
           <p style={{ margin: '4px 0 0', color: 'var(--text-secondary)', fontSize: 14 }}>
-            {workspace ? <>Here's what's happening with <strong style={{ color: 'var(--text-primary)' }}>{workspace.company || workspace.name}</strong>.</> : 'Welcome to Social Stats.'}
+            {workspace ? (
+              <Trans
+                i18nKey="end_user.dashboard.workspace_headline"
+                ns="agency_portal"
+                values={{ company: workspace.company || workspace.name }}
+                components={{ strong: <strong style={{ color: 'var(--text-primary)' }} /> }}
+              >
+                Here's what's happening with <strong style={{ color: 'var(--text-primary)' }}>{workspace.company || workspace.name}</strong>.
+              </Trans>
+            ) : t('end_user.dashboard.welcome_default', 'Welcome to Bop Social.')}
           </p>
         </div>
         {workspace && (
@@ -60,40 +71,42 @@ export default function EndUserDashboard() {
             display: 'inline-flex', alignItems: 'center', gap: 4,
           }}>
             <Sparkles size={11} strokeWidth={2.4} />
-            {workspace.subscription_plan} plan
+            {t('end_user.dashboard.plan_badge', '{{plan}} plan', {
+              plan: t(`end_user.plans.${(workspace.subscription_plan || '').toLowerCase()}`, workspace.subscription_plan),
+            })}
           </span>
         )}
       </header>
 
       <section style={statsGrid}>
-        <StatCard icon={BarChart3}     label="Posts published"   value="—" hint={loading ? 'Loading…' : 'No analytics yet'} />
-        <StatCard icon={MessageSquare} label="Engagement (7d)"   value="—" hint={loading ? 'Loading…' : 'Connect a platform'} />
-        <StatCard icon={Calendar}      label="Scheduled"         value="—" hint={loading ? 'Loading…' : 'Nothing in the queue'} />
-        <StatCard icon={Users2}        label="Active agencies"   value={String(relations.active)} hint={relations.pending ? `${relations.pending} pending invite${relations.pending === 1 ? '' : 's'}` : 'Just you'} />
+        <StatCard icon={BarChart3}     label={t('end_user.dashboard.stats.posts_published', 'Posts published')}   value="—" hint={loading ? t('end_user.dashboard.stats.loading', 'Loading…') : t('end_user.dashboard.stats.no_analytics', 'No analytics yet')} />
+        <StatCard icon={MessageSquare} label={t('end_user.dashboard.stats.engagement_7d', 'Engagement (7d)')}   value="—" hint={loading ? t('end_user.dashboard.stats.loading', 'Loading…') : t('end_user.dashboard.stats.connect_platform', 'Connect a platform')} />
+        <StatCard icon={Calendar}      label={t('end_user.dashboard.stats.scheduled', 'Scheduled')}         value="—" hint={loading ? t('end_user.dashboard.stats.loading', 'Loading…') : t('end_user.dashboard.stats.nothing_queue', 'Nothing in the queue')} />
+        <StatCard icon={Users2}        label={t('end_user.dashboard.stats.active_agencies', 'Active agencies')}   value={String(relations.active)} hint={relations.pending ? (relations.pending === 1 ? t('end_user.dashboard.stats.pending_invites_one', '1 pending invite', { count: 1 }) : t('end_user.dashboard.stats.pending_invites_other', '{{count}} pending invites', { count: relations.pending })) : t('end_user.dashboard.stats.just_you', 'Just you')} />
       </section>
 
       <section style={cardGrid}>
         <ActionCard
           icon={Plug}
-          title="Connect your social accounts"
-          body="Connect Facebook, Instagram, YouTube, LinkedIn or Google My Business to start tracking posts and engagement."
-          cta="Open connections"
+          title={t('end_user.dashboard.actions.connect_socials_title', 'Connect your social accounts')}
+          body={t('end_user.dashboard.actions.connect_socials_body', 'Connect Facebook, Instagram, YouTube, LinkedIn or Google My Business to start tracking posts and engagement.')}
+          cta={t('end_user.dashboard.actions.connect_socials_cta', 'Open connections')}
           to="/u/connections"
           tone="primary"
         />
         <ActionCard
           icon={Users2}
-          title={relations.active ? 'Working with an agency' : 'Need help running socials?'}
+          title={relations.active ? t('end_user.dashboard.actions.agency_active_title', 'Working with an agency') : t('end_user.dashboard.actions.agency_need_title', 'Need help running socials?')}
           body={
             relations.active
-              ? 'Manage your agency permissions, pause access, or review activity any time.'
-              : 'Browse verified agencies in your industry. They can help — and you stay in control of your data.'
+              ? t('end_user.dashboard.actions.agency_active_body', 'Manage your agency permissions, pause access, or review activity any time.')
+              : t('end_user.dashboard.actions.agency_need_body', 'Browse verified agencies in your industry. They can help — and you stay in control of your data.')
           }
-          cta={relations.active ? 'Manage agency' : 'Find an agency'}
+          cta={relations.active ? t('end_user.dashboard.actions.manage_agency_cta', 'Manage agency') : t('end_user.dashboard.actions.find_agency_cta', 'Find an agency')}
           to={relations.active ? '/u/agency' : '/u/agency/find'}
           tone="ghost"
           disabled
-          disabledHint="Coming in the next release"
+          disabledHint={t('end_user.dashboard.actions.coming_next_release', 'Coming in the next release')}
         />
       </section>
     </div>

@@ -7,12 +7,13 @@
  *  Released under the MIT License — see LICENSE. Keep this notice.
  * ========================================================================== */
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 const STAGES = [
-  { key: 'clicks',         label: 'Total Clicks',     color: '#2563EB', lightColor: '#DBEAFE' },
-  { key: 'website_clicks', label: 'Website Visits',   color: '#7C3AED', lightColor: '#EDE9FE' },
-  { key: 'leads',          label: 'Leads',             color: '#059669', lightColor: '#D1FAE5' },
-  { key: 'sales',          label: 'Conversions',       color: '#D97706', lightColor: '#FEF3C7' },
+  { key: 'clicks',         i18nKey: 'roi_calculator.funnel.total_clicks',   defaultLabel: 'Total Clicks',     color: '#2563EB', lightColor: '#DBEAFE' },
+  { key: 'website_clicks', i18nKey: 'roi_calculator.funnel.website_visits', defaultLabel: 'Website Visits',   color: '#7C3AED', lightColor: '#EDE9FE' },
+  { key: 'leads',          i18nKey: 'roi_calculator.funnel.leads',          defaultLabel: 'Leads',             color: '#059669', lightColor: '#D1FAE5' },
+  { key: 'sales',          i18nKey: 'roi_calculator.funnel.conversions',    defaultLabel: 'Conversions',       color: '#D97706', lightColor: '#FEF3C7' },
 ];
 
 function fmt(n) {
@@ -23,6 +24,7 @@ function fmt(n) {
 }
 
 export default function ROIFunnel({ clicks = 0, website_clicks = 0, leads = 0, sales = 0 }) {
+  const { t } = useTranslation(['analytics', 'common']);
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -62,7 +64,7 @@ export default function ROIFunnel({ clicks = 0, website_clicks = 0, leads = 0, s
             >
               <div>
                 <div style={{ fontSize: 11, fontWeight: 700, color: stage.color, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>
-                  {stage.label}
+                  {t(stage.i18nKey, stage.defaultLabel)}
                 </div>
                 <div style={{ fontSize: 22, fontWeight: 800, color: '#0F172A', fontFamily: 'monospace' }}>
                   {fmt(val)}
@@ -70,7 +72,9 @@ export default function ROIFunnel({ clicks = 0, website_clicks = 0, leads = 0, s
               </div>
               {i > 0 && (
                 <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: 10, color: '#64748B', marginBottom: 2 }}>conversion</div>
+                  <div style={{ fontSize: 10, color: '#64748B', marginBottom: 2 }}>
+                    {t('roi_calculator.funnel.conversion_label', 'conversion')}
+                  </div>
                   <div style={{
                     fontSize: 16, fontWeight: 700,
                     color: convPct >= 20 ? '#059669' : convPct >= 5 ? '#D97706' : '#EF4444',

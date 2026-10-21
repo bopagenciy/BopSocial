@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import logging
 import time
+import urllib.parse
 from typing import Optional
 
 from .base import (
@@ -43,6 +44,50 @@ logger = logging.getLogger(__name__)
 
 CONTAINER_POLL_INTERVAL = 3   # seconds between polls
 CONTAINER_POLL_TIMEOUT  = 180 # max seconds to wait for video container
+
+
+def _resolve_carousel_child_kind(url: str, meta: Optional[dict] = None) -> str:
+    """
+    Resolve whether a carousel child is 'IMAGE' or 'VIDEO'.
+    Resolution priority:
+      1. Explicit media_kind from canonical MediaAsset MIME
+      2. Trusted MIME hint if available
+      3. Parsed URL path fallback for legacy callers only
+    Never uses raw URL suffix matching.
+    """
+    if meta and isinstance(meta, dict):
+        explicit_kind = (meta.get('media_kind') or meta.get('media_type') or '').upper().strip()
+        if explicit_kind:
+            if explicit_kind in ('VIDEO', 'IMAGE'):
+                return explicit_kind
+            raise PublishError(
+                f'Unsupported media_kind for carousel child: {explicit_kind}',
+                code='unsupported_media_type',
+            )
+
+        mime = (meta.get('mime_type') or '').lower().strip()
+        if mime:
+            if mime.startswith('video/'):
+                return 'VIDEO'
+            if mime.startswith('image/'):
+                return 'IMAGE'
+            raise PublishError(
+                f'Unsupported MIME type for carousel child: {mime}',
+                code='unsupported_media_type',
+            )
+
+    # Safe URL path fallback for legacy callers
+    if isinstance(url, str) and url:
+        path = urllib.parse.urlparse(url).path.lower()
+        if path.endswith(('.mp4', '.mov', '.webm')):
+            return 'VIDEO'
+        if path.endswith(('.jpg', '.jpeg', '.png')):
+            return 'IMAGE'
+
+    raise PublishError(
+        f'Could not determine canonical media type (IMAGE/VIDEO) for carousel child: {url}',
+        code='unsupported_media_type',
+    )
 
 
 class InstagramPublisher(BasePublisher):
@@ -61,6 +106,12 @@ class InstagramPublisher(BasePublisher):
 
         if len(image_urls) == 1:
             container_id = self._create_image_container(credential, image_urls[0], caption=content)
+            on_created = kwargs.get('on_container_created')
+            if callable(on_created):
+                try:
+                    on_created(container_id)
+                except Exception as exc:
+                    logger.warning('on_container_created callback failed: %s', exc)
             return self._publish_container(credential, container_id)
 
         return self.publish_carousel(credential, content, image_urls, **kwargs)
@@ -68,6 +119,11 @@ class InstagramPublisher(BasePublisher):
     def publish_video(self, credential, content: str, video_url: str, *,
                       thumbnail: Optional[str] = None, **kwargs) -> PublishResult:
         self._require_ig(credential)
+        from ..media_service import validate_media_url_for_provider
+        validate_media_url_for_provider(video_url, 'instagram', lang=kwargs.get('lang', 'en'))
+        if thumbnail:
+            validate_media_url_for_provider(thumbnail, 'instagram', lang=kwargs.get('lang', 'en'))
+
         client = GraphClient(credential.access_token, timeout=LONG_TIMEOUT)
         data = {
             'media_type':  'VIDEO',
@@ -80,11 +136,22 @@ class InstagramPublisher(BasePublisher):
         container_id = body.get('id')
         if not container_id:
             raise PublishError('IG media container missing id', raw=body)
+        on_created = kwargs.get('on_container_created')
+        if callable(on_created):
+            try:
+                on_created(container_id)
+            except Exception as exc:
+                logger.warning('on_container_created callback failed: %s', exc)
         self._wait_for_container_ready(credential, container_id)
         return self._publish_container(credential, container_id)
 
     def publish_reel(self, credential, video_url: str, content: str, **kwargs) -> PublishResult:
         self._require_ig(credential)
+        from ..media_service import validate_media_url_for_provider
+        validate_media_url_for_provider(video_url, 'instagram', lang=kwargs.get('lang', 'en'))
+        if kwargs.get('cover_url'):
+            validate_media_url_for_provider(kwargs['cover_url'], 'instagram', lang=kwargs.get('lang', 'en'))
+
         client = GraphClient(credential.access_token, timeout=LONG_TIMEOUT)
         data = {
             'media_type':  'REELS',
@@ -99,20 +166,53 @@ class InstagramPublisher(BasePublisher):
         container_id = body.get('id')
         if not container_id:
             raise PublishError('IG reel container missing id', raw=body)
+        on_created = kwargs.get('on_container_created')
+        if callable(on_created):
+            try:
+                on_created(container_id)
+            except Exception as exc:
+                logger.warning('on_container_created callback failed: %s', exc)
         self._wait_for_container_ready(credential, container_id)
         return self._publish_container(credential, container_id)
 
     def publish_story(self, credential, media_url: str, **kwargs) -> PublishResult:
         self._require_ig(credential)
+        from ..media_service import validate_media_url_for_provider
+        validate_media_url_for_provider(media_url, 'instagram', lang=kwargs.get('lang', 'en'))
+
         client = GraphClient(credential.access_token, timeout=LONG_TIMEOUT)
-        # Decide whether the story is image or video based on caller hint;
-        # default to image (most common).
-        media_type = (kwargs.get('media_type') or '').upper()
-        if not media_type:
-            media_type = 'VIDEO' if str(media_url).lower().endswith(('.mp4', '.mov', '.webm')) else 'IMAGE'
+
+        # Priority:
+        # 1. Explicit normalized media_kind / media_type keyword arg (IMAGE or VIDEO)
+        # 2. Trusted MIME hint if explicitly supplied (kwargs.get('mime_type'))
+        # 3. URL path fallback ONLY for backwards compatibility (legacy callers)
+        media_kind = (kwargs.get('media_kind') or kwargs.get('media_type') or '').upper().strip()
+        if media_kind not in ('IMAGE', 'VIDEO'):
+            mime = (kwargs.get('mime_type') or '').lower().strip()
+            if mime.startswith('video/'):
+                media_kind = 'VIDEO'
+            elif mime.startswith('image/'):
+                media_kind = 'IMAGE'
+            elif not media_kind:
+                # Safe legacy URL fallback: parse URL path safely (ignoring query string)
+                parsed_path = urllib.parse.urlparse(str(media_url)).path.lower()
+                if parsed_path.endswith(('.mp4', '.mov', '.webm')):
+                    media_kind = 'VIDEO'
+                elif parsed_path.endswith(('.jpg', '.jpeg', '.png')):
+                    media_kind = 'IMAGE'
+                else:
+                    raise PublishError(
+                        f'Cannot determine media kind for Instagram Story URL: {media_url}',
+                        code='unsupported_media_type',
+                    )
+            else:
+                raise PublishError(
+                    f'Unsupported media_kind for Instagram Story: {media_kind}',
+                    code='unsupported_media_type',
+                )
 
         data = {'media_type': 'STORIES'}  # IG story marker
-        if media_type == 'IMAGE':
+        if media_kind == 'IMAGE':
             data['image_url'] = media_url
         else:
             data['video_url'] = media_url
@@ -121,9 +221,19 @@ class InstagramPublisher(BasePublisher):
         container_id = body.get('id')
         if not container_id:
             raise PublishError('IG story container missing id', raw=body)
-        if media_type == 'VIDEO':
+        on_created = kwargs.get('on_container_created')
+        if callable(on_created):
+            try:
+                on_created(container_id)
+            except Exception as exc:
+                logger.warning('on_container_created callback failed: %s', exc)
+        if media_kind == 'VIDEO':
             self._wait_for_container_ready(credential, container_id)
-        return self._publish_container(credential, container_id)
+        return self._publish_container(
+            credential, container_id,
+            expected_media_type=media_kind,
+            expected_product_type='STORY',
+        )
 
     def publish_carousel(self, credential, content: str, image_urls: list[str], **kwargs) -> PublishResult:
         self._require_ig(credential)
@@ -132,23 +242,39 @@ class InstagramPublisher(BasePublisher):
         if len(image_urls) > 10:
             raise PublishError('IG carousel max 10 items', code='too_many_media')
 
+        children_metadata = kwargs.get('children_metadata') or kwargs.get('media_items')
+        if children_metadata is not None:
+            if len(children_metadata) != len(image_urls):
+                raise PublishError(
+                    f'Carousel media metadata count ({len(children_metadata)}) does not match URL count ({len(image_urls)})',
+                    code='media_count_mismatch',
+                )
+
+        from ..media_service import validate_media_url_for_provider
+        for url in image_urls:
+            validate_media_url_for_provider(url, 'instagram', lang=kwargs.get('lang', 'en'))
+
         client = GraphClient(credential.access_token, timeout=LONG_TIMEOUT)
 
         # 1. Create children (each with is_carousel_item=true)
         children = []
-        for url in image_urls:
-            is_video = str(url).lower().endswith(('.mp4', '.mov', '.webm'))
+        for i, url in enumerate(image_urls):
+            meta = children_metadata[i] if children_metadata else None
+            child_kind = _resolve_carousel_child_kind(url, meta)
             data = {'is_carousel_item': 'true'}
-            if is_video:
+            if child_kind == 'VIDEO':
                 data['media_type'] = 'VIDEO'
                 data['video_url'] = url
-            else:
+            elif child_kind == 'IMAGE':
                 data['image_url'] = url
+            else:
+                raise PublishError(f'Unsupported child kind: {child_kind}', code='unsupported_media_type')
+
             child_body = client.post(f'/{credential.instagram_account_id}/media', data=data)
             cid = child_body.get('id')
             if not cid:
                 raise PublishError('IG carousel child missing id', raw=child_body)
-            if is_video:
+            if child_kind == 'VIDEO':
                 self._wait_for_container_ready(credential, cid)
             children.append(cid)
 
@@ -164,6 +290,12 @@ class InstagramPublisher(BasePublisher):
         container_id = carousel.get('id')
         if not container_id:
             raise PublishError('IG carousel container missing id', raw=carousel)
+        on_created = kwargs.get('on_container_created')
+        if callable(on_created):
+            try:
+                on_created(container_id)
+            except Exception as exc:
+                logger.warning('on_container_created callback failed: %s', exc)
         self._wait_for_container_ready(credential, container_id)
         return self._publish_container(credential, container_id)
 
@@ -202,6 +334,9 @@ class InstagramPublisher(BasePublisher):
 
     # ── Internals ────────────────────────────────────────────────────────
     def _create_image_container(self, credential, image_url: str, *, caption: str) -> str:
+        from ..media_service import validate_media_url_for_provider
+        validate_media_url_for_provider(image_url, 'instagram')
+
         client = GraphClient(credential.access_token, timeout=LONG_TIMEOUT)
         body = client.post(
             f'/{credential.instagram_account_id}/media',
@@ -234,7 +369,9 @@ class InstagramPublisher(BasePublisher):
         raise PublishError('IG container did not finish in time',
                            code='container_timeout')
 
-    def _publish_container(self, credential, container_id: str) -> PublishResult:
+    def _publish_container(self, credential, container_id: str, *,
+                           expected_media_type: Optional[str] = None,
+                           expected_product_type: Optional[str] = None) -> PublishResult:
         client = GraphClient(credential.access_token)
         body = client.post(
             f'/{credential.instagram_account_id}/media_publish',
@@ -243,13 +380,56 @@ class InstagramPublisher(BasePublisher):
         media_id = body.get('id')
         if not media_id:
             raise PublishError('IG publish did not return media id', raw=body)
-        # Permalink fetch is a separate call but only when the orchestrator wants it.
-        return PublishResult(
+
+        permalink = ''
+        provider_media_type = None
+        provider_product_type = None
+        try:
+            fields = 'permalink,media_type,media_product_type' if expected_media_type else 'permalink'
+            media_info = client.get(
+                f'/{media_id}',
+                params={'fields': fields},
+            )
+            permalink = (media_info.get('permalink') or '').strip()
+            provider_media_type = (media_info.get('media_type') or '').upper()
+            provider_product_type = (media_info.get('media_product_type') or '').upper()
+        except Exception as exc:
+            logger.warning(
+                'Instagram post published (media_id=%s) but permalink lookup failed: %s: %s',
+                media_id, exc.__class__.__name__, str(exc)[:200],
+            )
+            permalink = ''
+
+        mismatch = False
+        error_code = ''
+        error_message = ''
+        if expected_media_type and provider_media_type and provider_media_type != expected_media_type:
+            mismatch = True
+            error_code = 'provider_media_type_mismatch'
+            error_message = (
+                f'Instagram published media {media_id} as {provider_media_type}, '
+                f'expected {expected_media_type}'
+            )
+            logger.warning(error_message)
+
+        raw = dict(body)
+        if mismatch:
+            raw['mismatch'] = True
+            raw['expected_media_type'] = expected_media_type
+            raw['provider_media_type'] = provider_media_type
+            if provider_product_type:
+                raw['provider_media_product_type'] = provider_product_type
+
+        res = PublishResult(
             success=True,
             platform_post_id=str(media_id),
-            platform_url=f'https://www.instagram.com/p/{media_id}',
-            raw_response=body,
+            platform_url=permalink or '',
+            raw_response=raw,
+            error_code=error_code,
+            error_message=error_message,
         )
+        res.provider_container_id = container_id
+        return res
 
     def _require_ig(self, credential):
         if not getattr(credential, 'instagram_account_id', None):

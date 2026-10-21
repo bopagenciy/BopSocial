@@ -1,0 +1,41 @@
+# ============================================================================
+#  Bop Social — Local Compose Configuration Override
+#
+#  Overrides upstream service image names with dedicated Bop Social local
+#  images, configures local dev settings satisfying SEC-02, and wires the
+#  lightweight Nginx frontend server.
+#
+#  Usage:
+#    docker compose -f docker-compose.yml -f docker-compose.local.yml up -d
+# ============================================================================
+services:
+  backend:
+    image: bopsocial-backend-local:bs-3b
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment: &local-backend-env
+      DEBUG: "${DEBUG:-True}"
+      SECRET_KEY: "${SECRET_KEY:-bopsocial-local-dev-secret-key-32chars-minimum-valid-key-2026}"
+
+  worker:
+    image: bopsocial-backend-local:bs-3b
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment: *local-backend-env
+
+  beat:
+    image: bopsocial-backend-local:bs-3b
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment: *local-backend-env
+
+  frontend:
+    image: bopsocial-frontend-local:bs-3b
+    build:
+      context: .
+      dockerfile: Dockerfile.bopsocial-local
+    ports:
+      - "${FRONTEND_PORT:-3010}:80"

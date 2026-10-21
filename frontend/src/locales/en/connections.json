@@ -1,0 +1,74 @@
+{
+  "title": "Connected Accounts",
+  "subtitle": "Connect your social media accounts to start syncing stats automatically.",
+  "status": {
+    "active": "Active",
+    "expired": "Expired",
+    "not_connected": "Not connected",
+    "connected_via_facebook": "Connected via Facebook",
+    "token_expires": "Token expires: {{date}}"
+  },
+  "actions": {
+    "connect_platform": "Connect {{platform}} →",
+    "disconnect": "Disconnect",
+    "disconnecting": "Disconnecting…",
+    "cancel": "Cancel",
+    "continue_facebook": "Continue with Facebook",
+    "connecting": "Connecting…",
+    "loading_facebook": "Loading Facebook…",
+    "trigger_connect": "Connect Facebook & Instagram"
+  },
+  "alerts": {
+    "workspace_preparing": "Your client workspace is still being prepared. Please refresh the page and try again."
+  },
+  "confirm": {
+    "disconnect": "Disconnect {{platform}}? Sync will stop."
+  },
+  "help": {
+    "title": "How it works:",
+    "step_1": "Click a Connect button → you'll be redirected to log in to that platform",
+    "step_2": "Approve the permissions requested",
+    "step_3": "You'll be brought back here — data starts syncing automatically",
+    "step_4": "Facebook & Instagram share one login. YouTube & Google My Business share one login."
+  },
+  "modal": {
+    "title": "Connect Your Facebook & Instagram",
+    "subtitle": "To continue, please review and approve the permissions below. You'll be redirected to Facebook to confirm.",
+    "required_permissions": "Required Permissions",
+    "optional_permissions": "Optional Permissions",
+    "optional_badge": "Optional",
+    "close_dialog": "Close dialog",
+    "cancel_aria": "Cancel and close dialog",
+    "continue_aria": "Continue with Facebook login",
+    "technical_info": "Technical info about {{scope}}",
+    "required": "required",
+    "legal_prefix": "By continuing, you agree to our",
+    "terms_of_service": "Terms of Service",
+    "and": "and",
+    "privacy_policy": "Privacy Policy",
+    "legal_suffix": ". You can revoke access anytime in your Facebook settings."
+  },
+  "permissions": {
+    "pages_show_list": {
+      "label": "Access your Facebook Pages list",
+      "description": "We'll show the Pages you manage so you can choose which one to connect.",
+      "technical": "Meta scope pages_show_list: returns the list of Pages the user is an admin of via /me/accounts."
+    },
+    "pages_read_engagement": {
+      "label": "Read Page engagement data",
+      "description": "We'll display your followers, likes, and post performance metrics in your dashboard.",
+      "technical": "Meta scope pages_read_engagement: read fan_count, followers_count, post insights, and reactions on a Page."
+    },
+    "instagram_manage_insights": {
+      "label": "Read Instagram insights",
+      "description": "We'll connect your linked Instagram Business account and pull engagement, reach, and impressions metrics for your dashboard.",
+      "technical": "Meta scope instagram_manage_insights: read insights (engagement, reach, impressions, profile visits, follower demographics) for a linked IG Business account."
+    }
+  },
+  "errors": {
+    "load_facebook": "Could not load Facebook. Please refresh and try again.",
+    "profile_fetch": "Could not fetch your profile.",
+    "denied_permissions": "You denied one or more required permissions.",
+    "login_canceled": "Facebook login was canceled."
+  }
+}

@@ -194,15 +194,40 @@ class LeadViewSet(TenantScopedMixin, viewsets.ModelViewSet):
         except (TypeError, ValueError):
             return Response({'error': 'invalid conversion_value'}, status=400)
 
+        # Currency resolution hierarchy for conversion:
+        # 1. Related CTWA campaign currency, if conversion originated from a CTWA campaign
+        # 2. Explicit conversion currency supplied by trusted backend context / request.data
+        # 3. Client.currency
+        # 4. DEFAULT_CURRENCY
+        from .currencies import DEFAULT_CURRENCY, SUPPORTED_CURRENCIES
+        explicit_curr = (request.data.get('currency') or request.data.get('conversion_currency') or '').strip().upper()
+
+        camp_curr = None
+        if lead.source_campaign_id and lead.client_id:
+            from .bot_models import CTWACampaign
+            camp = CTWACampaign.objects.filter(client_id=lead.client_id, campaign_id=lead.source_campaign_id).first()
+            if camp and camp.currency:
+                camp_curr = camp.currency.strip().upper()
+
+        if camp_curr and camp_curr in SUPPORTED_CURRENCIES:
+            conversion_curr = camp_curr
+        elif explicit_curr and explicit_curr in SUPPORTED_CURRENCIES:
+            conversion_curr = explicit_curr
+        elif lead.client and getattr(lead.client, 'currency', None) and lead.client.currency in SUPPORTED_CURRENCIES:
+            conversion_curr = lead.client.currency
+        else:
+            conversion_curr = DEFAULT_CURRENCY
+
         lead.status = 'converted'
         lead.conversion_value = value
+        lead.currency = conversion_curr
         lead.converted_at = timezone.now()
-        lead.save(update_fields=['status', 'conversion_value', 'converted_at'])
+        lead.save(update_fields=['status', 'conversion_value', 'currency', 'converted_at'])
 
         LeadActivity.objects.create(
             lead=lead, actor=request.user, activity_type='status_change',
-            content=f'Converted (₹{value:,.0f})',
-            metadata={'conversion_value': value},
+            content=f'Converted ({lead.currency} {value:,.0f})',
+            metadata={'conversion_value': value, 'currency': lead.currency},
         )
         return Response(LeadDetailSerializer(lead).data)
 
@@ -370,7 +395,7 @@ def _csv_iter(rows):
         'id', 'created_at', 'status', 'name', 'phone', 'email',
         'interest', 'budget', 'location',
         'source_flow_id', 'source_campaign_id', 'source_ad_id', 'source_ad_name',
-        'assigned_email', 'tags', 'quality_score', 'conversion_value',
+        'assigned_email', 'tags', 'quality_score', 'conversion_value', 'currency',
     ]
     writer.writerow(header)
     yield buf.getvalue(); buf.seek(0); buf.truncate()
@@ -387,5 +412,6 @@ def _csv_iter(rows):
             ','.join(r.tags or []),
             r.quality_score,
             float(r.conversion_value) if r.conversion_value is not None else '',
+            r.currency or (r.client.currency if getattr(r, 'client', None) else 'USD') or 'USD',
         ])
         yield buf.getvalue(); buf.seek(0); buf.truncate()

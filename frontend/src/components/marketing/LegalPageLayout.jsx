@@ -7,6 +7,7 @@
  *  Released under the MIT License — see LICENSE. Keep this notice.
  * ========================================================================== */
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import MarketingLayout from './MarketingLayout';
 import Badge from '../ui/Badge';
 import Meta from '../Meta';
@@ -36,6 +37,7 @@ export default function LegalPageLayout({
   sections = [],
   children,
 }) {
+  const { t } = useTranslation('marketing');
   const [active, setActive] = useState(sections[0]?.id);
 
   useEffect(() => {
@@ -57,7 +59,7 @@ export default function LegalPageLayout({
     <MarketingLayout>
       <Meta
         title={title}
-        description={intro || `${title} — Social Stats legal and support documentation.`}
+        description={intro || `${title} — Bop Social legal and support documentation.`}
       />
 
       {/* Hero */}
@@ -84,9 +86,9 @@ export default function LegalPageLayout({
           </h1>
           {(effectiveDate || lastUpdated) && (
             <div style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>
-              {effectiveDate && <>Effective: {formatDate(effectiveDate)}</>}
+              {effectiveDate && <>{t('legal.effective', 'Effective:')} {formatDate(effectiveDate)}</>}
               {effectiveDate && lastUpdated && ' · '}
-              {lastUpdated && <>Last updated: {formatDate(lastUpdated)}</>}
+              {lastUpdated && <>{t('legal.last_updated', 'Last updated:')} {formatDate(lastUpdated)}</>}
             </div>
           )}
           {intro && (
@@ -129,7 +131,7 @@ export default function LegalPageLayout({
               color: 'var(--text-tertiary)',
               padding: '4px 8px 10px',
             }}>
-              Contents
+              {t('legal.contents', 'Contents')}
             </div>
             <nav style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
               {sections.map((s) => (

@@ -1,0 +1,269 @@
+{
+  "client_settings": {
+    "title": "Configuración",
+    "subtitle": "Administra tu cuenta y perfil empresarial.",
+    "badge": "Perfil empresarial",
+    "hero_title": "Mantén tu configuración alineada con el proceso de incorporación",
+    "hero_text": "Todo lo que está aquí refleja la información que impulsa tu panel, la generación de contenido y la experiencia de informes.",
+    "profile_coverage": "Información del perfil",
+    "profile_coverage_completed": "Áreas principales del perfil completadas",
+    "tabs": {
+      "accounts": "Conectar cuentas",
+      "profile": "Perfil empresarial"
+    },
+    "loading_profile": "Cargando perfil...",
+    "save_bar_text": "Los cambios aquí mantienen tu configuración alineada con el proceso de incorporación.",
+    "save_changes": "Guardar cambios",
+    "saving": "Guardando...",
+    "success": "¡Perfil actualizado con éxito!",
+    "error": "Error al actualizar el perfil. Por favor, inténtalo de nuevo.",
+    "sections": {
+      "basics": {
+        "title": "Datos básicos del negocio",
+        "copy": "Los detalles que anclan tu espacio de trabajo y mantienen coherente la identidad de tu empresa."
+      },
+      "brand": {
+        "title": "Perfil de marca",
+        "copy": "Define el tono, la categoría y la narrativa que tu contenido siempre debe reforzar."
+      },
+      "audience": {
+        "title": "Público objetivo",
+        "copy": "Mantén tus mensajes enfocados en las personas a las que realmente deseas llegar."
+      },
+      "assets": {
+        "title": "Recursos de marca",
+        "copy": "Usa la misma experiencia de recursos de la incorporación para mantener organizados los elementos visuales."
+      }
+    }
+  },
+  "onboarding": {
+    "page_title": "Completa tu perfil",
+    "page_subtitle": "Configura tu perfil empresarial para aprovechar al máximo Bop Social",
+    "badge": "Flujo de incorporación",
+    "hero_title": "Crea un panel que se sienta adaptado a tu negocio desde el primer día",
+    "hero_text": "Completa los aspectos esenciales una vez y los usaremos para personalizar informes, planificación social, ROI y contenido impulsado por IA.",
+    "setup_progress": "Progreso de configuración",
+    "step_counter": "Paso {{current}} de {{total}}",
+    "steps": {
+      "business": {
+        "title": "Datos básicos del negocio",
+        "description": "Cuéntanos sobre tu empresa",
+        "eyebrow": "Fundación"
+      },
+      "brand": {
+        "title": "Perfil de marca",
+        "description": "Define la identidad de tu marca",
+        "eyebrow": "Voz"
+      },
+      "audience": {
+        "title": "Público objetivo",
+        "description": "¿Quién es tu cliente ideal?",
+        "eyebrow": "Personas"
+      },
+      "assets": {
+        "title": "Recursos de marca",
+        "description": "Sube tus recursos visuales",
+        "eyebrow": "Visuales"
+      },
+      "competitors": {
+        "title": "Competidores",
+        "description": "¿Quiénes son tus principales competidores?",
+        "eyebrow": "Mercado"
+      },
+      "connect": {
+        "title": "Conectar cuentas",
+        "description": "Vincula tus cuentas de redes sociales",
+        "eyebrow": "Lanzamiento"
+      }
+    },
+    "step_0": {
+      "eyebrow": "Configuración de perfil",
+      "heading": "Dale a tu espacio de trabajo un punto de partida sólido",
+      "summary": "Usaremos estos detalles en informes, automatizaciones y sugerencias de contenido generadas por IA.",
+      "feature_identity_title": "Identidad empresarial",
+      "feature_identity_text": "Haz que tu panel se sienta personalizado desde la primera sincronización.",
+      "feature_contact_title": "Contacto listo",
+      "feature_contact_text": "Mantén los datos básicos disponibles para publicaciones, campañas y transferencias de equipo.",
+      "panel_who": "Quién eres",
+      "panel_contact": "Dónde pueden encontrarte"
+    },
+    "step_1": {
+      "eyebrow": "Sistema de marca",
+      "heading": "Moldea el tono que las personas deben percibir",
+      "summary": "Estos detalles guían el estilo de redacción, el posicionamiento y la dirección creativa en toda la plataforma.",
+      "panel_voice": "Categoría y voz",
+      "panel_story": "Historia de la marca"
+    },
+    "step_2": {
+      "eyebrow": "Mapa de audiencia",
+      "heading": "Define a quién quieres atraer",
+      "summary": "Un poco de claridad sobre la audiencia ayuda a la plataforma a recomendar mejores campañas, temas de contenido e ideas de segmentación.",
+      "panel_snapshot": "Perfil del cliente",
+      "panel_location": "Dónde se encuentran"
+    },
+    "step_3": {
+      "eyebrow": "Identidad visual",
+      "heading": "Da vida a tu marca visualmente",
+      "summary": "Sube algunos recursos ahora para que tu espacio de trabajo, informes y contenido generado se sientan inequívocamente tuyos."
+    },
+    "step_5": {
+      "eyebrow": "Paso final",
+      "heading": "Conecta tus canales y comienza",
+      "summary": "Vincula tus cuentas para comenzar a sincronizar datos automáticamente. Facebook e Instagram pueden conectarse juntos, y YouTube puede emparejarse con Google My Business.",
+      "point_analytics": "Sincronización de datos para analíticas e informes",
+      "point_ideas": "Mejores ideas y recomendaciones de publicaciones",
+      "point_setup": "Configuración más rápida una vez que se abra tu panel",
+      "accounts_ready": "Cuentas listas",
+      "connect_later_note": "Aún puedes finalizar la configuración ahora y conectar más adelante desde Configuración.",
+      "sync_note": "Una vez conectado, haz clic en \"Sincronizar ahora\" en tu panel para obtener tus primeros datos."
+    },
+    "navigation": {
+      "skip": "Omitir por ahora",
+      "back": "Atrás",
+      "next": "Siguiente",
+      "complete": "Completar configuración",
+      "saving": "Guardando..."
+    },
+    "validation": {
+      "company_required": "El nombre del negocio es obligatorio.",
+      "email_invalid": "Introduce una dirección de correo electrónico válida.",
+      "website_invalid": "Usa una URL completa como https://example.com",
+      "gmb_url_invalid": "Usa una URL válida de perfil de Google Business.",
+      "category_required": "Elige la categoría que mejor describa tu negocio.",
+      "description_required": "Añade una breve descripción de la marca.",
+      "usp_required": "Cuéntanos qué hace destacar a tu negocio.",
+      "audience_required": "Describe la audiencia a la que deseas llegar.",
+      "location_required": "Añade la ubicación principal de tu negocio.",
+      "target_locations_required": "Selecciona al menos una ubicación objetivo.",
+      "profile_image_invalid": "Por favor, elige un archivo de imagen válido.",
+      "product_images_invalid": "Una o más imágenes de producto no son válidas.",
+      "social_connection_required": "Conecta al menos una cuenta de redes sociales antes de completar la configuración.",
+      "fix_highlighted": "Por favor, corrige los campos resaltados antes de finalizar la configuración.",
+      "generic_error": "No pudimos guardar los detalles de incorporación. Por favor, revisa las secciones resaltadas e inténtalo de nuevo."
+    }
+  },
+  "fields": {
+    "your_name": "Tu nombre",
+    "your_name_placeholder": "Introduce tu nombre completo",
+    "business_name": "Nombre del negocio",
+    "business_name_placeholder": "El nombre de tu empresa",
+    "email": "Correo electrónico",
+    "email_placeholder": "empresa@correo.com",
+    "phone": "Número de teléfono",
+    "phone_placeholder": "+1 (555) 123-4567",
+    "whatsapp": "Número de WhatsApp",
+    "whatsapp_placeholder": "+1 (555) 123-4567",
+    "website": "Sitio web",
+    "website_placeholder": "https://tudominio.com",
+    "gmb_url": "URL de Google My Business",
+    "gmb_placeholder": "https://g.page/tu-negocio",
+    "default_language": "Idioma del espacio de trabajo",
+    "default_language_hint": "Preferencia de idioma del espacio de trabajo cuando los usuarios no tienen una elección individual.",
+    "currency": "Moneda del espacio de trabajo",
+    "currency_hint": "Moneda canónica de la empresa para métricas, presupuestos e informes.",
+    "lang_system": "Predeterminado del sistema",
+    "lang_en": "English",
+    "lang_es": "Español",
+    "business_category": "Categoría del negocio",
+    "select_category": "Selecciona una categoría",
+    "select_category_short": "Seleccionar categoría",
+    "brand_tone": "Tono de marca",
+    "select_tone": "Seleccionar tono",
+    "subcategories": "Subcategorías",
+    "subcategories_hint": "Subcategorías (selecciona todas las que correspondan)",
+    "brand_description": "Descripción de la marca",
+    "brand_description_placeholder": "Describe tu marca en 2 o 3 oraciones...",
+    "usp": "Propuesta única de valor (USP)",
+    "usp_placeholder": "¿Qué hace que tu negocio sea único?",
+    "target_audience": "Descripción del público objetivo",
+    "target_audience_placeholder": "Describe a tus clientes ideales...",
+    "primary_gender": "Género principal",
+    "business_location": "Ubicación del negocio",
+    "business_location_placeholder": "Ciudad, Estado/País",
+    "target_locations": "Ubicaciones objetivo",
+    "profile_image": "Imagen de perfil",
+    "profile_image_desc_settings": "Sube un logotipo o una marca de perfil representativa para tu marca.",
+    "profile_image_desc_onboarding": "Usa tu logotipo o una marca de perfil representativa.",
+    "choose_profile_image": "Seleccionar imagen de perfil",
+    "product_images": "Imágenes de productos",
+    "product_images_desc_settings": "Mantén a mano algunas imágenes de productos o servicios para la generación creativa posterior.",
+    "product_images_desc_onboarding": "Añade hasta 5 imágenes para alimentar futuros contenidos creativos.",
+    "choose_product_images": "Seleccionar imágenes de productos",
+    "remove_image": "Eliminar imagen"
+  },
+  "competitors": {
+    "title": "Competidores",
+    "title_landscape": "Panorama competitivo",
+    "subtitle_settings": "Mantén tu grupo de competidores organizado y al día para que los informes, ideas e incorporación tengan el contexto de mercado correcto.",
+    "subtitle_onboarding": "Añade las marcas con las que tu audiencia te compara para definir un posicionamiento más inteligente desde el primer día.",
+    "subtitle_default": "Añade algunos competidores clave para comprender tu mercado y crear contenido más inteligente.",
+    "empty_badge": "Resumen competitivo",
+    "empty_title": "Comienza con un competidor",
+    "empty_text": "Añade las marcas que tu público también sigue para que la incorporación y la configuración sean útiles más adelante.",
+    "add_competitor": "Añadir competidor",
+    "add_another_competitor": "Añadir otro competidor",
+    "profile_title": "Perfil del competidor",
+    "profile_subtitle": "Registra el nombre de la marca y los canales que más utiliza.",
+    "remove_competitor": "Eliminar competidor",
+    "name_label": "Nombre del competidor",
+    "name_placeholder": "Nombre de la empresa competidora",
+    "social_links_title": "Enlaces sociales",
+    "social_links_text": "Mantén estos enlaces ordenados y claros. Una fila por canal funciona mejor.",
+    "add_link": "Añadir enlace",
+    "remove_link": "Eliminar enlace",
+    "platform": "Plataforma",
+    "profile_url": "URL del perfil",
+    "profile_url_placeholder": "https://instagram.com/competidor"
+  },
+  "options": {
+    "genders": {
+      "all": "Todos",
+      "male": "Masculino",
+      "female": "Femenino",
+      "non_binary": "No binario",
+      "unspecified": "Sin especificar"
+    },
+    "tones": {
+      "professional": "Profesional",
+      "casual": "Casual",
+      "funny": "Divertido",
+      "inspirational": "Inspiracional",
+      "urgent": "Urgente",
+      "friendly": "Amigable"
+    },
+    "locations": {
+      "local": "Local (misma ciudad)",
+      "regional": "Regional (mismo estado o provincia)",
+      "national": "Nacional",
+      "international": "Internacional"
+    },
+    "categories": {
+      "electronics": "Electrónica",
+      "retail": "Comercio minorista",
+      "services": "Servicios",
+      "food_beverage": "Alimentos y bebidas",
+      "healthcare": "Salud y bienestar",
+      "education": "Educación",
+      "real_estate": "Bienes raíces",
+      "automotive": "Automotriz",
+      "hospitality": "Hotelería y turismo",
+      "manufacturing": "Manufactura",
+      "technology": "Tecnología",
+      "fashion": "Moda",
+      "sports_recreation": "Deportes y recreación",
+      "beauty_wellness": "Belleza y bienestar",
+      "home_garden": "Hogar y jardinería",
+      "professional_services": "Servicios profesionales",
+      "entertainment": "Entretenimiento",
+      "transportation": "Transporte",
+      "agriculture": "Agricultura",
+      "financial_services": "Servicios financieros",
+      "legal_services": "Servicios legales",
+      "construction": "Construcción",
+      "media_communications": "Medios y comunicación",
+      "non_profit": "Sin fines de lucro",
+      "government": "Gobierno",
+      "other": "Otro"
+    }
+  }
+}

@@ -17,6 +17,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   Sparkles, Building2, ShieldCheck, Check, X, AlertTriangle, ChevronRight,
   CalendarClock,
@@ -25,6 +26,7 @@ import {
 import { manageRequestAPI } from '../../services/api';
 import { useAuth } from '../../hooks/useAuth';
 import toast from '../../components/ui/toast';
+import { formatCurrency } from '../../utils/formatters';
 
 const RISK_COLOR = {
   low:      'var(--text-tertiary)',
@@ -34,6 +36,7 @@ const RISK_COLOR = {
 };
 
 export default function ManageInvitePage() {
+  const { t, i18n } = useTranslation('agency_portal');
   const { token } = useParams();
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -55,11 +58,11 @@ export default function ManageInvitePage() {
       .then((r) => { if (!cancelled) setInvite(r.data); })
       .catch((e) => {
         if (cancelled) return;
-        setError(e?.response?.data?.error || 'Could not load invitation');
+        setError(e?.response?.data?.error || t('invitations.manage_invite.err_load', 'Could not load invitation'));
       })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [token]);
+  }, [token, t]);
 
   const proposed = invite?.proposed_permissions || {};
   const catalog  = invite?.permission_catalog || {};
@@ -98,7 +101,7 @@ export default function ManageInvitePage() {
       return;
     }
     if (invite?.target_email && user.email && user.email.toLowerCase() !== invite.target_email.toLowerCase()) {
-      toast.error('This invitation is for a different email. Sign in with that account.');
+      toast.error(t('invitations.manage_invite.err_wrong_email', 'This invitation is for a different email. Sign in with that account.'));
       return;
     }
     setBusy(true);
@@ -108,10 +111,10 @@ export default function ManageInvitePage() {
         permissions_overrides: overrides,
         requires_approval_for,
       });
-      toast.success('Invitation accepted');
+      toast.success(t('invitations.manage_invite.toast_accepted', 'Invitation accepted'));
       navigate('/u');
     } catch (e) {
-      toast.error(e?.response?.data?.error || 'Could not accept');
+      toast.error(e?.response?.data?.error || t('common.error', 'Could not accept'));
     } finally {
       setBusy(false);
     }
@@ -125,18 +128,18 @@ export default function ManageInvitePage() {
     setBusy(true);
     try {
       await manageRequestAPI.decline(token, { reason: declineReason });
-      toast.success('Invitation declined');
+      toast.success(t('invitations.manage_invite.toast_declined', 'Invitation declined'));
       setDeclineOpen(false);
       navigate('/');
     } catch (e) {
-      toast.error(e?.response?.data?.error || 'Could not decline');
+      toast.error(e?.response?.data?.error || t('common.error', 'Could not decline'));
     } finally {
       setBusy(false);
     }
   }
 
   if (loading || authLoading) {
-    return <CenterFrame><Spinner /></CenterFrame>;
+    return <CenterFrame><Spinner text={t('common.loading', 'Loading invitation…')} /></CenterFrame>;
   }
 
   if (error || !invite) {
@@ -145,8 +148,8 @@ export default function ManageInvitePage() {
         <div style={errorBox}>
           <AlertTriangle size={20} style={{ color: 'var(--danger)' }} />
           <div>
-            <strong style={{ color: 'var(--text-primary)' }}>Invitation unavailable</strong>
-            <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-secondary)' }}>{error || 'Unknown error'}</p>
+            <strong style={{ color: 'var(--text-primary)' }}>{t('invitations.manage_invite.err_unavailable', 'Invitation unavailable')}</strong>
+            <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-secondary)' }}>{error || t('common.unknown_error', 'Unknown error')}</p>
           </div>
         </div>
       </CenterFrame>
@@ -162,7 +165,7 @@ export default function ManageInvitePage() {
         <div style={topbarStyle}>
           <Link to="/" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, textDecoration: 'none', color: 'inherit' }}>
             <span style={brandMark}><Sparkles size={14} strokeWidth={2.4} /></span>
-            <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>Social Stats</span>
+            <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>Bop Social</span>
           </Link>
         </div>
 
@@ -171,14 +174,14 @@ export default function ManageInvitePage() {
             <span style={agencyAvatar}><Building2 size={22} strokeWidth={2} /></span>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--brand-primary-hover)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                Manage-account invitation
+                {t('invitations.manage_invite.badge', 'Manage-account invitation')}
               </div>
               <h1 style={{ margin: '2px 0 0', fontSize: 20, fontWeight: 700, color: 'var(--text-primary)' }}>
-                {invite.agency.name} wants to manage your social
+                {t('invitations.manage_invite.title', '{{agency}} wants to manage your social', { agency: invite.agency.name })}
               </h1>
               <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', fontSize: 12, color: 'var(--text-tertiary)' }}>
                 {invite.agency.is_verified && (
-                  <span style={verifiedChip}><ShieldCheck size={11} /> Verified</span>
+                  <span style={verifiedChip}><ShieldCheck size={11} /> {t('agency_profile.verified', 'Verified')}</span>
                 )}
                 {invite.agency.location && <span>· {invite.agency.location}</span>}
                 {invite.agency.review_count > 0 && <span>· ★ {invite.agency.avg_rating.toFixed(1)} ({invite.agency.review_count})</span>}
@@ -189,7 +192,7 @@ export default function ManageInvitePage() {
           {invite.proposed_message && (
             <div style={messageBox}>
               <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--brand-primary-hover)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                Message from {invite.agency.name}
+                {t('invitations.manage_invite.message_from', 'Message from {{agency}}', { agency: invite.agency.name })}
               </div>
               <p style={{ margin: '4px 0 0', fontSize: 14, color: 'var(--text-primary)', lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>
                 {invite.proposed_message}
@@ -199,26 +202,25 @@ export default function ManageInvitePage() {
 
           {invite.proposed_pricing && (
             <div style={pricingChip}>
-              ₹{invite.proposed_pricing.toLocaleString('en-IN')} / month proposed
+              {t('invitations.manage_invite.proposed_pricing', '{{price}} / month proposed', { price: formatCurrency(Number(invite.proposed_pricing), invite.proposed_currency || invite.currency || 'USD', i18n?.language) })}
             </div>
           )}
 
           <section>
             <div style={sectionHead}>
-              <span>What they'll be able to do</span>
+              <span>{t('invitations.manage_invite.perms_head', "What they'll be able to do")}</span>
               <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-tertiary)' }}>
-                {grantedCount} granted
+                {t('invitations.manage_invite.perms_granted', '{{count}} granted', { count: grantedCount })}
               </span>
             </div>
             <p style={{ ...hintStyle, marginTop: 4 }}>
-              You're in control. Toggle anything off — or mark sensitive actions as "needs my approval"
-              so they ping you before doing it.
+              {t('invitations.manage_invite.perms_desc', "You're in control. Toggle anything off — or mark sensitive actions as \"needs my approval\" so they ping you before doing it.")}
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 12 }}>
               {Object.entries(grouped).map(([cat, perms]) => (
                 <div key={cat}>
-                  <div style={catLabel}>{cat}</div>
+                  <div style={catLabel}>{t(`permissions.categories.${cat}`, cat)}</div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                     {perms.map((p) => (
                       <div key={p.key} style={permRow}>
@@ -228,9 +230,9 @@ export default function ManageInvitePage() {
                           disabled={decided}
                           onChange={() => togglePerm(p.key)}
                         />
-                        <span style={{ flex: 1, color: 'var(--text-primary)', fontSize: 13 }}>{p.label}</span>
+                        <span style={{ flex: 1, color: 'var(--text-primary)', fontSize: 13 }}>{t(`permissions.labels.${p.key}`, p.label)}</span>
                         <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: RISK_COLOR[p.risk] }}>
-                          {p.risk}
+                          {t(`permissions.risk.${p.risk}`, p.risk)}
                         </span>
                         {effective[p.key] && (
                           <label style={{ fontSize: 11, color: 'var(--text-tertiary)', display: 'inline-flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
@@ -240,7 +242,7 @@ export default function ManageInvitePage() {
                               disabled={decided}
                               onChange={() => toggleApproval(p.key)}
                             />
-                            Ask me first
+                            {t('invitations.manage_invite.ask_me_first', 'Ask me first')}
                           </label>
                         )}
                       </div>
@@ -255,14 +257,14 @@ export default function ManageInvitePage() {
             <footer style={{ display: 'flex', gap: 10, marginTop: 22, justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
               <span style={{ fontSize: 12, color: 'var(--text-tertiary)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                 <CalendarClock size={12} />
-                {invite.expires_at ? `Expires ${new Date(invite.expires_at).toLocaleDateString()}` : ''}
+                {invite.expires_at ? t('invitations.manage_invite.expires', 'Expires {{date}}', { date: new Date(invite.expires_at).toLocaleDateString() }) : ''}
               </span>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button type="button" onClick={() => setDeclineOpen(true)} disabled={busy} style={btnGhost}>
-                  <X size={14} /> Decline
+                  <X size={14} /> {t('invitations.manage_invite.decline', 'Decline')}
                 </button>
                 <button type="button" onClick={accept} disabled={busy} style={btnPrimary}>
-                  {busy ? 'Working…' : <>Accept <ChevronRight size={14} /></>}
+                  {busy ? t('invitations.manage_invite.working', 'Working…') : <>{t('invitations.manage_invite.accept', 'Accept')} <ChevronRight size={14} /></>}
                 </button>
               </div>
             </footer>
@@ -272,12 +274,12 @@ export default function ManageInvitePage() {
             <div style={resolvedBox}>
               <Check size={18} style={{ color: 'var(--success)' }} />
               <div>
-                <strong style={{ color: 'var(--text-primary)' }}>Already {invite.status}</strong>
+                <strong style={{ color: 'var(--text-primary)' }}>{t('invitations.manage_invite.already_title', 'Already {{status}}', { status: invite.status })}</strong>
                 <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-secondary)' }}>
-                  {invite.status === 'accepted' && 'You can manage this relationship from your dashboard.'}
-                  {invite.status === 'declined' && 'You can ignore this email — no action needed.'}
-                  {invite.status === 'canceled' && 'The agency canceled this invitation.'}
-                  {invite.status === 'expired' && 'The invitation expired. Ask the agency to resend.'}
+                  {invite.status === 'accepted' && t('invitations.manage_invite.status_accepted', 'You can manage this relationship from your dashboard.')}
+                  {invite.status === 'declined' && t('invitations.manage_invite.status_declined', 'You can ignore this email — no action needed.')}
+                  {invite.status === 'canceled' && t('invitations.manage_invite.status_canceled', 'The agency canceled this invitation.')}
+                  {invite.status === 'expired' && t('invitations.manage_invite.status_expired', 'The invitation expired. Ask the agency to resend.')}
                 </p>
               </div>
             </div>
@@ -285,25 +287,25 @@ export default function ManageInvitePage() {
         </div>
 
         <p style={{ marginTop: 18, textAlign: 'center', fontSize: 12, color: 'var(--text-tertiary)' }}>
-          You can change permissions or revoke access at any time from your dashboard.
+          {t('invitations.manage_invite.footer_notice', 'You can change permissions or revoke access at any time from your dashboard.')}
         </p>
       </div>
 
       {declineOpen && (
         <div style={backdropStyle} onClick={(e) => { if (e.target === e.currentTarget) setDeclineOpen(false); }}>
           <div style={{ ...card, width: '100%', maxWidth: 420 }}>
-            <h2 style={{ margin: '0 0 8px', fontSize: 16, fontWeight: 700 }}>Decline this invitation?</h2>
+            <h2 style={{ margin: '0 0 8px', fontSize: 16, fontWeight: 700 }}>{t('invitations.manage_invite.decline_modal.title', 'Decline this invitation?')}</h2>
             <textarea
               rows={3}
               value={declineReason}
               onChange={(e) => setDeclineReason(e.target.value)}
-              placeholder="(optional) Tell them why — only the agency sees this."
+              placeholder={t('invitations.manage_invite.decline_modal.placeholder', '(optional) Tell them why — only the agency sees this.')}
               style={textareaStyle}
             />
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 12 }}>
-              <button type="button" onClick={() => setDeclineOpen(false)} style={btnGhost}>Cancel</button>
+              <button type="button" onClick={() => setDeclineOpen(false)} style={btnGhost}>{t('invitations.manage_invite.decline_modal.cancel', 'Cancel')}</button>
               <button type="button" onClick={decline} disabled={busy} style={btnPrimary}>
-                {busy ? 'Working…' : 'Decline'}
+                {busy ? t('invitations.manage_invite.working', 'Working…') : t('invitations.manage_invite.decline', 'Decline')}
               </button>
             </div>
           </div>
@@ -321,8 +323,8 @@ function CenterFrame({ children }) {
   );
 }
 
-function Spinner() {
-  return <div style={{ color: 'var(--text-tertiary)', fontSize: 13 }}>Loading invitation…</div>;
+function Spinner({ text }) {
+  return <div style={{ color: 'var(--text-tertiary)', fontSize: 13 }}>{text || 'Loading…'}</div>;
 }
 
 const card = {

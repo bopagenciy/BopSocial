@@ -275,6 +275,6 @@ def export_activity_csv(request):
 
     qs = qs.iterator()
     response = StreamingHttpResponse(_csv_iter(qs), content_type='text/csv')
-    filename = f'socialstats-activity-{timezone.now().date().isoformat()}.csv'
+    filename = f'bopsocial-activity-{timezone.now().date().isoformat()}.csv'
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
     return response

@@ -12,18 +12,18 @@
 
 :root {
   /* ── Brand ────────────────────────────────────────────────────────────── */
-  --brand-primary:        #00CCF5;
-  --brand-primary-hover:  #00A8D8;
-  --brand-primary-active: #008CB8;
-  --brand-primary-soft:   rgba(0, 204, 245, 0.10);
-  --brand-primary-glow:   rgba(0, 204, 245, 0.18);
+  --brand-primary:        #F5A623;
+  --brand-primary-hover:  #E09612;
+  --brand-primary-active: #C88204;
+  --brand-primary-soft:   rgba(245, 166, 35, 0.12);
+  --brand-primary-glow:   rgba(245, 166, 35, 0.22);
 
-  --brand-gradient:       linear-gradient(135deg, #00CCF5 0%, #00A8D8 100%);
-  --brand-gradient-soft:  linear-gradient(135deg, rgba(0,204,245,0.08), rgba(0,168,216,0.04));
+  --brand-gradient:       linear-gradient(135deg, #F5A623 0%, #E09612 100%);
+  --brand-gradient-soft:  linear-gradient(135deg, rgba(245, 166, 35, 0.10), rgba(224, 150, 18, 0.05));
   --brand-mesh:
-    radial-gradient(at 30% 20%, rgba(0, 204, 245, 0.45) 0%, transparent 50%),
-    radial-gradient(at 70% 80%, rgba(124, 58, 237, 0.35) 0%, transparent 50%),
-    radial-gradient(at 50% 50%, rgba(0, 168, 216, 0.30) 0%, transparent 60%);
+    radial-gradient(at 30% 20%, rgba(245, 166, 35, 0.40) 0%, transparent 50%),
+    radial-gradient(at 70% 80%, rgba(45, 49, 66, 0.35) 0%, transparent 50%),
+    radial-gradient(at 50% 50%, rgba(224, 150, 18, 0.25) 0%, transparent 60%);
 
   /* ── Surfaces — light mode ────────────────────────────────────────────── */
   --surface-page:     #fafbfc;
@@ -35,18 +35,18 @@
   --surface-glass:    rgba(255, 255, 255, 0.72);
 
   /* ── Text — light mode ────────────────────────────────────────────────── */
-  --text-primary:    #0a0e14;
-  --text-secondary:  #475569;
-  --text-tertiary:   #94a3b8;
+  --text-primary:    #1E202A;
+  --text-secondary:  #2D3142;
+  --text-tertiary:   #6b7280;
   --text-quaternary: #cbd5e1;
-  --text-on-brand:   #ffffff;
-  --text-link:       #00A8D8;
+  --text-on-brand:   #1E202A;
+  --text-link:       #D48806;
 
   /* ── Borders — light mode ─────────────────────────────────────────────── */
-  --border-subtle:  rgba(10, 14, 20, 0.06);
-  --border-default: rgba(10, 14, 20, 0.10);
-  --border-strong:  rgba(10, 14, 20, 0.16);
-  --border-focus:   rgba(0, 204, 245, 0.6);
+  --border-subtle:  rgba(30, 32, 42, 0.06);
+  --border-default: rgba(30, 32, 42, 0.10);
+  --border-strong:  rgba(30, 32, 42, 0.16);
+  --border-focus:   rgba(245, 166, 35, 0.65);
 
   /* Overlays (modals, drawers, sheets) */
   --overlay-backdrop: rgba(10, 14, 20, 0.45);
@@ -58,7 +58,7 @@
   --info:       #3b82f6;  --info-bg:       rgba( 59, 130, 246, 0.10);
 
   /* ── Module accents ───────────────────────────────────────────────────── */
-  --module-analytics: #00CCF5;
+  --module-analytics: #F5A623;
   --module-messaging: #10b981;
   --module-ads:       #f59e0b;
   --module-ai:        #8b5cf6;
@@ -78,8 +78,8 @@
   --shadow-md: 0 4px 12px rgba(10, 14, 20, 0.08);
   --shadow-lg: 0 12px 28px rgba(10, 14, 20, 0.10);
   --shadow-xl: 0 24px 56px rgba(10, 14, 20, 0.14);
-  --shadow-glow:  0 0 0 4px rgba(0, 204, 245, 0.16);
-  --shadow-brand: 0 8px 24px rgba(0, 204, 245, 0.25);
+  --shadow-glow:  0 0 0 4px rgba(245, 166, 35, 0.18);
+  --shadow-brand: 0 8px 24px rgba(245, 166, 35, 0.25);
 
   /* ── Spacing ──────────────────────────────────────────────────────────── */
   --space-1: 4px;   --space-2: 8px;   --space-3: 12px;  --space-4: 16px;
@@ -126,36 +126,37 @@
 
 /* ── Dark mode ────────────────────────────────────────────────────────── */
 [data-theme="dark"] {
-  --surface-page:     #06080c;
-  --surface-card:     #0d1219;
-  --surface-elevated: #131923;
-  --surface-sunken:   #0a0e14;
-  --surface-hover:    #181f2a;
-  --surface-overlay:  rgba(13, 18, 25, 0.85);
-  --surface-glass:    rgba(13, 18, 25, 0.62);
+  --surface-page:     #1E202A;
+  --surface-card:     #252834;
+  --surface-elevated: #2D3142;
+  --surface-sunken:   #181A22;
+  --surface-hover:    #353A4D;
+  --surface-overlay:  rgba(30, 32, 42, 0.88);
+  --surface-glass:    rgba(37, 40, 52, 0.72);
 
-  --text-primary:    #f1f5f9;
-  --text-secondary:  #cbd5e1;
+  --text-primary:    #FFFFFF;
+  --text-secondary:  #E2E8F0;
   --text-tertiary:   #94a3b8;
   --text-quaternary: #64748b;
-  --text-link:       #00CCF5;
+  --text-link:       #F5A623;
 
-  --border-subtle:  rgba(255, 255, 255, 0.06);
-  --border-default: rgba(255, 255, 255, 0.10);
-  --border-strong:  rgba(255, 255, 255, 0.16);
+  --border-subtle:  rgba(255, 255, 255, 0.08);
+  --border-default: rgba(255, 255, 255, 0.12);
+  --border-strong:  rgba(255, 255, 255, 0.18);
+  --border-focus:   rgba(245, 166, 35, 0.75);
 
   /* Overlays — heavier in dark mode for separation */
-  --overlay-backdrop: rgba(0, 0, 0, 0.62);
+  --overlay-backdrop: rgba(0, 0, 0, 0.65);
 
   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
   --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.4);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
   --shadow-lg: 0 12px 28px rgba(0, 0, 0, 0.6);
   --shadow-xl: 0 24px 56px rgba(0, 0, 0, 0.7);
-  --shadow-glow:  0 0 0 4px rgba(0, 204, 245, 0.22);
-  --shadow-brand: 0 8px 24px rgba(0, 204, 245, 0.30);
+  --shadow-glow:  0 0 0 4px rgba(245, 166, 35, 0.25);
+  --shadow-brand: 0 8px 24px rgba(245, 166, 35, 0.32);
 
-  --brand-primary-glow: rgba(0, 204, 245, 0.22);
+  --brand-primary-glow: rgba(245, 166, 35, 0.25);
   --success-bg: rgba(16, 185, 129, 0.16);
   --warning-bg: rgba(245, 158, 11, 0.16);
   --danger-bg:  rgba(239,  68,  68, 0.16);

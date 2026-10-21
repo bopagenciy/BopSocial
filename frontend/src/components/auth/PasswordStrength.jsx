@@ -12,12 +12,14 @@
  * Score ranges 0..4 based on length, casing, digits, symbols. This is an
  * affordance, not validation — the backend remains the source of truth.
  */
+import { useTranslation } from 'react-i18next';
+
 const LEVELS = [
-  { label: 'Very weak', color: 'var(--danger)',  width: '20%' },
-  { label: 'Weak',      color: 'var(--danger)',  width: '40%' },
-  { label: 'Fair',      color: 'var(--warning)', width: '60%' },
-  { label: 'Good',      color: 'var(--info)',    width: '80%' },
-  { label: 'Strong',    color: 'var(--success)', width: '100%' },
+  { key: 'very_weak', label: 'Very weak', color: 'var(--danger)',  width: '20%' },
+  { key: 'weak',      label: 'Weak',      color: 'var(--danger)',  width: '40%' },
+  { key: 'fair',      label: 'Fair',      color: 'var(--warning)', width: '60%' },
+  { key: 'good',      label: 'Good',      color: 'var(--info)',    width: '80%' },
+  { key: 'strong',    label: 'Strong',    color: 'var(--success)', width: '100%' },
 ];
 
 export function scorePassword(pw) {
@@ -32,9 +34,11 @@ export function scorePassword(pw) {
 }
 
 export default function PasswordStrength({ password = '', show = true }) {
+  const { t } = useTranslation('auth');
   if (!show || !password) return null;
   const s = scorePassword(password);
   const lvl = LEVELS[s];
+  const translatedLabel = t(`password_strength.${lvl.key}`, lvl.label);
 
   return (
     <div style={{ marginTop: 6 }}>
@@ -65,7 +69,7 @@ export default function PasswordStrength({ password = '', show = true }) {
           fontWeight: 500,
         }}
       >
-        Password strength: {lvl.label}
+        {t('password_strength.label', 'Password strength:')} {translatedLabel}
       </div>
     </div>
   );

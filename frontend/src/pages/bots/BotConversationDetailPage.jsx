@@ -14,6 +14,7 @@
  */
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   ArrowLeft, User, Bot, Clock, RefreshCw, UserPlus, StopCircle, Sparkles,
   CheckCircle2, AlertTriangle, Wand2, Copy,
@@ -32,6 +33,7 @@ const STATUS_META = {
 };
 
 export default function BotConversationDetailPage() {
+  const { t } = useTranslation('messaging');
   const { id } = useParams();
   const navigate = useNavigate();
   const [conv,    setConv]    = useState(null);
@@ -63,7 +65,7 @@ export default function BotConversationDetailPage() {
     }
   }
   async function end() {
-    if (!window.confirm('Force-end this conversation?')) return;
+    if (!window.confirm(t('conversations.detail.confirm_end', 'Force-end this conversation?'))) return;
     try {
       await botConversationAPI.end(id);
       toast.success('Conversation ended');
@@ -74,7 +76,7 @@ export default function BotConversationDetailPage() {
   }
 
   if (loading || !conv) {
-    return <div style={{ padding: 32, color: 'var(--text-tertiary)' }}>Loading…</div>;
+    return <div style={{ padding: 32, color: 'var(--text-tertiary)' }}>{t('campaigns.loading', 'Loading…')}</div>;
   }
 
   const meta = STATUS_META[conv.status] || STATUS_META.active;
@@ -87,7 +89,7 @@ export default function BotConversationDetailPage() {
         display: 'inline-flex', alignItems: 'center', gap: 4,
         fontSize: 13, color: 'var(--text-secondary)', textDecoration: 'none', alignSelf: 'flex-start',
       }}>
-        <ArrowLeft size={14} /> All conversations
+        <ArrowLeft size={14} /> {t('conversations.detail.back', 'All conversations')}
       </Link>
 
       {/* Hero */}
@@ -112,8 +114,8 @@ export default function BotConversationDetailPage() {
           </h1>
           <div style={{ marginTop: 4, fontSize: 13, color: 'var(--text-secondary)', display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             {conv.contact_phone && <code>{conv.contact_phone}</code>}
-            {conv.flow_name && <span>Flow: <strong style={{ color: 'var(--text-primary)' }}>{conv.flow_name}</strong></span>}
-            <span>Triggered via <code>{conv.triggered_via}</code></span>
+            {conv.flow_name && <span>{t('conversations.th_flow', 'Flow')}: <strong style={{ color: 'var(--text-primary)' }}>{conv.flow_name}</strong></span>}
+            <span>{t('bot_flows.stats.executions', 'Triggered')} via <code>{conv.triggered_via}</code></span>
           </div>
         </div>
 
@@ -125,7 +127,7 @@ export default function BotConversationDetailPage() {
             borderRadius: 'var(--radius-pill)',
             fontSize: 12, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase',
           }}>
-            <StatusIcon size={12} /> {meta.label}
+            <StatusIcon size={12} /> {t(`statuses.${conv.status}`, meta.label)}
           </span>
           {conv.ai_takeover_active && (
             <span style={{
@@ -144,21 +146,21 @@ export default function BotConversationDetailPage() {
       {/* Action bar */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         <button type="button" onClick={load} aria-label="Refresh" style={btnGhost}>
-          <RefreshCw size={13} /> Refresh
+          <RefreshCw size={13} /> {t('ctwa.refresh', 'Refresh')}
         </button>
         {conv.status === 'active' && (
           <>
             <button type="button" onClick={handoff} style={btnPrimary}>
-              <UserPlus size={13} /> Hand off to human
+              <UserPlus size={13} /> {t('conversations.detail.handoff', 'Hand off to human')}
             </button>
             <button type="button" onClick={end} style={btnDanger}>
-              <StopCircle size={13} /> End conversation
+              <StopCircle size={13} /> {t('conversations.detail.force_end', 'End conversation')}
             </button>
           </>
         )}
         {conv.lead && (
           <Link to={`/admin/leads/${conv.lead}`} style={btnGhost}>
-            <Bot size={13} /> View captured lead
+            <Bot size={13} /> {t('conversations.detail.lead_badge', 'View captured lead')}
           </Link>
         )}
       </div>
@@ -173,10 +175,10 @@ export default function BotConversationDetailPage() {
           borderRadius: 'var(--radius-md)',
         }}>
           <h3 style={{ margin: '0 0 10px', fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>
-            Timeline <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-tertiary)' }}>· {conv.steps?.length || 0} steps</span>
+            {t('conversations.detail.timeline_title', 'Timeline')} <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-tertiary)' }}>· {conv.steps?.length || 0} {t('bot_editor.nodes_count', 'steps')}</span>
           </h3>
           {(conv.steps || []).length === 0 ? (
-            <p style={{ margin: 0, color: 'var(--text-tertiary)', fontSize: 13 }}>No steps recorded.</p>
+            <p style={{ margin: 0, color: 'var(--text-tertiary)', fontSize: 13 }}>{t('bot_editor.test_drawer.no_steps', 'No steps recorded.')}</p>
           ) : (
             <ol style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
               {conv.steps.map((s) => <Step key={s.id} step={s} />)}
@@ -197,10 +199,10 @@ export default function BotConversationDetailPage() {
             borderRadius: 'var(--radius-md)',
           }}>
             <h3 style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-              Variables
+              {t('conversations.detail.variables_title', 'Variables')}
             </h3>
             {cleanVars.length === 0 ? (
-              <p style={{ margin: 0, fontSize: 12, color: 'var(--text-tertiary)' }}>None collected yet.</p>
+              <p style={{ margin: 0, fontSize: 12, color: 'var(--text-tertiary)' }}>{t('conversations.detail.no_variables', 'None collected yet.')}</p>
             ) : (
               <dl style={{ margin: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {cleanVars.map(([k, v]) => (

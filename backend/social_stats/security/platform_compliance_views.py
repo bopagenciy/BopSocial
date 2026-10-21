@@ -161,12 +161,13 @@ def platform_deletion_status(request, code: str):
     not JSON). Anyone with the code can view it — the code is the credential.
     """
     req = PlatformDataDeletionRequest.objects.filter(confirmation_code=code).first()
+    privacy_email = getattr(settings, 'PRIVACY_EMAIL', 'privacy@bopsocial.com')
     if not req:
         body = (
             '<!doctype html><html><body style="font-family: sans-serif; max-width: 640px; margin: 60px auto; padding: 0 20px;">'
             '<h1>Deletion request not found</h1>'
             '<p>The confirmation code in this URL does not match any record. '
-            'If you believe this is a mistake, contact <a href="mailto:privacy@socialstats.app">privacy@socialstats.app</a>.</p>'
+            f'If you believe this is a mistake, contact <a href="mailto:{privacy_email}">{privacy_email}</a>.</p>'
             '</body></html>'
         )
         return HttpResponse(body, status=404, content_type='text/html')
@@ -177,12 +178,12 @@ def platform_deletion_status(request, code: str):
         'queued':     'Your deletion request has been received and is queued.',
         'processing': 'Your deletion is being processed right now.',
         'completed':  'Your data associated with this account has been deleted.',
-        'failed':     'We hit a snag — please contact privacy@socialstats.app.',
+        'failed':     f'We hit a snag — please contact {privacy_email}.',
     }.get(req.status, 'Status unknown')
 
     body = f'''<!doctype html>
 <html>
-<head><meta charset="utf-8"><title>Social Stats — deletion request status</title></head>
+<head><meta charset="utf-8"><title>Bop Social — deletion request status</title></head>
 <body style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 640px; margin: 60px auto; padding: 0 20px; color: #1e293b;">
   <h1 style="margin: 0 0 8px;">Deletion request status</h1>
   <p style="color: #64748b; margin: 0 0 20px;">Confirmation code: <code>{code}</code></p>
@@ -197,7 +198,7 @@ def platform_deletion_status(request, code: str):
     </table>
   </div>
   <p style="margin-top: 24px; font-size: 13px; color: #64748b;">
-    Questions? <a href="mailto:privacy@socialstats.app">privacy@socialstats.app</a>
+    Questions? <a href="mailto:{privacy_email}">{privacy_email}</a>
   </p>
 </body>
 </html>'''

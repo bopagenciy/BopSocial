@@ -1,0 +1,451 @@
+{
+  "studio": {
+    "title": "Bop Social Studio",
+    "subtitle": "Every Bop Social surface in one place",
+    "eyebrow": "✨ Powered by Bop Social",
+    "groups": {
+      "create": "Create",
+      "engage": "Engage",
+      "understand": "Understand",
+      "chat": "Chat",
+      "admin": "Admin"
+    },
+    "cards": {
+      "compose": {
+        "title": "Smart Composer",
+        "body": "Generate platform-tailored posts in seconds."
+      },
+      "caption": {
+        "title": "Caption Writer",
+        "body": "Generate captions across platforms."
+      },
+      "post_ideas": {
+        "title": "Post Ideas",
+        "body": "AI-built monthly content calendar."
+      },
+      "hashtags": {
+        "title": "Hashtag Research",
+        "body": "Research hashtags with reach + competition."
+      },
+      "inbox": {
+        "title": "AI Reply Suggestions",
+        "body": "Three-tone reply candidates for any message."
+      },
+      "insights": {
+        "title": "AI Insights",
+        "body": "Actionable insights from your data."
+      },
+      "brand_voice": {
+        "title": "Brand Voice",
+        "body": "Train Bop Social on your past posts."
+      },
+      "chat_history": {
+        "title": "Chat History",
+        "body": "Past conversations with Bop Social."
+      },
+      "ai_usage": {
+        "title": "AI Usage",
+        "body": "Cost dashboards, per-client + per-user breakdown."
+      }
+    },
+    "shortcut_banner": {
+      "text": "Press <kbd>⌘ J</kbd> from anywhere to chat with Bop Social",
+      "description": "The chat assistant can pull your metrics, draft posts, search your inbox, and schedule actions — all with confirmation gates on anything that touches live data."
+    }
+  },
+  "assistant": {
+    "floating_trigger": {
+      "aria_label": "Open Bop Social (Cmd+J)",
+      "title": "Bop Social (⌘J)"
+    },
+    "chat": {
+      "title": "Bop Social",
+      "aria_label": "Bop Social chat",
+      "welcome_title": "Hi, I'm Bop Social",
+      "welcome_subtitle": "Ask me about your data, draft posts, reply to your inbox, or get a daily briefing.",
+      "new": "New",
+      "history": "History",
+      "close": "Close",
+      "back_to_chat": "Back to chat",
+      "input_placeholder": "Ask anything — or type / for slash commands…",
+      "send": "Send",
+      "copy": "Copy",
+      "copied": "Copied",
+      "copy_failed": "Copy failed",
+      "failed_load": "Failed to load conversation",
+      "pick_client": "Pick a client first",
+      "unavailable": "Bop Social is unavailable",
+      "confirm_delete": "Delete this conversation?",
+      "delete_failed": "Could not delete",
+      "confirm_action": "Confirm action",
+      "cancel": "Cancel",
+      "confirm": "Confirm",
+      "tool_label": "tool: {{name}}",
+      "conversations": "Conversations",
+      "empty_history": "No conversations yet — start chatting.",
+      "untitled": "Untitled chat",
+      "delete_conversation": "Delete conversation",
+      "quick_prompts": {
+        "instagram_perf": "How did Instagram perform this week?",
+        "summer_launch": "Draft 3 Instagram posts about our summer launch",
+        "best_time": "What time should I post tomorrow?",
+        "unread_inbox": "Show me the latest unread inbox messages"
+      }
+    }
+  },
+  "brand_voice": {
+    "title": "Brand Voice",
+    "subtitle": "Train Bop Social on your past posts so every generation sounds like you",
+    "studying": "Bop Social is studying your voice…",
+    "pick_client_title": "Pick a client",
+    "pick_client_desc": "Brand voice is per-client. Open a specific client to train its voice.",
+    "status": {
+      "pending": "Not trained yet",
+      "training": "Training…",
+      "ready": "Ready",
+      "failed": "Training failed"
+    },
+    "emoji": {
+      "heavy": "✨ Heavy emoji",
+      "moderate": "🙂 Moderate",
+      "minimal": "Minimal",
+      "none": "No emojis"
+    },
+    "train_card": {
+      "title": "Train from sample posts",
+      "subtitle": "Paste 3-20 of your most-on-brand posts. Older + recent welcome.",
+      "sample_placeholder": "Sample post {{number}}…",
+      "remove_sample": "Remove sample",
+      "add_sample": "Add sample",
+      "sample_counter": "{{count}} / 20 samples",
+      "business_hint_placeholder": "Business in 1 line (optional)",
+      "industry_placeholder": "Industry (optional)",
+      "btn_train": "Train brand voice",
+      "btn_retrain": "Re-train brand voice",
+      "btn_training": "Bop Social is studying your voice…",
+      "training_failed_prefix": "Training failed:",
+      "validation_min_samples": "Add at least 3 sample posts (or paste one per row)",
+      "success_trained": "Brand voice trained",
+      "failed_train": "Training failed"
+    },
+    "profile_card": {
+      "title": "Extracted profile",
+      "subtitle_ready": "Last trained {{date}}",
+      "subtitle_empty": "Train above to see your voice profile",
+      "empty_title": "No trained voice yet",
+      "empty_desc": "Paste sample posts on the left and click Train. Your profile will appear here in seconds.",
+      "persona": "Persona",
+      "tone": "Tone",
+      "vocabulary": "Vocabulary to favour",
+      "avoid": "Avoid",
+      "audience": "Target audience",
+      "topics_avoid": "Topics to avoid",
+      "style_rules": "Style rules",
+      "hashtags": "Hashtags: {{style}}"
+    },
+    "validation_examples": {
+      "title": "Validation examples",
+      "subtitle": "Three short posts written in the just-trained voice — does this sound like you?",
+      "regenerate": "Regenerate"
+    },
+    "test_card": {
+      "title": "Test the voice",
+      "subtitle": "Generate a sample post on any topic to spot-check the trained voice.",
+      "placeholder": "e.g. New summer collection, Diwali greetings…",
+      "btn_generate": "Generate sample post",
+      "badge_trained": "In your trained voice",
+      "badge_default": "Default voice",
+      "chars": "{{count}} chars",
+      "validation_topic": "Add a topic to test",
+      "failed_test": "Test failed"
+    }
+  },
+  "insights": {
+    "title": "AI Insights",
+    "subtitle": "Bop Social surfaces what matters from your data — refresh whenever you want fresh signal.",
+    "btn_generate": "Generate fresh insights",
+    "btn_generating": "Generating…",
+    "filters": {
+      "all": "All",
+      "critical": "Critical",
+      "high": "High",
+      "medium": "Medium",
+      "low": "Low"
+    },
+    "show_dismissed": "Show dismissed",
+    "empty_title": "No insights yet",
+    "empty_desc": "Click “Generate fresh insights” to have Bop Social scan your last 30 days of data.",
+    "empty_filtered": "Nothing matches that filter.",
+    "btn_generate_now": "Generate now",
+    "suggested_action": "Suggested action:",
+    "confidence": "· {{percent}}% confidence",
+    "acted_upon": "Acted upon",
+    "mark_done": "Mark as done",
+    "mark_not_done": "Mark not done",
+    "dismiss": "Dismiss",
+    "generated_success": "Generated {{count}} insight",
+    "generated_success_plural": "Generated {{count}} insights",
+    "no_new_insights": "No new insights right now",
+    "generation_failed": "Generation failed",
+    "update_failed": "Could not update"
+  },
+  "usage": {
+    "title": "AI Usage",
+    "subtitle": "Cost, tokens, and request volume across every AI feature.",
+    "admin_only_title": "Admin access only",
+    "admin_only_desc": "The AI usage dashboard is visible to superadmins and staff.",
+    "periods": {
+      "day": "Today",
+      "week": "This week",
+      "month": "This month"
+    },
+    "refresh": "Refresh",
+    "budget": {
+      "monthly_budget": "Monthly budget",
+      "used_of_cap": "{{used}} / {{cap}} used",
+      "remaining": "{{remaining}} remaining"
+    },
+    "stats": {
+      "requests": "Requests",
+      "cost": "Cost (this period)",
+      "input_tokens": "Input tokens",
+      "output_tokens": "Output tokens",
+      "cache_hit_rate": "Cache hit rate",
+      "errors": "Errors"
+    },
+    "features": {
+      "title": "By feature",
+      "subtitle": "Top features by spend in the selected period",
+      "empty": "No AI usage in this period yet.",
+      "col_feature": "Feature",
+      "col_requests": "Requests",
+      "col_input_tokens": "Input tokens",
+      "col_output_tokens": "Output tokens",
+      "col_cost": "Cost"
+    },
+    "top_clients": {
+      "title": "Top clients",
+      "empty": "No client-scoped usage in this period."
+    },
+    "top_users": {
+      "title": "Top users",
+      "empty": "No user-scoped usage in this period."
+    },
+    "daily_activity": {
+      "title": "Daily activity",
+      "subtitle": "Cost (USD) per day in the selected period"
+    }
+  },
+  "history": {
+    "title": "Chat History",
+    "subtitle": "Past conversations with Bop Social",
+    "show_active": "Show active",
+    "show_archived": "Show archived",
+    "search_placeholder": "Search conversations…",
+    "no_archived": "No archived chats",
+    "no_conversations": "No conversations yet",
+    "empty_desc": "Press ⌘J anywhere to start a chat with Bop Social.",
+    "untitled": "Untitled chat",
+    "restore": "Restore",
+    "archive": "Archive",
+    "delete": "Delete",
+    "confirm_delete": "Delete this conversation? This cannot be undone.",
+    "pick_conversation": "Pick a conversation",
+    "pick_desc": "Click a chat on the left to read it.",
+    "not_found": "Conversation not found",
+    "messages_count": "{{count}} message",
+    "messages_count_plural": "{{count}} messages",
+    "tool_result": "tool result",
+    "archived_toast": "Archived",
+    "restored_toast": "Restored",
+    "deleted_toast": "Deleted"
+  },
+  "audit": {
+    "title": "What did Bop Social do for me?",
+    "subtitle": "Every AI request on this client account — for transparency + compliance.",
+    "refresh": "Refresh",
+    "today_quota": "Today's AI quota",
+    "quota_used": "{{used}} / {{limit}} requests used",
+    "quota_remaining": "({{remaining}} remaining)",
+    "filter_by_feature": "Filter by feature",
+    "showing_one": "Showing one feature",
+    "all_features": "All features",
+    "activity_feed": "Activity feed",
+    "recent_subtitle": "{{count}} most recent — newest first",
+    "loading_activity": "Loading activity…",
+    "empty_title": "No AI activity yet",
+    "empty_desc": "As you use Bop Social features, every request shows up here.",
+    "columns": {
+      "feature": "Feature",
+      "status": "Status",
+      "model": "Model",
+      "tokens": "In/out tokens",
+      "cost": "Cost",
+      "when": "When"
+    },
+    "disclaimer": "Bop Social powers every request below. We log each call for compliance and do not train on your data. AI-generated content is marked with a ✨ AI-assisted badge in the UI. Sensitive verticals (medical, legal, financial) include a regulatory disclaimer. Vendor-level disclosure is in our Privacy Policy.",
+    "failed_load": "Failed to load AI audit"
+  },
+  "shared": {
+    "ai_badge": {
+      "cached": "AI · cached",
+      "assisted": "AI-assisted",
+      "title_cached": "This was served from the AI cache — no new generation cost was incurred",
+      "title_assisted": "This content was generated with Bop Social assistance"
+    },
+    "ai_loading": {
+      "thinking": "Bop Social is thinking…",
+      "generating": "Generating…"
+    },
+    "chart_annotations": {
+      "explain": "Explain this",
+      "explain_short": "Explain",
+      "refresh": "Refresh",
+      "unavailable": "AI narration unavailable",
+      "title": "What this data means",
+      "from_bop": "From Bop Social",
+      "pick_client": "Pick a client first",
+      "prompt_desc": "Click Explain to have Bop Social interpret this chart in plain language."
+    },
+    "today_briefing": {
+      "title": "Today's briefing",
+      "subtitle": "From Bop Social · most recent insights",
+      "empty": "No insights yet — give Bop Social a moment to study your data.",
+      "surfaced_insights": "Bop Social surfaced {{count}} new insight",
+      "surfaced_insights_plural": "Bop Social surfaced {{count}} new insights",
+      "generate": "Generate",
+      "view_all": "View all",
+      "unavailable": "AI is unavailable right now"
+    }
+  },
+  "caption_writer": {
+    "title": "AI Caption Writer",
+    "subtitle": "Generate high-converting captions and hashtags across all your platforms",
+    "tabs": {
+      "captions": "Caption Generator",
+      "hashtags": "Hashtag Research"
+    },
+    "loading_captions": "Bop Social is writing your captions…",
+    "loading_hashtags": "Bop Social is researching hashtags…",
+    "form": {
+      "client_label": "Client",
+      "select_client": "Select a client…",
+      "topic_label": "Topic / Description *",
+      "topic_placeholder": "What is this post about? Include key details, offers, or themes…",
+      "tone_label": "Tone",
+      "post_type_label": "Post Type",
+      "platforms_label": "Target Platforms *",
+      "include_hashtags": "Include hashtags",
+      "include_cta": "Include call-to-action",
+      "include_emojis": "Include emojis",
+      "keywords_label": "Keywords to include (optional)",
+      "cta_label": "Call to action (optional)",
+      "generate_btn": "✨ Generate Captions",
+      "generating_btn": "Generating… (5-10 seconds)"
+    },
+    "tones": {
+      "professional": "Professional",
+      "casual": "Casual",
+      "funny": "Funny",
+      "inspirational": "Inspirational",
+      "urgent": "Urgent",
+      "friendly": "Friendly"
+    },
+    "post_types": {
+      "promotion": "Promotion",
+      "announcement": "Announcement",
+      "educational": "Educational",
+      "behind_scenes": "Behind the Scenes",
+      "product": "Product Showcase",
+      "event": "Event",
+      "tip": "Tip & Advice",
+      "general": "General"
+    },
+    "results": {
+      "heading": "Generated Captions",
+      "copy_all": "Copy All Captions",
+      "copied": "Copied!",
+      "copy": "Copy",
+      "edit": "Edit",
+      "save": "Done",
+      "cancel": "Cancel",
+      "add_to_calendar": "Add to Calendar",
+      "best_time": "Best time to post:",
+      "empty_title": "Your captions will appear here",
+      "empty_desc": "Fill in the form and click Generate",
+      "copy_hashtags": "Copy hashtags"
+    },
+    "hashtags": {
+      "title": "AI Hashtag Research",
+      "subtitle": "Discover the best hashtags for maximum reach",
+      "keyword_label": "Keyword / Topic *",
+      "keyword_placeholder": "e.g., fitness, digital marketing, coffee…",
+      "niche_label": "Your niche / industry",
+      "location_label": "Location (optional)",
+      "platform_label": "Platform",
+      "post_type_label": "Post Type",
+      "topic_label": "Post topic",
+      "research_btn": "# Research Hashtags",
+      "researching_btn": "Researching… (5-10 seconds)",
+      "copy_selected": "Copy Selected ({{count}})",
+      "select_all": "Select All",
+      "deselect_all": "Deselect All",
+      "empty_title": "Hashtag research will appear here",
+      "empty_desc": "Click each tag to select it, then copy or save your set",
+      "recommended_set": "Recommended Set",
+      "caption_hashtags": "Caption hashtags",
+      "first_comment_hashtags": "First comment hashtags",
+      "tags_to_avoid": "Tags to Avoid",
+      "no_tags": "No tags in this tier",
+      "save_modal_title": "Save Hashtag Set",
+      "save_set": "Save Set",
+      "clear": "Clear",
+      "recent_searches": "Recent searches",
+      "tiers": {
+        "mega": "Mega",
+        "large": "Large",
+        "medium": "Medium",
+        "small": "Small",
+        "local": "Local",
+        "branded": "Branded"
+      }
+    }
+  },
+  "post_ideas": {
+    "title": "AI Post Ideas",
+    "subtitle": "Generate a full month of strategic content ideas customized for your business",
+    "form": {
+      "client_label": "Client",
+      "select_client": "Select client…",
+      "month_label": "Month",
+      "year_label": "Year",
+      "business_type_label": "Business Type *",
+      "select_business_type": "Select business type…",
+      "location_label": "Location / City (optional)",
+      "location_placeholder": "e.g., Austin, TX or Global / Online",
+      "audience_label": "Target Audience (optional)",
+      "audience_placeholder": "e.g., Young professionals, working moms, tech founders…",
+      "events_label": "Upcoming Events / Promotions (optional)",
+      "events_placeholder": "e.g., Summer sale launching on the 15th, new menu item…",
+      "platforms_label": "Target Platforms *",
+      "posts_per_week_label": "Posts per Week",
+      "generate_btn": "Generate Content Calendar"
+    },
+    "loading_sub": "Bop Social is crafting personalised post ideas for your business",
+    "loading_steps": {
+      "step_1": "Analyzing your business…",
+      "step_2": "Researching month opportunities…",
+      "step_3": "Crafting post ideas…",
+      "step_4": "Building your calendar…"
+    },
+    "results": {
+      "regenerate": "Regenerate",
+      "new_plan": "New Plan",
+      "history": "History",
+      "approve_all": "Approve All",
+      "total_ideas": "{{count}} Post Ideas",
+      "add_all_to_calendar": "Add All to Calendar",
+      "calendar_added": "Added to calendar"
+    }
+  }
+}

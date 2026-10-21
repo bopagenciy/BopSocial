@@ -51,7 +51,7 @@ from .models import (
 logger = logging.getLogger(__name__)
 
 FRONTEND_URL = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
-FROM_EMAIL   = getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@socialstats.app')
+FROM_EMAIL   = getattr(settings, 'DEFAULT_FROM_EMAIL', 'Bop Social <noreply@bopsocial.com>')
 
 ALLOWED_AGENCY_ROLES = ('owner', 'admin', 'manager')
 
@@ -102,6 +102,8 @@ def _serialize_request(req: ManageRequest, *, include_token=False) -> dict:
         'proposed_permissions': req.proposed_permissions,
         'proposed_message':    req.proposed_message,
         'proposed_pricing':    float(req.proposed_pricing) if req.proposed_pricing is not None else None,
+        'proposed_currency':   req.proposed_currency,
+        'currency':            req.proposed_currency,
         'proposed_services':   req.proposed_services,
         'status':              req.status,
         'sent_at':             req.sent_at.isoformat() if req.sent_at else None,
@@ -125,9 +127,12 @@ def _validate_permissions_payload(payload) -> dict:
 
 
 def _send_manage_request_email(req: ManageRequest):
+    from .locale_helpers import resolve_user_language, get_email_copy
+
     agency_name = req.agency.name
     link = f"{FRONTEND_URL}/invite/{req.token}"
-    subject = f"{agency_name} wants to manage your social media on Social Stats"
+    target_user = getattr(req, 'target_user', None) or User.objects.filter(email__iexact=req.target_email).first()
+    lang = resolve_user_language(target_user, getattr(req, 'target_client', None))
 
     granted_keys = sorted([k for k, v in (req.proposed_permissions or {}).items() if v])
     perm_chips = ''.join(
@@ -138,37 +143,35 @@ def _send_manage_request_email(req: ManageRequest):
     if len(granted_keys) > 8:
         perm_chips += f'<span style="font-size:12px;color:#64748b;">+{len(granted_keys) - 8} more</span>'
 
-    greeting = (
-        f'<strong style="color:#0f172a;">{agency_name}</strong> would like to help manage your '
-        'social media accounts on Social Stats. You stay in control — you can pause or terminate at any time.'
+    copy = get_email_copy(
+        'manage_request', lang=lang,
+        agency_name=agency_name,
+        message=req.proposed_message or "(none)",
+        link=link,
     )
+
     body_html = (
         f'<div style="background:linear-gradient(135deg,#f0f9ff,#f8faff);border:1px solid rgba(0,215,255,0.18);'
         f'border-radius:14px;padding:20px 24px;margin:0 0 16px;">'
-        f'<p style="margin:0 0 4px;font-size:11px;font-weight:700;color:#00b8d9;text-transform:uppercase;letter-spacing:0.08em;">Message from {agency_name}</p>'
+        f'<p style="margin:0 0 4px;font-size:11px;font-weight:700;color:#00b8d9;text-transform:uppercase;letter-spacing:0.08em;">{copy["msg_label"]}</p>'
         f'<p style="margin:0;font-size:15px;color:#1e293b;line-height:1.7;">{req.proposed_message or "(no message)"}</p>'
         f'</div>'
         f'<div style="margin:0 0 16px;font-size:13px;color:#64748b;">'
-        f'<strong style="color:#0f172a;">What they\'re asking to do:</strong><br>{perm_chips or "—"}'
+        f'<strong style="color:#0f172a;">{copy["what_asking"]}</strong><br>{perm_chips or "—"}'
         f'</div>'
     )
-    plain = (
-        f"{agency_name} would like to manage your social media accounts on Social Stats.\n\n"
-        f'Message: {req.proposed_message or "(none)"}\n\n'
-        f'Review and respond: {link}\n\n'
-        f'This invitation expires in 7 days. You can pause or terminate at any time after accepting.\n'
-    )
     html = _email_html(
-        title='Manage-account invitation',
-        greeting=greeting,
+        title=copy['title'],
+        greeting=copy['greeting'],
         body_html=body_html,
         cta_url=link,
-        cta_label='Review the invitation',
-        expiry_note='&#9203; This invitation expires in <strong>7 days</strong>.',
+        cta_label=copy['cta_label'],
+        expiry_note=copy['expiry_note'],
         frontend_url=FRONTEND_URL,
+        lang=lang,
     )
     try:
-        send_mail(subject, plain, FROM_EMAIL, [req.target_email],
+        send_mail(copy['subject'], copy['plain'], FROM_EMAIL, [req.target_email],
                   html_message=html, fail_silently=True)
     except Exception:
         logger.exception('manage_request: failed to send email to %s', req.target_email)
@@ -225,6 +228,28 @@ def send_manage_request(request):
     except (TypeError, ValueError):
         pricing = None
 
+    # Currency authority resolution:
+    # 1. Explicit request currency
+    # 2. Related agency/client relation currency where appropriate
+    # 3. Client.currency
+    # 4. DEFAULT_CURRENCY
+    from .currencies import DEFAULT_CURRENCY, SUPPORTED_CURRENCIES
+    explicit_curr = (data.get('proposed_currency') or data.get('currency') or '').strip().upper()
+    if explicit_curr in SUPPORTED_CURRENCIES:
+        req_currency = explicit_curr
+    else:
+        existing_rel = None
+        if target_client:
+            existing_rel = AgencyClientRelation.objects.filter(agency=agency, client=target_client).first()
+        if existing_rel and existing_rel.fee_currency and existing_rel.fee_currency in SUPPORTED_CURRENCIES:
+            req_currency = existing_rel.fee_currency
+        elif target_client and getattr(target_client, 'currency', None) and target_client.currency in SUPPORTED_CURRENCIES:
+            req_currency = target_client.currency
+        elif agency and getattr(agency, 'pricing_currency', None) and agency.pricing_currency in SUPPORTED_CURRENCIES:
+            req_currency = agency.pricing_currency
+        else:
+            req_currency = DEFAULT_CURRENCY
+
     with transaction.atomic():
         req = ManageRequest.objects.create(
             agency=agency,
@@ -235,17 +260,21 @@ def send_manage_request(request):
             proposed_permissions=proposed,
             proposed_message=(data.get('proposed_message') or '').strip(),
             proposed_pricing=pricing,
+            proposed_currency=req_currency,
             proposed_services=data.get('proposed_services') or [],
         )
 
         if target_user:
             # In-app only — `_send_manage_request_email` below sends a richer
             # email (with perm chips) regardless, and we don't want a duplicate.
+            from .locale_helpers import resolve_user_language, get_notification_copy
             from .notification_dispatcher import dispatch as dispatch_notification
+            recip_lang = resolve_user_language(target_user, target_client)
+            notif_copy = get_notification_copy('manage_request_received', lang=recip_lang, agency_name=agency.name)
             dispatch_notification(
                 target_user,
                 event_type='manage_request_received',
-                title=f'{agency.name} wants to manage your account',
+                title=notif_copy['title'],
                 body=req.proposed_message or '(no message)',
                 notif_type='manage_request_received',
                 channels=['in_app'],
@@ -305,12 +334,15 @@ def cancel_manage_request(request, request_id):
     req.save(update_fields=['status', 'decided_at'])
 
     if req.target_user:
+        from .locale_helpers import resolve_user_language, get_notification_copy
         from .notification_dispatcher import dispatch as _dispatch
+        recip_lang = resolve_user_language(req.target_user, getattr(req, 'target_client', None))
+        notif_copy = get_notification_copy('manage_request_cancelled', lang=recip_lang, agency_name=req.agency.name)
         _dispatch(
             req.target_user,
             event_type='manage_request_cancelled',
             notif_type='manage_request_cancelled',
-            title=f'{req.agency.name} cancelled their invitation',
+            title=notif_copy['title'],
             data={'kind': 'manage_request', 'request_id': req.id},
         )
 
@@ -406,6 +438,8 @@ def accept_manage_invite(request, token):
             requires_approval_for=requires_approval_for,
             approved_at=timezone.now(),
             notes_from_user=notes,
+            monthly_fee=req.proposed_pricing,
+            fee_currency=req.proposed_currency,
         )
         req.status     = 'accepted'
         req.decided_at = timezone.now()
@@ -433,13 +467,21 @@ def accept_manage_invite(request, token):
             target_object_id=relation.id,
         )
 
+    from .locale_helpers import resolve_user_language, get_notification_copy
     from .notification_dispatcher import dispatch as _dispatch
+    recip_lang = resolve_user_language(req.agency.owner_user)
+    user_display = request.user.get_full_name() or request.user.email
+    notif_copy = get_notification_copy(
+        'manage_request_accepted', lang=recip_lang,
+        user_name=user_display,
+        company=workspace.company,
+    )
     _dispatch(
         req.agency.owner_user,
         event_type='manage_request_accepted',
         notif_type='manage_request_accepted',
-        title=f'{request.user.get_full_name() or request.user.email} accepted your invitation',
-        body=f'You can now manage {workspace.company}.',
+        title=notif_copy['title'],
+        body=notif_copy['body'],
         data={
             'kind':         'manage_request',
             'request_id':   req.id,
@@ -479,13 +521,17 @@ def decline_manage_invite(request, token):
     req.decline_reason = reason
     req.save(update_fields=['status', 'decided_at', 'decline_reason'])
 
+    from .locale_helpers import resolve_user_language, get_notification_copy
     from .notification_dispatcher import dispatch as _dispatch
+    recip_lang = resolve_user_language(req.agency.owner_user)
+    user_display = request.user.get_full_name() or request.user.email
+    notif_copy = get_notification_copy('manage_request_declined', lang=recip_lang, user_name=user_display)
     _dispatch(
         req.agency.owner_user,
         event_type='manage_request_declined',
         notif_type='manage_request_declined',
-        title=f'{request.user.get_full_name() or request.user.email} declined your invitation',
-        body=reason or '(no reason given)',
+        title=notif_copy['title'],
+        body=reason or ('(sin motivo especificado)' if recip_lang == 'es' else '(no reason given)'),
         data={'kind': 'manage_request', 'request_id': req.id, 'reason': reason},
     )
     return Response({'id': req.id, 'status': req.status})

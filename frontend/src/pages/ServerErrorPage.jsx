@@ -8,16 +8,18 @@
  * ========================================================================== */
 import { Link } from 'react-router-dom';
 import { AlertTriangle, RefreshCw, Activity, MessageCircle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import MarketingLayout from '../components/marketing/MarketingLayout';
 import Button from '../components/ui/Button';
 import Meta from '../components/Meta';
 
 export default function ServerErrorPage() {
+  const { t } = useTranslation(['marketing', 'common']);
   return (
     <MarketingLayout>
       <Meta
-        title="Server error"
-        description="Something went wrong on our end. We've been notified and are looking into it."
+        title={t('metadata.server_error_title', 'Server Error')}
+        description={t('errors.server_error_desc', "Something went wrong on our end. We've been notified and are looking into it.")}
       />
       <section
         style={{
@@ -62,7 +64,7 @@ export default function ServerErrorPage() {
             color: 'var(--danger)',
             marginBottom: 8,
           }}>
-            Error 500
+            Error {t('errors.server_error_code', '500')}
           </div>
           <h1 style={{
             margin: 0,
@@ -71,17 +73,16 @@ export default function ServerErrorPage() {
             letterSpacing: '-0.025em',
             color: 'var(--text-primary)',
           }}>
-            Something went wrong on our end.
+            {t('errors.server_error_title', 'Server error')}
           </h1>
           <p style={{ margin: '12px auto 24px', maxWidth: 440, fontSize: 15, lineHeight: 1.65, color: 'var(--text-secondary)' }}>
-            We've been notified and are looking into it. In most cases, refreshing the page resolves it.
-            If it keeps happening, check our status page or get in touch.
+            {t('errors.server_error_desc', "Something went wrong on our end. We've been notified and are looking into it.")}
           </p>
 
           <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Button onClick={() => window.location.reload()} size="lg" icon={RefreshCw}>Try again</Button>
-            <Button as={Link} to="/status"  variant="secondary" size="lg" icon={Activity}>Check status</Button>
-            <Button as={Link} to="/contact" variant="ghost" size="lg" icon={MessageCircle}>Report it</Button>
+            <Button onClick={() => window.location.reload()} size="lg" icon={RefreshCw}>{t('errors.reload', 'Refresh page')}</Button>
+            <Button as={Link} to="/status"  variant="secondary" size="lg" icon={Activity}>{t('errors.check_status', 'Check system status')}</Button>
+            <Button as={Link} to="/contact" variant="ghost" size="lg" icon={MessageCircle}>{t('resources.contact', 'Contact')}</Button>
           </div>
 
           <p style={{ marginTop: 28, fontSize: 12, color: 'var(--text-tertiary)' }}>

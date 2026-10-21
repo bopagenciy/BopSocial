@@ -17,6 +17,7 @@
  * in dedicated forms for the remaining types.
  */
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Plus, Trash2, X, Wand2, Sparkles } from 'lucide-react';
 
 import { getNodeMeta } from './nodeCatalog';
@@ -25,8 +26,9 @@ import { aiPersonaAPI } from '../../services/api';
 import toast from '../ui/toast';
 
 export default function NodeInspector({ node, onChange, onDelete, variables = [] }) {
- if (!node) return <EmptyState />;
- const meta = getNodeMeta(node.data.type);
+ const { t } = useTranslation('messaging');
+ if (!node) return <EmptyState t={t} />;
+ const meta = getNodeMeta(node.data.type, t);
  const Icon = meta.icon;
  const data = node.data.data || {};
 
@@ -52,10 +54,10 @@ export default function NodeInspector({ node, onChange, onDelete, variables = []
  <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>{meta.label}</div>
  </div>
  {node.data.type !== 'start' && (
- <button type="button" onClick={onDelete} aria-label="Delete node" style={iconBtn}>
+ <button type="button" onClick={onDelete} aria-label={t('bot_editor.delete_node', 'Delete node')} style={iconBtn}>
  <Trash2 size={14} />
  </button>
-)}
+ )}
  </header>
 
  <div style={{ flex: 1, overflowY: 'auto', padding: 16 }}>
@@ -844,6 +846,7 @@ function FormAIChat({ data, patch, variables }) {
 // Persona builder wizard — modal launched from FormAIChat
 // ─────────────────────────────────────────────────────────
 function PersonaWizard({ onClose, onApply }) {
+ const { t } = useTranslation('messaging');
  const [businessName, setBusinessName] = useState('');
  const [industry, setIndustry] = useState('');
  const [whatYouDo, setWhatYouDo] = useState('');
@@ -938,7 +941,7 @@ function PersonaWizard({ onClose, onApply }) {
  margin: 0, fontSize: 11, color: 'var(--text-tertiary)',
  lineHeight: 1.5,
  }}>
- Social Stats drafts a system prompt suited to your business. You can edit it before applying.
+ {t('bot_editor.inspector.ai_draft_disclaimer', 'Bop Social drafts a system prompt suited to your business. You can edit it before applying.')}
  </p>
  </>
 ) : (
@@ -1130,10 +1133,12 @@ function WhatsAppPreview({ body, buttons }) {
 );
 }
 
-function EmptyState() {
+function EmptyState({ t }) {
+ const { t: tr } = useTranslation('messaging');
+ const tFunc = t || tr;
  return (
  <div style={{ padding: 32, color: 'var(--text-tertiary)', fontSize: 13, textAlign: 'center' }}>
- Click a node to edit it.
+ {tFunc('bot_editor.select_node_hint', 'Select a node on the canvas to configure it.')}
  </div>
 );
 }

@@ -35,10 +35,11 @@ export default function PageHeader({ title, subtitle, action, actions, backHref,
         alignItems: 'flex-start',
         justifyContent: 'space-between',
         gap: 16,
-        background: 'transparent',
+        flexWrap: 'wrap',
+        background: pinned ? 'var(--surface-page)' : 'transparent',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, flex: 1, minWidth: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, flex: '1 1 320px', minWidth: 0 }}>
         {backHref && (
           <button
             onClick={() => navigate(backHref)}
@@ -102,7 +103,12 @@ export default function PageHeader({ title, subtitle, action, actions, backHref,
                   fontSize: 12, color: 'var(--text-tertiary)',
                   display: 'inline-flex', alignItems: 'center', gap: 6,
                 }}>
-                  {m}
+                  {typeof m === 'object' && m !== null && 'label' in m ? (
+                    <>
+                      <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>{m.label}:</span>
+                      <span>{m.value}</span>
+                    </>
+                  ) : m}
                 </span>
               ))}
             </div>

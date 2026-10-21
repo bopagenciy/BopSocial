@@ -139,7 +139,7 @@ function PanelHeader() {
           textTransform: 'uppercase',
         }}
       >
-        socialstats.app/dashboard
+        bopsocial.app/dashboard
       </div>
     </div>
   );
@@ -221,8 +221,8 @@ function PanelChart() {
         <svg width="100%" height={80} viewBox="0 0 240 80" preserveAspectRatio="none">
           <defs>
             <linearGradient id="dm-fill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#00CCF5" stopOpacity={0.32} />
-              <stop offset="100%" stopColor="#00CCF5" stopOpacity={0.02} />
+              <stop offset="0%" stopColor="#F5A623" stopOpacity={0.32} />
+              <stop offset="100%" stopColor="#F5A623" stopOpacity={0.02} />
             </linearGradient>
           </defs>
           {/* Faint grid lines */}
@@ -233,7 +233,7 @@ function PanelChart() {
           <motion.path
             d="M0 60 L20 52 L40 56 L60 40 L80 44 L100 30 L120 36 L140 24 L160 28 L180 18 L200 22 L220 14 L240 10"
             fill="none"
-            stroke="#00CCF5"
+            stroke="#F5A623"
             strokeWidth="2.4"
             strokeLinecap="round"
             initial={{ pathLength: 0 }}

@@ -1,12 +1,10 @@
 /* ============================================================================
- *  Social Stats — Social Media Management & Marketing Platform
- *  Author    : Chandrabhan Shekhawat
- *  Company   : Gigai Kripa Services
- *  Website   : https://gigaikripaservices.com/
- *  Copyright (c) 2026 Chandrabhan Shekhawat / Gigai Kripa Services.
- *  Released under the MIT License — see LICENSE. Keep this notice.
+ *  Bop Social — Marketing Operating System
+ *  Author    : Bop Social Team
+ *  Website   : https://bopsocial.com
  * ========================================================================== */
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { ShieldCheck, Lock, Server, FileCheck, Eye, AlertTriangle, ArrowRight, Award } from 'lucide-react';
 import MarketingLayout from '../components/marketing/MarketingLayout';
 import Button from '../components/ui/Button';
@@ -14,49 +12,27 @@ import Badge from '../components/ui/Badge';
 import Meta from '../components/Meta';
 
 const COMMITMENTS = [
-  {
-    icon: Lock,
-    color: '#3b82f6',
-    title: 'Encryption everywhere',
-    body:
-      'TLS 1.3 in transit. AES-256-GCM (Fernet) at rest for OAuth tokens, API keys, and customer secrets. Keys rotated quarterly.',
-  },
-  {
-    icon: Server,
-    color: '#10b981',
-    title: 'Hardened infrastructure',
-    body:
-      'AWS multi-AZ deployments. Per-environment isolation. WAF + DDoS mitigation. Automated patching + vulnerability scans daily.',
-  },
-  {
-    icon: Eye,
-    color: '#8b5cf6',
-    title: 'Audit log, always-on',
-    body:
-      'Every action — auth, OAuth connect, publish, role change — is logged with actor, timestamp, IP, and result. Searchable for 1 year on Growth, custom on Enterprise.',
-  },
-  {
-    icon: FileCheck,
-    color: '#f59e0b',
-    title: 'Compliance-ready',
-    body:
-      'GDPR + India DPDP compliant by design. SOC 2 Type II in progress (target Q3 2026). HIPAA, ISO 27001 on Enterprise contracts.',
-  },
+  { id: 'encryption',     icon: Lock,      color: '#3b82f6', defaultTitle: 'Encryption everywhere',   defaultBody: 'TLS 1.3 in transit. AES-256-GCM (Fernet) at rest for OAuth tokens, API keys, and customer secrets. Keys rotated quarterly.' },
+  { id: 'infrastructure', icon: Server,    color: '#10b981', defaultTitle: 'Hardened infrastructure', defaultBody: 'AWS multi-AZ deployments. Per-environment isolation. WAF + DDoS mitigation. Automated patching + vulnerability scans daily.' },
+  { id: 'audit',          icon: Eye,       color: '#8b5cf6', defaultTitle: 'Audit log, always-on',     defaultBody: 'Every action — auth, OAuth connect, publish, role change — is logged with actor, timestamp, IP, and result. Searchable for 1 year on Growth, custom on Enterprise.' },
+  { id: 'compliance',     icon: FileCheck, color: '#f59e0b', defaultTitle: 'Compliance-ready',        defaultBody: 'GDPR + India DPDP compliant by design. SOC 2 Type II in progress (target Q3 2026). HIPAA, ISO 27001 on Enterprise contracts.' },
 ];
 
 const CERTIFICATIONS = [
-  { name: 'GDPR',          status: 'Compliant',    description: 'EU/EEA data protection.' },
-  { name: 'India DPDP',    status: 'Compliant',    description: 'Indian Data Protection Act 2023.' },
-  { name: 'SOC 2 Type II', status: 'In progress', description: 'Audit underway, expected Q3 2026.' },
-  { name: 'ISO 27001',     status: 'Roadmap',     description: 'Targeted for 2027.' },
+  { id: 'gdpr', defaultName: 'GDPR',          defaultStatus: 'Compliant',   defaultDesc: 'EU/EEA data protection.' },
+  { id: 'dpdp', defaultName: 'India DPDP',    defaultStatus: 'Compliant',   defaultDesc: 'Indian Data Protection Act 2023.' },
+  { id: 'soc2', defaultName: 'SOC 2 Type II', defaultStatus: 'In progress', defaultDesc: 'Audit underway, expected Q3 2026.' },
+  { id: 'iso',  defaultName: 'ISO 27001',     defaultStatus: 'Roadmap',     defaultDesc: 'Targeted for 2027.' },
 ];
 
 export default function SecurityPage() {
+  const { t } = useTranslation(['marketing', 'navigation']);
+
   return (
     <MarketingLayout>
       <Meta
-        title="Security"
-        description="Encryption at rest with Fernet, TLS 1.3 in transit, audit log on every action, GDPR + DPDP compliant. SOC 2 Type II in progress."
+        title={t('metadata.security_title')}
+        description={t('metadata.security_desc')}
       />
       {/* Hero */}
       <section style={{ padding: '128px 32px 56px', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
@@ -69,7 +45,7 @@ export default function SecurityPage() {
           }}
         />
         <div style={{ position: 'relative', maxWidth: 760, margin: '0 auto' }}>
-          <Badge variant="brand" size="md" icon={ShieldCheck}>Security</Badge>
+          <Badge variant="brand" size="md" icon={ShieldCheck}>{t('security.badge')}</Badge>
           <h1 style={{
             margin: '20px 0 18px',
             fontSize: 'clamp(40px, 5vw, 56px)',
@@ -78,11 +54,10 @@ export default function SecurityPage() {
             fontWeight: 600,
             color: 'var(--text-primary)',
           }}>
-            Security by design.
+            {t('security.hero_title')}
           </h1>
           <p style={{ margin: 0, fontSize: 18, lineHeight: 1.65, color: 'var(--text-secondary)' }}>
-            Social Stats is built on the same security primitives banks and hospitals rely on. We treat your data — and
-            your customers' data — like it's our own.
+            {t('security.hero_subtitle')}
           </p>
         </div>
       </section>
@@ -101,7 +76,7 @@ export default function SecurityPage() {
         >
           {COMMITMENTS.map((c) => (
             <article
-              key={c.title}
+              key={c.id}
               style={{
                 padding: 28,
                 background: 'var(--surface-card)',
@@ -121,10 +96,10 @@ export default function SecurityPage() {
                 <c.icon size={18} strokeWidth={2.2} />
               </span>
               <h3 style={{ margin: 0, fontSize: 18, fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--text-primary)' }}>
-                {c.title}
+                {t(`security.commitments.${c.id}.title`, c.defaultTitle)}
               </h3>
               <p style={{ margin: '8px 0 0', fontSize: 14, lineHeight: 1.65, color: 'var(--text-secondary)' }}>
-                {c.body}
+                {t(`security.commitments.${c.id}.body`, c.defaultBody)}
               </p>
             </article>
           ))}
@@ -139,10 +114,10 @@ export default function SecurityPage() {
         <div style={{ maxWidth: 'var(--container-xl)', margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: 32 }}>
             <h2 style={{ margin: 0, fontSize: 'clamp(28px, 3.4vw, 36px)', fontWeight: 600, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
-              Certifications & compliance.
+              {t('security.certifications_title')}
             </h2>
             <p style={{ margin: '12px auto 0', maxWidth: 560, fontSize: 15, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-              Where we are today, and where we're headed.
+              {t('security.certifications_subtitle')}
             </p>
           </div>
           <div
@@ -153,43 +128,48 @@ export default function SecurityPage() {
             }}
             className="security-cert-grid"
           >
-            {CERTIFICATIONS.map((cert) => (
-              <div
-                key={cert.name}
-                style={{
-                  padding: 20,
-                  background: 'var(--surface-page)',
-                  border: '1px solid var(--border-subtle)',
-                  borderRadius: 'var(--radius-lg)',
-                }}
-              >
-                <span style={{
-                  display: 'inline-flex',
-                  width: 36, height: 36,
-                  borderRadius: 'var(--radius-md)',
-                  background: 'var(--brand-primary-soft)',
-                  color: 'var(--brand-primary-hover)',
-                  alignItems: 'center', justifyContent: 'center',
-                  marginBottom: 12,
-                }}>
-                  <Award size={16} strokeWidth={2.2} />
-                </span>
-                <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>
-                  {cert.name}
+            {CERTIFICATIONS.map((cert) => {
+              const name = t(`security.certifications.${cert.id}.name`, cert.defaultName);
+              const status = t(`security.certifications.${cert.id}.status`, cert.defaultStatus);
+              const desc = t(`security.certifications.${cert.id}.description`, cert.defaultDesc);
+              return (
+                <div
+                  key={cert.id}
+                  style={{
+                    padding: 20,
+                    background: 'var(--surface-page)',
+                    border: '1px solid var(--border-subtle)',
+                    borderRadius: 'var(--radius-lg)',
+                  }}
+                >
+                  <span style={{
+                    display: 'inline-flex',
+                    width: 36, height: 36,
+                    borderRadius: 'var(--radius-md)',
+                    background: 'var(--brand-primary-soft)',
+                    color: 'var(--brand-primary-hover)',
+                    alignItems: 'center', justifyContent: 'center',
+                    marginBottom: 12,
+                  }}>
+                    <Award size={16} strokeWidth={2.2} />
+                  </span>
+                  <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>
+                    {name}
+                  </div>
+                  <div style={{ marginTop: 4 }}>
+                    <Badge
+                      size="sm"
+                      variant={status === 'Compliant' || status === 'En cumplimiento' ? 'success' : status === 'In progress' || status === 'En progreso' ? 'warning' : 'default'}
+                    >
+                      {status}
+                    </Badge>
+                  </div>
+                  <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                    {desc}
+                  </p>
                 </div>
-                <div style={{ marginTop: 4 }}>
-                  <Badge
-                    size="sm"
-                    variant={cert.status === 'Compliant' ? 'success' : cert.status === 'In progress' ? 'warning' : 'default'}
-                  >
-                    {cert.status}
-                  </Badge>
-                </div>
-                <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                  {cert.description}
-                </p>
-              </div>
-            ))}
+              );
+            })}
           </div>
           <style>{`
             @media (max-width: 980px) { .security-cert-grid { grid-template-columns: 1fr 1fr !important; } }
@@ -226,19 +206,19 @@ export default function SecurityPage() {
           </span>
           <div style={{ minWidth: 0, flex: 1 }}>
             <h3 style={{ margin: 0, fontSize: 22, fontWeight: 600, letterSpacing: '-0.015em', color: 'var(--text-primary)' }}>
-              Found a vulnerability?
+              {t('security.vulnerability_title')}
             </h3>
             <p style={{ margin: '8px 0 16px', fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.65 }}>
-              We run a private bug bounty program with payouts up to <strong>₹1,00,000</strong> for critical issues.
-              Email <a href="mailto:security@socialstats.app" style={{ color: 'var(--text-link)' }}>security@socialstats.app</a>{' '}
-              with reproduction steps and impact assessment. We acknowledge within 24 hours and triage within 72.
+              {t('security.vulnerability_body', {
+                defaultValue: "We run a private vulnerability disclosure program with competitive rewards for verified critical issues. Email security@bopsocial.com with reproduction steps and impact assessment. We acknowledge within 24 hours and triage within 72.",
+              })}
             </p>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <Button as="a" href="mailto:security@socialstats.app" size="md" iconRight={ArrowRight}>
-                Report a vulnerability
+              <Button as="a" href="mailto:security@bopsocial.com" size="md" iconRight={ArrowRight}>
+                {t('security.report_button')}
               </Button>
               <Button as={Link} to="/status" variant="secondary" size="md">
-                System status
+                {t('security.status_button')}
               </Button>
             </div>
           </div>
@@ -251,10 +231,10 @@ export default function SecurityPage() {
       {/* Bottom links */}
       <section style={{ padding: '0 32px 120px', textAlign: 'center' }}>
         <p style={{ margin: 0, fontSize: 13, color: 'var(--text-tertiary)' }}>
-          Looking for our{' '}
-          <Link to="/privacy" style={{ color: 'var(--text-link)', fontWeight: 500 }}>privacy policy</Link>,{' '}
-          <Link to="/gdpr"    style={{ color: 'var(--text-link)', fontWeight: 500 }}>GDPR information</Link>,{' '}
-          or <Link to="/dpdp" style={{ color: 'var(--text-link)', fontWeight: 500 }}>DPDP details</Link>?
+          {t('security.footer_looking')}{' '}
+          <Link to="/privacy" style={{ color: 'var(--text-link)', fontWeight: 500 }}>{t('security.footer_privacy')}</Link>,{' '}
+          <Link to="/gdpr"    style={{ color: 'var(--text-link)', fontWeight: 500 }}>{t('security.footer_gdpr')}</Link>,{' '}
+          {t('common.or', 'or')} <Link to="/dpdp" style={{ color: 'var(--text-link)', fontWeight: 500 }}>{t('security.footer_dpdp')}</Link>?
         </p>
       </section>
     </MarketingLayout>

@@ -1,0 +1,262 @@
+{
+  "inbox": {
+    "title": "Inbox",
+    "subtitle": "Comments, DMs and mentions across every platform",
+    "search_placeholder": "Search…",
+    "filter_sections": {
+      "type": "Type",
+      "platform": "Platform",
+      "sentiment": "Sentiment",
+      "quick": "Quick"
+    },
+    "types": {
+      "all": "All",
+      "comment": "Comments",
+      "dm": "DMs",
+      "mention": "Mentions",
+      "review": "Reviews"
+    },
+    "sentiments": {
+      "all": "All",
+      "positive": "Positive",
+      "neutral": "Neutral",
+      "negative": "Negative",
+      "unknown": "Unknown"
+    },
+    "quick": {
+      "unread_only": "Unread only",
+      "starred_only": "Starred only"
+    },
+    "conversations_count_one": "{{count}} conversation",
+    "conversations_count_other": "{{count}} conversations",
+    "empty_title": "Inbox zero",
+    "empty_desc": "You're all caught up. New comments and messages will appear here as they arrive.",
+    "unknown_contact": "Unknown",
+    "no_content": "[no content]",
+    "select_conversation_title": "Select a conversation",
+    "select_conversation_desc": "Pick a conversation from the list to read it and reply.",
+    "star": "Star",
+    "unstar": "Unstar",
+    "archive": "Archive",
+    "unarchive": "Restore",
+    "resolve": "Resolve",
+    "reopen": "Reopen",
+    "reply_placeholder": "Type a reply… (⌘↵ to send)",
+    "resolved_placeholder": "Conversation resolved — reopen to reply",
+    "ai_suggests": "AI suggests: {{preview}}…",
+    "send_reply": "Send",
+    "reply_sent": "Reply sent",
+    "reply_failed": "Reply failed",
+    "token_expired": "{{platform}} token expired — please reconnect.",
+    "now": "now"
+  },
+  "reviews": {
+    "title": "Reviews",
+    "subtitle_one": "{{count}} review",
+    "subtitle_other": "{{count}} reviews",
+    "filter_status": "Status",
+    "filter_rating": "Rating",
+    "all": "All",
+    "status": {
+      "new": "New",
+      "replied": "Replied",
+      "flagged": "Flagged"
+    },
+    "empty_title": "No reviews to show",
+    "empty_desc": "When customers leave a review on Google Business Profile, it'll appear here. Make sure your GMB account is connected.",
+    "anonymous": "Anonymous",
+    "owner_reply": "Owner reply",
+    "owner_reply_date": "Owner reply · {{date}}",
+    "reply_placeholder": "Reply to this review…",
+    "flagged_placeholder": "Flagged — replies disabled",
+    "btn_reply": "Reply",
+    "btn_flag": "Flag",
+    "flag_confirm": "Flag this review as inappropriate?",
+    "reply_posted": "Reply posted",
+    "reply_failed": "Reply failed",
+    "review_flagged": "Review flagged",
+    "flag_failed": "Flag failed"
+  },
+  "automations": {
+    "title": "Automations",
+    "subtitle": "If this happens, do that — across every connected platform",
+    "new_rule": "New Rule",
+    "empty_title": "No automations yet",
+    "empty_desc": "Automations save you from staring at the inbox. Pick a template on the right or build one from scratch.",
+    "build_rule": "Build a rule",
+    "active": "Active",
+    "paused": "Paused",
+    "fired_badge": "fired {{count}}×",
+    "last_fired": "Last fired {{date}}",
+    "btn_pause": "Pause",
+    "btn_resume": "Resume",
+    "btn_edit": "Edit",
+    "btn_delete": "Delete",
+    "delete_confirm": "Delete \"{{name}}\"?",
+    "templates_title": "Templates",
+    "loading": "Loading…",
+    "modal": {
+      "edit_rule": "Edit rule",
+      "customise_template": "Customise template",
+      "new_rule": "New rule",
+      "prefilled_from": "Pre-filled from \"{{name}}\" template",
+      "close": "Close",
+      "rule_name_label": "Rule name",
+      "rule_name_placeholder": "e.g. Auto-thank for 5-star reviews",
+      "section_trigger": "1. Trigger",
+      "section_action": "2. Action",
+      "enabled_label": "Enabled — fire immediately on save",
+      "btn_cancel": "Cancel",
+      "btn_save_changes": "Save changes",
+      "btn_create_rule": "Create rule"
+    },
+    "templates": {
+      "auto_thank_5_star": {
+        "name": "Auto-thank for 5-star reviews",
+        "description": "Posts a friendly thank-you reply on every new 5★ Google review.",
+        "action_config": {
+          "template": "Thank you so much for the kind words, {reviewer_name}! 🙏"
+        }
+      },
+      "alert_negative_sentiment": {
+        "name": "Alert me on negative sentiment",
+        "description": "Sends an in-app notification whenever a comment or DM is flagged negative.",
+        "action_config": {
+          "title": "Heads up — negative sentiment detected",
+          "body": "{author_name} on {platform}: \"{content}\""
+        }
+      },
+      "ai_smart_reply": {
+        "name": "AI smart-reply to comments",
+        "description": "Automatically writes an on-brand reply to every new comment using Claude."
+      },
+      "tag_urgent_keywords": {
+        "name": "Tag urgent keywords",
+        "description": "Tags conversations whose content mentions \"urgent\", \"asap\", or \"broken\"."
+      },
+      "webhook_new_dm": {
+        "name": "Webhook on new DM",
+        "description": "POSTs a JSON payload to your webhook URL whenever a new direct message arrives."
+      },
+      "assign_low_rating": {
+        "name": "Assign 1-2★ reviews to support lead",
+        "description": "Routes low-rating reviews to a specific user (configure user_id).",
+        "action_config": {
+          "title": "1-2★ review needs attention",
+          "body": "{reviewer_name}: \"{content}\""
+        }
+      }
+    },
+    "triggers": {
+      "new_comment": {
+        "label": "New comment",
+        "desc": "Fires whenever a new inbound comment arrives"
+      },
+      "new_dm": {
+        "label": "New direct message",
+        "desc": "Fires on inbound DMs"
+      },
+      "new_review": {
+        "label": "New review",
+        "desc": "Fires on a new Google Business review"
+      },
+      "keyword_mention": {
+        "label": "Keyword mention",
+        "desc": "Fires when an inbound message contains certain keywords"
+      },
+      "negative_sentiment": {
+        "label": "Negative sentiment",
+        "desc": "Fires when inbound sentiment is flagged negative"
+      }
+    },
+    "actions": {
+      "auto_reply": {
+        "label": "Auto-reply",
+        "desc": "Posts a fixed text reply"
+      },
+      "ai_smart_reply": {
+        "label": "AI smart-reply",
+        "desc": "Lets Bop Social write a short reply matching your brand voice"
+      },
+      "notify": {
+        "label": "Send notification",
+        "desc": "Creates an in-app notification"
+      },
+      "assign": {
+        "label": "Assign to user",
+        "desc": "Assigns the conversation to a specific user"
+      },
+      "add_tag": {
+        "label": "Add tag",
+        "desc": "Tags the conversation for later filtering"
+      },
+      "webhook": {
+        "label": "Call webhook",
+        "desc": "POSTs the event payload to your URL"
+      }
+    },
+    "config": {
+      "keywords_label": "Keywords (comma-separated)",
+      "keywords_placeholder": "urgent, asap, refund",
+      "min_rating": "Min rating",
+      "max_rating": "Max rating",
+      "restrict_platforms": "Restrict to platforms (optional)",
+      "reply_template_label": "Reply template (use {author_name}, {platform}, {content})",
+      "reply_template_placeholder": "Thanks {author_name}! Glad you liked the post.",
+      "ai_smart_reply_desc": "Bop Social writes a short on-brand reply using the trained brand voice.",
+      "notif_title_label": "Notification title",
+      "notif_title_placeholder": "Heads up — needs attention",
+      "notif_body_label": "Body (use {author_name}, {platform}, {content})",
+      "notif_body_placeholder": "{author_name} on {platform}: {content}",
+      "assign_user_label": "User ID to assign to",
+      "tag_label": "Tag to apply",
+      "tag_placeholder": "priority",
+      "webhook_url_label": "Webhook URL",
+      "webhook_url_placeholder": "https://your-app.example.com/webhook"
+    },
+    "toasts": {
+      "toggle_failed": "Toggle failed",
+      "deleted": "Deleted",
+      "delete_failed": "Delete failed",
+      "name_required": "Name is required",
+      "updated": "Updated",
+      "created": "Created",
+      "save_failed": "Save failed"
+    }
+  },
+  "ai_replies": {
+    "title": "Suggested replies",
+    "regenerate": "Regenerate suggestions",
+    "drafting": "Drafting three options for you…",
+    "unavailable": "AI suggestions unavailable",
+    "inserted": "Suggestion inserted",
+    "recommended": "· Recommended",
+    "tones": {
+      "professional": "Professional",
+      "friendly": "Friendly",
+      "empathetic": "Empathetic",
+      "warm": "Warm",
+      "apologetic": "Apologetic"
+    }
+  },
+  "whatsapp_inbox": {
+    "title": "Inbox",
+    "subtitle": "WhatsApp conversations",
+    "header_count": "Conversations ({{count}})",
+    "loading": "Loading…",
+    "empty_conversations": "No conversations yet",
+    "select_conversation": "Select a conversation",
+    "type_message": "Type a message…",
+    "window_closed_placeholder": "Free-form replies disabled (24h window closed)",
+    "window_open": "24h window open",
+    "window_closed": "24h window closed",
+    "window_closed_warning": "24h window closed. Send an approved template message instead.",
+    "send": "Send",
+    "statuses": {
+      "sent": "Sent",
+      "delivered": "Delivered",
+      "read": "Read",
+      "failed": "Failed to send"
+    }
+  }
+}

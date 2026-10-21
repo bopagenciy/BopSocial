@@ -8,8 +8,10 @@
  * ========================================================================== */
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useOverview, useDateRange, useClients, useGoals, useAlerts, useLookups } from '../hooks/useData';
 import { formatTimeAgo } from '../services/formatters';
+import { formatDate, formatDateRange, formatNumber, formatCurrency } from '../utils/formatters';
 import DateRangePicker from '../components/ui/DateRangePicker';
 import StatCard from '../components/ui/StatCard';
 import { PLATFORMS, fmt } from '../services/platforms';
@@ -40,6 +42,7 @@ const PLATFORM_OPTIONS = [
 const now = new Date();
 
 function GoalManager() {
+  const { t, i18n } = useTranslation('dashboard');
   const { clients }           = useClients();
   const [open, setOpen]       = useState(false);
   const [form, setForm]       = useState({
@@ -98,12 +101,12 @@ function GoalManager() {
       setErrors({});
       refetch();
     } catch (err) {
-      setMsg('❌ ' + (err.response?.data?.non_field_errors?.[0] || err.response?.data?.error || 'Failed to save goal'));
+      setMsg('❌ ' + (err.response?.data?.non_field_errors?.[0] || err.response?.data?.error || t('admin.goal_manager.failed_save', 'Failed to save goal')));
     } finally { setSaving(false); }
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Delete this goal?')) return;
+    if (!window.confirm(t('admin.goal_manager.confirm_delete', 'Delete this goal?'))) return;
     try {
       await goalsAPI.delete(id);
       refetch();
@@ -115,7 +118,7 @@ function GoalManager() {
       <div style={styles.goalHeader} onClick={() => setOpen(o => !o)}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <Target size={16} style={{ color: '#00d7ff' }} />
-          <h3 style={styles.tableTitle}>Set Monthly Goals</h3>
+          <h3 style={styles.tableTitle}>{t('admin.goal_manager.title', 'Set Monthly Goals')}</h3>
         </div>
         {open ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
       </div>
@@ -124,32 +127,32 @@ function GoalManager() {
         <>
           <form onSubmit={handleCreate} className="admin-goal-form" style={styles.goalForm}>
             <div style={styles.goalField}>
-              <label style={styles.goalLabel}>User <span style={styles.requiredAsterisk}>*</span></label>
+              <label style={styles.goalLabel}>{t('admin.goal_manager.user', 'User')} <span style={styles.requiredAsterisk}>*</span></label>
               <select value={form.client} onChange={e => handleFieldChange('client', e.target.value)} style={{ ...styles.sel, ...(errors.client ? styles.inputError : {}) }}>
-                <option value="">Select user</option>
+                <option value="">{t('admin.goal_manager.select_user', 'Select user')}</option>
                 {clients.map(c => <option key={c.id} value={c.id}>{c.company}</option>)}
               </select>
               {errors.client && <div style={styles.goalError}>{errors.client}</div>}
             </div>
 
             <div style={styles.goalField}>
-              <label style={styles.goalLabel}>Platform</label>
+              <label style={styles.goalLabel}>{t('admin.goal_manager.platform', 'Platform')}</label>
               <select value={form.platform} onChange={e => handleFieldChange('platform', e.target.value)} style={styles.sel}>
                 {(platformOptions || PLATFORM_OPTIONS).map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
               </select>
             </div>
 
             <div style={styles.goalField}>
-              <label style={styles.goalLabel}>Metric</label>
+              <label style={styles.goalLabel}>{t('admin.goal_manager.metric', 'Metric')}</label>
               <select value={form.metric} onChange={e => handleFieldChange('metric', e.target.value)} style={styles.sel}>
                 {METRICS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
               </select>
             </div>
 
             <div style={styles.goalField}>
-              <label style={styles.goalLabel}>Target Value <span style={styles.requiredAsterisk}>*</span></label>
+              <label style={styles.goalLabel}>{t('admin.goal_manager.target_value', 'Target Value')} <span style={styles.requiredAsterisk}>*</span></label>
               <input
-                type="number" min="1" placeholder="Enter target"
+                type="number" min="1" placeholder={t('admin.goal_manager.enter_target', 'Enter target')}
                 value={form.target_value}
                 onChange={e => handleFieldChange('target_value', e.target.value)}
                 style={{ ...styles.inp, ...(errors.target_value ? styles.inputError : {}) }}
@@ -158,16 +161,18 @@ function GoalManager() {
             </div>
 
             <div style={styles.goalField}>
-              <label style={styles.goalLabel}>Month</label>
+              <label style={styles.goalLabel}>{t('admin.goal_manager.month', 'Month')}</label>
               <select value={form.month} onChange={e => handleFieldChange('month', e.target.value)} style={styles.sel}>
-                {['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].map((m, i) => (
-                  <option key={i+1} value={i+1}>{m}</option>
+                {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                  <option key={m} value={m}>
+                    {formatDate(new Date(2026, m - 1, 1), { month: 'short' }, i18n?.language)}
+                  </option>
                 ))}
               </select>
             </div>
 
             <div style={{ ...styles.goalField, maxWidth: 100 }}>
-              <label style={styles.goalLabel}>Year</label>
+              <label style={styles.goalLabel}>{t('admin.goal_manager.year', 'Year')}</label>
               <input
                 type="number" min="2024" max="2030"
                 value={form.year}
@@ -178,7 +183,7 @@ function GoalManager() {
 
             <button type="submit" disabled={saving} style={styles.addGoalBtn}>
               <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <Plus size={14} />{saving ? 'Saving…' : 'Add Goal'}
+                <Plus size={14} />{saving ? t('admin.goal_manager.saving', 'Saving…') : t('admin.goal_manager.save_goal', 'Add Goal')}
               </span>
             </button>
           </form>
@@ -189,7 +194,7 @@ function GoalManager() {
             <table style={styles.table}>
               <thead>
                 <tr>
-                  {['User','Platform','Metric','Target','Month/Year',''].map(h => (
+                  {[t('admin.goal_manager.user', 'User'), t('admin.goal_manager.platform', 'Platform'), t('admin.goal_manager.metric', 'Metric'), t('admin.goal_manager.target_value', 'Target'), `${t('admin.goal_manager.month', 'Month')}/${t('admin.goal_manager.year', 'Year')}`, ''].map(h => (
                     <th key={h} style={styles.th}>{h}</th>
                   ))}
                 </tr>
@@ -200,8 +205,8 @@ function GoalManager() {
                     <td style={styles.td}>{g.client_name}</td>
                     <td style={styles.td}>{PLATFORM_OPTIONS.find(p => p.value === g.platform)?.label || g.platform}</td>
                     <td style={styles.td}>{METRICS.find(m => m.value === g.metric)?.label || g.metric}</td>
-                    <td style={{ ...styles.td, fontWeight: 600 }}>{g.target_value.toLocaleString()}</td>
-                    <td style={styles.td}>{['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][g.month-1]} {g.year}</td>
+                    <td style={{ ...styles.td, fontWeight: 600 }}>{formatNumber(g.target_value, {}, i18n?.language)}</td>
+                    <td style={styles.td}>{formatDate(new Date(g.year, g.month - 1, 1), { month: 'short', year: 'numeric' }, i18n?.language)}</td>
                     <td style={styles.td}>
                       <button onClick={() => handleDelete(g.id)} style={styles.delBtn}>
                         <Trash2 size={13} />
@@ -214,7 +219,7 @@ function GoalManager() {
           )}
           {goals.length === 0 && (
             <p style={{ color: 'var(--text-tertiary)', fontSize: 13, margin: '8px 0 0' }}>
-              No goals set for this period{form.client ? '' : ' — select a user to filter'}.
+              {t('admin.goal_manager.no_goals', 'No goals set for this period — select a user to filter.')}
             </p>
           )}
         </>
@@ -233,6 +238,7 @@ const ALERT_ICONS = {
 };
 
 function AlertsPanel() {
+  const { t } = useTranslation('dashboard');
   const [open, setOpen] = useState(true);
   const { alerts, unreadCount, markRead, markAllRead } = useAlerts();
 
@@ -241,9 +247,9 @@ function AlertsPanel() {
       <div style={styles.goalHeader} onClick={() => setOpen(o => !o)}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <Bell size={16} style={{ color: '#00d7ff' }} />
-          <h3 style={styles.tableTitle}>Smart Alerts</h3>
+          <h3 style={styles.tableTitle}>{t('admin.alerts_panel.title', 'Smart Alerts')}</h3>
           {unreadCount > 0 && (
-            <span style={alertBadgeStyle}>{unreadCount} unread</span>
+            <span style={alertBadgeStyle}>{unreadCount} {t('admin.alerts_panel.unread', 'unread')}</span>
           )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -252,7 +258,7 @@ function AlertsPanel() {
               onClick={e => { e.stopPropagation(); markAllRead(); }}
               style={styles.markAllBtn}
             >
-              <CheckCheck size={13} /> Mark all read
+              <CheckCheck size={13} /> {t('admin.alerts_panel.mark_all_read', 'Mark all read')}
             </button>
           )}
           {open ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
@@ -262,7 +268,7 @@ function AlertsPanel() {
       {open && (
         <div>
           {alerts.length === 0 ? (
-            <p style={{ color: 'var(--text-tertiary)', fontSize: 13, margin: '12px 0 0' }}>No alerts yet.</p>
+            <p style={{ color: 'var(--text-tertiary)', fontSize: 13, margin: '12px 0 0' }}>{t('admin.alerts_panel.no_alerts', 'No alerts yet.')}</p>
           ) : (
             <div style={{ marginTop: 12 }}>
               {alerts.slice(0, 30).map(alert => {
@@ -322,6 +328,7 @@ const alertClientTag = {
 };
 
 function TopPostsPanel() {
+  const { t, i18n } = useTranslation('dashboard');
   const [posts, setPosts]   = useState([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen]     = useState(true);
@@ -348,14 +355,14 @@ function TopPostsPanel() {
       <div style={styles.goalHeader} onClick={() => setOpen(o => !o)}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <Trophy size={16} style={{ color: '#d97706' }} />
-          <h3 style={styles.tableTitle}>Best Post of the Week — All Users</h3>
+          <h3 style={styles.tableTitle}>{t('admin.top_posts_panel.title', 'Best Post of the Week — All Users')}</h3>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <button
             onClick={e => { e.stopPropagation(); handleRun(); }}
             style={styles.markAllBtn}
           >
-            Re-score now
+            {t('admin.top_posts_panel.rescore_now', 'Re-score now')}
           </button>
           {open ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
         </div>
@@ -363,16 +370,16 @@ function TopPostsPanel() {
 
       {open && (
         loading ? (
-          <p style={{ color: 'var(--text-tertiary)', fontSize: 13, marginTop: 12 }}>Loading…</p>
+          <p style={{ color: 'var(--text-tertiary)', fontSize: 13, marginTop: 12 }}>{t('admin.top_posts_panel.loading', 'Loading…')}</p>
         ) : posts.length === 0 ? (
           <p style={{ color: 'var(--text-tertiary)', fontSize: 13, marginTop: 12 }}>
-            No top posts yet — posts are scored every Monday at 8am, or click "Re-score now".
+            {t('admin.top_posts_panel.no_top_posts', 'No top posts yet — posts are scored every Monday at 8am, or click "Re-score now".')}
           </p>
         ) : (
           <table style={{ ...styles.table, marginTop: 12 }}>
             <thead>
               <tr>
-                {['User','Platform','Post','Score','vs Avg','Date',''].map(h => (
+                {[t('admin.top_posts_panel.user', 'User'), t('admin.top_posts_panel.platform', 'Platform'), t('admin.top_posts_panel.post', 'Post'), t('admin.top_posts_panel.score', 'Score'), t('admin.top_posts_panel.vs_avg', 'vs Avg'), t('admin.top_posts_panel.date', 'Date'), ''].map(h => (
                   <th key={h} style={styles.th}>{h}</th>
                 ))}
               </tr>
@@ -425,12 +432,12 @@ function TopPostsPanel() {
                       )}
                     </td>
                     <td style={styles.td}>
-                      {post?.published_at ? new Date(post.published_at).toLocaleDateString() : '—'}
+                      {post?.published_at ? formatDate(post.published_at, { dateStyle: 'short' }, i18n?.language) : '—'}
                     </td>
                     <td style={styles.td}>
                       {post?.post_url && (
                         <a href={post.post_url} target="_blank" rel="noreferrer" style={{ color: '#00d7ff', display: 'flex', alignItems: 'center', gap: 3, fontSize: 12 }}>
-                          <ExternalLink size={12} /> View
+                          <ExternalLink size={12} /> {t('admin.top_posts_panel.view', 'View')}
                         </a>
                       )}
                     </td>
@@ -446,6 +453,7 @@ function TopPostsPanel() {
 }
 
 function SharedLinksPanel() {
+  const { t, i18n } = useTranslation('dashboard');
   const [open,    setOpen]    = useState(false);
   const [links,   setLinks]   = useState([]);
   const [loading, setLoading] = useState(false);
@@ -454,10 +462,15 @@ function SharedLinksPanel() {
   useEffect(() => {
     if (!open) return;
     setLoading(true);
-    sharedReportsAPI.list()
-      .then(res => setLinks(res.data.results || res.data))
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    const req = sharedReportsAPI?.list?.();
+    if (req && typeof req.then === 'function') {
+      req
+        .then(res => setLinks(res.data.results || res.data))
+        .catch(() => {})
+        .finally(() => setLoading(false));
+    } else {
+      setLoading(false);
+    }
   }, [open]);
 
   function copyUrl(url, id) {
@@ -477,7 +490,7 @@ function SharedLinksPanel() {
       <button onClick={() => setOpen(o => !o)} style={panelToggle}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <Link2 size={16} style={{ color: '#00d7ff' }} />
-          <span>Shared Report Links</span>
+          <span>{t('admin.shared_links_panel.title', 'Shared Report Links')}</span>
           {links.length > 0 && !open && (
             <span style={{ ...countBadge, background: '#e6fbff', color: '#00d7ff' }}>{links.length}</span>
           )}
@@ -487,13 +500,20 @@ function SharedLinksPanel() {
 
       {open && (
         <div style={panelBody}>
-          {loading && <p style={emptyMsg}>Loading…</p>}
-          {!loading && links.length === 0 && <p style={emptyMsg}>No shared links yet.</p>}
+          {loading && <p style={emptyMsg}>{t('admin.shared_links_panel.loading', 'Loading…')}</p>}
+          {!loading && links.length === 0 && <p style={emptyMsg}>{t('admin.shared_links_panel.no_shared_links', 'No shared links yet.')}</p>}
           {!loading && links.length > 0 && (
             <table style={styles.table}>
               <thead>
                 <tr>
-                  {['User', 'Period', 'Views', 'Expires', 'Protected', 'Actions'].map(h => (
+                  {[
+                    t('admin.shared_links_panel.user', 'User'),
+                    t('admin.shared_links_panel.period', 'Period'),
+                    t('admin.shared_links_panel.views', 'Views'),
+                    t('admin.shared_links_panel.expires', 'Expires'),
+                    t('admin.shared_links_panel.protected', 'Protected'),
+                    t('admin.shared_links_panel.actions', 'Actions')
+                  ].map(h => (
                     <th key={h} style={styles.th}>{h}</th>
                   ))}
                 </tr>
@@ -502,13 +522,13 @@ function SharedLinksPanel() {
                 {links.map(link => (
                   <tr key={link.id} style={styles.tr}>
                     <td style={styles.td}>{link.client_name || link.client}</td>
-                    <td style={styles.td}>{link.date_from} → {link.date_until}</td>
-                    <td style={styles.td}>{link.view_count}</td>
+                    <td style={styles.td}>{formatDateRange(link.date_from, link.date_until, { dateStyle: 'short' }, i18n?.language)}</td>
+                    <td style={styles.td}>{formatNumber(link.view_count, {}, i18n?.language)}</td>
                     <td style={styles.td}>
                       {link.expires_at
-                        ? new Date(link.expires_at).toLocaleDateString()
-                        : <span style={{ color: 'var(--text-tertiary)' }}>Never</span>}
-                      {link.is_expired && <span style={{ color: '#dc2626', fontWeight: 700, marginLeft: 6 }}>EXPIRED</span>}
+                        ? formatDate(link.expires_at, { dateStyle: 'short' }, i18n?.language)
+                        : <span style={{ color: 'var(--text-tertiary)' }}>{t('admin.shared_links_panel.never', 'Never')}</span>}
+                      {link.is_expired && <span style={{ color: '#dc2626', fontWeight: 700, marginLeft: 6 }}>{t('admin.shared_links_panel.expired', 'EXPIRED')}</span>}
                     </td>
                     <td style={styles.td}>
                       {link.is_password_protected
@@ -516,15 +536,15 @@ function SharedLinksPanel() {
                         : <span style={{ color: 'var(--text-tertiary)' }}>—</span>}
                     </td>
                     <td style={{ ...styles.td, display: 'flex', gap: 8 }}>
-                      <button onClick={() => copyUrl(link.share_url, link.id)} style={iconActionBtn} title="Copy link">
+                      <button onClick={() => copyUrl(link.share_url, link.id)} style={iconActionBtn} title={t('admin.shared_links_panel.copy_link', 'Copy link')}>
                         {copied === link.id
-                          ? <span style={{ fontSize: 11, color: '#16a34a', fontWeight: 700 }}>Copied!</span>
+                          ? <span style={{ fontSize: 11, color: '#16a34a', fontWeight: 700 }}>{t('admin.shared_links_panel.copied', 'Copied!')}</span>
                           : <Copy size={14} />}
                       </button>
-                      <a href={link.share_url} target="_blank" rel="noreferrer" style={iconActionBtn} title="Open">
+                      <a href={link.share_url} target="_blank" rel="noreferrer" style={iconActionBtn} title={t('admin.shared_links_panel.open', 'Open')}>
                         <ExternalLink size={14} />
                       </a>
-                      <button onClick={() => deactivate(link.id)} style={{ ...iconActionBtn, color: '#ef4444' }} title="Deactivate">
+                      <button onClick={() => deactivate(link.id)} style={{ ...iconActionBtn, color: '#ef4444' }} title={t('admin.shared_links_panel.deactivate', 'Deactivate')}>
                         <Trash2 size={14} />
                       </button>
                     </td>
@@ -539,14 +559,15 @@ function SharedLinksPanel() {
   );
 }
 
-function roiStatusLabel(pct) {
-  if (pct > 500)  return { text: 'Excellent', bg: '#D1FAE5', color: '#059669' };
-  if (pct > 200)  return { text: 'Good',      bg: '#DBEAFE', color: '#2563EB' };
-  if (pct >= 0)   return { text: 'Average',   bg: '#FEF3C7', color: '#D97706' };
-  return              { text: 'Review',    bg: '#FEE2E2', color: '#EF4444' };
+function roiStatusLabel(pct, t) {
+  if (pct > 500)  return { text: t ? t('admin.roi_status.excellent', 'Excellent') : 'Excellent', bg: '#D1FAE5', color: '#059669' };
+  if (pct > 200)  return { text: t ? t('admin.roi_status.good', 'Good') : 'Good',           bg: '#DBEAFE', color: '#2563EB' };
+  if (pct >= 0)   return { text: t ? t('admin.roi_status.average', 'Average') : 'Average',     bg: '#FEF3C7', color: '#D97706' };
+  return                 { text: t ? t('admin.roi_status.review', 'Review') : 'Review',       bg: '#FEE2E2', color: '#EF4444' };
 }
 
 function ROIOverviewPanel() {
+  const { t, i18n } = useTranslation('dashboard');
   const navigate = useNavigate();
   const [open, setOpen]       = useState(true);
   const [reports, setReports] = useState([]);
@@ -558,36 +579,41 @@ function ROIOverviewPanel() {
 
   useEffect(() => {
     setLoading(true);
-    roiAPI.getReports({ month, year })
-      .then(res => setReports(res.data.results || res.data))
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    const req = roiAPI?.getReports?.({ month, year });
+    if (req && typeof req.then === 'function') {
+      req
+        .then(res => setReports(res.data.results || res.data))
+        .catch(() => {})
+        .finally(() => setLoading(false));
+    } else {
+      setLoading(false);
+    }
   }, [month, year]);
 
-  const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const monthName = formatDate(new Date(year, month - 1, 1), { month: 'short' }, i18n?.language);
 
   return (
     <div className="admin-table-wrap" style={styles.tableWrap}>
       <div style={styles.goalHeader} onClick={() => setOpen(o => !o)}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <TrendingUp size={16} style={{ color: '#00d7ff' }} />
-          <h3 style={styles.tableTitle}>ROI Summary — {MONTH_NAMES[month - 1]} {year}</h3>
+          <h3 style={styles.tableTitle}>{t('admin.roi_panel.title', { defaultValue: `ROI Summary — ${monthName} ${year}`, month: monthName, year })}</h3>
         </div>
         {open ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
       </div>
 
       {open && (
         loading ? (
-          <p style={{ color: 'var(--text-tertiary)', fontSize: 13, marginTop: 12 }}>Loading…</p>
+          <p style={{ color: 'var(--text-tertiary)', fontSize: 13, marginTop: 12 }}>{t('admin.roi_panel.loading', 'Loading…')}</p>
         ) : reports.length === 0 ? (
           <p style={{ color: 'var(--text-tertiary)', fontSize: 13, marginTop: 12 }}>
-            No ROI reports saved for this month yet.
+            {t('admin.roi_panel.no_reports', 'No ROI reports saved for this month yet.')}
           </p>
         ) : (
           <table style={{ ...styles.table, marginTop: 12 }}>
             <thead>
               <tr>
-                {['User', 'ROI %', 'Est. Revenue', 'Investment', 'Status', ''].map(h => (
+                {[t('admin.roi_panel.user', 'User'), t('admin.roi_panel.roi_pct', 'ROI %'), t('admin.roi_panel.est_revenue', 'Est. Revenue'), t('admin.roi_panel.investment', 'Investment'), t('admin.roi_panel.status', 'Status'), ''].map(h => (
                   <th key={h} style={styles.th}>{h}</th>
                 ))}
               </tr>
@@ -595,19 +621,19 @@ function ROIOverviewPanel() {
             <tbody>
               {reports.map(r => {
                 const pct   = parseFloat(r.roi_percentage) || 0;
-                const label = roiStatusLabel(pct);
-                const sym   = r.currency_symbol || '$';
+                const label = roiStatusLabel(pct, t);
+                const repCurrency = r.currency || 'USD';
                 return (
                   <tr key={r.id || r.client_id} style={styles.tr}>
                     <td style={{ ...styles.td, fontWeight: 600 }}>{r.client_name || r.client}</td>
                     <td style={{ ...styles.td, fontWeight: 700, color: pct > 0 ? '#059669' : '#EF4444' }}>
-                      {pct.toFixed(0)}%
+                       {pct.toFixed(0)}%
                     </td>
                     <td style={styles.td}>
-                      {sym}{(r.estimated_revenue || 0).toLocaleString('en-US', { maximumFractionDigits: 0 })}
+                      {formatCurrency(r.estimated_revenue || 0, repCurrency, i18n?.language, { maximumFractionDigits: 0 })}
                     </td>
                     <td style={styles.td}>
-                      {sym}{(r.total_investment || 0).toLocaleString('en-US', { maximumFractionDigits: 0 })}
+                      {formatCurrency(r.total_investment || 0, repCurrency, i18n?.language, { maximumFractionDigits: 0 })}
                     </td>
                     <td style={styles.td}>
                       <span style={{
@@ -628,7 +654,7 @@ function ROIOverviewPanel() {
                             display: 'flex', alignItems: 'center', gap: 4,
                           }}
                         >
-                          <ExternalLink size={12} /> View
+                          <ExternalLink size={12} /> {t('admin.roi_panel.view', 'View')}
                         </button>
                       )}
                     </td>
@@ -654,6 +680,7 @@ function SignalCard({ label, value, detail, accent = '#00d7ff' }) {
 }
 
 export default function AdminOverview() {
+  const { t, i18n } = useTranslation('dashboard');
   const [range, setRange] = useDateRange(30);
   const { data: overview, loading } = useOverview(range);
   const { lookups } = useLookups();
@@ -664,7 +691,7 @@ export default function AdminOverview() {
   }, {});
 
   const platformOptions = (lookups.platforms && lookups.platforms.length > 0)
-    ? [{ value: 'all', label: 'All Platforms' }, ...lookups.platforms.map((item) => ({ value: item.key, label: item.label }))]
+    ? [{ value: 'all', label: t('admin.goal_manager.platform', 'All Platforms') }, ...lookups.platforms.map((item) => ({ value: item.key, label: item.label }))]
     : PLATFORM_OPTIONS;
 
   const totalImpressions = overview?.by_platform?.reduce((s, p) => s + (p.impressions||0), 0) || 0;
@@ -676,9 +703,10 @@ export default function AdminOverview() {
   const latestSync       = overview?.recent_syncs?.[0];
   const syncSuccessCount = (overview?.recent_syncs || []).filter((sync) => sync.status === 'success').length;
   const ctr = totalImpressions > 0 ? ((totalClicks / totalImpressions) * 100).toFixed(2) : '0.00';
-  const topPlatformLabel = topPlatform ? (platformLabelMap[topPlatform.platform] || PLATFORMS[topPlatform.platform]?.label || topPlatform.platform) : 'No data yet';
+  const topPlatformLabel = topPlatform ? (platformLabelMap[topPlatform.platform] || PLATFORMS[topPlatform.platform]?.label || topPlatform.platform) : t('admin.no_data_yet', 'No data yet');
   const topPlatformColor = topPlatform ? (PLATFORMS[topPlatform.platform]?.color || '#00d7ff') : '#00d7ff';
-  const latestSyncLabel = latestSync ? `${latestSync.client_name} · ${latestSync.status}` : 'No recent syncs';
+  const latestSyncStatus = latestSync?.status ? t(`admin.sync_status.${latestSync.status}`, latestSync.status) : '';
+  const latestSyncLabel = latestSync ? `${latestSync.client_name} · ${latestSyncStatus}` : t('admin.no_recent_syncs', 'No recent syncs');
 
   return (
     <div style={styles.page}>
@@ -687,10 +715,10 @@ export default function AdminOverview() {
         <div style={styles.heroGlowB} />
         <div className="admin-hero-top" style={styles.heroTopRow}>
           <div style={styles.heroCopy}>
-            <div style={styles.heroEyebrow}>Agency Command Center</div>
-            <h1 style={styles.heroTitle}>Make the numbers feel actionable.</h1>
+            <div style={styles.heroEyebrow}>{t('admin.hero_eyebrow', 'Agency Command Center')}</div>
+            <h1 style={styles.heroTitle}>{t('admin.hero_title', 'Make the numbers feel actionable.')}</h1>
             <p style={styles.heroSubtitle}>
-              Track client momentum, sync health, campaign traction, and cross-platform performance from one polished control room.
+              {t('admin.hero_subtitle', 'Track client momentum, sync health, campaign traction, and cross-platform performance from one polished control room.')}
             </p>
           </div>
           <div style={styles.heroActions}>
@@ -700,69 +728,85 @@ export default function AdminOverview() {
 
         <div className="admin-signal-grid" style={styles.signalGrid}>
           <SignalCard
-            label="Active Users"
+            label={t('admin.active_users', 'Active Users')}
             value={loading ? '...' : fmt(overview?.total_clients || 0)}
-            detail={loading ? 'Loading agency coverage' : `${activePlatforms} active platforms in this window`}
+            detail={loading
+              ? t('admin.loading_agency_coverage', 'Loading agency coverage')
+              : t('admin.active_platforms_count', { count: activePlatforms, defaultValue: `${activePlatforms} active platforms in this window` })}
             accent="#00d7ff"
           />
           <SignalCard
-            label="Top Platform"
+            label={t('admin.top_platform', 'Top Platform')}
             value={topPlatformLabel}
-            detail={topPlatform ? `${fmt(topPlatform.impressions)} impressions · ${fmt(topPlatform.reach)} reach` : 'Waiting for synced performance data'}
+            detail={topPlatform
+              ? t('admin.platform_impressions_reach', {
+                  impressions: fmt(topPlatform.impressions),
+                  reach: fmt(topPlatform.reach),
+                  defaultValue: `${fmt(topPlatform.impressions)} impressions · ${fmt(topPlatform.reach)} reach`
+                })
+              : t('admin.waiting_for_synced_data', 'Waiting for synced performance data')}
             accent={topPlatformColor}
           />
           <SignalCard
-            label="Click Efficiency"
+            label={t('admin.click_efficiency', 'Click Efficiency')}
             value={`${ctr}%`}
-            detail={`${fmt(totalClicks)} clicks from ${fmt(totalImpressions)} impressions`}
+            detail={t('admin.clicks_from_impressions', {
+              clicks: fmt(totalClicks),
+              impressions: fmt(totalImpressions),
+              defaultValue: `${fmt(totalClicks)} clicks from ${fmt(totalImpressions)} impressions`
+            })}
             accent="#22c55e"
           />
           <SignalCard
-            label="Sync Health"
+            label={t('admin.sync_health', 'Sync Health')}
             value={latestSync ? `${syncSuccessCount}/${overview?.recent_syncs?.length || 0}` : '0/0'}
             detail={latestSyncLabel}
-            accent={latestSync?.status === 'failed' ? '#ef4444' : latestSync?.status === 'running' ? '#00d7ff' : '#f59e0b'}
+            accent={latestSync?.status === 'failed' ? '#ef4444' : latestSync?.status === 'partial' ? '#f59e0b' : latestSync?.status === 'running' ? '#00d7ff' : latestSync?.status === 'success' ? '#22c55e' : '#f59e0b'}
           />
         </div>
       </div>
 
       <div className="admin-summary-bar" style={styles.summaryBar}>
         <div style={styles.summaryItem}>
-          <span style={styles.summaryItemLabel}>Date Window</span>
-          <strong style={styles.summaryItemValue}>{overview?.period ? `${overview.period.since} to ${overview.period.until}` : 'Current period'}</strong>
+          <span style={styles.summaryItemLabel}>{t('admin.date_window', 'Date Window')}</span>
+          <strong style={styles.summaryItemValue}>
+            {overview?.period
+              ? formatDateRange(overview.period.since, overview.period.until, { dateStyle: 'medium' }, i18n?.language)
+              : t('admin.current_period', 'Current period')}
+          </strong>
         </div>
         <div style={styles.summaryItem}>
-          <span style={styles.summaryItemLabel}>Best Reach</span>
+          <span style={styles.summaryItemLabel}>{t('admin.best_reach', 'Best Reach')}</span>
           <strong style={styles.summaryItemValue}>{topPlatform ? fmt(topPlatform.reach) : '0'}</strong>
         </div>
         <div style={styles.summaryItem}>
-          <span style={styles.summaryItemLabel}>Total Reach</span>
+          <span style={styles.summaryItemLabel}>{t('admin.total_reach', 'Total Reach')}</span>
           <strong style={styles.summaryItemValue}>{fmt(totalReach)}</strong>
         </div>
         <div style={styles.summaryItem}>
-          <span style={styles.summaryItemLabel}>Latest Sync</span>
+          <span style={styles.summaryItemLabel}>{t('admin.latest_sync', 'Latest Sync')}</span>
           <strong style={styles.summaryItemValue}>{latestSyncLabel}</strong>
         </div>
       </div>
 
       <div style={styles.sectionHeading}>
         <div>
-          <div style={styles.sectionEyebrow}>Performance Snapshot</div>
-          <h2 style={styles.sectionTitle}>Core agency metrics at a glance</h2>
+          <div style={styles.sectionEyebrow}>{t('admin.performance_snapshot', 'Performance Snapshot')}</div>
+          <h2 style={styles.sectionTitle}>{t('admin.core_metrics_subtitle', 'Core agency metrics at a glance')}</h2>
         </div>
       </div>
 
       <div className="admin-stat-cards" style={styles.cards}>
-        <StatCard label="Total Users"        value={overview?.total_clients || 0} icon={Users}         color="#00d7ff" />
-        <StatCard label="Total Impressions" value={totalImpressions}             icon={Eye}           color="#00d7ff" />
-        <StatCard label="Total Clicks"      value={totalClicks}                  icon={MousePointer2} color="#22c55e" />
-        <StatCard label="Total Followers"   value={totalFollowers}               icon={TrendingUp}    color="#f59e0b" />
+        <StatCard label={t('admin.total_users', 'Total Users')}        value={overview?.total_clients || 0} icon={Users}         color="#00d7ff" />
+        <StatCard label={t('admin.total_impressions', 'Total Impressions')} value={totalImpressions}             icon={Eye}           color="#00d7ff" />
+        <StatCard label={t('admin.total_clicks', 'Total Clicks')}      value={totalClicks}                  icon={MousePointer2} color="#22c55e" />
+        <StatCard label={t('admin.total_followers', 'Total Followers')}   value={totalFollowers}               icon={TrendingUp}    color="#f59e0b" />
       </div>
 
       <div style={styles.sectionHeading}>
         <div>
-          <div style={styles.sectionEyebrow}>Operational Detail</div>
-          <h2 style={styles.sectionTitle}>Performance tables, alerts, goals, and recent syncs</h2>
+          <div style={styles.sectionEyebrow}>{t('admin.operational_detail', 'Operational Detail')}</div>
+          <h2 style={styles.sectionTitle}>{t('admin.operational_subtitle', 'Performance tables, alerts, goals, and recent syncs')}</h2>
         </div>
       </div>
 
@@ -770,11 +814,11 @@ export default function AdminOverview() {
         <div style={styles.mainColumn}>
           {overview?.by_platform?.length > 0 && (
             <div className="admin-table-wrap" style={styles.tableWrap}>
-              <h3 style={styles.tableTitle}>Platform Performance</h3>
+              <h3 style={styles.tableTitle}>{t('admin.platform_performance', 'Platform Performance')}</h3>
               <table style={styles.table}>
                 <thead>
                   <tr>
-                    {['Platform','Impressions','Reach','Clicks','Video Views','Followers'].map(h => (
+                    {[t('metrics.platform', 'Platform'), t('metrics.impressions', 'Impressions'), t('metrics.reach', 'Reach'), t('metrics.clicks', 'Clicks'), t('metrics.video_views', 'Video Views'), t('metrics.followers', 'Followers')].map(h => (
                       <th key={h} style={styles.th}>{h}</th>
                     ))}
                   </tr>
@@ -812,11 +856,17 @@ export default function AdminOverview() {
         <div style={styles.sideColumn}>
           {overview?.recent_syncs?.length > 0 && (
             <div className="admin-table-wrap" style={styles.tableWrap}>
-              <h3 style={styles.tableTitle}>Recent Sync Activity</h3>
+              <h3 style={styles.tableTitle}>{t('admin.recent_sync_activity', 'Recent Sync Activity')}</h3>
               <table style={styles.table}>
                 <thead>
                   <tr>
-                    {['Client','Platform','Status','Daily Rows','Started'].map(h => (
+                    {[
+                      t('admin.sync_table.client', 'Client'),
+                      t('admin.sync_table.platform', 'Platform'),
+                      t('admin.sync_table.status', 'Status'),
+                      t('admin.sync_table.daily_rows', 'Daily Rows'),
+                      t('admin.sync_table.started', 'Started')
+                    ].map(h => (
                       <th key={h} style={styles.th}>{h}</th>
                     ))}
                   </tr>
@@ -832,10 +882,10 @@ export default function AdminOverview() {
                         </span>
                       </td>
                       <td style={styles.td}>
-                        <span style={statusBadge(l.status)}>{l.status}</span>
+                        <span style={statusBadge(l.status)}>{t(`admin.sync_status.${l.status}`, l.status)}</span>
                       </td>
-                      <td style={styles.td}>{l.records_synced ?? 0}</td>
-                      <td style={styles.td}>{new Date(l.started_at).toLocaleString()}</td>
+                      <td style={styles.td}>{formatNumber(l.records_synced ?? 0, {}, i18n?.language)}</td>
+                      <td style={styles.td}>{formatDate(l.started_at, { dateStyle: 'short', timeStyle: 'short' }, i18n?.language)}</td>
                     </tr>
                 ))}
               </tbody>
@@ -850,6 +900,7 @@ export default function AdminOverview() {
 
 const statusColors = {
   success: { background: '#dcfce7', color: '#16a34a' },
+  partial: { background: '#fef3c7', color: '#d97706' },
   failed:  { background: '#fee2e2', color: '#dc2626' },
   running: { background: '#e6fbff', color: '#00d7ff' },
   pending: { background: 'var(--surface-page)', color: 'var(--text-secondary)' },

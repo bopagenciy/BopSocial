@@ -24,6 +24,7 @@ const SyncLogsPage      = lazy(() => import('../pages/SyncLogsPage'));
 const ComposerPage      = lazy(() => import('../pages/composer/ComposerPage'));
 const MediaLibraryPage  = lazy(() => import('../pages/composer/MediaLibraryPage'));
 const QueueManagerPage  = lazy(() => import('../pages/composer/QueueManagerPage'));
+const PublicationOperationsPage = lazy(() => import('../pages/composer/PublicationOperationsPage'));
 // Inbox ( unified inbox)
 const UnifiedInboxPage  = lazy(() => import('../pages/inbox/UnifiedInboxPage'));
 const ReviewsPage       = lazy(() => import('../pages/inbox/ReviewsPage'));
@@ -85,6 +86,7 @@ export default function AnalyticsModule({ isAdmin = false, clientId = null }) {
         <Route path="composer/:id"  element={<ComposerPage />} />
         <Route path="media"         element={<MediaLibraryPage />} />
         <Route path="queues"        element={<QueueManagerPage />} />
+        <Route path="operations"    element={<PublicationOperationsPage />} />
         {/* Inbox */}
         <Route path="inbox"         element={<UnifiedInboxPage />} />
         <Route path="reviews"       element={<ReviewsPage />} />

@@ -17,6 +17,7 @@
  *   onSaved     callback fired with the saved review
  */
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Send, X, Star, Plus } from 'lucide-react';
 
 import StarRating from './StarRating';
@@ -30,6 +31,7 @@ const SERVICE_OPTIONS = [
 
 
 export default function WriteReviewModal({ open, onClose, agency, existing, onSaved }) {
+  const { t } = useTranslation('agency_portal');
   const [rating,  setRating]  = useState(existing?.rating || 0);
   const [title,   setTitle]   = useState(existing?.title || '');
   const [body,    setBody]    = useState(existing?.body || '');
@@ -57,9 +59,9 @@ export default function WriteReviewModal({ open, onClose, agency, existing, onSa
   }
 
   async function submit() {
-    if (rating < 1) return toast.error('Pick a star rating');
-    if (!title.trim()) return toast.error('Add a short title');
-    if (!body.trim()) return toast.error('Tell others what working with them was like');
+    if (rating < 1) return toast.error(t('reviews.err_pick_star', 'Pick a star rating'));
+    if (!title.trim()) return toast.error(t('reviews.err_add_title', 'Add a short title'));
+    if (!body.trim()) return toast.error(t('reviews.err_add_body', 'Tell others what working with them was like'));
 
     setBusy(true);
     try {
@@ -72,72 +74,72 @@ export default function WriteReviewModal({ open, onClose, agency, existing, onSa
       const r = existing
         ? await reviewAPI.update(existing.id, payload)
         : await reviewAPI.create(agency.slug, payload);
-      toast.success(existing ? 'Review updated' : 'Review posted');
+      toast.success(existing ? t('reviews.toast_updated', 'Review updated') : t('reviews.toast_created', 'Review posted'));
       onSaved?.(r.data);
       onClose?.();
     } catch (e) {
-      toast.error(e?.response?.data?.error || 'Could not save review');
+      toast.error(e?.response?.data?.error || t('reviews.err_save', 'Could not save review'));
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <div role="dialog" aria-modal="true" aria-label="Write review" style={backdropStyle} onClick={(e) => { if (e.target === e.currentTarget) onClose?.(); }}>
+    <div role="dialog" aria-modal="true" aria-label={existing ? t('reviews.edit_title', 'Edit review') : t('reviews.write_title', 'Write a review')} style={backdropStyle} onClick={(e) => { if (e.target === e.currentTarget) onClose?.(); }}>
       <div style={modalStyle}>
         <header style={headerStyle}>
           <div>
             <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-tertiary)' }}>
-              {existing ? 'Edit review' : 'Write a review'}
+              {existing ? t('reviews.edit_title', 'Edit review') : t('reviews.write_title', 'Write a review')}
             </div>
             <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text-primary)' }}>
               {agency.name}
             </div>
           </div>
-          <button type="button" onClick={onClose} aria-label="Close" style={iconBtn}><X size={16} /></button>
+          <button type="button" onClick={onClose} aria-label={t('common.close', 'Close')} style={iconBtn}><X size={16} /></button>
         </header>
 
         <div style={{ padding: '0 24px 18px', display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div>
-            <Label>Your rating</Label>
+            <Label>{t('reviews.your_rating', 'Your rating')}</Label>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <StarRating value={rating} onChange={setRating} size={24} />
               <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
-                {rating > 0 ? `${rating} of 5` : 'Tap a star'}
+                {rating > 0 ? t('reviews.rating_n_of_5', '{{n}} of 5', { n: rating }) : t('reviews.tap_star', 'Tap a star')}
               </span>
             </div>
           </div>
 
           <div>
-            <Label>Headline</Label>
+            <Label>{t('reviews.headline', 'Headline')}</Label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g., Brought our reach back to life"
+              placeholder={t('reviews.headline_placeholder', 'e.g., Brought our reach back to life')}
               maxLength={200}
               style={inputStyle}
             />
           </div>
 
           <div>
-            <Label>Your experience</Label>
+            <Label>{t('reviews.experience', 'Your experience')}</Label>
             <textarea
               rows={5}
               value={body}
               onChange={(e) => setBody(e.target.value)}
-              placeholder="What did they do well? What were the results? Any caveats?"
+              placeholder={t('reviews.experience_placeholder', 'What did they do well? What were the results? Any caveats?')}
               style={textareaStyle}
             />
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <ListEditor label="Pros" values={pros} onChange={setPros} placeholder="One per line" tone="success" />
-            <ListEditor label="Cons" values={cons} onChange={setCons} placeholder="One per line" tone="warning" />
+            <ListEditor label={t('reviews.pros', 'Pros')} values={pros} onChange={setPros} placeholder={t('reviews.list_placeholder', 'One per line')} tone="success" t={t} />
+            <ListEditor label={t('reviews.cons', 'Cons')} values={cons} onChange={setCons} placeholder={t('reviews.list_placeholder', 'One per line')} tone="warning" t={t} />
           </div>
 
           <div>
-            <Label>Services used</Label>
+            <Label>{t('reviews.services_used', 'Services used')}</Label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {SERVICE_OPTIONS.map((s) => {
                 const active = services.includes(s);
@@ -156,7 +158,7 @@ export default function WriteReviewModal({ open, onClose, agency, existing, onSa
                       cursor: 'pointer', fontFamily: 'inherit',
                     }}
                   >
-                    {s}
+                    {t(`reviews.services.${s}`, s)}
                   </button>
                 );
               })}
@@ -164,7 +166,7 @@ export default function WriteReviewModal({ open, onClose, agency, existing, onSa
           </div>
 
           <div>
-            <Label>How long did you work together? (months)</Label>
+            <Label>{t('reviews.duration_months', 'Working relationship duration (months)')}</Label>
             <input
               type="number"
               min={0} max={120}
@@ -178,10 +180,10 @@ export default function WriteReviewModal({ open, onClose, agency, existing, onSa
 
         <footer style={footerStyle}>
           <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
-            Reviews are public. You can edit yours within 30 days.
+            {t('reviews.public_notice', 'Reviews are public. You can edit yours within 30 days.')}
           </span>
           <button type="button" onClick={submit} disabled={busy} style={btnPrimary}>
-            {busy ? 'Saving…' : <>{existing ? 'Save changes' : 'Post review'} <Send size={13} /></>}
+            {busy ? t('reviews.saving', 'Saving…') : <>{existing ? t('reviews.update', 'Update review') : t('reviews.submit', 'Submit review')} <Send size={13} /></>}
           </button>
         </footer>
       </div>
@@ -190,7 +192,7 @@ export default function WriteReviewModal({ open, onClose, agency, existing, onSa
 }
 
 
-function ListEditor({ label, values, onChange, placeholder, tone }) {
+function ListEditor({ label, values, onChange, placeholder, tone, t }) {
   const [draft, setDraft] = useState('');
   function add() {
     const v = draft.trim();
@@ -209,7 +211,7 @@ function ListEditor({ label, values, onChange, placeholder, tone }) {
         {values.map((v, i) => (
           <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 8px', background: 'var(--surface-sunken)', borderLeft: `3px solid ${chipColor}`, borderRadius: 4, fontSize: 13 }}>
             <span style={{ flex: 1, color: 'var(--text-primary)' }}>{v}</span>
-            <button type="button" onClick={() => remove(i)} aria-label="Remove" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: 2 }}>
+            <button type="button" onClick={() => remove(i)} aria-label={t ? t('common.remove', 'Remove') : 'Remove'} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: 2 }}>
               <X size={11} />
             </button>
           </div>

@@ -70,24 +70,24 @@ def notify_new_login(*, user, context: dict) -> None:
         return
     try:
         from django.core.mail import send_mail
-        from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@socialstats.app')
-        frontend = getattr(settings, 'FRONTEND_URL', 'https://app.socialstats.app')
+        from ..locale_helpers import resolve_user_language, get_email_copy
+        from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', 'Bop Social <noreply@bopsocial.com>')
+        frontend = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
 
+        lang = resolve_user_language(user)
+        name = user.first_name or user.username
         when = timezone.now().strftime('%Y-%m-%d %H:%M UTC')
-        subject = '[Social Stats] New login to your account'
-        body = (
-            f'Hi {user.first_name or user.username},\n\n'
-            f'We detected a new sign-in to your Social Stats account at {when}.\n\n'
-            f'  IP address : {context.get("ip") or "unknown"}\n'
-            f'  Browser    : {context.get("browser") or "unknown"} on {context.get("os") or "unknown"}\n'
-            f'  Device     : {context.get("device") or "unknown"}\n\n'
-            f'If this was you, no action needed.\n\n'
-            f'If you don\'t recognise this sign-in:\n'
-            f'  1. Change your password immediately: {frontend}/u/settings/security\n'
-            f'  2. Review and revoke active sessions on the same page\n'
-            f'  3. Contact support@socialstats.app\n\n'
-            f'— Social Stats Security'
+
+        copy = get_email_copy(
+            'security_login', lang=lang,
+            name=name,
+            when=when,
+            ip=context.get('ip') or ('desconocida' if lang == 'es' else 'unknown'),
+            browser=context.get('browser') or ('desconocido' if lang == 'es' else 'unknown'),
+            os=context.get('os') or ('desconocido' if lang == 'es' else 'unknown'),
+            device=context.get('device') or ('desconocido' if lang == 'es' else 'unknown'),
+            frontend=frontend,
         )
-        send_mail(subject, body, from_email, [user.email], fail_silently=True)
+        send_mail(copy['subject'], copy['body'], from_email, [user.email], fail_silently=True)
     except Exception:
         logger.warning('notify_new_login: failed for user=%s', user.id, exc_info=True)

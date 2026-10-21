@@ -15,6 +15,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   Save, ExternalLink, ShieldCheck, Globe, MapPin, Building2, Plus, X,
   FileText,
@@ -22,8 +23,10 @@ import {
 
 import { agencyAPI, authAPI, verificationAPI } from '../../services/api';
 import toast from '../../components/ui/toast';
+import { CANONICAL_CURRENCIES } from '../../utils/currencies';
 
 export default function AgencyMarketplaceProfilePage() {
+  const { t } = useTranslation('agency_portal');
   const [slug,    setSlug]    = useState(null);
   const [profile, setProfile] = useState(null);
   const [draft,   setDraft]   = useState(null);
@@ -38,19 +41,19 @@ export default function AgencyMarketplaceProfilePage() {
         if (cancelled) return;
         const s = r.data?.primary_agency_slug;
         if (s) setSlug(s);
-        else { setLoading(false); toast.error('No agency profile resolved for your account.'); }
+        else { setLoading(false); toast.error(t('agency_marketplace_profile.no_agency_found')); }
       })
-      .catch(() => { setLoading(false); toast.error('Could not load profile'); });
+      .catch(() => { setLoading(false); toast.error(t('agency_portal:marketplace.err_load', 'Could not load profile')); });
     return () => { cancelled = true; };
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     if (!slug) return;
     agencyAPI.get(slug)
       .then((r) => { setProfile(r.data); setDraft(r.data); })
-      .catch(() => toast.error('Could not load agency'))
+      .catch(() => toast.error(t('agency_profile.err_load')))
       .finally(() => setLoading(false));
-  }, [slug]);
+  }, [slug, t]);
 
   const dirty = useMemo(() => {
     if (!profile || !draft) return false;
@@ -92,20 +95,19 @@ export default function AgencyMarketplaceProfilePage() {
       });
       const r = await agencyAPI.update(slug, payload);
       setProfile(r.data); setDraft(r.data);
-      toast.success('Profile updated');
+      toast.success(t('agency_marketplace_profile.toast_saved'));
     } catch (e) {
-      toast.error(e?.response?.data?.error || 'Could not save');
+      toast.error(e?.response?.data?.error || t('agency_marketplace_profile.err_save'));
     } finally {
       setSaving(false);
     }
   }
 
-  if (loading) return <div style={{ padding: 32, color: 'var(--text-tertiary)' }}>Loading…</div>;
+  if (loading) return <div style={{ padding: 32, color: 'var(--text-tertiary)' }}>{t('marketplace.loading')}</div>;
   if (!profile) {
     return (
       <div style={{ padding: 32, color: 'var(--text-secondary)' }}>
-        We couldn't find an agency for your account. If your team owns an agency,
-        ask them to add you, then come back here.
+        {t('agency_marketplace_profile.no_agency_found')}
       </div>
     );
   }
@@ -115,18 +117,18 @@ export default function AgencyMarketplaceProfilePage() {
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
         <div>
           <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
-            Marketplace profile
+            {t('agency_marketplace_profile.title')}
           </h1>
           <p style={{ margin: '4px 0 0', color: 'var(--text-secondary)', fontSize: 14 }}>
-            How you appear to potential clients in the Social Stats marketplace.
+            {t('agency_marketplace_profile.subtitle')}
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <Link to={`/agencies/${slug}`} style={btnGhost} target="_blank" rel="noreferrer">
-            <ExternalLink size={13} /> Preview
+            <ExternalLink size={13} /> {t('agency_marketplace_profile.preview')}
           </Link>
           <button type="button" onClick={save} disabled={!dirty || saving} style={dirty && !saving ? btnPrimary : btnDisabled}>
-            <Save size={13} /> {saving ? 'Saving…' : (dirty ? 'Save changes' : 'No changes')}
+            <Save size={13} /> {saving ? t('agency_marketplace_profile.saving') : (dirty ? t('agency_marketplace_profile.save') : t('agency_marketplace_profile.no_changes'))}
           </button>
         </div>
       </header>
@@ -141,17 +143,17 @@ export default function AgencyMarketplaceProfilePage() {
             style={{ marginTop: 4 }}
           />
           <div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>List in marketplace</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>{t('agency_marketplace_profile.list_toggle_title')}</div>
             <p style={{ margin: '2px 0 0', fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-              When on, your agency shows up in <strong>/agencies</strong> with the fields below. Off-market agencies can still receive direct invitations.
+              {t('agency_marketplace_profile.list_toggle_desc')}
             </p>
             {profile.is_verified ? (
               <div style={{ marginTop: 6, display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 600, color: 'var(--success)' }}>
-                <ShieldCheck size={12} /> Verified · trust signals fully active
+                <ShieldCheck size={12} /> {t('agency_marketplace_profile.verified_badge')}
               </div>
             ) : (
               <div style={{ marginTop: 6, fontSize: 11, color: 'var(--text-tertiary)' }}>
-                Not yet verified — verification badge unlocks higher placement and a green "Verified" mark.
+                {t('agency_marketplace_profile.not_verified_notice')}
               </div>
             )}
           </div>
@@ -159,34 +161,34 @@ export default function AgencyMarketplaceProfilePage() {
       </Section>
 
       {/* Identity */}
-      <Section title="Identity">
-        <Field label="Agency name" value={draft.name} onChange={(v) => set('name', v)} />
-        <Field label="Logo URL"   value={draft.logo_url || ''} onChange={(v) => set('logo_url', v)} placeholder="https://…" icon={Building2} />
-        <Field label="Website"    value={draft.website || ''}  onChange={(v) => set('website', v)} placeholder="https://…" icon={Globe} />
+      <Section title={t('agency_marketplace_profile.sections.basic_info')}>
+        <Field label={t('agency_marketplace_profile.fields.name')} value={draft.name} onChange={(v) => set('name', v)} />
+        <Field label={t('agency_marketplace_profile.fields.logo_url')} value={draft.logo_url || ''} onChange={(v) => set('logo_url', v)} placeholder="https://…" icon={Building2} />
+        <Field label={t('agency_marketplace_profile.fields.website')} value={draft.website || ''}  onChange={(v) => set('website', v)} placeholder="https://…" icon={Globe} />
       </Section>
 
       {/* Location */}
-      <Section title="Location">
+      <Section title={t('agency_marketplace_profile.sections.pricing_location')}>
         <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 10 }}>
-          <Field label="City"      value={draft.location_city || ''}    onChange={(v) => set('location_city', v)}    icon={MapPin} />
-          <Field label="Country"   value={draft.location_country || ''} onChange={(v) => set('location_country', v.toUpperCase().slice(0, 2))} placeholder="IN" />
+          <Field label={t('agency_marketplace_profile.fields.location_city')} value={draft.location_city || ''} onChange={(v) => set('location_city', v)} icon={MapPin} />
+          <Field label={t('agency_marketplace_profile.fields.location_country')} value={draft.location_country || ''} onChange={(v) => set('location_country', v.toUpperCase().slice(0, 2))} placeholder="IN" />
         </div>
       </Section>
 
       {/* About */}
-      <Section title="About">
-        <Label>Description</Label>
+      <Section title={t('agency_profile.section_about')}>
+        <Label>{t('agency_marketplace_profile.fields.description')}</Label>
         <textarea
           rows={5}
           value={draft.description || ''}
           onChange={(e) => set('description', e.target.value)}
-          placeholder="What does your agency do? Who do you serve? What outcomes do you deliver?"
+          placeholder={t('agency_marketplace_profile.fields.description_placeholder')}
           style={textareaStyle}
         />
       </Section>
 
       {/* Industries + services */}
-      <Section title="Industries served">
+      <Section title={t('agency_marketplace_profile.fields.industries_served')}>
         <ListEditor
           values={draft.industries_served || []}
           onAdd={(v)    => setListOp('industries_served', 'add', v.trim().toLowerCase().replace(/\s+/g, '_'))}
@@ -195,7 +197,7 @@ export default function AgencyMarketplaceProfilePage() {
         />
       </Section>
 
-      <Section title="Services offered">
+      <Section title={t('agency_marketplace_profile.fields.services_offered')}>
         <ListEditor
           values={draft.services_offered || []}
           onAdd={(v)    => setListOp('services_offered', 'add', v.trim().toLowerCase().replace(/\s+/g, '_'))}
@@ -208,22 +210,21 @@ export default function AgencyMarketplaceProfilePage() {
       <VerificationPanel slug={slug} profile={profile} onChanged={(p) => { setProfile(p); setDraft(p); }} />
 
       {/* Pricing */}
-      <Section title="Pricing">
+      <Section title={t('agency_profile.section_services_pricing')}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 100px', gap: 10 }}>
           <Field
-            label="Starting price (per month)"
+            label={t('agency_marketplace_profile.fields.pricing_starting_at')}
             type="number"
             value={draft.pricing_starting_at ?? ''}
             onChange={(v) => set('pricing_starting_at', v === '' ? null : Number(v))}
             placeholder="5000"
           />
           <div>
-            <Label>Currency</Label>
-            <select value={draft.pricing_currency || 'INR'} onChange={(e) => set('pricing_currency', e.target.value)} style={inputStyle}>
-              <option value="INR">INR</option>
-              <option value="USD">USD</option>
-              <option value="EUR">EUR</option>
-              <option value="GBP">GBP</option>
+            <Label>{t('agency_marketplace_profile.fields.pricing_currency')}</Label>
+            <select value={draft.pricing_currency || 'USD'} onChange={(e) => set('pricing_currency', e.target.value)} style={inputStyle}>
+              {CANONICAL_CURRENCIES.map((c) => (
+                <option key={c.code} value={c.code}>{c.code}</option>
+              ))}
             </select>
           </div>
         </div>
@@ -233,6 +234,7 @@ export default function AgencyMarketplaceProfilePage() {
 }
 
 function VerificationPanel({ slug, profile, onChanged }) {
+  const { t } = useTranslation('agency_portal');
   const docs = profile?.documents || {};
   const decision = docs.decision || (profile?.is_verified ? 'approved' : 'none');
   const items = docs.documents || [];
@@ -260,7 +262,7 @@ function VerificationPanel({ slug, profile, onChanged }) {
   }
 
   return (
-    <Section title="Verification">
+    <Section title={t('agency_profile.verified')}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
         <span style={{
           padding: '2px 10px', fontSize: 11, fontWeight: 600,
@@ -272,7 +274,7 @@ function VerificationPanel({ slug, profile, onChanged }) {
           display: 'inline-flex', alignItems: 'center', gap: 4,
         }}>
           <ShieldCheck size={11} />
-          {profile?.is_verified ? 'Verified' : decision === 'pending' ? 'Pending review' : decision === 'rejected' ? 'Needs more info' : 'Not submitted'}
+          {profile?.is_verified ? t('agency_profile.verified') : decision === 'pending' ? t('invitations.manage_invite.badge') : decision === 'rejected' ? 'Needs more info' : 'Not submitted'}
         </span>
       </div>
 
@@ -317,13 +319,13 @@ function VerificationPanel({ slug, profile, onChanged }) {
                 placeholder="https://…"
                 style={inputStyle}
               />
-              <button type="button" onClick={() => removeRow(i)} aria-label="Remove" style={{ ...btnGhost, padding: '8px 8px', justifyContent: 'center' }}>
+              <button type="button" onClick={() => removeRow(i)} aria-label={t('agency_marketplace_profile.fields.remove_item')} style={{ ...btnGhost, padding: '8px 8px', justifyContent: 'center' }}>
                 <X size={13} />
               </button>
             </div>
           ))}
           <div style={{ display: 'flex', gap: 6 }}>
-            <button type="button" onClick={addRow} style={btnGhost}><Plus size={13} /> Add document</button>
+            <button type="button" onClick={addRow} style={btnGhost}><Plus size={13} /> {t('agency_marketplace_profile.fields.add_item')}</button>
             <button type="button" onClick={submit} disabled={busy} style={btnPrimary}>
               <FileText size={13} /> {busy ? 'Submitting…' : 'Submit for review'}
             </button>
@@ -379,6 +381,7 @@ function Label({ children }) {
 }
 
 function ListEditor({ values, onAdd, onRemove, placeholder }) {
+  const { t } = useTranslation('agency_portal');
   const [draft, setDraft] = useState('');
   return (
     <div>
@@ -395,7 +398,7 @@ function ListEditor({ values, onAdd, onRemove, placeholder }) {
             fontSize: 12, fontWeight: 500,
           }}>
             {v}
-            <button type="button" onClick={() => onRemove(v)} aria-label={`Remove ${v}`} style={{
+            <button type="button" onClick={() => onRemove(v)} aria-label={t('agency_marketplace_profile.fields.remove_item')} style={{
               width: 18, height: 18, padding: 0,
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
               background: 'transparent', color: 'inherit',
@@ -420,7 +423,7 @@ function ListEditor({ values, onAdd, onRemove, placeholder }) {
           onClick={() => { if (draft.trim()) { onAdd(draft); setDraft(''); } }}
           style={btnGhost}
         >
-          <Plus size={13} /> Add
+          <Plus size={13} /> {t('agency_marketplace_profile.fields.add_item')}
         </button>
       </div>
     </div>

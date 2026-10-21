@@ -7,6 +7,7 @@
  *  Released under the MIT License — see LICENSE. Keep this notice.
  * ========================================================================== */
 import { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Plus, Send, PauseCircle, PlayCircle, X, RefreshCw, Loader2, AlertCircle, ChevronRight, ChevronLeft,
 } from 'lucide-react';
@@ -32,18 +33,24 @@ const STATUS_BADGE = {
 };
 
 export default function WhatsAppCampaignsPage() {
+  const { t } = useTranslation('messaging');
   const { data, refetch, loading } = useWhatsAppCampaigns();
   const [showWizard, setShowWizard] = useState(false);
   const [detailId, setDetailId] = useState(null);
 
+  const count = data?.length || 0;
+  const subtitle = count === 1
+    ? t('campaigns.subtitle', { count, defaultValue: '1 campaign' })
+    : t('campaigns.subtitle_plural', { count, defaultValue: `${count} campaigns` });
+
   return (
     <div style={{ paddingBottom: 32 }}>
       <PageHeader
-        title="Campaigns"
-        subtitle={`${data?.length || 0} campaigns`}
+        title={t('campaigns.title', 'Campaigns')}
+        subtitle={subtitle}
         action={
           <button onClick={() => setShowWizard(true)} style={btnPrimary}>
-            <Plus size={14} /> New Campaign
+            <Plus size={14} /> {t('campaigns.new_campaign', 'New Campaign')}
           </button>
         }
       />
@@ -53,22 +60,23 @@ export default function WhatsAppCampaignsPage() {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
               <tr>
-                <th style={th}>Name</th>
-                <th style={th}>Template</th>
-                <th style={th}>List</th>
-                <th style={th}>Status</th>
-                <th style={th}>Progress</th>
-                <th style={th}>Sent / Total</th>
-                <th style={th}>Actions</th>
+                <th style={th}>{t('campaigns.th_name', 'Name')}</th>
+                <th style={th}>{t('campaigns.th_template', 'Template')}</th>
+                <th style={th}>{t('campaigns.th_list', 'List')}</th>
+                <th style={th}>{t('campaigns.th_status', 'Status')}</th>
+                <th style={th}>{t('campaigns.th_progress', 'Progress')}</th>
+                <th style={th}>{t('campaigns.th_sent_total', 'Sent / Total')}</th>
+                <th style={th}>{t('campaigns.th_actions', 'Actions')}</th>
               </tr>
             </thead>
             <tbody>
-              {loading && <tr><td colSpan={7} style={emptyRow}><Loader2 size={14} className="spin" /> Loading…</td></tr>}
+              {loading && <tr><td colSpan={7} style={emptyRow}><Loader2 size={14} className="spin" /> {t('campaigns.loading', 'Loading…')}</td></tr>}
               {!loading && (data || []).length === 0 && (
-                <tr><td colSpan={7} style={emptyRow}>No campaigns yet.</td></tr>
+                <tr><td colSpan={7} style={emptyRow}>{t('campaigns.empty', 'No campaigns yet.')}</td></tr>
               )}
               {(data || []).map((c) => {
                 const status = STATUS_BADGE[c.status] || STATUS_BADGE.draft;
+                const statusLabel = t(`statuses.${c.status}`, c.status);
                 return (
                   <tr key={c.id}>
                     <td style={td}>
@@ -76,7 +84,7 @@ export default function WhatsAppCampaignsPage() {
                     </td>
                     <td style={td}>{c.template_name}</td>
                     <td style={td}>{c.contact_list_name}</td>
-                    <td style={td}><span style={{ ...badge, background: status.bg, color: status.color }}>{c.status}</span></td>
+                    <td style={td}><span style={{ ...badge, background: status.bg, color: status.color }}>{statusLabel}</span></td>
                     <td style={td}>
                       <div style={progressBar}>
                         <div style={{ ...progressFill, width: `${c.progress_percent}%` }} />
@@ -84,7 +92,7 @@ export default function WhatsAppCampaignsPage() {
                       <div style={{ fontSize: 11, color: COLORS.muted, marginTop: 2 }}>{c.progress_percent}%</div>
                     </td>
                     <td style={td}>{c.sent_count} / {c.total_count}</td>
-                    <td style={td}><CampaignActions c={c} onChange={refetch} /></td>
+                    <td style={td}><CampaignActions c={c} onChange={refetch} t={t} /></td>
                   </tr>
                 );
               })}
@@ -113,7 +121,7 @@ export default function WhatsAppCampaignsPage() {
   );
 }
 
-function CampaignActions({ c, onChange }) {
+function CampaignActions({ c, onChange, t }) {
   async function launch() {
     try {
       await whatsappAPI.campaigns.launch(c.id);
@@ -125,20 +133,23 @@ function CampaignActions({ c, onChange }) {
   return (
     <div style={{ display: 'flex', gap: 4 }}>
       {(c.status === 'draft' || c.status === 'scheduled') && (
-        <button onClick={launch} style={btnSecondary}><Send size={12} /> Launch</button>
+        <button onClick={launch} style={btnSecondary}><Send size={12} /> {t ? t('campaigns.wizard.send_now', 'Launch') : 'Launch'}</button>
       )}
       {c.status === 'running' && (
         <button onClick={async () => { await whatsappAPI.campaigns.pause(c.id); onChange(); }} style={btnSecondary}>
-          <PauseCircle size={12} /> Pause
+          <PauseCircle size={12} /> {t ? t('campaigns.pause', 'Pause') : 'Pause'}
         </button>
       )}
       {c.status === 'paused' && (
         <button onClick={async () => { await whatsappAPI.campaigns.resume(c.id); onChange(); }} style={btnSecondary}>
-          <PlayCircle size={12} /> Resume
+          <PlayCircle size={12} /> {t ? t('campaigns.resume', 'Resume') : 'Resume'}
         </button>
       )}
       {!['completed', 'canceled'].includes(c.status) && (
-        <button onClick={async () => { if (window.confirm('Cancel this campaign?')) { await whatsappAPI.campaigns.cancel(c.id); onChange(); } }}
+        <button onClick={async () => {
+                  const msg = t ? t('campaigns.confirm_cancel', 'Cancel campaign?') : 'Cancel campaign?';
+                  if (window.confirm(msg)) { await whatsappAPI.campaigns.cancel(c.id); onChange(); }
+                }}
                 style={{ ...btnSecondary, color: COLORS.danger, borderColor: '#fecaca' }}>
           <X size={12} />
         </button>
@@ -148,6 +159,7 @@ function CampaignActions({ c, onChange }) {
 }
 
 function CampaignWizard({ onClose, onCreated }) {
+  const { t } = useTranslation('messaging');
   const [step, setStep] = useState(1);
   const { data: templates } = useWhatsAppTemplates({ status: 'approved' });
   const { data: lists } = useWhatsAppLists();
@@ -193,7 +205,9 @@ function CampaignWizard({ onClose, onCreated }) {
           padding: 16, borderBottom: `1px solid ${COLORS.border}`,
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         }}>
-          <h3 style={{ margin: 0, fontSize: 16, color: COLORS.text }}>New Campaign — Step {step} of 3</h3>
+          <h3 style={{ margin: 0, fontSize: 16, color: COLORS.text }}>
+            {t('campaigns.wizard.title', 'New WhatsApp Campaign')} — {step} / 3
+          </h3>
           <button onClick={onClose} style={iconBtn}>×</button>
         </header>
 
@@ -202,15 +216,26 @@ function CampaignWizard({ onClose, onCreated }) {
 
           {step === 1 && (
             <>
-              <Field label="Campaign Name" value={form.name} onChange={(v) => setForm({ ...form, name: v })} placeholder="May launch promo" />
-              <SelectField label="Template" value={form.template}
-                           onChange={(v) => setForm({ ...form, template: v })}
-                           options={[{ id: '', label: '— Select an approved template —' },
-                                     ...(templates || []).map((t) => ({ id: t.id, label: `${t.name} (${t.language})` }))]} />
-              <SelectField label="Contact List" value={form.contact_list}
-                           onChange={(v) => setForm({ ...form, contact_list: v })}
-                           options={[{ id: '', label: '— Select a list —' },
-                                     ...(lists || []).map((l) => ({ id: l.id, label: `${l.name} (${l.contact_count} contacts)` }))]} />
+              <Field
+                label={t('campaigns.wizard.name_label', 'Campaign Name')}
+                value={form.name}
+                onChange={(v) => setForm({ ...form, name: v })}
+                placeholder={t('campaigns.wizard.name_placeholder', 'e.g. March Flash Sale')}
+              />
+              <SelectField
+                label={t('campaigns.wizard.template_label', 'Template')}
+                value={form.template}
+                onChange={(v) => setForm({ ...form, template: v })}
+                options={[{ id: '', label: `— ${t('campaigns.wizard.template_placeholder', 'Select an approved template…')} —` },
+                          ...(templates || []).map((t) => ({ id: t.id, label: `${t.name} (${t.language})` }))]}
+              />
+              <SelectField
+                label={t('campaigns.wizard.list_label', 'Target Contact List')}
+                value={form.contact_list}
+                onChange={(v) => setForm({ ...form, contact_list: v })}
+                options={[{ id: '', label: `— ${t('campaigns.wizard.list_placeholder', 'Select a contact list…')} —` },
+                          ...(lists || []).map((l) => ({ id: l.id, label: `${l.name} (${l.contact_count})` }))]}
+              />
             </>
           )}
 
@@ -224,13 +249,14 @@ function CampaignWizard({ onClose, onCreated }) {
 
           {step === 3 && (
             <>
-              <Field label="Schedule (optional, leave blank to send now)"
-                     type="datetime-local"
-                     value={form.scheduled_at}
-                     onChange={(v) => setForm({ ...form, scheduled_at: v })} />
+              <Field
+                label={t('campaigns.wizard.send_time_label', 'Send Time')}
+                type="datetime-local"
+                value={form.scheduled_at}
+                onChange={(v) => setForm({ ...form, scheduled_at: v })}
+              />
               <div style={{ ...infoBox, marginTop: 8 }}>
-                Launching this campaign will queue messages for every <b>opted-in</b> contact in the list.
-                Contacts in <i>pending</i> or <i>opted-out</i> status will be skipped.
+                {t('campaigns.wizard.list_hint', 'Messages will be delivered only to opted-in contacts.')}
               </div>
             </>
           )}
@@ -243,7 +269,7 @@ function CampaignWizard({ onClose, onCreated }) {
           display: 'flex', justifyContent: 'space-between',
         }}>
           <button onClick={() => step > 1 ? setStep(step - 1) : onClose()} style={btnSecondary}>
-            <ChevronLeft size={14} /> {step > 1 ? 'Back' : 'Cancel'}
+            <ChevronLeft size={14} /> {step > 1 ? t('bot_editor.back', 'Back') : t('campaigns.wizard.cancel_btn', 'Cancel')}
           </button>
           {step < 3 ? (
             <button onClick={() => setStep(step + 1)} disabled={step === 1 && !canNext1} style={btnPrimary}>
@@ -251,7 +277,7 @@ function CampaignWizard({ onClose, onCreated }) {
             </button>
           ) : (
             <button onClick={save} disabled={saving || !canSave} style={btnPrimary}>
-              {saving ? 'Creating…' : 'Create Campaign'}
+              {saving ? t('campaigns.wizard.submitting', 'Creating…') : t('campaigns.wizard.create_btn', 'Create Campaign')}
             </button>
           )}
         </footer>

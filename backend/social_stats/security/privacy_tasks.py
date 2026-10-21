@@ -164,36 +164,39 @@ def _json(obj) -> str:
 
 
 def _readme_text(user, manifest: dict) -> str:
+    privacy_email = getattr(settings, 'PRIVACY_EMAIL', 'privacy@bopsocial.com')
     return (
-        f'Social Stats — personal data export\n'
+        f'Bop Social — personal data export\n'
         f'-----------------------------\n'
         f'Subject: {user.email or user.username}\n'
         f'Generated: {manifest["export_generated_at"]}\n\n'
         f'Files in this archive:\n'
         + '\n'.join(f'  • {f}' for f in manifest['files'])
-        + '\n\nQuestions? privacy@socialstats.app\n'
+        + f'\n\nQuestions? {privacy_email}\n'
     )
 
 
 def _email_export_link(user, req, manifest: dict) -> None:
     if not user.email:
         return
+    from ..locale_helpers import resolve_user_language, get_email_copy
     frontend = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
     link = f'{frontend}/privacy/download/{req.download_token.hex}/'
-    body = (
-        f'Hi {user.first_name or user.username},\n\n'
-        f'Your Social Stats personal-data export is ready. Download link (expires '
-        f'in 7 days):\n\n'
-        f'  {link}\n\n'
-        f'Archive size: {req.archive_size_bytes:,} bytes\n'
-        f'Files: {", ".join(manifest["files"])}\n\n'
-        f'If you did not request this export, please contact security@socialstats.app\n'
+    lang = resolve_user_language(user)
+    name = user.first_name or user.username
+
+    copy = get_email_copy(
+        'data_export_ready', lang=lang,
+        name=name,
+        link=link,
+        size=req.archive_size_bytes,
+        files=", ".join(manifest.get("files", [])),
     )
     try:
         send_mail(
-            '[Social Stats] Your data export is ready',
-            body,
-            getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@socialstats.app'),
+            copy['subject'],
+            copy['body'],
+            getattr(settings, 'DEFAULT_FROM_EMAIL', 'Bop Social <noreply@bopsocial.com>'),
             [user.email],
             fail_silently=True,
         )

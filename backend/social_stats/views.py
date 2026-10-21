@@ -245,7 +245,14 @@ def me(request):
         from .permissions import PermissionChecker
         profile = user.profile
         ensure_client_profile(profile)
-        data = UserSerializer(user).data
+        user_lang = getattr(profile, 'language', None)
+        tenant_lang = getattr(profile.client, 'default_language', None) if (profile and profile.client) else None
+        effective_lang = user_lang or tenant_lang
+
+        data['language'] = effective_lang
+        data['user_language'] = user_lang
+        data['tenant_language'] = tenant_lang
+        data['has_explicit_language'] = bool(user_lang)
         data['permissions'] = PermissionChecker.get_user_permissions(profile)
         data['onboarding_complete'] = profile.client.onboarding_complete if profile.client else False
         # Feature flags surfaced to the client app.
@@ -303,19 +310,26 @@ class ClientViewSet(viewsets.ModelViewSet):
             if self.action == 'list':
                 # AllClientsPage: only show properly onboarded clients
                 # (admin-created OR accepted invitation from this agency)
-                return Client.objects.filter(
+                qs = Client.objects.filter(
                     Q(userprofile__isnull=True) |
                     Q(userprofile__is_self_registered=False) |
                     Q(userprofile__agency=self.request.user)
                 ).distinct().order_by('company')
-            # All other actions (trigger_sync, dashboard, settings, etc.)
-            # allow full access to every client
-            return Client.objects.all().order_by('company')
-        if profile.role == 'staff':
-            return profile.assigned_clients.all()
-        if profile.role == 'client' and profile.client:
-            return Client.objects.filter(id=profile.client_id)
-        return Client.objects.none()
+            else:
+                # All other actions (trigger_sync, dashboard, settings, etc.)
+                # allow full access to every client
+                qs = Client.objects.all().order_by('company')
+        elif profile.role == 'staff':
+            qs = profile.assigned_clients.all().order_by('company')
+        elif profile.role == 'client' and profile.client:
+            qs = Client.objects.filter(id=profile.client_id)
+        else:
+            return Client.objects.none()
+
+        bop_org_id = self.request.query_params.get('bop_organization_id')
+        if bop_org_id:
+            qs = qs.filter(bop_organization_id=bop_org_id)
+        return qs
 
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
@@ -396,11 +410,32 @@ class ClientViewSet(viewsets.ModelViewSet):
             followers=Sum('followers'),
         ))
 
+        # Capability map for connected credentials
+        capabilities = {}
+        for cred in PlatformCredential.objects.filter(client=client, is_active=True):
+            if cred.platform == 'instagram':
+                scopes = [s.strip().lower() for s in (cred.scope or '').replace(',', ' ').split() if s.strip()]
+                has_adv = 'instagram_manage_insights' in scopes
+                capabilities['instagram'] = {
+                    'analytics_level': 'advanced' if has_adv else 'basic',
+                    'supports_timeseries': has_adv,
+                    'supports_media_metrics': True,
+                    'reason': None if has_adv else 'instagram_manage_insights scope not granted; timeseries insights unavailable',
+                }
+            else:
+                capabilities[cred.platform] = {
+                    'analytics_level': 'advanced',
+                    'supports_timeseries': True,
+                    'supports_media_metrics': True,
+                    'reason': None,
+                }
+
         return Response({
-            'client':      ClientSerializer(client).data,
-            'period':      {'since': since.isoformat(), 'until': until.isoformat()},
-            'totals':      agg,
-            'by_platform': by_platform,
+            'client':       ClientSerializer(client).data,
+            'period':       {'since': since.isoformat(), 'until': until.isoformat()},
+            'totals':       agg,
+            'by_platform':  by_platform,
+            'capabilities': capabilities,
         })
 
     @action(detail=True, methods=['get'])

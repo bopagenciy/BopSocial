@@ -15,10 +15,12 @@
  * draw a different edge from each option.
  */
 import { Handle, Position } from 'reactflow';
+import { useTranslation } from 'react-i18next';
 import { getNodeMeta } from './nodeCatalog';
 
 export default function CanvasNode({ data, selected }) {
-  const meta = getNodeMeta(data.type);
+  const { t } = useTranslation('messaging');
+  const meta = getNodeMeta(data.type, t);
   const Icon = meta.icon;
   const summary = describeNode(data);
 

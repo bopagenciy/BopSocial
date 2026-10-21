@@ -77,6 +77,11 @@ class FacebookPublisher(BasePublisher):
     def publish_video(self, credential, content: str, video_url: str, *,
                       thumbnail: Optional[str] = None, **kwargs) -> PublishResult:
         self._require_page(credential)
+        from ..media_service import validate_media_url_for_provider
+        validate_media_url_for_provider(video_url, 'facebook', lang=kwargs.get('lang', 'en'))
+        if thumbnail:
+            validate_media_url_for_provider(thumbnail, 'facebook', lang=kwargs.get('lang', 'en'))
+
         client = GraphClient(credential.access_token, timeout=LONG_TIMEOUT)
         params = self._scheduling_params(kwargs)
         data = {'description': content or '', 'file_url': video_url, **params}
@@ -96,6 +101,9 @@ class FacebookPublisher(BasePublisher):
     def publish_reel(self, credential, video_url: str, content: str, **kwargs) -> PublishResult:
         """Page Reels — POST /{page_id}/video_reels. 3-step flow handled by Meta."""
         self._require_page(credential)
+        from ..media_service import validate_media_url_for_provider
+        validate_media_url_for_provider(video_url, 'facebook', lang=kwargs.get('lang', 'en'))
+
         client = GraphClient(credential.access_token, timeout=LONG_TIMEOUT)
         # Step 1: initiate upload session
         init = client.post(
@@ -158,6 +166,9 @@ class FacebookPublisher(BasePublisher):
 
     # ── Internals ─────────────────────────────────────────────────────────
     def _publish_single_photo(self, credential, content: str, image_url: str, **kwargs) -> PublishResult:
+        from ..media_service import validate_media_url_for_provider
+        validate_media_url_for_provider(image_url, 'facebook', lang=kwargs.get('lang', 'en'))
+
         client = GraphClient(credential.access_token, timeout=LONG_TIMEOUT)
         params = self._scheduling_params(kwargs)
         body = client.post(
@@ -168,6 +179,10 @@ class FacebookPublisher(BasePublisher):
         return self._result(credential, body, post_id=post_id)
 
     def _publish_multi_photo(self, credential, content: str, image_urls: list[str], **kwargs) -> PublishResult:
+        from ..media_service import validate_media_url_for_provider
+        for url in image_urls:
+            validate_media_url_for_provider(url, 'facebook', lang=kwargs.get('lang', 'en'))
+
         client = GraphClient(credential.access_token, timeout=LONG_TIMEOUT)
         # 1. Upload each photo unpublished
         media_ids = []

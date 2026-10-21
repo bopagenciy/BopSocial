@@ -1,0 +1,72 @@
+{
+  "actions": {
+    "save": "Guardar",
+    "save_changes": "Guardar cambios",
+    "saving": "Guardando...",
+    "cancel": "Cancelar",
+    "close": "Cerrar",
+    "edit": "Editar",
+    "delete": "Eliminar",
+    "upload": "Subir",
+    "upload_photo": "Subir foto",
+    "change_photo": "Cambiar foto",
+    "remove_photo": "Eliminar foto",
+    "back": "Atrás",
+    "next": "Siguiente",
+    "retry": "Reintentar",
+    "confirm": "Confirmar",
+    "continue": "Continuar",
+    "view_all": "Ver todo",
+    "learn_more": "Más información",
+    "get_started": "Comenzar",
+    "sign_in": "Iniciar sesión",
+    "sign_up": "Registrarse",
+    "submit": "Enviar",
+    "accept": "Aceptar",
+    "reject": "Rechazar"
+  },
+  "status": {
+    "loading": "Cargando...",
+    "success": "Éxito",
+    "error": "Error",
+    "active": "Activo",
+    "inactive": "Inactivo",
+    "pending": "Pendiente"
+  },
+  "languages": {
+    "en": "English",
+    "es": "Español",
+    "select_language": "Seleccionar idioma",
+    "preferred_language": "Idioma Preferido",
+    "language_description": "Selecciona el idioma que deseas utilizar en la plataforma."
+  },
+  "cookie_banner": {
+    "title": "Utilizamos cookies para mejorar tu experiencia",
+    "description": "Utilizamos cookies esenciales para mantener Bop Social seguro y funcional, además de cookies analíticas opcionales para medir el uso de la plataforma.",
+    "accept_all": "Aceptar todas",
+    "reject_non_essential": "Rechazar no esenciales",
+    "customize": "Personalizar",
+    "save_preferences": "Guardar preferencias",
+    "essential": "Esenciales",
+    "essential_desc": "Requeridas para autenticación, seguridad y gestión de sesiones.",
+    "functional": "Funcionales",
+    "functional_desc": "Recuerdan tus preferencias como el espacio activo y el idioma de la interfaz.",
+    "analytics": "Analíticas",
+    "analytics_desc": "Nos ayudan a comprender el uso de la plataforma para mejorar el producto.",
+    "marketing": "Marketing",
+    "marketing_desc": "Se utilizan para medir la efectividad de anuncios y novedades."
+  },
+  "comparison": {
+    "feature": "Característica",
+    "recommended": "RECOMENDADO"
+  },
+  "labels": {
+    "popular": "Popular",
+    "new": "Nuevo",
+    "verified": "Verificado",
+    "sample_preview": "Vista previa de muestra",
+    "from": "Desde",
+    "to": "Hasta",
+    "soon": "Próximamente"
+  }
+}

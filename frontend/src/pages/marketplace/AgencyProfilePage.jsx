@@ -18,6 +18,7 @@
  */
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   Building2, ShieldCheck, Star, MapPin, Globe, Send, Mail, Sparkles, ChevronLeft,
   ThumbsUp, MessageSquare, Trash2, Edit3,
@@ -28,8 +29,10 @@ import WriteReviewModal  from '../../components/marketplace/WriteReviewModal';
 import { marketplaceAPI, reviewAPI } from '../../services/api';
 import { useAuth } from '../../hooks/useAuth';
 import toast from '../../components/ui/toast';
+import { formatCurrency } from '../../utils/formatters';
 
 export default function AgencyProfilePage() {
+  const { t, i18n } = useTranslation('agency_portal');
   const { slug } = useParams();
   const { user } = useAuth();
   const [agency,  setAgency]  = useState(null);
@@ -57,15 +60,15 @@ export default function AgencyProfilePage() {
         rows: prev.rows.map((rv) => rv.id === id ? { ...rv, helpful_count: r.data.helpful_count } : rv),
       } : prev);
     } catch (e) {
-      toast.error(e?.response?.data?.error || 'Could not mark helpful');
+      toast.error(e?.response?.data?.error || t('agency_profile.review_item.toast_helpful'));
     }
   }
 
   async function deleteReview(id) {
-    if (!window.confirm('Delete this review?')) return;
+    if (!window.confirm(t('agency_profile.review_item.delete_confirm'))) return;
     try {
       await reviewAPI.delete(id);
-      toast.success('Review deleted');
+      toast.success(t('agency_profile.review_item.toast_deleted'));
       reloadReviews();
     } catch (e) {
       toast.error(e?.response?.data?.error || 'Could not delete');
@@ -75,7 +78,7 @@ export default function AgencyProfilePage() {
   async function respondToReview(id, response) {
     try {
       await reviewAPI.respond(id, response);
-      toast.success('Response posted');
+      toast.success(t('agency_profile.review_item.toast_responded'));
       reloadReviews();
     } catch (e) {
       toast.error(e?.response?.data?.error || 'Could not respond');
@@ -87,13 +90,13 @@ export default function AgencyProfilePage() {
     setLoading(true);
     marketplaceAPI.get(slug)
       .then((r) => { if (!cancelled) setAgency(r.data); })
-      .catch((e) => { if (!cancelled) setError(e?.response?.data?.error || 'Could not load agency'); })
+      .catch((e) => { if (!cancelled) setError(e?.response?.data?.error || t('agency_profile.err_load')); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [slug]);
+  }, [slug, t]);
 
-  if (loading) return <Center><span style={{ color: 'var(--text-tertiary)' }}>Loading…</span></Center>;
-  if (error || !agency) return <Center><div style={errorBox}>{error || 'Agency not found.'}</div></Center>;
+  if (loading) return <Center><span style={{ color: 'var(--text-tertiary)' }}>{t('marketplace.loading')}</span></Center>;
+  if (error || !agency) return <Center><div style={errorBox}>{error || t('agency_profile.not_found')}</div></Center>;
 
   const isEndUser = user?.role === 'client';
 
@@ -101,7 +104,7 @@ export default function AgencyProfilePage() {
     <div style={{ minHeight: '100vh', background: 'var(--surface-page)', padding: '24px 16px 56px' }}>
       <div style={{ maxWidth: 880, margin: '0 auto' }}>
         <Link to="/agencies" style={backLink}>
-          <ChevronLeft size={14} /> All agencies
+          <ChevronLeft size={14} /> {t('agency_profile.back_to_all')}
         </Link>
 
         {/* Hero */}
@@ -114,13 +117,13 @@ export default function AgencyProfilePage() {
           <div style={{ flex: 1, minWidth: 0 }}>
             <h1 style={{ margin: 0, fontSize: 26, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               {agency.name}
-              {agency.is_verified && <ShieldCheck size={18} color="var(--success)" aria-label="Verified" />}
+              {agency.is_verified && <ShieldCheck size={18} color="var(--success)" aria-label={t('agency_profile.verified')} />}
             </h1>
             <div style={{ marginTop: 6, display: 'flex', flexWrap: 'wrap', gap: 14, alignItems: 'center', fontSize: 13, color: 'var(--text-tertiary)' }}>
               {agency.location && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><MapPin size={12} /> {agency.location}</span>}
               {agency.review_count > 0 && (
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                  <Star size={12} fill="var(--warning)" stroke="var(--warning)" /> {agency.avg_rating.toFixed(1)} <span>({agency.review_count} review{agency.review_count === 1 ? '' : 's'})</span>
+                  <Star size={12} fill="var(--warning)" stroke="var(--warning)" /> {agency.avg_rating.toFixed(1)} <span>{t(agency.review_count === 1 ? 'agency_profile.reviews_count_one' : 'agency_profile.reviews_count_other', { count: agency.review_count })}</span>
                 </span>
               )}
               {agency.website && (
@@ -133,11 +136,11 @@ export default function AgencyProfilePage() {
 
           <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
             <button type="button" onClick={() => setContactOpen(true)} style={btnGhost}>
-              <Mail size={13} /> Contact
+              <Mail size={13} /> {t('agency_profile.contact_btn')}
             </button>
             {isEndUser && (
               <button type="button" onClick={() => setInviteOpen(true)} style={btnPrimary}>
-                <Send size={13} /> Invite this agency
+                <Send size={13} /> {t('agency_profile.invite_btn')}
               </button>
             )}
           </div>
@@ -145,7 +148,7 @@ export default function AgencyProfilePage() {
 
         {/* About */}
         {agency.description && (
-          <Section title="About">
+          <Section title={t('agency_profile.section_about')}>
             <p style={{ margin: 0, fontSize: 14, color: 'var(--text-primary)', lineHeight: 1.65, whiteSpace: 'pre-wrap' }}>
               {agency.description}
             </p>
@@ -154,7 +157,7 @@ export default function AgencyProfilePage() {
 
         {/* Services + pricing */}
         {(agency.services_offered?.length > 0 || agency.pricing_starting_at) && (
-          <Section title="Services & pricing">
+          <Section title={t('agency_profile.section_services_pricing')}>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
               {(agency.services_offered || []).map((s) => (
                 <span key={s} style={chipNeutral}>{s}</span>
@@ -162,9 +165,9 @@ export default function AgencyProfilePage() {
             </div>
             {agency.pricing_starting_at && (
               <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: 14 }}>
-                Starting at <strong style={{ color: 'var(--text-primary)' }}>
-                  {agency.pricing_currency} {Number(agency.pricing_starting_at).toLocaleString()}
-                </strong> per month.
+                {t('agency_profile.starting_at')} <strong style={{ color: 'var(--text-primary)' }}>
+                  {formatCurrency(Number(agency.pricing_starting_at), agency.pricing_currency || 'USD', i18n?.language)}
+                </strong> {t('agency_profile.per_month')}
               </p>
             )}
           </Section>
@@ -172,7 +175,7 @@ export default function AgencyProfilePage() {
 
         {/* Industries */}
         {agency.industries_served?.length > 0 && (
-          <Section title="Industries served">
+          <Section title={t('agency_profile.section_industries')}>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {agency.industries_served.map((ind) => (
                 <span key={ind} style={chipNeutral}>{ind}</span>
@@ -183,14 +186,14 @@ export default function AgencyProfilePage() {
 
         {/* Reviews */}
         <Section
-          title={`Reviews ${reviewsExtra?.count > 0 ? `(${reviewsExtra.count})` : ''}`}
+          title={`${t('agency_profile.section_reviews')} ${reviewsExtra?.count > 0 ? `(${reviewsExtra.count})` : ''}`}
         >
           {reviewsExtra?.count > 0 && (
             <RatingSummary avg={reviewsExtra.avg_rating} distribution={reviewsExtra.distribution} count={reviewsExtra.count} />
           )}
           {(reviewsExtra?.rows?.length || 0) === 0 ? (
             <p style={{ margin: 0, fontSize: 13, color: 'var(--text-tertiary)' }}>
-              No reviews yet — be the first to rate them after working together.
+              {t('agency_profile.no_reviews_yet')}
             </p>
           ) : (
             <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -213,8 +216,7 @@ export default function AgencyProfilePage() {
         <div style={trustBox}>
           <Sparkles size={16} style={{ color: 'var(--brand-primary-hover)' }} />
           <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.55 }}>
-            Social Stats keeps you in full control. Whichever agency you choose, you can pause access,
-            revoke permissions, or end the relationship at any time — and every action is logged for audit.
+            {t('agency_profile.trust_banner')}
           </p>
         </div>
       </div>
@@ -223,7 +225,7 @@ export default function AgencyProfilePage() {
         open={inviteOpen}
         onClose={() => setInviteOpen(false)}
         targetAgency={agency}
-        onSent={() => toast.success(`Invitation sent to ${agency.name}`)}
+        onSent={() => toast.success(t('agency_profile.toast_invite_sent', { name: agency.name }))}
       />
 
       <WriteReviewModal
@@ -244,6 +246,7 @@ export default function AgencyProfilePage() {
 }
 
 function ContactModal({ open, onClose, agency }) {
+  const { t } = useTranslation('agency_portal');
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
   const { user } = useAuth();
@@ -251,15 +254,15 @@ function ContactModal({ open, onClose, agency }) {
   if (!open) return null;
 
   async function send() {
-    if (!user) { toast.error('Please sign in to send an inquiry.'); return; }
-    if (!message.trim()) { toast.error('Tell them what you need.'); return; }
+    if (!user) { toast.error(t('agency_profile.contact_modal.toast_signin')); return; }
+    if (!message.trim()) { toast.error(t('agency_profile.contact_modal.toast_need')); return; }
     setBusy(true);
     try {
       await marketplaceAPI.contact(agency.slug, message.trim());
-      toast.success(`Sent to ${agency.name}`);
+      toast.success(t('agency_profile.contact_modal.toast_sent', { name: agency.name }));
       onClose?.();
     } catch (e) {
-      toast.error(e?.response?.data?.error || 'Could not send');
+      toast.error(e?.response?.data?.error || t('agency_profile.contact_modal.err_send'));
     } finally {
       setBusy(false);
     }
@@ -268,21 +271,21 @@ function ContactModal({ open, onClose, agency }) {
   return (
     <div style={backdropStyle} onClick={(e) => { if (e.target === e.currentTarget) onClose?.(); }}>
       <div style={{ ...modalStyle, padding: 22 }}>
-        <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>Contact {agency.name}</h2>
+        <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>{t('agency_profile.contact_modal.title', { name: agency.name })}</h2>
         <p style={{ margin: '4px 0 12px', fontSize: 13, color: 'var(--text-secondary)' }}>
-          A non-binding inquiry. They'll reply via email or invite you to manage.
+          {t('agency_profile.contact_modal.subtitle')}
         </p>
         <textarea
           rows={5}
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          placeholder="Hi! I run a real estate brokerage in Pune and we're posting on Instagram + GMB. Can you help with content + analytics?"
+          placeholder={t('agency_profile.contact_modal.placeholder')}
           style={textareaStyle}
         />
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 12 }}>
-          <button type="button" onClick={onClose} style={btnGhost}>Cancel</button>
+          <button type="button" onClick={onClose} style={btnGhost}>{t('agency_profile.contact_modal.cancel')}</button>
           <button type="button" onClick={send} disabled={busy} style={btnPrimary}>
-            {busy ? 'Sending…' : <>Send <Send size={13} /></>}
+            {busy ? t('agency_profile.contact_modal.sending') : <>{t('agency_profile.contact_modal.send')} <Send size={13} /></>}
           </button>
         </div>
       </div>
@@ -300,9 +303,11 @@ function Section({ title, children }) {
 }
 
 function ReviewItem({ review, isAgencyMember, onHelpful, onDelete, onRespond, onEdit }) {
+  const { t, i18n } = useTranslation('agency_portal');
   const reviewer = review.reviewer || review.reviewer_name;
   const isMine = !!review.is_owner;
   const canRespond = !!isAgencyMember && !review.agency_response;
+  const locale = i18n.language === 'es' ? 'es-ES' : 'en-US';
 
   return (
     <li style={reviewCard}>
@@ -313,10 +318,10 @@ function ReviewItem({ review, isAgencyMember, onHelpful, onDelete, onRespond, on
             <Star key={i} size={12} fill={i < review.rating ? 'var(--warning)' : 'transparent'} stroke="var(--warning)" />
           ))}
         </span>
-        {review.is_verified && <span style={verifiedChip}><ShieldCheck size={10} /> Verified</span>}
+        {review.is_verified && <span style={verifiedChip}><ShieldCheck size={10} /> {t('agency_profile.review_item.verified')}</span>}
         {review.created_at && (
           <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
-            {new Date(review.created_at).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}
+            {new Date(review.created_at).toLocaleDateString(locale, { month: 'short', year: 'numeric' })}
           </span>
         )}
       </div>
@@ -328,15 +333,15 @@ function ReviewItem({ review, isAgencyMember, onHelpful, onDelete, onRespond, on
 
       {(review.pros?.length > 0 || review.cons?.length > 0) && (
         <div style={{ marginTop: 8, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 8 }}>
-          {review.pros?.length > 0 && <ProsCons items={review.pros} tone="success" label="Pros" />}
-          {review.cons?.length > 0 && <ProsCons items={review.cons} tone="warning" label="Cons" />}
+          {review.pros?.length > 0 && <ProsCons items={review.pros} tone="success" label={t('reviews.pros')} />}
+          {review.cons?.length > 0 && <ProsCons items={review.cons} tone="warning" label={t('reviews.cons')} />}
         </div>
       )}
 
       {review.agency_response && (
         <div style={agencyResponseBox}>
           <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--brand-primary-hover)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-            Agency response
+            {t('agency_profile.review_item.agency_response')}
           </div>
           <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-primary)' }}>{review.agency_response}</p>
         </div>
@@ -344,16 +349,16 @@ function ReviewItem({ review, isAgencyMember, onHelpful, onDelete, onRespond, on
 
       <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         <button type="button" onClick={onHelpful} style={miniBtn}>
-          <ThumbsUp size={11} /> Helpful{review.helpful_count > 0 && ` · ${review.helpful_count}`}
+          <ThumbsUp size={11} /> {t('agency_profile.review_item.helpful')}{review.helpful_count > 0 && ` · ${review.helpful_count}`}
         </button>
         {isMine && review.is_editable && onEdit && (
           <button type="button" onClick={onEdit} style={miniBtn}>
-            <Edit3 size={11} /> Edit
+            <Edit3 size={11} /> {t('agency_profile.review_item.edit')}
           </button>
         )}
         {isMine && (
           <button type="button" onClick={onDelete} style={{ ...miniBtn, color: 'var(--danger)', borderColor: 'var(--danger)' }}>
-            <Trash2 size={11} /> Delete
+            <Trash2 size={11} /> {t('agency_profile.review_item.delete')}
           </button>
         )}
         {canRespond && <RespondInline onSubmit={onRespond} />}
@@ -382,12 +387,13 @@ function ProsCons({ items, tone, label }) {
 }
 
 function RespondInline({ onSubmit }) {
+  const { t } = useTranslation('agency_portal');
   const [open, setOpen] = useState(false);
   const [text, setText] = useState('');
   if (!open) {
     return (
       <button type="button" onClick={() => setOpen(true)} style={miniBtn}>
-        <MessageSquare size={11} /> Respond
+        <MessageSquare size={11} /> {t('agency_profile.review_item.respond')}
       </button>
     );
   }
@@ -397,16 +403,17 @@ function RespondInline({ onSubmit }) {
         type="text"
         value={text}
         onChange={(e) => setText(e.target.value)}
-        placeholder="Your response (public)"
+        placeholder={t('agency_profile.review_item.write_response_placeholder')}
         style={{ flex: 1, padding: '7px 10px', background: 'var(--surface-sunken)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)', fontSize: 12, color: 'var(--text-primary)', outline: 'none', fontFamily: 'inherit' }}
       />
-      <button type="button" onClick={() => { if (text.trim()) { onSubmit(text.trim()); setOpen(false); setText(''); } }} style={miniBtn}>Post</button>
-      <button type="button" onClick={() => { setOpen(false); setText(''); }} style={miniBtn}>Cancel</button>
+      <button type="button" onClick={() => { if (text.trim()) { onSubmit(text.trim()); setOpen(false); setText(''); } }} style={miniBtn}>{t('agency_profile.review_item.post_response')}</button>
+      <button type="button" onClick={() => { setOpen(false); setText(''); }} style={miniBtn}>{t('agency_profile.contact_modal.cancel')}</button>
     </div>
   );
 }
 
 function RatingSummary({ avg, distribution, count }) {
+  const { t } = useTranslation('agency_portal');
   const max = Math.max(1, ...Object.values(distribution || {}));
   return (
     <div style={{ display: 'flex', gap: 20, alignItems: 'center', padding: 12, marginBottom: 14, background: 'var(--surface-sunken)', borderRadius: 'var(--radius-md)' }}>
@@ -419,7 +426,7 @@ function RatingSummary({ avg, distribution, count }) {
             <Star key={i} size={13} fill={i < Math.round(avg) ? 'var(--warning)' : 'transparent'} stroke="var(--warning)" />
           ))}
         </div>
-        <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>{count} review{count === 1 ? '' : 's'}</div>
+        <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>{t(count === 1 ? 'agency_profile.reviews_count_one' : 'agency_profile.reviews_count_other', { count })}</div>
       </div>
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 3 }}>
         {[5, 4, 3, 2, 1].map((star) => {

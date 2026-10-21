@@ -1,12 +1,10 @@
 /* ============================================================================
- *  Social Stats — Social Media Management & Marketing Platform
- *  Author    : Chandrabhan Shekhawat
- *  Company   : Gigai Kripa Services
- *  Website   : https://gigaikripaservices.com/
- *  Copyright (c) 2026 Chandrabhan Shekhawat / Gigai Kripa Services.
- *  Released under the MIT License — see LICENSE. Keep this notice.
+ *  Bop Social — Marketing Operating System
+ *  Author    : Bop Social Team
+ *  Website   : https://bopsocial.com
  * ========================================================================== */
 import { Link, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { ArrowLeft, ArrowRight, Sparkles } from 'lucide-react';
 
 import MarketingLayout from '../../components/marketing/MarketingLayout';
@@ -31,7 +29,7 @@ const TITLES = {
   '/product/inbox':               { kind: 'product', title: 'Unified Inbox', blurb: 'Every conversation in one place.' },
   '/product/whatsapp':            { kind: 'product', title: 'WhatsApp Business', blurb: 'Campaigns + two-way chat at scale.' },
   '/product/bot-builder':         { kind: 'product', title: 'CTWA Bot Builder', blurb: 'Visual flow editor for ad funnels.' },
-  '/product/ai':                  { kind: 'product', title: 'AI Studio',     blurb: 'Social Stats in every corner.' },
+  '/product/ai':                  { kind: 'product', title: 'AI Studio',     blurb: 'Bop Social in every corner.' },
   '/product/ai-assistant':        { kind: 'product', title: 'AI Assistant',  blurb: 'Cmd+J — talk to your marketing data.' },
   '/product/reports':             { kind: 'product', title: 'Reports',       blurb: 'Reports that write themselves.' },
   '/product/automations':         { kind: 'product', title: 'Automations',   blurb: 'IF this happens, do that.' },
@@ -50,6 +48,7 @@ const TITLES = {
 
 
 export default function ComingSoonPage() {
+  const { t } = useTranslation(['marketing', 'navigation']);
   const { pathname } = useLocation();
   const meta = TITLES[pathname] || { kind: 'product', title: 'Coming soon', blurb: 'This page is shipping shortly.' };
 
@@ -75,13 +74,13 @@ export default function ComingSoonPage() {
             display: 'inline-flex', alignItems: 'center', gap: 6,
             padding: '6px 14px', marginBottom: 24,
             fontSize: 12, fontWeight: 600,
-            color: '#00CCF5',
-            background: 'rgba(0,204,245,0.10)',
-            border: '1px solid rgba(0,204,245,0.25)',
+            color: 'var(--brand-primary)',
+            background: 'var(--brand-primary-soft)',
+            border: '1px solid rgba(245,166,35,0.25)',
             borderRadius: 'var(--radius-pill)',
           }}>
             <Sparkles size={12} />
-            {meta.kind === 'solution' ? 'Solution page' : 'Product page'} — shipping soon
+            {meta.kind === 'solution' ? t('coming_soon.badge_solution') : t('coming_soon.badge_product')}
           </span>
 
           <h1 style={{
@@ -111,7 +110,7 @@ export default function ComingSoonPage() {
             color: 'rgba(255,255,255,0.55)',
             maxWidth: 540, lineHeight: 1.6,
           }}>
-            We're building this page right now. In the meantime, sign up for a free account and explore the live product — every feature on the menu is already shipping.
+            {t('coming_soon.notice')}
           </p>
 
           <div style={{
@@ -121,10 +120,10 @@ export default function ComingSoonPage() {
           }}>
             <Button as={Link} to="/signup" size="lg"
                     style={{
-                      background: 'linear-gradient(135deg, #00CCF5, #00A8D8)',
-                      color: '#0a0e14', border: 'none',
+                      background: 'var(--brand-gradient)',
+                      color: '#1E202A', fontWeight: 600, border: 'none',
                     }}>
-              Start free <ArrowRight size={15} />
+              {t('coming_soon.get_started')} <ArrowRight size={15} />
             </Button>
             <Button as={Link} to="/" size="lg" variant="ghost"
                     style={{
@@ -132,7 +131,7 @@ export default function ComingSoonPage() {
                       background: 'rgba(255,255,255,0.08)',
                       border: '1px solid rgba(255,255,255,0.18)',
                     }}>
-              <ArrowLeft size={15} /> Back to home
+              <ArrowLeft size={15} /> {t('coming_soon.back_home')}
             </Button>
           </div>
         </div>

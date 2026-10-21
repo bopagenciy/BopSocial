@@ -22,6 +22,9 @@ import { PLATFORMS } from '../services/platforms';
 import { useClients } from '../hooks/useData';
 import PageHeader from '../components/layout/PageHeader';
 import SocialPlatformIcon from '../components/ui/SocialPlatformIcon';
+import { useTranslation } from 'react-i18next';
+import { formatCurrency, formatCompactCurrency, formatMonthName } from '../utils/formatters';
+import { CANONICAL_CURRENCIES } from '../utils/currencies';
 
 // ── Inject styles once ────────────────────────────────────────────────────────
 if (typeof document !== 'undefined' && !document.getElementById('roi-styles')) {
@@ -98,13 +101,9 @@ function useCountUp(target, duration = 900) {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-function fmtCurrency(n, symbol) {
-  const sym = symbol || '$';
-  if (!n && n !== 0) return `${sym}0`;
-  const abs = Math.abs(n);
-  if (abs >= 1_000_000) return `${sym}${(n / 1_000_000).toFixed(2)}M`;
-  if (abs >= 1_000)     return `${sym}${(n / 1_000).toFixed(1)}K`;
-  return `${sym}${Number(n).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+function fmtCurrency(n, currency = 'USD', locale = 'en') {
+  if (n === null || n === undefined) return formatCurrency(0, currency, locale);
+  return formatCurrency(Number(n), currency, locale, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 }
 
 function fmtNum(n) {
@@ -121,15 +120,12 @@ function roiColor(pct) {
   return '#EF4444';
 }
 
-function roiLabel(pct) {
-  if (pct > 500)  return { text: 'Excellent', bg: '#D1FAE5', color: '#059669' };
-  if (pct > 200)  return { text: 'Good',      bg: '#DBEAFE', color: '#2563EB' };
-  if (pct > 0)    return { text: 'Average',   bg: '#FEF3C7', color: '#D97706' };
-  return              { text: 'Losing Money', bg: '#FEE2E2', color: '#EF4444' };
+function roiStatus(pct) {
+  if (pct > 500)  return { key: 'excellent',    text: 'Excellent',    bg: '#D1FAE5', color: '#059669' };
+  if (pct > 200)  return { key: 'good',         text: 'Good',         bg: '#DBEAFE', color: '#2563EB' };
+  if (pct > 0)    return { key: 'average',      text: 'Average',      bg: '#FEF3C7', color: '#D97706' };
+  return                 { key: 'losing_money', text: 'Losing Money', bg: '#FEE2E2', color: '#EF4444' };
 }
-
-const MONTHS = ['January','February','March','April','May','June',
-                'July','August','September','October','November','December'];
 
 const PLATFORM_CONFIGS = [
   { key: 'facebook_budget',  label: 'Facebook',    platformKey: 'facebook' },
@@ -140,8 +136,8 @@ const PLATFORM_CONFIGS = [
 ];
 
 // ── Sub-components ────────────────────────────────────────────────────────────
-function CurrencyInput({ label, value, onChange, symbol, helper, disabled = false }) {
-  const sym = symbol || '$';
+function CurrencyInput({ label, value, onChange, currency = 'USD', symbol, helper, disabled = false, locale = 'en' }) {
+  const sym = symbol || (currency ? formatCurrency(0, currency, locale).replace(/[0-9.,\s]/g, '') : '$') || '$';
   return (
     <div style={{ marginBottom: 12 }}>
       {label && <label style={inputLabel}>{label}</label>}
@@ -187,7 +183,7 @@ function SliderInput({ label, value, onChange, min, max, step, unit, helper, dis
   );
 }
 
-function PlatformRow({ row, symbol }) {
+function PlatformRow({ row, currency = 'USD', symbol, locale = 'en' }) {
   if (!row) return null;
   const pl = PLATFORMS[row.platform] || {};
   const roi = row.roi_percentage || 0;
@@ -205,17 +201,17 @@ function PlatformRow({ row, symbol }) {
           {pl.label || row.platform}
         </span>
       </td>
-      <td style={{ ...tdStyle, textAlign: 'right' }}>{symbol}{(row.budget || 0).toLocaleString()}</td>
+      <td style={{ ...tdStyle, textAlign: 'right' }}>{formatCurrency(row.budget || 0, currency, locale, { maximumFractionDigits: 0 })}</td>
       <td style={{ ...tdStyle, textAlign: 'right' }}>{fmtNum(row.clicks)}</td>
       <td style={{ ...tdStyle, textAlign: 'right' }}>{fmtNum(row.leads)}</td>
       <td style={{ ...tdStyle, textAlign: 'right' }}>{fmtNum(row.sales)}</td>
-      <td style={{ ...tdStyle, textAlign: 'right' }}>{fmtCurrency(row.revenue, symbol)}</td>
+      <td style={{ ...tdStyle, textAlign: 'right' }}>{fmtCurrency(row.revenue, currency, locale)}</td>
       <td style={{ ...tdStyle, textAlign: 'right' }}><span style={roiStyle}>{roi.toFixed(0)}%</span></td>
     </tr>
   );
 }
 
-function GoalBar({ label, current, target, progress, fmt }) {
+function GoalBar({ label, current, target, progress, fmt, t }) {
   const pct    = Math.min(Number(progress) || 0, 100);
   const onTrack = pct >= 50;
   return (
@@ -227,7 +223,9 @@ function GoalBar({ label, current, target, progress, fmt }) {
           background: onTrack ? '#D1FAE5' : '#FEE2E2',
           color:      onTrack ? '#059669' : '#EF4444',
         }}>
-          {onTrack ? 'On Track' : 'Behind'}
+          {onTrack
+            ? (t ? t('roi_calculator.goals.on_track', 'On Track') : 'On Track')
+            : (t ? t('roi_calculator.goals.behind', 'Behind') : 'Behind')}
         </span>
       </div>
       <div style={{ height: 8, background: 'var(--border-default)', borderRadius: 4, overflow: 'hidden', marginBottom: 4 }}>
@@ -239,8 +237,8 @@ function GoalBar({ label, current, target, progress, fmt }) {
         }} />
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-tertiary)' }}>
-        <span>{fmt(current)} achieved</span>
-        <span>{pct.toFixed(0)}% of {fmt(target)}</span>
+        <span>{t ? t('roi_calculator.goals.achieved', { achieved: fmt(current), defaultValue: `${fmt(current)} achieved` }) : `${fmt(current)} achieved`}</span>
+        <span>{t ? t('roi_calculator.goals.of_target', { pct: pct.toFixed(0), target: fmt(target), defaultValue: `${pct.toFixed(0)}% of ${fmt(target)}` }) : `${pct.toFixed(0)}% of ${fmt(target)}`}</span>
       </div>
     </div>
   );
@@ -248,6 +246,8 @@ function GoalBar({ label, current, target, progress, fmt }) {
 
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function ROICalculatorPage({ clientId: propClientId }) {
+  const { t, i18n } = useTranslation(['analytics', 'common']);
+  const locale = i18n?.language || 'en';
   const [searchParams, setSearchParams] = useSearchParams();
   const { clients } = useClients();
   const showClientSelector = !propClientId;
@@ -293,7 +293,8 @@ export default function ROICalculatorPage({ clientId: propClientId }) {
     }
   }, [settings, loadFromSettings, calculate, month, year]);
 
-  const symbol = inputs.currency_symbol || '$';
+  const currency = inputs.currency || settings?.currency || 'USD';
+  const symbol = formatCurrency(0, currency, locale).replace(/[0-9.,\s]/g, '') || '$';
 
   const totalInvestment = (
     (inputs.facebook_budget || 0) + (inputs.instagram_budget || 0) +
@@ -309,7 +310,7 @@ export default function ROICalculatorPage({ clientId: propClientId }) {
     if (res.success) {
       setIsEditingSettings(false);
     }
-    setSaveMsg(res.success ? '✓ Settings saved' : '✗ Save failed');
+    setSaveMsg(res.success ? `✓ ${t('roi_calculator.settings_saved', 'Settings saved')}` : `✗ ${t('roi_calculator.save_failed', 'Save failed')}`);
     setTimeout(() => setSaveMsg(''), 3000);
   };
 
@@ -323,19 +324,20 @@ export default function ROICalculatorPage({ clientId: propClientId }) {
       loadFromSettings(settings);
       calculate(settings, month, year);
       setIsEditingSettings(false);
-      setSaveMsg('Changes discarded');
+      setSaveMsg(t('roi_calculator.changes_discarded', 'Changes discarded'));
       setTimeout(() => setSaveMsg(''), 3000);
     }
   };
 
   const handleSaveReport = async () => {
     const res = await saveReport();
-    setSaveMsg(res.success ? '✓ Report saved' : '✗ ' + res.error);
+    setSaveMsg(res.success ? `✓ ${t('roi_calculator.report_saved', 'Report saved')}` : '✗ ' + (res.error || t('roi_calculator.save_failed', 'Save failed')));
     setTimeout(() => setSaveMsg(''), 3000);
   };
 
   const roi    = result?.roi_percentage || 0;
-  const rLabel = roiLabel(roi);
+  const rStatus = roiStatus(roi);
+  const statusText = t(`roi_calculator.status.${rStatus.key}`, rStatus.text);
   const hasSavedSettings = Boolean(settings);
   const fieldsDisabled = hasSavedSettings && !isEditingSettings;
 
@@ -348,10 +350,12 @@ export default function ROICalculatorPage({ clientId: propClientId }) {
     return (
       <div style={pageWrap}>
         <PageHeader
-          title="ROI Calculator"
-          subtitle="Measure the return on your social media investment"
+          title={t('roi_calculator.title', 'ROI Calculator')}
+          subtitle={t('roi_calculator.subtitle', 'Measure the return on your social media investment')}
           actions={(
             <select
+              id="roi-client-select"
+              aria-label={t('roi_calculator.client_label', 'Client')}
               value=""
               onChange={e => {
                 const nextClientId = e.target.value ? parseInt(e.target.value, 10) : null;
@@ -360,7 +364,7 @@ export default function ROICalculatorPage({ clientId: propClientId }) {
               }}
               style={clientSelectStyle}
             >
-              <option value="">All Users</option>
+              <option value="">{t('all_users', 'All Users')}</option>
               {clients.map(c => (
                 <option key={c.id} value={c.id}>{c.company}</option>
               ))}
@@ -369,12 +373,16 @@ export default function ROICalculatorPage({ clientId: propClientId }) {
         />
         <div style={{ padding: 40, maxWidth: 500, margin: '60px auto', textAlign: 'center' }}>
           <div style={{ fontSize: 48, marginBottom: 20 }}>📈</div>
-          <h2 style={{ margin: '0 0 8px', fontSize: 20, fontWeight: 800, color: 'var(--text-primary)' }}>ROI Calculator</h2>
+          <h2 style={{ margin: '0 0 8px', fontSize: 20, fontWeight: 800, color: 'var(--text-primary)' }}>
+            {t('roi_calculator.title', 'ROI Calculator')}
+          </h2>
           <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 0 }}>
-            Select a user from the top-right dropdown to view and calculate their return on investment.
+            {t('roi_calculator.select_user_prompt', 'Select a user from the top-right dropdown to view and calculate their return on investment.')}
           </p>
           {clients.length === 0 && (
-            <p style={{ color: 'var(--text-tertiary)', fontSize: 13, marginTop: 12 }}>No users found.</p>
+            <p style={{ color: 'var(--text-tertiary)', fontSize: 13, marginTop: 12 }}>
+              {t('roi_calculator.no_users_found', 'No users found.')}
+            </p>
           )}
         </div>
       </div>
@@ -384,7 +392,7 @@ export default function ROICalculatorPage({ clientId: propClientId }) {
   if (settingsLoading) {
     return (
       <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-secondary)' }}>
-        Loading ROI Calculator…
+        {t('roi_calculator.loading', 'Loading ROI Calculator…')}
       </div>
     );
   }
@@ -392,14 +400,16 @@ export default function ROICalculatorPage({ clientId: propClientId }) {
   return (
     <div style={pageWrap}>
       <PageHeader
-        title="ROI Calculator"
-        subtitle="Measure the return on your social media investment"
+        title={t('roi_calculator.title', 'ROI Calculator')}
+        subtitle={t('roi_calculator.subtitle', 'Measure the return on your social media investment')}
         actions={(
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
             {saveMsg && <span style={{ fontSize: 13, color: saveMsg.startsWith('✓') ? '#059669' : '#EF4444', fontWeight: 600 }}>{saveMsg}</span>}
             <div style={{ display: 'flex', gap: 8 }}>
               {showClientSelector && (
                 <select
+                  id="roi-client-select"
+                  aria-label={t('roi_calculator.client_label', 'Client')}
                   value={clientId || ''}
                   onChange={e => {
                     const nextClientId = e.target.value ? parseInt(e.target.value, 10) : null;
@@ -408,14 +418,30 @@ export default function ROICalculatorPage({ clientId: propClientId }) {
                   }}
                   style={clientSelectStyle}
                 >
-                  <option value="">All Users</option>
+                  <option value="">{t('all_users', 'All Users')}</option>
                   {clients.map(c => <option key={c.id} value={c.id}>{c.company}</option>)}
                 </select>
               )}
-              <select value={month} onChange={e => setMonthYear(parseInt(e.target.value), year)} style={selectStyle}>
-                {MONTHS.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
+              <select
+                id="roi-month-select"
+                aria-label={t('roi_calculator.month_label', 'Month')}
+                value={month}
+                onChange={e => setMonthYear(parseInt(e.target.value), year)}
+                style={selectStyle}
+              >
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(mNum => (
+                  <option key={mNum} value={mNum}>
+                    {formatMonthName(mNum, locale)}
+                  </option>
+                ))}
               </select>
-              <select value={year} onChange={e => setMonthYear(month, parseInt(e.target.value))} style={selectStyle}>
+              <select
+                id="roi-year-select"
+                aria-label={t('roi_calculator.year_label', 'Year')}
+                value={year}
+                onChange={e => setMonthYear(month, parseInt(e.target.value))}
+                style={selectStyle}
+              >
                 {yearOptions.map(y => <option key={y} value={y}>{y}</option>)}
               </select>
             </div>
@@ -429,12 +455,37 @@ export default function ROICalculatorPage({ clientId: propClientId }) {
 
           {/* Monthly Investment */}
           <div style={card}>
-            <h3 style={cardTitle}><DollarSign size={16} style={{ color: '#2563EB' }} /> Monthly Investment</h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h3 style={{ ...cardTitle, margin: 0 }}>
+                <DollarSign size={16} style={{ color: '#2563EB' }} /> {t('roi_calculator.monthly_investment', 'Monthly Investment')}
+              </h3>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <label htmlFor="roi-currency-select" style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>
+                  {t('roi_calculator.currency_label', 'Currency:')}
+                </label>
+                <select
+                  id="roi-currency-select"
+                  aria-label={t('roi_calculator.currency_aria', 'Currency')}
+                  value={currency}
+                  onChange={e => updateInput('currency', e.target.value)}
+                  disabled={fieldsDisabled}
+                  style={{ ...selectStyle, padding: '4px 8px', fontSize: 12 }}
+                >
+                  {CANONICAL_CURRENCIES.map(c => (
+                    <option key={c.code} value={c.code}>{c.code} ({c.symbol})</option>
+                  ))}
+                </select>
+              </div>
+            </div>
             {hasSavedSettings && (
               <div style={settingsBanner}>
-                <span style={{ color: 'var(--text-primary)', fontWeight: 700 }}>Settings saved</span>
+                <span style={{ color: 'var(--text-primary)', fontWeight: 700 }}>
+                  {t('roi_calculator.settings_saved_title', 'Settings saved')}
+                </span>
                 <span style={{ color: 'var(--text-secondary)' }}>
-                  {fieldsDisabled ? 'Click Edit Settings to change budgets and business numbers.' : 'You are editing the saved ROI settings.'}
+                  {fieldsDisabled
+                    ? t('roi_calculator.settings_saved_help_disabled', 'Click Edit Settings to change budgets and business numbers.')
+                    : t('roi_calculator.settings_saved_help_editing', 'You are editing the saved ROI settings.')}
                 </span>
               </div>
             )}
@@ -462,7 +513,7 @@ export default function ROICalculatorPage({ clientId: propClientId }) {
             })}
 
             <div style={{ marginBottom: 10 }}>
-              <label style={inputLabel}>Agency Management Fee</label>
+              <label style={inputLabel}>{t('roi_calculator.agency_fee', 'Agency Management Fee')}</label>
               <div style={fieldsDisabled ? disabledInputWrap : inputWrap}>
                 <span style={inputPrefix}>{symbol}</span>
                 <input
@@ -476,60 +527,68 @@ export default function ROICalculatorPage({ clientId: propClientId }) {
             </div>
 
             <div style={{ ...totalDisplay, marginTop: 12 }}>
-              <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Total Monthly Investment</span>
+              <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                {t('roi_calculator.total_monthly_investment', 'Total Monthly Investment')}
+              </span>
               <span style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
-                {fmtCurrency(totalInvestment, symbol)}
+                {fmtCurrency(totalInvestment, currency, locale)}
               </span>
             </div>
           </div>
 
           {/* Business Settings */}
           <div style={{ ...card, marginTop: 16 }}>
-            <h3 style={cardTitle}><Target size={16} style={{ color: '#059669' }} /> Your Business Numbers</h3>
+            <h3 style={cardTitle}>
+              <Target size={16} style={{ color: '#059669' }} /> {t('roi_calculator.business_numbers.title', 'Your Business Numbers')}
+            </h3>
 
             <CurrencyInput
-              label="How much is one sale worth?"
+              label={t('roi_calculator.business_numbers.avg_sale_value', 'How much is one sale worth?')}
               value={inputs.avg_sale_value}
               onChange={v => updateInput('avg_sale_value', v)}
-              symbol={symbol}
-              helper="Average revenue per customer / sale"
+              currency={currency}
+              locale={locale}
+              helper={t('roi_calculator.business_numbers.avg_sale_helper', 'Average revenue per customer / sale')}
               disabled={fieldsDisabled}
             />
 
             <SliderInput
-              label="Website visitor → Lead rate"
+              label={t('roi_calculator.business_numbers.conversion_rate', 'Website visitor → Lead rate')}
               value={inputs.conversion_rate}
               onChange={v => updateInput('conversion_rate', v)}
               min={0.1} max={20} step={0.1}
-              helper="Industry average: 2–3%"
+              helper={t('roi_calculator.business_numbers.conversion_rate_helper', 'Industry average: 2–3%')}
               disabled={fieldsDisabled}
             />
 
             <SliderInput
-              label="Lead → Customer rate"
+              label={t('roi_calculator.business_numbers.lead_to_sale_rate', 'Lead → Customer rate')}
               value={inputs.lead_to_sale_rate}
               onChange={v => updateInput('lead_to_sale_rate', v)}
               min={1} max={100} step={1}
-              helper="How many leads become paying customers"
+              helper={t('roi_calculator.business_numbers.lead_to_sale_helper', 'How many leads become paying customers')}
               disabled={fieldsDisabled}
             />
           </div>
 
           {/* Goals */}
           <div style={{ ...card, marginTop: 16 }}>
-            <h3 style={cardTitle}><TrendingUp size={16} style={{ color: '#D97706' }} /> Monthly Goals</h3>
+            <h3 style={cardTitle}>
+              <TrendingUp size={16} style={{ color: '#D97706' }} /> {t('roi_calculator.goals.title', 'Monthly Goals')}
+            </h3>
 
             <CurrencyInput
-              label="Revenue Goal"
+              label={t('roi_calculator.goals.revenue_goal', 'Revenue Goal')}
               value={inputs.monthly_revenue_goal}
               onChange={v => updateInput('monthly_revenue_goal', v)}
-              symbol={symbol}
-              helper="Target revenue for this month"
+              currency={currency}
+              locale={locale}
+              helper={t('roi_calculator.goals.revenue_goal_helper', 'Target revenue for this month')}
               disabled={fieldsDisabled}
             />
 
             <div style={{ marginBottom: 12 }}>
-              <label style={inputLabel}>Leads Goal</label>
+              <label style={inputLabel}>{t('roi_calculator.goals.leads_goal', 'Leads Goal')}</label>
               <div style={fieldsDisabled ? disabledInputWrap : inputWrap}>
                 <span style={inputPrefix}>#</span>
                 <input
@@ -540,7 +599,7 @@ export default function ROICalculatorPage({ clientId: propClientId }) {
                   style={fieldsDisabled ? disabledInputField : inputField}
                 />
               </div>
-              <p style={helperText}>Target number of leads this month</p>
+              <p style={helperText}>{t('roi_calculator.goals.leads_goal_helper', 'Target number of leads this month')}</p>
             </div>
           </div>
 
@@ -548,22 +607,22 @@ export default function ROICalculatorPage({ clientId: propClientId }) {
           <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
             {fieldsDisabled ? (
               <button onClick={handleEditSettings} style={secondaryBtn}>
-                <Save size={14} /> Edit Settings
+                <Save size={14} /> {t('roi_calculator.actions.edit_settings', 'Edit Settings')}
               </button>
             ) : (
               <>
                 <button onClick={handleSaveSettings} disabled={saving} style={secondaryBtn}>
-                  <Save size={14} /> {saving ? 'Saving…' : 'Save Settings'}
+                  <Save size={14} /> {saving ? t('roi_calculator.actions.saving', 'Saving…') : t('roi_calculator.actions.save_settings', 'Save Settings')}
                 </button>
                 {hasSavedSettings && (
                   <button onClick={handleCancelEdit} disabled={saving} style={ghostBtn}>
-                    Cancel
+                    {t('roi_calculator.actions.cancel', 'Cancel')}
                   </button>
                 )}
               </>
             )}
             <button onClick={handleSaveReport} style={primaryBtn}>
-              <RefreshCw size={14} /> Save Report
+              <RefreshCw size={14} /> {t('roi_calculator.actions.save_report', 'Save Report')}
             </button>
           </div>
         </div>
@@ -586,7 +645,7 @@ export default function ROICalculatorPage({ clientId: propClientId }) {
               <Info size={32} style={{ color: '#EF4444', margin: '0 auto 12px', display: 'block' }} />
               <p style={{ color: 'var(--text-secondary)', fontSize: 14, margin: 0 }}>{error}</p>
               <p style={{ color: 'var(--text-tertiary)', fontSize: 12, marginTop: 8 }}>
-                Enter your budget and business numbers on the left to see your ROI.
+                {t('roi_calculator.error_help', 'Enter your budget and business numbers on the left to see your ROI.')}
               </p>
             </div>
           )}
@@ -597,7 +656,7 @@ export default function ROICalculatorPage({ clientId: propClientId }) {
               {/* Card 1: Main ROI */}
               <div style={{ ...card, textAlign: 'center', padding: 32, marginBottom: 16, border: `2px solid ${roiColor(roi)}20` }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>
-                  Return on Investment
+                  {t('roi_calculator.cards.return_on_investment', 'Return on Investment')}
                 </div>
                 <div style={{
                   fontSize: 72, fontWeight: 900, fontFamily: 'monospace',
@@ -605,12 +664,15 @@ export default function ROICalculatorPage({ clientId: propClientId }) {
                 }}>
                   {animatedROI.toFixed(0)}%
                 </div>
-                <div style={{ display: 'inline-block', padding: '4px 14px', borderRadius: 20, fontSize: 12, fontWeight: 700, margin: '12px 0', background: rLabel.bg, color: rLabel.color }}>
-                  {rLabel.text}
+                <div style={{ display: 'inline-block', padding: '4px 14px', borderRadius: 20, fontSize: 12, fontWeight: 700, margin: '12px 0', background: rStatus.bg, color: rStatus.color }}>
+                  {statusText}
                 </div>
                 <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>
-                  For every {symbol}1 spent you earn{' '}
-                  <strong style={{ color: 'var(--text-primary)' }}>{symbol}{(result.per_dollar_earned || 0).toFixed(2)}</strong> back
+                  {t('roi_calculator.cards.per_dollar_sentence', {
+                    spent: formatCurrency(1, currency, locale),
+                    earned: formatCurrency(result.per_dollar_earned || 0, currency, locale),
+                    defaultValue: `For every ${formatCurrency(1, currency, locale)} spent you earn ${formatCurrency(result.per_dollar_earned || 0, currency, locale)} back`,
+                  })}
                 </p>
               </div>
 
@@ -618,15 +680,19 @@ export default function ROICalculatorPage({ clientId: propClientId }) {
               <div style={{ ...card, marginBottom: 16 }}>
                 <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
                   <div style={{ flex: 1, textAlign: 'center', padding: 16, background: '#FEF3C7', borderRadius: 12 }}>
-                    <div style={{ fontSize: 11, color: '#D97706', fontWeight: 700, textTransform: 'uppercase', marginBottom: 6 }}>💰 Total Invested</div>
+                    <div style={{ fontSize: 11, color: '#D97706', fontWeight: 700, textTransform: 'uppercase', marginBottom: 6 }}>
+                      💰 {t('roi_calculator.cards.total_invested', 'Total Invested')}
+                    </div>
                     <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
-                      {fmtCurrency(result.total_investment, symbol)}
+                      {fmtCurrency(result.total_investment, currency, locale)}
                     </div>
                   </div>
                   <div style={{ flex: 1, textAlign: 'center', padding: 16, background: '#D1FAE5', borderRadius: 12 }}>
-                    <div style={{ fontSize: 11, color: '#059669', fontWeight: 700, textTransform: 'uppercase', marginBottom: 6 }}>📈 Est. Revenue</div>
+                    <div style={{ fontSize: 11, color: '#059669', fontWeight: 700, textTransform: 'uppercase', marginBottom: 6 }}>
+                      📈 {t('roi_calculator.cards.est_revenue', 'Est. Revenue')}
+                    </div>
                     <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
-                      {fmtCurrency(animatedRevenue, symbol)}
+                      {fmtCurrency(animatedRevenue, currency, locale)}
                     </div>
                   </div>
                 </div>
@@ -647,10 +713,12 @@ export default function ROICalculatorPage({ clientId: propClientId }) {
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, fontSize: 11, color: 'var(--text-tertiary)' }}>
                       <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#F59E0B', display: 'inline-block' }} /> Investment
+                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#F59E0B', display: 'inline-block' }} />
+                        {t('roi_calculator.cards.investment', 'Investment')}
                       </span>
                       <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#10B981', display: 'inline-block' }} /> Revenue
+                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#10B981', display: 'inline-block' }} />
+                        {t('roi_calculator.cards.revenue', 'Revenue')}
                       </span>
                     </div>
                   </div>
@@ -659,7 +727,7 @@ export default function ROICalculatorPage({ clientId: propClientId }) {
 
               {/* Card 3: Conversion Funnel */}
               <div style={{ ...card, marginBottom: 16 }}>
-                <h4 style={cardTitle}>Conversion Funnel</h4>
+                <h4 style={cardTitle}>{t('roi_calculator.cards.conversion_funnel', 'Conversion Funnel')}</h4>
                 <ROIFunnel
                   clicks={result.total_clicks}
                   website_clicks={result.total_website_clicks}
@@ -670,16 +738,16 @@ export default function ROICalculatorPage({ clientId: propClientId }) {
 
               {/* Card 4: Cost Efficiency */}
               <div style={{ ...card, marginBottom: 16 }}>
-                <h4 style={cardTitle}>Cost Efficiency</h4>
+                <h4 style={cardTitle}>{t('roi_calculator.cards.cost_efficiency', 'Cost Efficiency')}</h4>
                 <div className="roi-chart-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
                   {[
-                    { label: 'Cost / Click', value: result.cost_per_click, industry: 1.00,   fmt: v => `${symbol}${(+v).toFixed(2)}`, better: 'lower' },
-                    { label: 'Cost / Lead',  value: result.cost_per_lead,  industry: 50.00,  fmt: v => `${symbol}${(+v).toFixed(2)}`, better: 'lower' },
-                    { label: 'Cost / Sale',  value: result.cost_per_sale,  industry: 200.00, fmt: v => `${symbol}${(+v).toFixed(0)}`, better: 'lower' },
+                    { key: 'cost_per_click', label: t('roi_calculator.efficiency.cost_per_click', 'Cost / Click'), value: result.cost_per_click, industry: 1.00,   fmt: v => formatCurrency(+v, currency, locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }), better: 'lower' },
+                    { key: 'cost_per_lead',  label: t('roi_calculator.efficiency.cost_per_lead', 'Cost / Lead'),   value: result.cost_per_lead,  industry: 50.00,  fmt: v => formatCurrency(+v, currency, locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }), better: 'lower' },
+                    { key: 'cost_per_sale',  label: t('roi_calculator.efficiency.cost_per_sale', 'Cost / Sale'),   value: result.cost_per_sale,  industry: 200.00, fmt: v => formatCurrency(+v, currency, locale, { minimumFractionDigits: 0, maximumFractionDigits: 0 }), better: 'lower' },
                   ].map(m => {
                     const isGood = m.value > 0 && m.value <= m.industry;
                     return (
-                      <div key={m.label} style={{
+                      <div key={m.key} style={{
                         background: isGood ? '#D1FAE5' : (m.value > 0 ? '#FEE2E2' : '#F8FAFC'),
                         borderRadius: 10, padding: '12px 14px', textAlign: 'center',
                         border: `1px solid ${isGood ? '#A7F3D0' : (m.value > 0 ? '#FECACA' : 'var(--border-default)')}`,
@@ -689,7 +757,7 @@ export default function ROICalculatorPage({ clientId: propClientId }) {
                           {m.value > 0 ? m.fmt(m.value) : '—'}
                         </div>
                         <div style={{ fontSize: 10, color: 'var(--text-tertiary)', marginTop: 4 }}>
-                          avg {m.fmt(m.industry)}
+                          {t('roi_calculator.efficiency.avg', { val: m.fmt(m.industry), defaultValue: `avg ${m.fmt(m.industry)}` })}
                         </div>
                       </div>
                     );
@@ -700,26 +768,34 @@ export default function ROICalculatorPage({ clientId: propClientId }) {
               {/* Card 5: Platform Breakdown */}
               {result.platform_breakdown?.length > 0 && (
                 <div style={{ ...card, marginBottom: 16, overflowX: 'auto' }}>
-                  <h4 style={cardTitle}>Platform Breakdown</h4>
+                  <h4 style={cardTitle}>{t('roi_calculator.cards.platform_breakdown', 'Platform Breakdown')}</h4>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                     <thead>
                       <tr>
-                        {['Platform', 'Budget', 'Clicks', 'Leads', 'Sales', 'Revenue', 'ROI%'].map(h => (
-                          <th key={h} style={thStyle}>{h}</th>
+                        {[
+                          t('table.platform', 'Platform'),
+                          t('roi_calculator.table.budget', 'Budget'),
+                          t('table.clicks', 'Clicks'),
+                          t('roi_calculator.table.leads', 'Leads'),
+                          t('roi_calculator.table.sales', 'Sales'),
+                          t('roi_calculator.table.revenue', 'Revenue'),
+                          t('roi_calculator.table.roi_pct', 'ROI%'),
+                        ].map((h, idx) => (
+                          <th key={idx} style={thStyle}>{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
                       {result.platform_breakdown.map(row => (
-                        <PlatformRow key={row.platform} row={row} symbol={symbol} />
+                        <PlatformRow key={row.platform} row={row} currency={currency} locale={locale} />
                       ))}
                       <tr style={{ ...trStyle, fontWeight: 700, background: 'var(--surface-page)' }}>
-                        <td style={tdStyle}><strong>Total</strong></td>
-                        <td style={{ ...tdStyle, textAlign: 'right' }}><strong>{fmtCurrency(result.total_investment, symbol)}</strong></td>
+                        <td style={tdStyle}><strong>{t('roi_calculator.table.total', 'Total')}</strong></td>
+                        <td style={{ ...tdStyle, textAlign: 'right' }}><strong>{fmtCurrency(result.total_investment, currency, locale)}</strong></td>
                         <td style={{ ...tdStyle, textAlign: 'right' }}><strong>{fmtNum(result.total_clicks)}</strong></td>
                         <td style={{ ...tdStyle, textAlign: 'right' }}><strong>{fmtNum(result.estimated_leads)}</strong></td>
                         <td style={{ ...tdStyle, textAlign: 'right' }}><strong>{fmtNum(result.estimated_sales)}</strong></td>
-                        <td style={{ ...tdStyle, textAlign: 'right' }}><strong>{fmtCurrency(result.estimated_revenue, symbol)}</strong></td>
+                        <td style={{ ...tdStyle, textAlign: 'right' }}><strong>{fmtCurrency(result.estimated_revenue, currency, locale)}</strong></td>
                         <td style={{ ...tdStyle, textAlign: 'right' }}>
                           <span style={{ fontWeight: 700, color: roiColor(roi) }}>{roi.toFixed(0)}%</span>
                         </td>
@@ -732,23 +808,25 @@ export default function ROICalculatorPage({ clientId: propClientId }) {
               {/* Card 6: Goal Progress */}
               {result.goals && (result.goals.revenue_progress !== null || result.goals.leads_progress !== null) && (
                 <div style={{ ...card, marginBottom: 16 }}>
-                  <h4 style={cardTitle}>Goal Progress</h4>
+                  <h4 style={cardTitle}>{t('roi_calculator.cards.goal_progress', 'Goal Progress')}</h4>
                   {result.goals.revenue_progress !== null && (
                     <GoalBar
-                      label="Revenue Goal"
+                      label={t('roi_calculator.goals.revenue_goal', 'Revenue Goal')}
                       current={result.estimated_revenue}
                       target={result.goals.revenue_goal}
                       progress={result.goals.revenue_progress}
-                      fmt={v => fmtCurrency(v, symbol)}
+                      fmt={v => fmtCurrency(v, currency, locale)}
+                      t={t}
                     />
                   )}
                   {result.goals.leads_progress !== null && (
                     <GoalBar
-                      label="Leads Goal"
+                      label={t('roi_calculator.goals.leads_goal', 'Leads Goal')}
                       current={result.estimated_leads}
                       target={result.goals.leads_goal}
                       progress={result.goals.leads_progress}
                       fmt={v => fmtNum(v)}
+                      t={t}
                     />
                   )}
                 </div>
@@ -757,20 +835,20 @@ export default function ROICalculatorPage({ clientId: propClientId }) {
               {/* Card 7: Historical Trend Chart */}
               {reports.length > 1 && (
                 <div style={{ ...card, marginBottom: 16 }}>
-                  <h4 style={cardTitle}>Historical ROI Trend</h4>
+                  <h4 style={cardTitle}>{t('roi_calculator.cards.historical_trend', 'Historical ROI Trend')}</h4>
                   <ResponsiveContainer width="100%" height={220}>
                     <LineChart data={reports} margin={{ top: 4, right: 16, bottom: 0, left: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
                       <XAxis dataKey="label" tick={{ fontSize: 11 }} />
                       <YAxis yAxisId="left"  tick={{ fontSize: 11 }} tickFormatter={v => `${v}%`} />
-                      <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} tickFormatter={v => fmtCurrency(v, symbol)} />
+                      <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} tickFormatter={v => formatCompactCurrency(v, currency, locale)} />
                       <Tooltip
                         formatter={(v, name) => [
-                          name === 'roi_percentage' ? `${v.toFixed(0)}%` : fmtCurrency(v, symbol),
-                          name === 'roi_percentage' ? 'ROI %' : 'Revenue',
+                          name === 'roi_percentage' ? `${v.toFixed(0)}%` : fmtCurrency(v, currency, locale),
+                          name === 'roi_percentage' ? t('roi_calculator.cards.roi_pct', 'ROI %') : t('roi_calculator.cards.revenue', 'Revenue'),
                         ]}
                       />
-                      <Legend formatter={n => n === 'roi_percentage' ? 'ROI %' : 'Est. Revenue'} />
+                      <Legend formatter={n => n === 'roi_percentage' ? t('roi_calculator.cards.roi_pct', 'ROI %') : t('roi_calculator.cards.est_revenue', 'Est. Revenue')} />
                       <Line yAxisId="left"  type="monotone" dataKey="roi_percentage"    stroke="#2563EB" strokeWidth={2} dot={{ r: 4 }} name="roi_percentage" />
                       <Line yAxisId="right" type="monotone" dataKey="estimated_revenue" stroke="#10B981" strokeWidth={2} dot={{ r: 4 }} name="estimated_revenue" />
                     </LineChart>
@@ -782,8 +860,16 @@ export default function ROICalculatorPage({ clientId: propClientId }) {
               {!result.has_data && (
                 <div style={{ ...card, textAlign: 'center', padding: 24, color: 'var(--text-tertiary)', marginBottom: 16 }}>
                   <TrendingDown size={28} style={{ margin: '0 auto 8px', display: 'block' }} />
-                  <p style={{ margin: 0, fontSize: 13 }}>No social media data found for {MONTHS[month - 1]} {year}.</p>
-                  <p style={{ margin: '6px 0 0', fontSize: 12 }}>The projection above is based on your configured budgets and rates.</p>
+                  <p style={{ margin: 0, fontSize: 13 }}>
+                    {t('roi_calculator.no_data_for_month', {
+                      month: formatMonthName(month, locale),
+                      year,
+                      defaultValue: `No social media data found for ${formatMonthName(month, locale)} ${year}.`,
+                    })}
+                  </p>
+                  <p style={{ margin: '6px 0 0', fontSize: 12 }}>
+                    {t('roi_calculator.projection_note', 'The projection above is based on your configured budgets and rates.')}
+                  </p>
                 </div>
               )}
 
@@ -794,9 +880,11 @@ export default function ROICalculatorPage({ clientId: propClientId }) {
           {!result && !calcLoading && !error && (
             <div style={{ ...card, textAlign: 'center', padding: 48 }}>
               <div style={{ fontSize: 48, marginBottom: 16 }}>📊</div>
-              <h3 style={{ color: 'var(--text-primary)', marginBottom: 8 }}>Your ROI Will Appear Here</h3>
+              <h3 style={{ color: 'var(--text-primary)', marginBottom: 8 }}>
+                {t('roi_calculator.empty_title', 'Your ROI Will Appear Here')}
+              </h3>
               <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>
-                Enter your monthly budgets and business numbers on the left to calculate your return on investment.
+                {t('roi_calculator.empty_desc', 'Enter your monthly budgets and business numbers on the left to calculate your return on investment.')}
               </p>
             </div>
           )}

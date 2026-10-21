@@ -7,6 +7,7 @@
  *  Released under the MIT License — see LICENSE. Keep this notice.
  * ========================================================================== */
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { managementAPI } from '../services/api';
 import {
   Users, UserCog, Shield, ChevronDown, ChevronRight,
@@ -19,9 +20,10 @@ import SegmentedTabs from '../components/ui/SegmentedTabs';
 // ─── helpers ────────────────────────────────────────────────────────────────
 
 function Loader() {
+  const { t } = useTranslation('common');
   return (
     <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 14 }}>
-      Loading…
+      {t('status.loading', 'Loading…')}
     </div>
   );
 }
@@ -58,12 +60,13 @@ function dictToGroupsArray(dictData) {
 // ─── Permission toggle row ───────────────────────────────────────────────────
 
 function PermRow({ code, label, description, value, isOverride, onChange }) {
+  const { t } = useTranslation('management');
   return (
     <div style={permRowStyles.row}>
       <div style={permRowStyles.info}>
         <div style={permRowStyles.label}>{label}</div>
         {description && <div style={permRowStyles.desc}>{description}</div>}
-        {isOverride && <Chip label="Custom override" color="#00d7ff" bg="#f3e8ff" />}
+        {isOverride && <Chip label={t('team.permissions.custom_override', 'Custom override')} color="#00d7ff" bg="#f3e8ff" />}
       </div>
       <button
         type="button"
@@ -88,6 +91,7 @@ const permRowStyles = {
 // ─── Permission panel (shared by staff + client) ─────────────────────────────
 
 function PermissionsPanel({ entityId, entityType }) {
+  const { t } = useTranslation(['management', 'common']);
   const [groups, setGroups]     = useState([]);
   const [loading, setLoading]   = useState(true);
   const [saving, setSaving]     = useState(false);
@@ -110,11 +114,11 @@ function PermissionsPanel({ entityId, entityType }) {
         setOpen({ [arr[0].page]: true });
       }
     } catch {
-      setError('Failed to load permissions.');
+      setError(t('team.permissions.failed_load', 'Failed to load permissions.'));
     } finally {
       setLoading(false);
     }
-  }, [entityId, entityType]);
+  }, [entityId, entityType, t]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -138,7 +142,7 @@ function PermissionsPanel({ entityId, entityType }) {
       await fn(entityId, { grants, revokes });
       await load();
     } catch {
-      setError('Failed to save permissions.');
+      setError(t('team.permissions.failed_save', 'Failed to save permissions.'));
     } finally {
       setSaving(false);
     }
@@ -154,7 +158,7 @@ function PermissionsPanel({ entityId, entityType }) {
       await fn(entityId, { reset_all: true });
       await load();
     } catch {
-      setError('Failed to reset permissions.');
+      setError(t('team.permissions.failed_reset', 'Failed to reset permissions.'));
     } finally {
       setSaving(false);
     }
@@ -173,10 +177,10 @@ function PermissionsPanel({ entityId, entityType }) {
           disabled={!hasChanges || saving}
           style={{ ...btnStyles.primary, opacity: !hasChanges ? 0.5 : 1 }}
         >
-          <Save size={14} /> {saving ? 'Saving…' : 'Save Changes'}
+          <Save size={14} /> {saving ? t('team.permissions.saving', 'Saving…') : t('team.permissions.save_changes', 'Save Changes')}
         </button>
         <button onClick={handleReset} disabled={saving} style={btnStyles.ghost}>
-          <RefreshCw size={14} /> Reset to Defaults
+          <RefreshCw size={14} /> {t('team.permissions.reset_defaults', 'Reset to Defaults')}
         </button>
       </div>
       {groups.map(group => (
@@ -187,7 +191,9 @@ function PermissionsPanel({ entityId, entityType }) {
             style={panelStyles.groupHeader}
           >
             <span style={panelStyles.groupTitle}>{group.page_label}</span>
-            <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{group.permissions.length} permissions</span>
+            <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+              {t('team.permissions.count_permissions', { count: group.permissions.length, defaultValue: `${group.permissions.length} permissions` })}
+            </span>
             {open[group.page] ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
           </button>
           {open[group.page] && (
@@ -220,6 +226,7 @@ const panelStyles = {
 // ─── Portal Config panel (client only) ──────────────────────────────────────
 
 function PortalConfigPanel({ clientId }) {
+  const { t } = useTranslation(['management', 'common']);
   const [cfg, setCfg]         = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving]   = useState(false);
@@ -229,9 +236,9 @@ function PortalConfigPanel({ clientId }) {
   useEffect(() => {
     managementAPI.getClientPortalConfig(clientId)
       .then(res => setCfg(res.data))
-      .catch(() => setError('Failed to load portal config.'))
+      .catch(() => setError(t('team.portal_config.failed_load', 'Failed to load portal config.')))
       .finally(() => setLoading(false));
-  }, [clientId]);
+  }, [clientId, t]);
 
   const handleSave = async () => {
     setSaving(true); setError(''); setSaved(false);
@@ -240,54 +247,56 @@ function PortalConfigPanel({ clientId }) {
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch {
-      setError('Failed to save.');
+      setError(t('team.portal_config.failed_save', 'Failed to save.'));
     } finally {
       setSaving(false);
     }
   };
 
   if (loading) return <Loader />;
-  if (!cfg) return <ErrorMsg msg={error || 'No config found.'} />;
+  if (!cfg) return <ErrorMsg msg={error || t('team.portal_config.not_found', 'No config found.')} />;
 
   const toggles = [
-    { key: 'show_posts_section',   label: 'Posts Section' },
-    { key: 'show_roi_section',     label: 'ROI Section' },
-    { key: 'show_calendar',        label: 'Content Calendar' },
-    { key: 'show_reviews_section', label: 'Reviews Section' },
-    { key: 'show_export_button',   label: 'Export Button' },
-    { key: 'show_sync_button',     label: 'Sync Button' },
+    { key: 'show_posts_section',   label: t('team.portal_config.posts_section', 'Posts Section') },
+    { key: 'show_roi_section',     label: t('team.portal_config.roi_section', 'ROI Section') },
+    { key: 'show_calendar',        label: t('team.portal_config.calendar_section', 'Content Calendar') },
+    { key: 'show_reviews_section', label: t('team.portal_config.reviews_section', 'Reviews Section') },
+    { key: 'show_export_button',   label: t('team.portal_config.export_button', 'Export Button') },
+    { key: 'show_sync_button',     label: t('team.portal_config.sync_button', 'Sync Button') },
   ];
 
   return (
     <div>
       <ErrorMsg msg={error} />
       <div style={{ marginBottom: 20 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 12 }}>Visible Sections</div>
-        {toggles.map(t => (
-          <div key={t.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-            <span style={{ fontSize: 14, color: 'var(--text-primary)' }}>{t.label}</span>
+        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 12 }}>
+          {t('team.portal_config.visible_sections', 'Visible Sections')}
+        </div>
+        {toggles.map(tItem => (
+          <div key={tItem.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <span style={{ fontSize: 14, color: 'var(--text-primary)' }}>{tItem.label}</span>
             <button
               type="button"
-              onClick={() => setCfg(prev => ({ ...prev, [t.key]: !prev[t.key] }))}
+              onClick={() => setCfg(prev => ({ ...prev, [tItem.key]: !prev[tItem.key] }))}
               style={{ background: 'none', border: 'none', cursor: 'pointer' }}
             >
-              {cfg[t.key] ? <ToggleRight size={28} color="#00d7ff" /> : <ToggleLeft size={28} color="var(--text-tertiary)" />}
+              {cfg[tItem.key] ? <ToggleRight size={28} color="#00d7ff" /> : <ToggleLeft size={28} color="var(--text-tertiary)" />}
             </button>
           </div>
         ))}
       </div>
       <div style={{ marginBottom: 20 }}>
-        <label style={fieldStyles.label}>Portal Title</label>
+        <label style={fieldStyles.label}>{t('team.portal_config.portal_title', 'Portal Title')}</label>
         <input
           type="text"
           value={cfg.portal_title || ''}
           onChange={e => setCfg(prev => ({ ...prev, portal_title: e.target.value }))}
-          placeholder="Custom portal title…"
+          placeholder={t('team.portal_config.portal_title_placeholder', 'Custom portal title…')}
           style={fieldStyles.input}
         />
       </div>
       <div style={{ marginBottom: 20 }}>
-        <label style={fieldStyles.label}>Accent Color</label>
+        <label style={fieldStyles.label}>{t('team.portal_config.accent_color', 'Accent Color')}</label>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <input
             type="color"
@@ -299,17 +308,17 @@ function PortalConfigPanel({ clientId }) {
         </div>
       </div>
       <div style={{ marginBottom: 20 }}>
-        <label style={fieldStyles.label}>Welcome Message</label>
+        <label style={fieldStyles.label}>{t('team.portal_config.welcome_message', 'Welcome Message')}</label>
         <textarea
           value={cfg.welcome_message || ''}
           onChange={e => setCfg(prev => ({ ...prev, welcome_message: e.target.value }))}
-          placeholder="Optional message shown on user dashboard…"
+          placeholder={t('team.portal_config.welcome_placeholder', 'Optional message shown on user dashboard…')}
           rows={3}
           style={fieldStyles.textarea}
         />
       </div>
       <button onClick={handleSave} disabled={saving} style={btnStyles.primary}>
-        <Save size={14} /> {saving ? 'Saving…' : saved ? '✓ Saved' : 'Save Config'}
+        <Save size={14} /> {saving ? t('team.portal_config.saving', 'Saving…') : saved ? t('team.portal_config.saved', '✓ Saved') : t('team.portal_config.btn_save', 'Save Config')}
       </button>
     </div>
   );
@@ -327,6 +336,7 @@ const fieldStyles = {
 // ─── Staff Client Assignments panel ─────────────────────────────────────────
 
 function StaffClientsPanel({ staffId }) {
+  const { t } = useTranslation(['management', 'common']);
   const [assigned, setAssigned]   = useState([]);
   const [available, setAvailable] = useState([]);
   const [loading, setLoading]     = useState(true);
@@ -345,11 +355,11 @@ function StaffClientsPanel({ staffId }) {
       setAssigned(assignedList);
       setAvailable(allRes.data.filter(c => !assignedIds.has(c.id)));
     } catch {
-      setError('Failed to load client assignments.');
+      setError(t('team.staff.failed_load_assignments', 'Failed to load client assignments.'));
     } finally {
       setLoading(false);
     }
-  }, [staffId]);
+  }, [staffId, t]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -358,7 +368,7 @@ function StaffClientsPanel({ staffId }) {
     try {
       await managementAPI.setStaffClients(staffId, { add: [{ client_id: clientId }], remove: [] });
       await load();
-    } catch { setError('Failed to add client.'); }
+    } catch { setError(t('team.staff.failed_add_client', 'Failed to add client.')); }
     finally { setSaving(false); }
   };
 
@@ -367,7 +377,7 @@ function StaffClientsPanel({ staffId }) {
     try {
       await managementAPI.setStaffClients(staffId, { add: [], remove: [clientId] });
       await load();
-    } catch { setError('Failed to remove client.'); }
+    } catch { setError(t('team.staff.failed_remove_client', 'Failed to remove client.')); }
     finally { setSaving(false); }
   };
 
@@ -378,9 +388,9 @@ function StaffClientsPanel({ staffId }) {
       <ErrorMsg msg={error} />
       <div style={{ marginBottom: 16 }}>
         <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>
-          Assigned Users ({assigned.length})
+          {t('team.staff.assigned_users', { count: assigned.length, defaultValue: `Assigned Users (${assigned.length})` })}
         </div>
-        {assigned.length === 0 && <div style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>No users assigned yet.</div>}
+        {assigned.length === 0 && <div style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>{t('team.staff.no_assigned_users', 'No users assigned yet.')}</div>}
         {assigned.map(c => (
           <div key={c.id} style={assignStyles.row}>
             <span style={assignStyles.name}>{c.company}</span>
@@ -393,13 +403,13 @@ function StaffClientsPanel({ staffId }) {
       {available.length > 0 && (
         <div>
           <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>
-            Add User
+            {t('team.staff.add_user', 'Add User')}
           </div>
           {available.map(c => (
             <div key={c.id} style={assignStyles.row}>
               <span style={assignStyles.name}>{c.company}</span>
               <button onClick={() => handleAdd(c.id)} disabled={saving} style={assignStyles.addBtn}>
-                <Plus size={14} /> Add
+                <Plus size={14} /> {t('team.staff.btn_add', 'Add')}
               </button>
             </div>
           ))}
@@ -419,6 +429,7 @@ const assignStyles = {
 // ─── Create Staff Modal ──────────────────────────────────────────────────────
 
 function CreateStaffModal({ onClose, onCreated }) {
+  const { t } = useTranslation(['management', 'common']);
   const [form, setForm]     = useState({ name: '', email: '', password: '' });
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
@@ -436,10 +447,10 @@ function CreateStaffModal({ onClose, onCreated }) {
 
   const validateForm = () => {
     const nextErrors = {};
-    if (!form.name.trim()) nextErrors.name = 'Full name is required.';
-    if (!form.email.trim()) nextErrors.email = 'Email is required.';
-    else if (!/\S+@\S+\.\S+/.test(form.email)) nextErrors.email = 'Enter a valid email address.';
-    if (!form.password.trim()) nextErrors.password = 'Password is required.';
+    if (!form.name.trim()) nextErrors.name = t('team.modal.name_required', 'Full name is required.');
+    if (!form.email.trim()) nextErrors.email = t('team.modal.email_required', 'Email is required.');
+    else if (!/\S+@\S+\.\S+/.test(form.email)) nextErrors.email = t('team.modal.email_invalid', 'Enter a valid email address.');
+    if (!form.password.trim()) nextErrors.password = t('team.modal.password_required', 'Password is required.');
     setErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
   };
@@ -447,7 +458,7 @@ function CreateStaffModal({ onClose, onCreated }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) {
-      setError('Please fix the highlighted fields.');
+      setError(t('team.modal.fix_errors', 'Please fix the highlighted fields.'));
       return;
     }
     setSaving(true); setError('');
@@ -457,7 +468,7 @@ function CreateStaffModal({ onClose, onCreated }) {
       onClose();
     } catch (err) {
       const data = err.response?.data;
-      setError(data?.error || (typeof data === 'object' ? JSON.stringify(data) : 'Failed to create staff.'));
+      setError(data?.error || (typeof data === 'object' ? JSON.stringify(data) : t('team.modal.failed_create', 'Failed to create staff.')));
     } finally {
       setSaving(false);
     }
@@ -467,15 +478,15 @@ function CreateStaffModal({ onClose, onCreated }) {
     <div style={modalStyles.overlay}>
       <div style={modalStyles.box}>
         <div style={modalStyles.header}>
-          <span style={modalStyles.title}>Add Staff Member</span>
+          <span style={modalStyles.title}>{t('team.modal.title', 'Add Staff Member')}</span>
           <button onClick={onClose} style={modalStyles.closeBtn}><X size={18} /></button>
         </div>
         <form onSubmit={handleSubmit}>
           <ErrorMsg msg={error} />
           {[
-            { key: 'name',     label: 'Full Name', placeholder: 'Jane Smith' },
-            { key: 'email',    label: 'Email',     placeholder: 'jane@agency.com', type: 'email' },
-            { key: 'password', label: 'Password',  placeholder: '••••••••',        type: 'password' },
+            { key: 'name',     label: t('team.modal.name', 'Full Name'), placeholder: t('team.modal.name_placeholder', 'Jane Smith') },
+            { key: 'email',    label: t('team.modal.email', 'Email'),     placeholder: t('team.modal.email_placeholder', 'jane@agency.com'), type: 'email' },
+            { key: 'password', label: t('team.modal.password', 'Password'),  placeholder: t('team.modal.password_placeholder', '••••••••'),        type: 'password' },
           ].map(f => (
             <div key={f.key} style={{ marginBottom: 14 }}>
               <label style={fieldStyles.label}>{f.label} <span style={fieldStyles.requiredAsterisk}>*</span></label>
@@ -490,7 +501,7 @@ function CreateStaffModal({ onClose, onCreated }) {
             </div>
           ))}
           <button type="submit" disabled={saving} style={{ ...btnStyles.primary, width: '100%', justifyContent: 'center' }}>
-            {saving ? 'Creating…' : 'Create Staff Member'}
+            {saving ? t('team.modal.creating', 'Creating…') : t('team.modal.btn_create', 'Create Staff Member')}
           </button>
         </form>
       </div>
@@ -520,6 +531,7 @@ const modalStyles = {
 // ─── Staff Tab ───────────────────────────────────────────────────────────────
 
 function StaffTab() {
+  const { t } = useTranslation(['management', 'common']);
   const [staff, setStaff]         = useState([]);
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState('');
@@ -533,20 +545,20 @@ function StaffTab() {
     try {
       const res = await managementAPI.listStaff();
       setStaff(res.data);
-    } catch { setError('Failed to load staff.'); }
+    } catch { setError(t('team.staff.failed_load', 'Failed to load staff.')); }
     finally { setLoading(false); }
-  }, []);
+  }, [t]);
 
   useEffect(() => { load(); }, [load]);
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Deactivate this staff member?')) return;
+    if (!window.confirm(t('team.staff.delete_confirm', 'Deactivate this staff member?'))) return;
     setDeleting(id);
     try {
       await managementAPI.deleteStaff(id);
       setStaff(prev => prev.map(s => s.id === id ? { ...s, is_active: false } : s));
       if (selected?.id === id) setSelected(null);
-    } catch { setError('Failed to deactivate.'); }
+    } catch { setError(t('team.staff.failed_deactivate', 'Failed to deactivate.')); }
     finally { setDeleting(null); }
   };
 
@@ -556,13 +568,15 @@ function StaffTab() {
     <div style={splitStyles.container}>
       <div style={splitStyles.list}>
         <div style={splitStyles.listHeader}>
-          <span style={splitStyles.listTitle}>Staff Members ({staff.length})</span>
+          <span style={splitStyles.listTitle}>
+            {t('team.staff.title', { count: staff.length, defaultValue: `Staff Members (${staff.length})` })}
+          </span>
           <button onClick={() => setCreate(true)} style={btnStyles.primary}>
-            <Plus size={14} /> Add
+            <Plus size={14} /> {t('team.staff.add', 'Add')}
           </button>
         </div>
         <ErrorMsg msg={error} />
-        {staff.length === 0 && <div style={{ fontSize: 13, color: 'var(--text-tertiary)', padding: '12px 16px' }}>No staff yet.</div>}
+        {staff.length === 0 && <div style={{ fontSize: 13, color: 'var(--text-tertiary)', padding: '12px 16px' }}>{t('team.staff.empty', 'No staff yet.')}</div>}
         {staff.map(s => {
           const initials = (s.name || s.email || '?').split(' ').map(p => p[0]).join('').slice(0, 2).toUpperCase();
           return (
@@ -576,7 +590,7 @@ function StaffTab() {
                 <div style={splitStyles.itemName}>{s.name || s.email}</div>
                 <div style={splitStyles.itemEmail}>{s.email}</div>
               </div>
-              {!s.is_active && <Chip label="Inactive" color="var(--text-secondary)" bg="var(--surface-sunken)" />}
+              {!s.is_active && <Chip label={t('clients.statuses.inactive', 'Inactive')} color="var(--text-secondary)" bg="var(--surface-sunken)" />}
               <button
                 onClick={e => { e.stopPropagation(); handleDelete(s.id); }}
                 disabled={deleting === s.id}
@@ -593,7 +607,7 @@ function StaffTab() {
         {!selected ? (
           <div style={splitStyles.emptyDetail}>
             <UserCog size={36} color="var(--text-quaternary)" />
-            <p>Select a staff member to manage permissions and user access.</p>
+            <p>{t('team.staff.empty_detail_title', 'Select a staff member to manage permissions and user access.')}</p>
           </div>
         ) : (
           <>
@@ -604,8 +618,8 @@ function StaffTab() {
               </div>
               <SegmentedTabs
                 items={[
-                  { id: 'permissions', label: 'Permissions', icon: <Shield size={13} /> },
-                  { id: 'clients', label: 'Users', icon: <Users size={13} /> },
+                  { id: 'permissions', label: t('team.staff.subtab_permissions', 'Permissions'), icon: <Shield size={13} /> },
+                  { id: 'clients', label: t('team.staff.subtab_users', 'Users'), icon: <Users size={13} /> },
                 ]}
                 active={activePanel}
                 onChange={setPanel}
@@ -633,6 +647,7 @@ function StaffTab() {
 // ─── Clients Tab ────────────────────────────────────────────────────────────
 
 function ClientsTab() {
+  const { t } = useTranslation(['management', 'common']);
   const [clients, setClients]     = useState([]);
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState('');
@@ -644,9 +659,9 @@ function ClientsTab() {
     try {
       const res = await managementAPI.listClients();
       setClients(res.data);
-    } catch { setError('Failed to load users.'); }
+    } catch { setError(t('team.client_access.failed_load', 'Failed to load users.')); }
     finally { setLoading(false); }
-  }, []);
+  }, [t]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -656,10 +671,12 @@ function ClientsTab() {
     <div style={splitStyles.container}>
       <div style={splitStyles.list}>
         <div style={splitStyles.listHeader}>
-          <span style={splitStyles.listTitle}>Users ({clients.length})</span>
+          <span style={splitStyles.listTitle}>
+            {t('team.client_access.title', { count: clients.length, defaultValue: `Users (${clients.length})` })}
+          </span>
         </div>
         <ErrorMsg msg={error} />
-        {clients.length === 0 && <div style={{ fontSize: 13, color: 'var(--text-tertiary)', padding: '12px 16px' }}>No users found.</div>}
+        {clients.length === 0 && <div style={{ fontSize: 13, color: 'var(--text-tertiary)', padding: '12px 16px' }}>{t('team.client_access.empty', 'No users found.')}</div>}
         {clients.map(c => (
           <div
             key={c.id}
@@ -672,8 +689,8 @@ function ClientsTab() {
               <div style={splitStyles.itemEmail}>{c.email || '—'}</div>
             </div>
             {c.is_active
-              ? <Chip label="Active" color="#15803d" bg="#dcfce7" />
-              : <Chip label="Inactive" color="var(--text-secondary)" bg="var(--surface-sunken)" />}
+              ? <Chip label={t('clients.statuses.active', 'Active')} color="#15803d" bg="#dcfce7" />
+              : <Chip label={t('clients.statuses.inactive', 'Inactive')} color="var(--text-secondary)" bg="var(--surface-sunken)" />}
           </div>
         ))}
       </div>
@@ -682,19 +699,19 @@ function ClientsTab() {
         {!selected ? (
           <div style={splitStyles.emptyDetail}>
             <Users size={36} color="var(--text-quaternary)" />
-            <p>Select a user to manage their permissions and portal configuration.</p>
+            <p>{t('team.client_access.empty_detail_title', 'Select a user to manage their permissions and portal configuration.')}</p>
           </div>
         ) : (
           <>
             <div style={splitStyles.detailHeader}>
               <div>
                 <div style={splitStyles.detailName}>{selected.company}</div>
-                <div style={splitStyles.detailEmail}>{selected.email || 'No email'}</div>
+                <div style={splitStyles.detailEmail}>{selected.email || t('team.client_access.no_email', 'No email')}</div>
               </div>
               <SegmentedTabs
                 items={[
-                  { id: 'permissions', label: 'Permissions', icon: <Shield size={13} /> },
-                  { id: 'portal', label: 'Portal Config', icon: <Eye size={13} /> },
+                  { id: 'permissions', label: t('team.client_access.subtab_permissions', 'Permissions'), icon: <Shield size={13} /> },
+                  { id: 'portal', label: t('team.client_access.subtab_portal', 'Portal Config'), icon: <Eye size={13} /> },
                 ]}
                 active={activePanel}
                 onChange={setPanel}
@@ -715,6 +732,7 @@ function ClientsTab() {
 // ─── Role Defaults Tab ───────────────────────────────────────────────────────
 
 function RoleDefaultsTab() {
+  const { t } = useTranslation(['management', 'common']);
   const [role, setRole]           = useState('staff');
   const [groups, setGroups]       = useState([]);
   const [origValues, setOrig]     = useState({});  // { code: bool } — snapshot for diffing
@@ -740,9 +758,9 @@ function RoleDefaultsTab() {
       arr.forEach(g => g.permissions.forEach(p => { snap[p.code] = p.is_granted; }));
       setOrig(snap);
       if (arr.length > 0) setOpen({ [arr[0].page]: true });
-    } catch { setError('Failed to load role defaults.'); }
+    } catch { setError(t('team.role_defaults.failed_load', 'Failed to load role defaults.')); }
     finally { setLoading(false); }
-  }, [role]);
+  }, [role, t]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -768,7 +786,7 @@ function RoleDefaultsTab() {
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
       await load();
-    } catch { setError('Failed to save role defaults.'); }
+    } catch { setError(t('team.role_defaults.failed_save', 'Failed to save role defaults.')); }
     finally { setSaving(false); }
   };
 
@@ -778,11 +796,11 @@ function RoleDefaultsTab() {
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-        <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-secondary)' }}>Role:</span>
+        <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-secondary)' }}>{t('team.role_defaults.role_label', 'Role:')}</span>
         <SegmentedTabs
           items={[
-            { id: 'staff', label: 'Staff' },
-            { id: 'client', label: 'Client' },
+            { id: 'staff', label: t('team.role_defaults.role_staff', 'Staff') },
+            { id: 'client', label: t('team.role_defaults.role_client', 'Client') },
           ]}
           active={role}
           onChange={setRole}
@@ -798,7 +816,7 @@ function RoleDefaultsTab() {
               disabled={!hasChanges || saving}
               style={{ ...btnStyles.primary, opacity: !hasChanges ? 0.5 : 1 }}
             >
-              <Save size={14} /> {saving ? 'Saving…' : saved ? '✓ Saved' : 'Save Defaults'}
+              <Save size={14} /> {saving ? t('team.role_defaults.saving', 'Saving…') : saved ? t('team.role_defaults.saved', '✓ Saved') : t('team.role_defaults.btn_save', 'Save Defaults')}
             </button>
           </div>
           {groups.map(group => (
@@ -809,7 +827,9 @@ function RoleDefaultsTab() {
                 style={panelStyles.groupHeader}
               >
                 <span style={panelStyles.groupTitle}>{group.page_label}</span>
-                <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{group.permissions.length} permissions</span>
+                <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+                  {t('team.permissions.count_permissions', { count: group.permissions.length, defaultValue: `${group.permissions.length} permissions` })}
+                </span>
                 {open[group.page] ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
               </button>
               {open[group.page] && (
@@ -871,27 +891,28 @@ const splitStyles = {
 
 // ─── Main ManagementPage ─────────────────────────────────────────────────────
 
-const TABS = [
-  { id: 'staff',    label: 'Staff Members', icon: UserCog },
-  { id: 'clients',  label: 'User Access', icon: Users },
-  { id: 'defaults', label: 'Role Defaults', icon: Shield },
-];
-
 export default function ManagementPage() {
+  const { t } = useTranslation(['management', 'common']);
   const [activeTab, setTab] = useState('staff');
+
+  const tabs = [
+    { id: 'staff',    label: t('team.tabs.staff', 'Staff Members'), icon: UserCog },
+    { id: 'clients',  label: t('team.tabs.clients', 'User Access'), icon: Users },
+    { id: 'defaults', label: t('team.tabs.defaults', 'Role Defaults'), icon: Shield },
+  ];
 
   return (
     <div className="app-page app-page--md">
       <PageHeader
-        title="Access Management"
-        subtitle="Manage staff permissions, user access, and role defaults"
+        title={t('team.title', 'Access Management')}
+        subtitle={t('team.subtitle', 'Manage staff permissions, user access, and role defaults')}
       />
 
       <SegmentedTabs
-        items={TABS.map((t) => ({
-          id: t.id,
-          label: t.label,
-          icon: <t.icon size={15} />,
+        items={tabs.map((tabItem) => ({
+          id: tabItem.id,
+          label: tabItem.label,
+          icon: <tabItem.icon size={15} />,
         }))}
         active={activeTab}
         onChange={setTab}

@@ -1,0 +1,74 @@
+{
+  "title": "Cuentas Conectadas",
+  "subtitle": "Conecta tus cuentas de redes sociales para comenzar a sincronizar estadísticas automáticamente.",
+  "status": {
+    "active": "Activo",
+    "expired": "Vencido",
+    "not_connected": "No conectado",
+    "connected_via_facebook": "Conectado vía Facebook",
+    "token_expires": "El token vence: {{date}}"
+  },
+  "actions": {
+    "connect_platform": "Conectar {{platform}} →",
+    "disconnect": "Desconectar",
+    "disconnecting": "Desconectando…",
+    "cancel": "Cancelar",
+    "continue_facebook": "Continuar con Facebook",
+    "connecting": "Conectando…",
+    "loading_facebook": "Cargando Facebook…",
+    "trigger_connect": "Conectar Facebook e Instagram"
+  },
+  "alerts": {
+    "workspace_preparing": "Tu espacio de trabajo aún se está preparando. Por favor, actualiza la página e inténtalo de nuevo."
+  },
+  "confirm": {
+    "disconnect": "¿Desconectar {{platform}}? La sincronización se detendrá."
+  },
+  "help": {
+    "title": "Cómo funciona:",
+    "step_1": "Haz clic en el botón Conectar → serás redirigido para iniciar sesión en esa plataforma",
+    "step_2": "Aprueba los permisos solicitados",
+    "step_3": "Regresarás aquí: los datos comenzarán a sincronizarse automáticamente",
+    "step_4": "Facebook e Instagram comparten un mismo inicio de sesión. YouTube y Google My Business comparten un mismo inicio de sesión."
+  },
+  "modal": {
+    "title": "Conecta tu Facebook e Instagram",
+    "subtitle": "Para continuar, revisa y aprueba los permisos siguientes. Serás redirigido a Facebook para confirmar.",
+    "required_permissions": "Permisos Requeridos",
+    "optional_permissions": "Permisos Opcionales",
+    "optional_badge": "Opcional",
+    "close_dialog": "Cerrar diálogo",
+    "cancel_aria": "Cancelar y cerrar diálogo",
+    "continue_aria": "Continuar con el inicio de sesión de Facebook",
+    "technical_info": "Información técnica sobre {{scope}}",
+    "required": "requerido",
+    "legal_prefix": "Al continuar, aceptas nuestros",
+    "terms_of_service": "Términos de Servicio",
+    "and": "y",
+    "privacy_policy": "Política de Privacidad",
+    "legal_suffix": ". Puedes revocar el acceso en cualquier momento desde la configuración de Facebook."
+  },
+  "permissions": {
+    "pages_show_list": {
+      "label": "Acceder a tu lista de Páginas de Facebook",
+      "description": "Mostraremos las Páginas que administras para que elijas cuál conectar.",
+      "technical": "Meta scope pages_show_list: retorna la lista de Páginas de las cuales el usuario es administrador mediante /me/accounts."
+    },
+    "pages_read_engagement": {
+      "label": "Leer datos de interacción de la Página",
+      "description": "Mostraremos tus seguidores, me gusta y métricas de rendimiento de publicaciones en tu panel.",
+      "technical": "Meta scope pages_read_engagement: lee fan_count, followers_count, estadísticas de publicaciones y reacciones en una Página."
+    },
+    "instagram_manage_insights": {
+      "label": "Leer estadísticas de Instagram",
+      "description": "Conectaremos tu cuenta profesional de Instagram vinculada y obtendremos métricas de interacción, alcance e impresiones para tu panel.",
+      "technical": "Meta scope instagram_manage_insights: lee estadísticas (interacción, alcance, impresiones, visitas al perfil y datos demográficos de seguidores) de una cuenta profesional vinculada."
+    }
+  },
+  "errors": {
+    "load_facebook": "No se pudo cargar Facebook. Por favor actualiza e inténtalo de nuevo.",
+    "profile_fetch": "No se pudo obtener tu perfil.",
+    "denied_permissions": "Denegaste uno o más permisos requeridos.",
+    "login_canceled": "El inicio de sesión de Facebook fue cancelado."
+  }
+}

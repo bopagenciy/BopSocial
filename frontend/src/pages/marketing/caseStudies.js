@@ -22,6 +22,7 @@
  *   features — used products
  *   cta — final CTA + back link
  */
+import { caseStudies_es } from './caseStudies.es';
 
 const STUDIES = {
   // ── 1. Acme Realty ────────────────────────────────────────────────
@@ -29,7 +30,7 @@ const STUDIES = {
     slug: 'acme-realty',
     company: 'Acme Realty',
     industry: 'Real Estate',
-    accent: '#00CCF5',
+    accent: 'var(--brand-primary)',
     tagline: 'How Acme 4.2x-ed leads with WhatsApp + a unified inbox.',
     hero: {
       metric: { value: 4.2, suffix: 'x', label: 'lead volume in 9 months' },
@@ -61,7 +62,7 @@ const STUDIES = {
     solution: {
       title: 'One inbox. Two-way WhatsApp. Auto-routing.',
       body: [
-        'Acme migrated all three channels into the Social Stats unified inbox. Incoming messages now route automatically to the right city agent based on the property mentioned. WhatsApp campaigns went out via the Composer, with brand-trained voice tuned to "warm, fast, and professional."',
+        'Acme migrated all three channels into the Bop Social unified inbox. Incoming messages now route automatically to the right city agent based on the property mentioned. WhatsApp campaigns went out via the Composer, with brand-trained voice tuned to "warm, fast, and professional."',
         'The Reports module gives Priya a single view of "leads by source, by city, by agent" — refreshed live, white-labelled, sent to her CEO every Monday at 9am sharp.',
       ],
       bullets: [
@@ -74,7 +75,7 @@ const STUDIES = {
 
     results: {
       title: '4.2x leads. 60-second response time.',
-      body: 'In nine months on Social Stats, Acme grew enquiries from ~12,000/month to over 50,000 — without adding a single new lead-handling role. Response time is now sub-60 seconds across all channels.',
+      body: 'In nine months on Bop Social, Acme grew enquiries from ~12,000/month to over 50,000 — without adding a single new lead-handling role. Response time is now sub-60 seconds across all channels.',
       stats: [
         { value: 4.2,    suffix: 'x',  label: 'lead volume',          decimals: 1 },
         { value: 50000,  suffix: '+',  label: 'monthly enquiries' },
@@ -85,7 +86,7 @@ const STUDIES = {
 
     pulls: [
       {
-        quote: 'Social Stats is the only thing that scaled with us. We grew 4x and our team got smaller, not larger.',
+        quote: 'Bop Social is the only thing that scaled with us. We grew 4x and our team got smaller, not larger.',
         person: 'Priya Sharma · Marketing Head',
       },
       {
@@ -125,14 +126,14 @@ const STUDIES = {
       title: 'No-shows were eating 28% of revenue',
       body: [
         'Sunrise Clinics had a quiet but expensive problem: 28% of patients booked appointments and didn\'t show up. SMS reminders were ignored — read rates were below 20%. The receptionist at each clinic was making manual reminder calls, but with 200+ daily appointments per location, half went unconfirmed.',
-        '"We were losing about ₹14 lakh a month to no-shows," says Dr. Anjali Verma. "And our front-desk staff was spending 3 hours a day on the phone instead of looking after patients."',
+        '"We were losing substantial monthly revenue to patient no-shows," says Dr. Anjali Verma. "And our front-desk staff was spending 3 hours a day on the phone instead of looking after patients."',
       ],
     },
 
     solution: {
       title: 'WhatsApp reminders, smart automations, one master inbox',
       body: [
-        'Sunrise wired their appointment system into Social Stats with two automations: a 24-hour WhatsApp reminder, and a 2-hour confirm/reschedule prompt. Patients can confirm with a single tap or reschedule via a smart flow — without picking up the phone.',
+        'Sunrise wired their appointment system into Bop Social with two automations: a 24-hour WhatsApp reminder, and a 2-hour confirm/reschedule prompt. Patients can confirm with a single tap or reschedule via a smart flow — without picking up the phone.',
         'All 12 clinics now share a unified inbox. The central operations team can see every conversation, every clinic, in real time. Analytics tracks no-show rate by clinic, by doctor, by day-of-week.',
       ],
       bullets: [
@@ -172,7 +173,7 @@ const STUDIES = {
     company: 'BlueWave Agency',
     industry: 'Agencies',
     accent: '#f472b6',
-    tagline: 'Six humans. 120 clients. One Social Stats tenant.',
+    tagline: 'Six humans. 120 clients. One Bop Social tenant.',
     hero: {
       metric: { value: 120, suffix: '+', label: 'clients managed concurrently' },
       portrait: {
@@ -196,14 +197,14 @@ const STUDIES = {
       title: 'Tools that broke at 30 clients',
       body: [
         'BlueWave grew from 12 to 80 clients in 18 months. Their tool stack — Hootsuite for scheduling, Notion for approvals, Google Sheets for reporting, Slack for client comms — all started cracking. Approvals were slipping through the gaps. White-label reporting required manual screenshots into PowerPoint every Friday.',
-        '"By client 30, we were paying ₹2.8 lakh a month across four tools," says Rohit Mehta. "And we still had three full-time people whose job was just stitching them together."',
+        '"By client 30, we were paying exorbitant fees across four disconnected tools," says Rohit Mehta. "And we still had three full-time people whose job was just stitching them together."',
       ],
     },
 
     solution: {
       title: 'One tenant per client. Brand assets baked in.',
       body: [
-        'Social Stats\'s multi-tenant architecture meant every BlueWave client got their own isolated workspace under the BlueWave parent account. White-label portals carry the client\'s logo and the agency\'s branding. The AI Assistant trained on each client\'s past content writes new posts in their exact voice.',
+        'Bop Social\'s multi-tenant architecture meant every BlueWave client got their own isolated workspace under the BlueWave parent account. White-label portals carry the client\'s logo and the agency\'s branding. The AI Assistant trained on each client\'s past content writes new posts in their exact voice.',
         'Reports are generated and delivered automatically every Monday. The Composer plans a month ahead. Approvals happen in-product — no PowerPoint exports, no chasing emails.',
       ],
       bullets: [
@@ -215,11 +216,11 @@ const STUDIES = {
     },
 
     results: {
-      title: '120+ clients. ₹2.8L/mo saved. Zero added headcount.',
-      body: 'BlueWave 8x-ed their client roster — from 12 to 120+ — without adding new operational staff. They retired three legacy tools, saving ₹2.8L/month, and turned that into margin.',
+      title: '120+ clients. 70% tooling costs saved. Zero added headcount.',
+      body: 'BlueWave 8x-ed their client roster — from 12 to 120+ — without adding new operational staff. They retired three legacy tools, saving 70% on tooling overhead, and turned that into margin.',
       stats: [
         { value: 120,   suffix: '+',  label: 'clients managed' },
-        { value: 2.8,   suffix: 'L',  label: '₹/month saved on tools', decimals: 1 },
+        { value: 70,    suffix: '%',  label: 'tooling costs reduced' },
         { value: 7,     suffix: 'x',  label: 'production throughput' },
         { value: 4,     suffix: '',   label: 'tools replaced' },
       ],
@@ -227,15 +228,68 @@ const STUDIES = {
 
     pulls: [
       {
-        quote: 'We replaced four tools with Social Stats. Four. The savings funded the agency for a year.',
+        quote: 'We replaced four tools with Bop Social. Four. The savings funded the agency for a year.',
         person: 'Rohit Mehta · Founder & CEO',
       },
       {
-        quote: 'Clients ask which agency dashboard we built. It\'s just Social Stats in our colors.',
+        quote: 'Clients ask which agency dashboard we built. It\'s just Bop Social in our colors.',
         person: 'Karan Bhatia · Operations',
       },
     ],
   },
 };
+
+export function getCaseStudy(slug, lang = 'en') {
+  const base = STUDIES[slug];
+  if (!base) return null;
+  if (lang?.startsWith('es') && caseStudies_es[slug]) {
+    const es = caseStudies_es[slug];
+    return {
+      ...base,
+      ...es,
+      hero: {
+        ...base.hero,
+        ...(es.hero || {}),
+        metric: {
+          ...base.hero?.metric,
+          ...(es.hero?.metric || {}),
+        },
+        portrait: {
+          ...base.hero?.portrait,
+          ...(es.hero?.portrait || {}),
+        },
+      },
+      profile: {
+        ...base.profile,
+        ...(es.profile || {}),
+      },
+      challenge: {
+        ...base.challenge,
+        ...(es.challenge || {}),
+      },
+      solution: {
+        ...base.solution,
+        ...(es.solution || {}),
+      },
+      results: {
+        ...base.results,
+        ...(es.results || {}),
+        stats: base.results?.stats?.map((stat, idx) => ({
+          ...stat,
+          ...(es.results?.stats?.[idx] || {}),
+        })),
+      },
+      pulls: base.pulls?.map((pull, idx) => ({
+        ...pull,
+        ...(es.pulls?.[idx] || {}),
+      })),
+    };
+  }
+  return base;
+}
+
+export function getCaseStudies(lang = 'en') {
+  return Object.keys(STUDIES).map((slug) => getCaseStudy(slug, lang));
+}
 
 export default STUDIES;

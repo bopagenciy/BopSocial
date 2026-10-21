@@ -20,6 +20,7 @@
  * Returns the selection via `onChange({ ad_account_id, campaign_ids, ad_ids })`.
  */
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Search, Building2, Megaphone, Sparkles, ShieldCheck, AlertTriangle,
   ChevronRight,
@@ -29,6 +30,7 @@ import { metaAdsAPI } from '../../services/api';
 import toast from '../ui/toast';
 
 export default function MetaAdsPicker({ value, onChange }) {
+  const { t } = useTranslation('messaging');
   const [accounts,   setAccounts]   = useState(null);     // null = loading, [] = none, list = loaded
   const [account,    setAccount]    = useState(value?.ad_account_id || '');
   const [campaigns,  setCampaigns]  = useState([]);
@@ -85,17 +87,16 @@ export default function MetaAdsPicker({ value, onChange }) {
   }
 
   if (accounts === null) {
-    return <div style={{ padding: 14, color: 'var(--text-tertiary)', fontSize: 13 }}>Loading Meta ads…</div>;
+    return <div style={{ padding: 14, color: 'var(--text-tertiary)', fontSize: 13 }}>{t('ctwa.loading_ads', 'Loading Meta ads…')}</div>;
   }
   if (accounts.length === 0) {
     return (
       <div style={emptyBox}>
         <AlertTriangle size={20} style={{ color: 'var(--warning)' }} />
         <div>
-          <strong>Meta Ads not connected</strong>
+          <strong>{t('ctwa.not_connected', 'Meta Ads not connected')}</strong>
           <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-secondary)' }}>
-            Connect a Facebook Page with the Marketing API access token first, then come back here.
-            You can still publish and trigger this flow with keywords or first-message rules in the meantime.
+            {t('ctwa.not_connected_desc', 'Connect a Facebook Page with the Marketing API access token first, then come back here. You can still publish and trigger this flow with keywords or first-message rules in the meantime.')}
           </p>
         </div>
       </div>
@@ -111,14 +112,14 @@ export default function MetaAdsPicker({ value, onChange }) {
   return (
     <div>
       {/* 1. Account picker */}
-      <Field label="Ad account">
+      <Field label={t('ctwa.ad_account', 'Ad account')}>
         <select value={account}
                 onChange={(e) => {
                   setAccount(e.target.value);
                   onChange({ ad_account_id: e.target.value, campaign_ids: [], ad_ids: [] });
                 }}
                 style={inputStyle}>
-          <option value="">Pick an account…</option>
+          <option value="">{t('ctwa.pick_account', 'Pick an account…')}</option>
           {accounts.map((a) => (
             <option key={a.id} value={a.id}>
               {a.name} {a.currency ? `· ${a.currency}` : ''}
@@ -129,10 +130,10 @@ export default function MetaAdsPicker({ value, onChange }) {
 
       {/* 2. Campaign picker */}
       {account && (
-        <Field label={`Campaigns (${selectedCampaignIds.length} selected)`}>
+        <Field label={t('ctwa.campaigns_selected', { count: selectedCampaignIds.length, defaultValue: `Campaigns (${selectedCampaignIds.length} selected)` })}>
           <div style={listBox}>
             {campaigns.length === 0
-              ? <div style={emptyRow}>No campaigns in this account yet.</div>
+              ? <div style={emptyRow}>{t('ctwa.no_campaigns_in_account', 'No campaigns in this account yet.')}</div>
               : campaigns.map((c) => {
                   const selected = selectedCampaignIds.includes(c.id);
                   return (
@@ -146,7 +147,7 @@ export default function MetaAdsPicker({ value, onChange }) {
                         <span style={chip}>{(c.objective || '').replace('OUTCOME_', '').toLowerCase()}</span>
                       )}
                       {c.effective_status === 'ACTIVE' && (
-                        <span style={{ ...chip, color: 'var(--success)', borderColor: 'var(--success)' }}>active</span>
+                        <span style={{ ...chip, color: 'var(--success)', borderColor: 'var(--success)' }}>{t('statuses.active', 'active')}</span>
                       )}
                       <input type="checkbox" checked={selected} onChange={() => {}} style={{ marginLeft: 4 }} />
                     </button>
@@ -158,18 +159,18 @@ export default function MetaAdsPicker({ value, onChange }) {
 
       {/* 3. Ads picker */}
       {selectedCampaignIds.length > 0 && (
-        <Field label={`Ads (${(value?.ad_ids || []).length} selected)`}>
+        <Field label={t('ctwa.ads_selected', { count: (value?.ad_ids || []).length, defaultValue: `Ads (${(value?.ad_ids || []).length} selected)` })}>
           <div style={{ position: 'relative', marginBottom: 6 }}>
             <Search size={11} style={{ position: 'absolute', top: 9, left: 8, color: 'var(--text-tertiary)' }} />
             <input value={search} onChange={(e) => setSearch(e.target.value)}
-                   placeholder="Filter by name…"
+                   placeholder={t('ctwa.filter_by_name', 'Filter by name…')}
                    style={{ ...inputStyle, paddingLeft: 26 }} />
           </div>
           <div style={listBox}>
             {loadingAds ? (
-              <div style={emptyRow}>Loading…</div>
+              <div style={emptyRow}>{t('ctwa.loading', 'Loading…')}</div>
             ) : filteredAds.length === 0 ? (
-              <div style={emptyRow}>No ads match.</div>
+              <div style={emptyRow}>{t('ctwa.no_ads_match', 'No ads match.')}</div>
             ) : (
               filteredAds.map((a) => {
                 const selected = selectedAdIds.has(a.id);
@@ -185,7 +186,7 @@ export default function MetaAdsPicker({ value, onChange }) {
                       </span>
                     )}
                     {a.effective_status === 'ACTIVE' && (
-                      <span style={{ ...chip, color: 'var(--success)', borderColor: 'var(--success)' }}>active</span>
+                      <span style={{ ...chip, color: 'var(--success)', borderColor: 'var(--success)' }}>{t('statuses.active', 'active')}</span>
                     )}
                     <input type="checkbox" checked={selected} onChange={() => {}} style={{ marginLeft: 4 }} />
                   </button>

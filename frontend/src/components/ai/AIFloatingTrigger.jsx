@@ -7,6 +7,7 @@
  *  Released under the MIT License — see LICENSE. Keep this notice.
  * ========================================================================== */
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Sparkles } from 'lucide-react';
 
 import AIChatPanel from './AIChatPanel';
@@ -23,6 +24,7 @@ import { useAuth } from '../../hooks/useAuth';
  *   Esc            — close (handled by AIChatPanel's parent close)
  */
 export default function AIFloatingTrigger() {
+  const { t } = useTranslation('ai');
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
 
@@ -49,8 +51,8 @@ export default function AIFloatingTrigger() {
         <button
           type="button"
           onClick={() => setOpen(true)}
-          aria-label="Open Social Stats (Cmd+J)"
-          title="Social Stats (⌘J)"
+          aria-label={t('assistant.floating_trigger.aria_label', 'Open Bop Social (Cmd+J)')}
+          title={t('assistant.floating_trigger.title', 'Bop Social (⌘J)')}
           style={{
             position: 'fixed',
             bottom: 'calc(20px + env(safe-area-inset-bottom))',

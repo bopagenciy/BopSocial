@@ -14,6 +14,7 @@
  *       and dismiss / mark-acted-upon controls.
  */
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Sparkles, RefreshCw, AlertTriangle, TrendingUp, Trophy,
   CheckCircle2, X, Filter, Loader2,
@@ -55,6 +56,7 @@ const FILTERS = [
 
 
 export default function AIInsightsPage({ clientId: propClientId = null }) {
+  const { t } = useTranslation('ai');
   const { user } = useAuth();
   const clientId = propClientId || user?.client_id || null;
 
@@ -81,7 +83,7 @@ export default function AIInsightsPage({ clientId: propClientId = null }) {
 
   async function regenerate() {
     if (!clientId) {
-      toast.error('Pick a client first');
+      toast.error(t('assistant.chat.pick_client', 'Pick a client first'));
       return;
     }
     setGenerating(true);
@@ -90,11 +92,15 @@ export default function AIInsightsPage({ clientId: propClientId = null }) {
       const persisted = r.data?.persisted || 0;
       const note = r.data?.note;
       if (note) toast(note, { icon: 'ℹ️' });
-      else if (persisted) toast.success(`Generated ${persisted} insight${persisted === 1 ? '' : 's'}`);
-      else toast('No new insights right now');
+      else if (persisted) {
+        toast.success(persisted === 1
+          ? t('insights.generated_success', { count: persisted, defaultValue: 'Generated 1 insight' })
+          : t('insights.generated_success_plural', { count: persisted, defaultValue: `Generated ${persisted} insights` }));
+      }
+      else toast(t('insights.no_new_insights', 'No new insights right now'));
       loadList();
     } catch (e) {
-      const msg = e?.response?.data?.error || 'Generation failed';
+      const msg = e?.response?.data?.error || t('insights.generation_failed', 'Generation failed');
       toast.error(msg);
     } finally {
       setGenerating(false);
@@ -106,7 +112,7 @@ export default function AIInsightsPage({ clientId: propClientId = null }) {
       await aiV2API.insightUpdate(id, body);
       loadList();
     } catch {
-      toast.error('Could not update');
+      toast.error(t('insights.update_failed', 'Could not update'));
     }
   }
 
@@ -118,11 +124,11 @@ export default function AIInsightsPage({ clientId: propClientId = null }) {
   return (
     <div className="app-page app-page--lg">
       <PageHeader
-        title="AI Insights"
-        subtitle="Social Stats surfaces what matters from your data — refresh whenever you want fresh signal."
+        title={t('insights.title', 'AI Insights')}
+        subtitle={t('insights.subtitle', 'Bop Social surfaces what matters from your data — refresh whenever you want fresh signal.')}
         actions={(
           <Button onClick={regenerate} icon={Sparkles} loading={generating}>
-            {generating ? 'Generating…' : 'Generate fresh insights'}
+            {generating ? t('insights.btn_generating', 'Generating…') : t('insights.btn_generate', 'Generate fresh insights')}
           </Button>
         )}
       />
@@ -147,7 +153,7 @@ export default function AIInsightsPage({ clientId: propClientId = null }) {
                 fontFamily: 'inherit',
               }}
             >
-              {f.label}
+              {t(`insights.filters.${f.id}`, f.label)}
             </button>
           );
         })}
@@ -161,7 +167,7 @@ export default function AIInsightsPage({ clientId: propClientId = null }) {
             checked={showDismissed}
             onChange={(e) => setShowDismissed(e.target.checked)}
           />
-          Show dismissed
+          {t('insights.show_dismissed', 'Show dismissed')}
         </label>
       </div>
 
@@ -176,17 +182,17 @@ export default function AIInsightsPage({ clientId: propClientId = null }) {
         <Card padding="lg">
           <EmptyState
             icon={Sparkles}
-            title="No insights yet"
+            title={t('insights.empty_title', 'No insights yet')}
             description={items.length === 0
-              ? 'Click “Generate fresh insights” to have Social Stats scan your last 30 days of data.'
-              : 'Nothing matches that filter.'}
-            action={<Button onClick={regenerate} icon={Sparkles} loading={generating}>Generate now</Button>}
+              ? t('insights.empty_desc', 'Click “Generate fresh insights” to have Bop Social scan your last 30 days of data.')
+              : t('insights.empty_filtered', 'Nothing matches that filter.')}
+            action={<Button onClick={regenerate} icon={Sparkles} loading={generating}>{t('insights.btn_generate_now', 'Generate now')}</Button>}
           />
         </Card>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {visible.map((ins) => (
-            <InsightCard key={ins.id} insight={ins} onDismiss={() => patch(ins.id, { dismissed: true })} onActed={() => patch(ins.id, { acted_upon: !ins.acted_upon })} />
+            <InsightCard key={ins.id} insight={ins} onDismiss={() => patch(ins.id, { dismissed: true })} onActed={() => patch(ins.id, { acted_upon: !ins.acted_upon })} t={t} />
           ))}
         </div>
       )}
@@ -195,8 +201,11 @@ export default function AIInsightsPage({ clientId: propClientId = null }) {
 }
 
 
-function InsightCard({ insight, onDismiss, onActed }) {
+function InsightCard({ insight, onDismiss, onActed, t }) {
   const Icon = TYPE_ICON[insight.insight_type] || Sparkles;
+  const severityLabel = t ? t(`insights.filters.${insight.severity}`, insight.severity) : insight.severity;
+  const confidenceLabel = t ? t('insights.confidence', { percent: Math.round((insight.confidence_score || 0) * 100), defaultValue: `· ${Math.round((insight.confidence_score || 0) * 100)}% confidence` }) : `· ${Math.round((insight.confidence_score || 0) * 100)}% confidence`;
+
   return (
     <Card padding="md" style={{ position: 'relative' }}>
       <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
@@ -213,7 +222,7 @@ function InsightCard({ insight, onDismiss, onActed }) {
         <div style={{ minWidth: 0, flex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
             <Badge variant={SEVERITY_VARIANT[insight.severity] || 'default'} size="sm" dot>
-              {insight.severity}
+              {severityLabel}
             </Badge>
             <span style={{
               fontSize: 11, fontWeight: 500,
@@ -223,10 +232,12 @@ function InsightCard({ insight, onDismiss, onActed }) {
               {insight.insight_type}
             </span>
             <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
-              · {Math.round((insight.confidence_score || 0) * 100)}% confidence
+              {confidenceLabel}
             </span>
             {insight.acted_upon && (
-              <Badge variant="success" size="sm" icon={CheckCircle2}>Acted upon</Badge>
+              <Badge variant="success" size="sm" icon={CheckCircle2}>
+                {t ? t('insights.acted_upon', 'Acted upon') : 'Acted upon'}
+              </Badge>
             )}
           </div>
           <h3 style={{ margin: '0 0 6px', fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>
@@ -244,17 +255,21 @@ function InsightCard({ insight, onDismiss, onActed }) {
               fontSize: 12, color: 'var(--text-primary)',
               marginBottom: 8,
             }}>
-              <span style={{ fontWeight: 600, color: 'var(--brand-primary-hover)' }}>Suggested action: </span>
+              <span style={{ fontWeight: 600, color: 'var(--brand-primary-hover)' }}>
+                {t ? t('insights.suggested_action', 'Suggested action:') : 'Suggested action:'}{' '}
+              </span>
               {insight.action_recommended}
             </div>
           )}
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
             <Button size="xs" variant={insight.acted_upon ? 'secondary' : 'primary'} icon={CheckCircle2} onClick={onActed}>
-              {insight.acted_upon ? 'Mark not done' : 'Mark as done'}
+              {insight.acted_upon
+                ? (t ? t('insights.mark_not_done', 'Mark not done') : 'Mark not done')
+                : (t ? t('insights.mark_done', 'Mark as done') : 'Mark as done')}
             </Button>
             {!insight.dismissed && (
               <Button size="xs" variant="ghost" icon={X} onClick={onDismiss}>
-                Dismiss
+                {t ? t('insights.dismiss', 'Dismiss') : 'Dismiss'}
               </Button>
             )}
           </div>

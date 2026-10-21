@@ -17,34 +17,37 @@
  * function as a one-screen reviewer console.
  */
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ShieldCheck, AlertTriangle, FileText, ExternalLink, Check, X,
-  RefreshCw, Pause, Slash, MessageSquare,
+  RefreshCw, MessageSquare,
 } from 'lucide-react';
 
 import { verificationAPI, disputeAPI } from '../../services/api';
 import toast from '../../components/ui/toast';
-
+import { formatDate } from '../../utils/formatters';
 
 export default function AdminTrustQueuePage() {
+  const { t } = useTranslation(['management', 'common']);
   const [tab, setTab] = useState('verifications');
+
   return (
     <div style={{ maxWidth: 1080, margin: '0 auto', padding: 24, display: 'flex', flexDirection: 'column', gap: 18 }}>
       <header>
         <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
-          Trust & safety queue
+          {t('trust.title', 'Trust & safety queue')}
         </h1>
         <p style={{ margin: '4px 0 0', color: 'var(--text-secondary)', fontSize: 14 }}>
-          Verify agencies and resolve disputes. Superadmin-only.
+          {t('trust.subtitle', 'Verify agencies and resolve disputes. Superadmin-only.')}
         </p>
       </header>
 
       <div style={{ display: 'flex', gap: 6, borderBottom: '1px solid var(--border-subtle)' }}>
         <Tab active={tab === 'verifications'} onClick={() => setTab('verifications')}>
-          <ShieldCheck size={13} /> Verifications
+          <ShieldCheck size={13} /> {t('trust.tabs.verifications', 'Verifications')}
         </Tab>
         <Tab active={tab === 'disputes'} onClick={() => setTab('disputes')}>
-          <AlertTriangle size={13} /> Disputes
+          <AlertTriangle size={13} /> {t('trust.tabs.disputes', 'Disputes')}
         </Tab>
       </div>
 
@@ -52,7 +55,6 @@ export default function AdminTrustQueuePage() {
     </div>
   );
 }
-
 
 function Tab({ active, onClick, children }) {
   return (
@@ -72,11 +74,11 @@ function Tab({ active, onClick, children }) {
   );
 }
 
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Verifications
 // ─────────────────────────────────────────────────────────────────────────────
 function Verifications() {
+  const { t } = useTranslation(['management', 'common']);
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -85,31 +87,35 @@ function Verifications() {
     setLoading(true);
     verificationAPI.pending()
       .then((r) => setRows(r.data?.agencies || []))
-      .catch(() => toast.error('Could not load queue'))
+      .catch(() => toast.error(t('trust.verifications.toast_failed_load', 'Could not load queue')))
       .finally(() => setLoading(false));
   }
   useEffect(load, []);
 
   async function decide(id, approve) {
-    const note = window.prompt(approve ? 'Approval note (optional)' : 'Reason for rejection (visible to the agency)');
+    const note = window.prompt(approve
+      ? t('trust.verifications.prompt_approval_note', 'Approval note (optional)')
+      : t('trust.verifications.prompt_rejection_reason', 'Reason for rejection (visible to the agency)'));
     if (note === null) return;
     setBusy(true);
     try {
       const fn = approve ? verificationAPI.approve : verificationAPI.reject;
       await fn(id, note);
-      toast.success(approve ? 'Verified' : 'Rejected — agency notified');
+      toast.success(approve
+        ? t('trust.verifications.toast_verified', 'Verified')
+        : t('trust.verifications.toast_rejected', 'Rejected — agency notified'));
       load();
     } catch (e) {
-      toast.error(e?.response?.data?.error || 'Could not decide');
+      toast.error(e?.response?.data?.error || t('trust.verifications.toast_failed_decide', 'Could not decide'));
     } finally { setBusy(false); }
   }
 
-  if (loading) return <div style={{ padding: 24, color: 'var(--text-tertiary)' }}>Loading…</div>;
+  if (loading) return <div style={{ padding: 24, color: 'var(--text-tertiary)' }}>{t('common.status.loading', 'Loading…')}</div>;
   if (rows.length === 0) {
     return (
       <div style={emptyBox}>
         <ShieldCheck size={28} strokeWidth={1.6} style={{ opacity: 0.4 }} />
-        <div style={{ marginTop: 8 }}>No pending verifications.</div>
+        <div style={{ marginTop: 8 }}>{t('trust.verifications.empty', 'No pending verifications.')}</div>
       </div>
     );
   }
@@ -127,7 +133,9 @@ function Verifications() {
                   {a.name} <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-tertiary)' }}>· {a.slug}</span>
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
-                  Submitted {docs.submitted_at ? new Date(docs.submitted_at).toLocaleString() : '—'}
+                  {t('trust.verifications.submitted', {
+                    date: docs.submitted_at ? formatDate(docs.submitted_at, { dateStyle: 'short', timeStyle: 'short' }) : '—',
+                  })}
                 </div>
               </div>
               <span style={{
@@ -137,7 +145,7 @@ function Verifications() {
                 color:      decision === 'pending' ? 'var(--warning)' : decision === 'rejected' ? 'var(--danger)' : 'var(--success)',
                 background: decision === 'pending' ? 'var(--warning-bg)' : decision === 'rejected' ? 'var(--danger-bg)' : 'var(--success-bg)',
                 border: '1px solid currentColor',
-              }}>{decision}</span>
+              }}>{t(`trust.verifications.status_${decision}`, decision)}</span>
             </header>
 
             <ul style={{ listStyle: 'none', padding: 0, margin: '12px 0 0', display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -155,10 +163,10 @@ function Verifications() {
 
             <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
               <button type="button" onClick={() => decide(a.id, false)} disabled={busy} style={btnGhost}>
-                <X size={13} /> Reject
+                <X size={13} /> {t('trust.verifications.btn_reject', 'Reject')}
               </button>
               <button type="button" onClick={() => decide(a.id, true)} disabled={busy} style={btnPrimary}>
-                <Check size={13} /> Approve
+                <Check size={13} /> {t('trust.verifications.btn_approve', 'Approve')}
               </button>
             </div>
           </li>
@@ -168,11 +176,11 @@ function Verifications() {
   );
 }
 
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Disputes
 // ─────────────────────────────────────────────────────────────────────────────
 function Disputes() {
+  const { t } = useTranslation(['management', 'common']);
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('open');
@@ -181,29 +189,29 @@ function Disputes() {
     setLoading(true);
     disputeAPI.list(statusFilter ? { status: statusFilter } : {})
       .then((r) => setRows(r.data?.disputes || []))
-      .catch(() => toast.error('Could not load disputes'))
+      .catch(() => toast.error(t('trust.disputes.toast_failed_load', 'Could not load disputes')))
       .finally(() => setLoading(false));
   }
   useEffect(load, [statusFilter]);
 
   async function resolve(d) {
-    const action = window.prompt('Action: paused / terminated / warned / dismissed / escalated');
+    const action = window.prompt(t('trust.disputes.prompt_action', 'Action: paused / terminated / warned / dismissed / escalated'));
     if (!action) return;
     if (!['paused', 'terminated', 'warned', 'dismissed', 'escalated'].includes(action)) {
-      toast.error('Unknown action');
+      toast.error(t('trust.disputes.prompt_unknown_action', 'Unknown action'));
       return;
     }
-    const resolution = window.prompt('Resolution note (visible to both sides)') || '';
+    const resolution = window.prompt(t('trust.disputes.prompt_resolution_note', 'Resolution note (visible to both sides)')) || '';
     try {
       await disputeAPI.resolve(d.id, { status: 'resolved', action, resolution });
-      toast.success('Resolved');
+      toast.success(t('trust.disputes.toast_resolved', 'Resolved'));
       load();
     } catch (e) {
-      toast.error(e?.response?.data?.error || 'Could not resolve');
+      toast.error(e?.response?.data?.error || t('trust.disputes.toast_failed_resolve', 'Could not resolve'));
     }
   }
 
-  if (loading) return <div style={{ padding: 24, color: 'var(--text-tertiary)' }}>Loading…</div>;
+  if (loading) return <div style={{ padding: 24, color: 'var(--text-tertiary)' }}>{t('common.status.loading', 'Loading…')}</div>;
 
   return (
     <div>
@@ -218,16 +226,18 @@ function Disputes() {
             borderRadius: 'var(--radius-pill)',
             cursor: 'pointer', fontFamily: 'inherit',
           }}>
-            {s || 'all'}
+            {t(`trust.disputes.filter_${s || 'all'}`, s || 'all')}
           </button>
         ))}
-        <button type="button" onClick={load} style={btnGhost}><RefreshCw size={13} /> Refresh</button>
+        <button type="button" onClick={load} style={btnGhost}>
+          <RefreshCw size={13} /> {t('trust.disputes.btn_refresh', 'Refresh')}
+        </button>
       </div>
 
       {rows.length === 0 ? (
         <div style={emptyBox}>
           <AlertTriangle size={28} strokeWidth={1.6} style={{ opacity: 0.4 }} />
-          <div style={{ marginTop: 8 }}>No disputes match the filter.</div>
+          <div style={{ marginTop: 8 }}>{t('trust.disputes.empty', 'No disputes match the filter.')}</div>
         </div>
       ) : (
         <ul style={list}>
@@ -236,10 +246,13 @@ function Disputes() {
               <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
                 <div>
                   <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>
-                    {d.client_name} <span style={{ color: 'var(--text-tertiary)' }}>vs</span> {d.agency_name}
+                    {d.client_name} <span style={{ color: 'var(--text-tertiary)' }}>{t('trust.disputes.vs', 'vs')}</span> {d.agency_name}
                   </div>
                   <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
-                    Filed by {d.filer_email} · {new Date(d.created_at).toLocaleString()}
+                    {t('trust.disputes.filed_by', {
+                      filer: d.filer_email,
+                      date: formatDate(d.created_at, { dateStyle: 'short', timeStyle: 'short' }),
+                    })}
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
@@ -263,7 +276,7 @@ function Disputes() {
 
               {d.evidence_urls?.length > 0 && (
                 <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text-tertiary)' }}>
-                  Evidence:{' '}
+                  {t('trust.disputes.evidence', 'Evidence:')}{' '}
                   {d.evidence_urls.map((u, i) => (
                     <a key={i} href={u} target="_blank" rel="noreferrer" style={{ color: 'var(--brand-primary-hover)', marginRight: 8 }}>
                       [{i + 1}] <ExternalLink size={10} style={{ verticalAlign: '-1px' }} />
@@ -274,14 +287,14 @@ function Disputes() {
 
               {d.resolution && (
                 <div style={{ marginTop: 10, padding: 10, background: 'var(--surface-sunken)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-sm)', fontSize: 12 }}>
-                  <strong>Resolution ({d.action_taken || 'no action'}):</strong> {d.resolution}
+                  <strong>{t('trust.disputes.resolution_title', { action: d.action_taken || t('trust.disputes.no_action', 'no action') })}</strong> {d.resolution}
                 </div>
               )}
 
               {d.status === 'open' || d.status === 'under_review' ? (
                 <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
                   <button type="button" onClick={() => resolve(d)} style={btnPrimary}>
-                    <MessageSquare size={13} /> Resolve
+                    <MessageSquare size={13} /> {t('trust.disputes.btn_resolve', 'Resolve')}
                   </button>
                 </div>
               ) : null}
@@ -292,7 +305,6 @@ function Disputes() {
     </div>
   );
 }
-
 
 const list = { listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 12 };
 const card = {

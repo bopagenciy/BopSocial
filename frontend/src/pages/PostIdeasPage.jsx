@@ -8,6 +8,7 @@
  * ========================================================================== */
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../hooks/useAuth';
 import { useClients, useLookups } from '../hooks/useData';
 import { postIdeasAPI } from '../services/api';
@@ -82,6 +83,7 @@ function classifyPostType(pt, topic) {
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function PostIdeasPage({ clientId: propClientId = null }) {
+  const { t } = useTranslation('ai');
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const { lookups } = useLookups();
@@ -360,8 +362,8 @@ export default function PostIdeasPage({ clientId: propClientId = null }) {
   return (
     <div className="app-page app-page--wide">
       <PageHeader
-        title="Post Ideas Generator"
-        subtitle="AI-powered content calendar for the full month"
+        title={t('post_ideas.title', 'Post Ideas Generator')}
+        subtitle={t('post_ideas.subtitle', 'AI-powered content calendar for the full month')}
         actions={(
           <div style={styles.pageHeaderActions}>
             {showClientSelector && (
@@ -374,7 +376,7 @@ export default function PostIdeasPage({ clientId: propClientId = null }) {
                 }}
                 style={styles.clientBannerSelect}
               >
-                <option value="">All Users</option>
+                <option value="">{t('caption_writer.form.select_client', 'All Users')}</option>
                 {clients.map(c => (
                   <option key={c.id} value={c.id}>{c.company}</option>
                 ))}
@@ -382,7 +384,7 @@ export default function PostIdeasPage({ clientId: propClientId = null }) {
             )}
             {step === 'results' && (
               <button onClick={() => { setStep('form'); setError(''); }} style={styles.newBtn}>
-                + New Calendar
+                {t('post_ideas.results.new_plan', '+ New Calendar')}
               </button>
             )}
           </div>
@@ -392,9 +394,9 @@ export default function PostIdeasPage({ clientId: propClientId = null }) {
       {showClientSelector && !clientId && (
         <div style={styles.clientEmptyState}>
           <div style={styles.clientEmptyIcon}>💡</div>
-          <h2 style={styles.clientEmptyTitle}>Post Ideas Generator</h2>
+          <h2 style={styles.clientEmptyTitle}>{t('post_ideas.title', 'Post Ideas Generator')}</h2>
           <p style={styles.clientEmptyText}>
-            Select a user from the top-right dropdown to generate post ideas and monthly content calendars.
+            {t('post_ideas.form.select_client', 'Select a user from the top-right dropdown to generate post ideas and monthly content calendars.')}
           </p>
         </div>
       )}
@@ -450,6 +452,7 @@ export default function PostIdeasPage({ clientId: propClientId = null }) {
 // ── Setup Form ────────────────────────────────────────────────────────────────
 
 function SetupForm({ form, setForm, isAdmin, error, businessTypeOptions, monthOptions, platformOptions, onGenerate, history, onLoadHistory, togglePlatform }) {
+  const { t } = useTranslation('ai');
   const now = new Date();
 
   const yearOptions = [now.getFullYear(), now.getFullYear() + 1];
@@ -457,19 +460,19 @@ function SetupForm({ form, setForm, isAdmin, error, businessTypeOptions, monthOp
   return (
     <div style={styles.formPage}>
       <div style={styles.formCard}>
-        <h2 style={styles.formTitle}>Generate Your Content Calendar</h2>
+        <h2 style={styles.formTitle}>{t('post_ideas.form.generate_btn', 'Generate Your Content Calendar')}</h2>
         <p style={styles.formSub}>Fill in your business details to generate a lean, date-based content plan with exactly {form.posts_per_week} post ideas.</p>
 
         <div className="ai-form-row" style={styles.formGrid}>
           {/* Business Type */}
           <div style={styles.formField}>
-            <label style={styles.label}>Business Type *</label>
+            <label style={styles.label}>{t('post_ideas.form.business_type_label', 'Business Type *')}</label>
             <select
               value={form.business_type}
               onChange={e => setForm(f => ({ ...f, business_type: e.target.value }))}
               style={styles.select}
             >
-              <option value="">Select type…</option>
+              <option value="">{t('post_ideas.form.select_business_type', 'Select type…')}</option>
               {businessTypeOptions.map(bt => (
                 <option key={bt.value} value={bt.value}>{bt.label}</option>
               ))}
@@ -478,7 +481,7 @@ function SetupForm({ form, setForm, isAdmin, error, businessTypeOptions, monthOp
 
           {/* Location */}
           <div style={styles.formField}>
-            <label style={styles.label}>Location</label>
+            <label style={styles.label}>{t('post_ideas.form.location_label', 'Location')}</label>
             <input
               type="text"
               placeholder="e.g. Mumbai, India"
@@ -490,7 +493,7 @@ function SetupForm({ form, setForm, isAdmin, error, businessTypeOptions, monthOp
 
           {/* Target Audience */}
           <div style={{ ...styles.formField, gridColumn: '1 / -1' }}>
-            <label style={styles.label}>Target Audience</label>
+            <label style={styles.label}>{t('post_ideas.form.audience_label', 'Target Audience')}</label>
             <input
               type="text"
               placeholder="e.g. Young professionals 25-35 in Mumbai"
@@ -502,7 +505,7 @@ function SetupForm({ form, setForm, isAdmin, error, businessTypeOptions, monthOp
 
           {/* Month */}
           <div style={styles.formField}>
-            <label style={styles.label}>Month *</label>
+            <label style={styles.label}>{t('post_ideas.form.month_label', 'Month *')}</label>
             <select
               value={form.month}
               onChange={e => setForm(f => ({ ...f, month: Number(e.target.value) }))}
@@ -516,7 +519,7 @@ function SetupForm({ form, setForm, isAdmin, error, businessTypeOptions, monthOp
 
           {/* Year */}
           <div style={styles.formField}>
-            <label style={styles.label}>Year *</label>
+            <label style={styles.label}>{t('post_ideas.form.year_label', 'Year *')}</label>
             <select
               value={form.year}
               onChange={e => setForm(f => ({ ...f, year: Number(e.target.value) }))}
@@ -528,7 +531,7 @@ function SetupForm({ form, setForm, isAdmin, error, businessTypeOptions, monthOp
 
           {/* Platforms */}
           <div style={{ ...styles.formField, gridColumn: '1 / -1' }}>
-            <label style={styles.label}>Platforms *</label>
+            <label style={styles.label}>{t('post_ideas.form.platforms_label', 'Platforms *')}</label>
             <div style={styles.platformGrid}>
               {platformOptions.map(p => {
                 const sel = form.platforms.includes(p.value);
@@ -545,7 +548,7 @@ function SetupForm({ form, setForm, isAdmin, error, businessTypeOptions, monthOp
                     <span style={styles.platformIcon}>
                       <SocialPlatformIcon platform={p.value} size={18} />
                     </span>
-                    <span>{p.label}</span>
+                    <span>{t(`shared.platforms.${p.value}`, p.label)}</span>
                   </button>
                 );
               })}
@@ -554,7 +557,7 @@ function SetupForm({ form, setForm, isAdmin, error, businessTypeOptions, monthOp
 
           {/* Number of posts */}
           <div style={{ ...styles.formField, gridColumn: '1 / -1' }}>
-            <label style={styles.label}>Number of Posts</label>
+            <label style={styles.label}>{t('post_ideas.form.posts_per_week_label', 'Number of Posts')}</label>
             <div style={styles.ppwRow}>
               {POSTS_PER_WEEK_OPTIONS.map(opt => (
                 <button
@@ -574,7 +577,7 @@ function SetupForm({ form, setForm, isAdmin, error, businessTypeOptions, monthOp
 
           {/* Upcoming Events */}
           <div style={{ ...styles.formField, gridColumn: '1 / -1' }}>
-            <label style={styles.label}>Upcoming Events / Promotions</label>
+            <label style={styles.label}>{t('post_ideas.form.events_label', 'Upcoming Events / Promotions')}</label>
             <textarea
               placeholder="e.g. Diwali on Oct 20, New menu launching Nov 1, Anniversary sale last week of month"
               value={form.upcoming_events}
@@ -592,7 +595,7 @@ function SetupForm({ form, setForm, isAdmin, error, businessTypeOptions, monthOp
           onClick={onGenerate}
           style={styles.generateBtn}
         >
-          ✨ Generate My Content Calendar
+          {t('post_ideas.form.generate_btn', '✨ Generate My Content Calendar')}
         </button>
         <p style={styles.generateNote}>
           Generates exactly {form.posts_per_week} scheduled post ideas for the selected month
@@ -602,7 +605,7 @@ function SetupForm({ form, setForm, isAdmin, error, businessTypeOptions, monthOp
       {/* History sidebar */}
       {history.length > 0 && (
         <div style={styles.historyCard}>
-          <h3 style={styles.historyTitle}>Previous Calendars</h3>
+          <h3 style={styles.historyTitle}>{t('post_ideas.results.history', 'Previous Calendars')}</h3>
           <div style={styles.historyList}>
             {history.map(set => (
               <button
@@ -630,12 +633,13 @@ function SetupForm({ form, setForm, isAdmin, error, businessTypeOptions, monthOp
 // ── Loading screen ────────────────────────────────────────────────────────────
 
 function LoadingScreen({ steps, currentStep }) {
+  const { t } = useTranslation('ai');
   return (
     <div style={styles.loadingWrap}>
       <div style={styles.loadingCard}>
         <div style={styles.loadingSpinner} />
-        <h2 style={styles.loadingTitle}>Building your content calendar…</h2>
-        <p style={styles.loadingSub}>Social Stats is crafting personalised post ideas for your business</p>
+        <h2 style={styles.loadingTitle}>{t('post_ideas.loading_steps.step_4', 'Building your content calendar…')}</h2>
+        <p style={styles.loadingSub}>{t('post_ideas.loading_sub', 'Bop Social is crafting personalised post ideas for your business')}</p>
         <div style={styles.loadingSteps}>
           {steps.map((s, i) => (
             <div key={s} style={{
@@ -646,7 +650,7 @@ function LoadingScreen({ steps, currentStep }) {
               <span style={styles.loadingStepIcon}>
                 {i < currentStep ? '✓' : i === currentStep ? '⟳' : '○'}
               </span>
-              <span>{s}</span>
+              <span>{t(`post_ideas.loading_steps.step_${i + 1}`, s)}</span>
             </div>
           ))}
         </div>
@@ -669,6 +673,7 @@ function ResultsView({
   onToggleApprove, onStartEdit, onCommitEdit, onRegenerate,
   setEditingIdea,
 }) {
+  const { t } = useTranslation('ai');
   return (
     <div style={styles.resultsLayout}>
       {/* Main column */}
@@ -681,13 +686,13 @@ function ResultsView({
           </div>
           <div style={styles.headerActions}>
             <button onClick={onApproveAll} style={styles.actionBtnOutline}>
-              ✓ Approve All
+              {t('post_ideas.results.approve_all', '✓ Approve All')}
             </button>
             <button onClick={onAddAllToCalendar} disabled={saving} style={styles.actionBtnOutline}>
-              📅 Add All to Calendar
+              {t('post_ideas.results.add_all_to_calendar', '📅 Add All to Calendar')}
             </button>
             <button onClick={onRegenerate} style={styles.actionBtnOutline}>
-              🔄 Regenerate
+              {t('post_ideas.results.regenerate', '🔄 Regenerate')}
             </button>
           </div>
         </div>

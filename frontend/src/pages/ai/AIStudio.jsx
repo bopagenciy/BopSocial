@@ -21,6 +21,7 @@
  * Each card has a "Try" button + a one-line description.
  */
 import { Link } from 'react-router-dom';
+import { useTranslation, Trans } from 'react-i18next';
 import {
   Sparkles, Mic, BarChart3, MessageSquare, Wand2, Lightbulb, Hash,
   Inbox, Activity, ArrowRight, Image, Video, AlertTriangle,
@@ -32,41 +33,46 @@ import { useAuth } from '../../hooks/useAuth';
 
 const FEATURE_GROUPS = [
   {
+    id: 'create',
     label: 'Create',
     items: [
       { id: 'compose',      title: 'Smart Composer',   icon: Wand2,        body: 'Generate platform-tailored posts in seconds.', to: '/composer',        accent: 'var(--brand-primary)' },
       { id: 'caption',      title: 'Caption Writer',   icon: Wand2,        body: 'Generate captions across platforms.',          to: '/caption-writer',  accent: 'var(--module-ai)' },
-      { id: 'post-ideas',   title: 'Post Ideas',       icon: Lightbulb,    body: 'AI-built monthly content calendar.',           to: '/post-ideas',      accent: '#f59e0b' },
+      { id: 'post_ideas',   title: 'Post Ideas',       icon: Lightbulb,    body: 'AI-built monthly content calendar.',           to: '/post-ideas',      accent: '#f59e0b' },
       { id: 'hashtags',     title: 'Hashtag Research', icon: Hash,         body: 'Research hashtags with reach + competition.',   to: '/hashtags',        accent: '#10b981' },
     ],
   },
   {
+    id: 'engage',
     label: 'Engage',
     items: [
       { id: 'inbox',        title: 'AI Reply Suggestions', icon: Inbox,    body: 'Three-tone reply candidates for any message.', to: '/inbox',     accent: '#0891b2' },
     ],
   },
   {
+    id: 'understand',
     label: 'Understand',
     items: [
       { id: 'insights',     title: 'AI Insights',          icon: BarChart3, body: 'Actionable insights from your data.',         to: '/insights',     accent: 'var(--brand-primary)' },
-      { id: 'brand-voice',  title: 'Brand Voice',          icon: Mic,       body: 'Train Social Stats on your past posts.',            to: '/brand-voice',  accent: '#8b5cf6' },
+      { id: 'brand_voice',  title: 'Brand Voice',          icon: Mic,       body: 'Train Bop Social on your past posts.',            to: '/brand-voice',  accent: '#8b5cf6' },
     ],
   },
   {
+    id: 'chat',
     label: 'Chat',
     items: [
-      { id: 'chat-history', title: 'Chat History',         icon: MessageSquare, body: 'Past conversations with Social Stats.',     to: '/chat-history', accent: 'var(--brand-primary-hover)' },
+      { id: 'chat_history', title: 'Chat History',         icon: MessageSquare, body: 'Past conversations with Bop Social.',     to: '/chat-history', accent: 'var(--brand-primary-hover)' },
     ],
   },
 ];
 
 const ADMIN_ITEMS = [
-  { id: 'ai-usage', title: 'AI Usage', icon: Activity, body: 'Cost dashboards, per-client + per-user breakdown.', to: '/ai-usage', accent: 'var(--warning)' },
+  { id: 'ai_usage', title: 'AI Usage', icon: Activity, body: 'Cost dashboards, per-client + per-user breakdown.', to: '/ai-usage', accent: 'var(--warning)' },
 ];
 
 
 export default function AIStudio() {
+  const { t } = useTranslation('ai');
   const { user } = useAuth();
   const isAdmin = user?.role === 'superadmin' || user?.role === 'staff';
   const basePath = isAdmin ? '/admin/analytics' : '/dashboard/analytics';
@@ -74,17 +80,17 @@ export default function AIStudio() {
   return (
     <div className="app-page app-page--lg">
       <PageHeader
-        title="Social Stats Studio"
-        subtitle="Every Social Stats surface in one place"
-        eyebrow="✨ Powered by Social Stats"
+        title={t('studio.title', 'Bop Social Studio')}
+        subtitle={t('studio.subtitle', 'Every Bop Social surface in one place')}
+        eyebrow={t('studio.eyebrow', '✨ Powered by Bop Social')}
       />
 
       {FEATURE_GROUPS.map((group) => (
-        <section key={group.label} style={{ marginBottom: 24 }}>
-          <h2 style={sectionLabelStyle}>{group.label}</h2>
+        <section key={group.id} style={{ marginBottom: 24 }}>
+          <h2 style={sectionLabelStyle}>{t(`studio.groups.${group.id}`, group.label)}</h2>
           <div style={gridStyle} className="ai-studio-grid">
             {group.items.map((it) => (
-              <FeatureCard key={it.id} item={it} basePath={basePath} />
+              <FeatureCard key={it.id} item={it} basePath={basePath} t={t} />
             ))}
           </div>
         </section>
@@ -92,10 +98,10 @@ export default function AIStudio() {
 
       {isAdmin && (
         <section style={{ marginBottom: 24 }}>
-          <h2 style={sectionLabelStyle}>Admin</h2>
+          <h2 style={sectionLabelStyle}>{t('studio.groups.admin', 'Admin')}</h2>
           <div style={gridStyle} className="ai-studio-grid">
             {ADMIN_ITEMS.map((it) => (
-              <FeatureCard key={it.id} item={it} basePath={basePath} />
+              <FeatureCard key={it.id} item={it} basePath={basePath} t={t} />
             ))}
           </div>
         </section>
@@ -115,11 +121,15 @@ export default function AIStudio() {
           </span>
           <div style={{ minWidth: 0, flex: 1 }}>
             <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
-              Press <kbd style={kbdStyle}>⌘ J</kbd> from anywhere to chat with Social Stats
+              <Trans
+                i18nKey="studio.shortcut_banner.text"
+                ns="ai"
+                defaults="Press <kbd>⌘ J</kbd> from anywhere to chat with Bop Social"
+                components={{ kbd: <kbd style={kbdStyle} /> }}
+              />
             </div>
             <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.55 }}>
-              The chat assistant can pull your metrics, draft posts, search your inbox, and schedule actions —
-              all with confirmation gates on anything that touches live data.
+              {t('studio.shortcut_banner.description', 'The chat assistant can pull your metrics, draft posts, search your inbox, and schedule actions — all with confirmation gates on anything that touches live data.')}
             </p>
           </div>
         </div>
@@ -134,8 +144,11 @@ export default function AIStudio() {
 }
 
 
-function FeatureCard({ item, basePath }) {
+function FeatureCard({ item, basePath, t }) {
   const Icon = item.icon;
+  const cardTitle = t ? t(`studio.cards.${item.id}.title`, item.title) : item.title;
+  const cardBody = t ? t(`studio.cards.${item.id}.body`, item.body) : item.body;
+
   return (
     <Link
       to={`${basePath}${item.to}`}
@@ -173,10 +186,10 @@ function FeatureCard({ item, basePath }) {
         <ArrowRight size={14} style={{ color: 'var(--text-tertiary)' }} />
       </div>
       <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>
-        {item.title}
+        {cardTitle}
       </div>
       <p style={{ margin: 0, fontSize: 12, lineHeight: 1.55, color: 'var(--text-secondary)' }}>
-        {item.body}
+        {cardBody}
       </p>
     </Link>
   );

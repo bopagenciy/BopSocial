@@ -7,6 +7,7 @@
  *  Released under the MIT License — see LICENSE. Keep this notice.
  * ========================================================================== */
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Plus, ListChecks, Trash2, Users2, Calendar } from 'lucide-react';
 
 import PageHeader from '../../components/layout/PageHeader';
@@ -18,16 +19,17 @@ import { useWhatsAppLists } from '../../hooks/useWhatsApp';
 import { whatsappAPI } from '../../services/api';
 
 export default function ListsPage() {
+  const { t } = useTranslation('messaging');
   const { data: lists, refetch, loading } = useWhatsAppLists();
   const [showCreate, setShowCreate] = useState(false);
 
   return (
     <div style={{ paddingBottom: 32 }}>
       <PageHeader
-        title="Lists"
-        subtitle="Segment your contacts into reusable audiences"
+        title={t('lists.title', 'Lists')}
+        subtitle={t('lists.subtitle', 'Segment your contacts into reusable audiences')}
         action={
-          <Button icon={Plus} onClick={() => setShowCreate(true)}>New List</Button>
+          <Button icon={Plus} onClick={() => setShowCreate(true)}>{t('lists.new_list', 'New List')}</Button>
         }
       />
 
@@ -36,9 +38,9 @@ export default function ListsPage() {
           <Card padding="none" style={{ overflow: 'hidden' }}>
             <EmptyState
               icon={ListChecks}
-              title="Create your first list"
-              description="Lists let you target specific contact segments with campaigns. Group customers by tag, location, lifecycle stage, or any other dimension."
-              action={<Button icon={Plus} onClick={() => setShowCreate(true)}>New List</Button>}
+              title={t('lists.empty_title', 'Create your first list')}
+              description={t('lists.empty_desc', 'Lists let you target specific contact segments with campaigns. Group customers by tag, location, lifecycle stage, or any other dimension.')}
+              action={<Button icon={Plus} onClick={() => setShowCreate(true)}>{t('lists.new_list', 'New List')}</Button>}
             />
           </Card>
         )}
@@ -50,7 +52,7 @@ export default function ListsPage() {
             gap: 16,
           }}>
             {lists.map((l) => (
-              <ListCard key={l.id} list={l} onChange={refetch} />
+              <ListCard key={l.id} list={l} onChange={refetch} t={t} />
             ))}
           </div>
         )}
@@ -60,13 +62,18 @@ export default function ListsPage() {
         <CreateModal
           onClose={() => setShowCreate(false)}
           onCreated={() => { setShowCreate(false); refetch(); }}
+          t={t}
         />
       )}
     </div>
   );
 }
 
-function ListCard({ list, onChange }) {
+function ListCard({ list, onChange, t }) {
+  const contactText = list.contact_count === 1
+    ? (t ? t('lists.count_contacts', { count: 1, defaultValue: '1 contact' }) : '1 contact')
+    : (t ? t('lists.count_contacts_plural', { count: list.contact_count, defaultValue: `${list.contact_count} contacts` }) : `${list.contact_count} contacts`);
+
   return (
     <Card interactive padding="md">
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 12 }}>
@@ -79,7 +86,7 @@ function ListCard({ list, onChange }) {
         }}>
           <ListChecks size={16} strokeWidth={2.4} />
         </div>
-        <Badge variant="default">{list.contact_count} contacts</Badge>
+        <Badge variant="default">{contactText}</Badge>
       </div>
       <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>
         {list.name}
@@ -104,10 +111,11 @@ function ListCard({ list, onChange }) {
           size="sm"
           icon={Trash2}
           iconOnly
-          aria-label="Delete list"
+          aria-label={t ? t('campaigns.delete', 'Delete') : 'Delete list'}
           onClick={async (e) => {
             e.preventDefault(); e.stopPropagation();
-            if (window.confirm(`Delete "${list.name}"?`)) {
+            const msg = t ? t('lists.delete_confirm', { name: list.name, defaultValue: `Delete list "${list.name}"?` }) : `Delete "${list.name}"?`;
+            if (window.confirm(msg)) {
               await whatsappAPI.lists.delete(list.id);
               onChange();
             }
@@ -118,7 +126,7 @@ function ListCard({ list, onChange }) {
   );
 }
 
-function CreateModal({ onClose, onCreated }) {
+function CreateModal({ onClose, onCreated, t }) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [saving, setSaving] = useState(false);
@@ -150,32 +158,35 @@ function CreateModal({ onClose, onCreated }) {
         padding="md"
         style={{ width: 'min(440px, 92vw)' }}
       >
-        <Card.Header title="New list" subtitle="Group contacts for targeted outreach" />
+        <Card.Header
+          title={t ? t('lists.modal.title', 'New Contact List') : 'New list'}
+          subtitle={t ? t('lists.subtitle', 'Group contacts for targeted outreach') : 'Group contacts for targeted outreach'}
+        />
         <Card.Body>
           <label style={field}>
-            <span style={fieldLabel}>Name</span>
+            <span style={fieldLabel}>{t ? t('lists.modal.name_label', 'Name') : 'Name'}</span>
             <input
               autoFocus
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="VIP customers"
+              placeholder={t ? t('lists.modal.name_placeholder', 'e.g. VIP Customers') : 'VIP customers'}
               style={input}
             />
           </label>
           <label style={field}>
-            <span style={fieldLabel}>Description (optional)</span>
+            <span style={fieldLabel}>{t ? t('lists.modal.description_label', 'Description') : 'Description (optional)'}</span>
             <textarea
               rows={3}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="What kind of contacts belong here?"
+              placeholder={t ? t('lists.modal.description_placeholder', 'What segment does this list represent?') : 'What kind of contacts belong here?'}
               style={{ ...input, resize: 'vertical' }}
             />
           </label>
         </Card.Body>
         <Card.Footer>
-          <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button onClick={save} loading={saving} disabled={!name.trim()}>Create</Button>
+          <Button variant="secondary" onClick={onClose}>{t ? t('lists.modal.cancel_btn', 'Cancel') : 'Cancel'}</Button>
+          <Button onClick={save} loading={saving} disabled={!name.trim()}>{t ? t('lists.modal.create_btn', 'Create List') : 'Create'}</Button>
         </Card.Footer>
       </Card>
     </div>

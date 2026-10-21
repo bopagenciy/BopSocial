@@ -91,7 +91,7 @@ export default function StaticContentPage({ contentKey, fallbackTitle, eyebrow }
     >
       {doc.content?.footer_link_label && doc.content?.footer_link_url && (
         <p style={{ marginTop: 28, paddingTop: 20, borderTop: '1px solid var(--border-subtle)', fontSize: 12, color: 'var(--text-tertiary)' }}>
-          © {new Date().getFullYear()} SocialStats ·{' '}
+          © {new Date().getFullYear()} Bop Social ·{' '}
           <a href={doc.content.footer_link_url} style={{ color: 'var(--text-link)' }}>
             {doc.content.footer_link_label}
           </a>

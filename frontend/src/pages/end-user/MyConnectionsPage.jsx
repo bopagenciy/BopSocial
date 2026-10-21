@@ -18,6 +18,7 @@
  * `oauth_disconnect` enforces this — owners bypass the agency-side check.
  */
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Plug, RefreshCw } from 'lucide-react';
 
 import ConnectedAccounts from '../../components/ui/ConnectedAccounts';
@@ -25,6 +26,7 @@ import { endUserAPI, oauthAPI } from '../../services/api';
 import toast from '../../components/ui/toast';
 
 export default function MyConnectionsPage() {
+  const { t } = useTranslation('agency_portal');
   const [workspace, setWorkspace] = useState(null);
   const [status,    setStatus]    = useState({});
   const [loading,   setLoading]   = useState(true);
@@ -35,9 +37,9 @@ export default function MyConnectionsPage() {
       const r = await oauthAPI.status(clientId);
       setStatus(r.data || {});
     } catch {
-      toast.error('Failed to load connection status');
+      toast.error(t('end_user.connections.toast_load_failed', 'Failed to load connection status'));
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     let cancelled = false;
@@ -47,10 +49,10 @@ export default function MyConnectionsPage() {
         setWorkspace(r.data?.workspace || null);
         return refreshStatus(r.data?.workspace?.id);
       })
-      .catch(() => toast.error('Could not load your workspace'))
+      .catch(() => toast.error(t('end_user.connections.toast_ws_failed', 'Could not load your workspace')))
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [refreshStatus]);
+  }, [refreshStatus, t]);
 
   return (
     <div style={{ maxWidth: 880, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 24 }}>
@@ -67,11 +69,10 @@ export default function MyConnectionsPage() {
         </span>
         <div style={{ flex: 1 }}>
           <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
-            Connections
+            {t('end_user.connections.title', 'Connections')}
           </h1>
           <p style={{ margin: '4px 0 0', color: 'var(--text-secondary)', fontSize: 14, lineHeight: 1.55 }}>
-            Plug Social Stats into your social accounts to start tracking posts, engagement, and DMs.
-            You can disconnect any platform at any time — even if an agency is managing your workspace.
+            {t('end_user.connections.subtitle', 'Plug Bop Social into your social accounts to start tracking posts, engagement, and DMs. You can disconnect any platform at any time — even if an agency is managing your workspace.')}
           </p>
         </div>
         {workspace && (
@@ -79,18 +80,18 @@ export default function MyConnectionsPage() {
             type="button"
             onClick={() => refreshStatus(workspace.id)}
             style={refreshBtn}
-            aria-label="Refresh status"
+            aria-label={t('end_user.connections.aria_refresh', 'Refresh status')}
           >
-            <RefreshCw size={13} /> Refresh
+            <RefreshCw size={13} /> {t('end_user.connections.refresh', 'Refresh')}
           </button>
         )}
       </header>
 
       {loading ? (
-        <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-tertiary)' }}>Loading…</div>
+        <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-tertiary)' }}>{t('end_user.connections.loading', 'Loading…')}</div>
       ) : !workspace ? (
         <div style={emptyBox}>
-          <strong>No workspace yet.</strong> Finish onboarding to connect platforms.
+          {t('end_user.connections.no_workspace', 'No workspace yet. Finish onboarding to connect platforms.')}
         </div>
       ) : (
         <ConnectedAccounts

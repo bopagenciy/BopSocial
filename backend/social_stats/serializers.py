@@ -15,23 +15,58 @@ class UserSerializer(serializers.ModelSerializer):
     role         = serializers.CharField(source='profile.role',         read_only=True)
     client_id    = serializers.IntegerField(source='profile.client_id', read_only=True)
     account_type = serializers.CharField(source='profile.account_type', read_only=True)
+    language     = serializers.CharField(source='profile.language',     read_only=True)
 
     class Meta:
         model  = User
-        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'role', 'client_id', 'account_type']
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'role', 'client_id', 'account_type', 'language']
 
 
 class ClientSerializer(serializers.ModelSerializer):
+    bop_organization_id = serializers.UUIDField(read_only=True)
     logo = serializers.ImageField(required=False)
     profile_image = serializers.ImageField(required=False)
     competitors = serializers.SerializerMethodField()
+    currency = serializers.CharField(required=False, max_length=10)
 
     class Meta:
         model = Client
         fields = '__all__'
 
+    def validate(self, attrs):
+        if self.instance and hasattr(self, 'initial_data') and isinstance(self.initial_data, dict):
+            if 'bop_organization_id' in self.initial_data:
+                attempted = str(self.initial_data['bop_organization_id']).strip().lower()
+                current = str(self.instance.bop_organization_id).strip().lower()
+                if attempted != current:
+                    raise serializers.ValidationError({
+                        "bop_organization_id": "bop_organization_id is immutable once assigned."
+                    })
+        return super().validate(attrs)
+
+    def to_internal_value(self, data):
+        if hasattr(data, 'copy'):
+            data = data.copy()
+            if 'currency' in data and isinstance(data['currency'], str):
+                data['currency'] = data['currency'].strip().upper()
+        elif isinstance(data, dict) and 'currency' in data and isinstance(data['currency'], str):
+            data = dict(data)
+            data['currency'] = data['currency'].strip().upper()
+        return super().to_internal_value(data)
+
     def get_competitors(self, obj):
         return CompetitorSerializer(obj.competitors.all(), many=True).data
+
+    def validate_currency(self, value):
+        if not value:
+            return 'USD'
+        normalized = value.strip().upper()
+        valid_currencies = [code for code, _ in Client.CURRENCY_CHOICES]
+        if normalized not in valid_currencies:
+            raise serializers.ValidationError(
+                f"Invalid currency '{value}'. Supported currencies are: {', '.join(valid_currencies)}."
+            )
+        return normalized
 
 
 class CompetitorSerializer(serializers.ModelSerializer):
@@ -41,14 +76,15 @@ class CompetitorSerializer(serializers.ModelSerializer):
 
 
 class PlatformCredentialSerializer(serializers.ModelSerializer):
-    access_token  = serializers.CharField(write_only=True, required=False, allow_blank=True)
-    refresh_token = serializers.CharField(write_only=True, required=False, allow_blank=True)
-    status        = serializers.ReadOnlyField()
+    access_token    = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    refresh_token   = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    status          = serializers.ReadOnlyField()
+    analytics_level = serializers.SerializerMethodField()
 
     class Meta:
         model  = PlatformCredential
         fields = [
-            'id', 'client', 'platform', 'status',
+            'id', 'client', 'platform', 'status', 'analytics_level',
             'access_token', 'refresh_token', 'expires_at', 'scope',
             'page_id', 'page_name', 'instagram_account_id',
             'channel_id', 'channel_name',
@@ -56,6 +92,12 @@ class PlatformCredentialSerializer(serializers.ModelSerializer):
             'gmb_account_id', 'gmb_location_id',
             'is_active', 'connected_at', 'updated_at',
         ]
+
+    def get_analytics_level(self, obj):
+        if obj.platform == 'instagram':
+            scopes = [s.strip().lower() for s in (obj.scope or '').replace(',', ' ').split() if s.strip()]
+            return 'advanced' if 'instagram_manage_insights' in scopes else 'basic'
+        return 'advanced'
 
 
 class DailyMetricSerializer(serializers.ModelSerializer):

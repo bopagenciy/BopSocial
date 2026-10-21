@@ -12,6 +12,7 @@
  */
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../hooks/useAuth';
 import { soloAPI, invitationAPI } from '../services/api';
 import { Building2, UserCheck, Clock, CheckCircle, XCircle, Bell, LogOut, ChevronRight, Loader2 } from 'lucide-react';
@@ -22,6 +23,7 @@ const BG    = 'var(--surface-page)';
 const WHITE = '#ffffff';
 
 export default function PendingDashboard() {
+  const { t } = useTranslation('agency_portal');
   const { user, logout, refreshAuth } = useAuth();
   const navigate = useNavigate();
 
@@ -57,7 +59,7 @@ export default function PendingDashboard() {
       await refreshAuth(res.data.access, res.data.refresh);
       navigate('/dashboard', { replace: true });
     } catch (e) {
-      setError(e?.response?.data?.error || 'Failed to set up solo account.');
+      setError(e?.response?.data?.error || t('pending_dashboard.err_solo', 'Failed to set up solo account.'));
       setSoloLoading(false);
     }
   };
@@ -71,11 +73,11 @@ export default function PendingDashboard() {
         await refreshAuth(res.data.access, res.data.refresh);
         navigate('/dashboard', { replace: true });
       } else {
-        setSuccess('Invitation rejected.');
+        setSuccess(t('pending_dashboard.agency.toast_rejected', 'Invitation rejected.'));
         fetchInvitations();
       }
     } catch (e) {
-      setError(e?.response?.data?.error || 'Something went wrong.');
+      setError(e?.response?.data?.error || t('pending_dashboard.err_generic', 'Something went wrong.'));
     } finally {
       setRespondingId(null);
     }
@@ -97,7 +99,7 @@ export default function PendingDashboard() {
           )}
           <button style={s.logoutBtn} onClick={() => { logout(); navigate('/login'); }}>
             <LogOut size={15} />
-            <span>Sign out</span>
+            <span>{t('pending_dashboard.sign_out', 'Sign out')}</span>
           </button>
         </div>
       </header>
@@ -107,8 +109,8 @@ export default function PendingDashboard() {
         <div style={s.welcome}>
           <div style={s.avatar}>{(user?.name || user?.email || 'U')[0].toUpperCase()}</div>
           <div>
-            <h1 style={s.welcomeTitle}>Welcome{user?.name ? `, ${user.name}` : ''}!</h1>
-            <p style={s.welcomeSub}>Choose how you'd like to use Social Stats.</p>
+            <h1 style={s.welcomeTitle}>{t('pending_dashboard.welcome', 'Welcome{{name}}!', { name: user?.name ? `, ${user.name}` : '' })}</h1>
+            <p style={s.welcomeSub}>{t('pending_dashboard.welcome_sub', "Choose how you'd like to use Bop Social.")}</p>
           </div>
         </div>
 
@@ -119,10 +121,9 @@ export default function PendingDashboard() {
           {/* Solo card */}
           <div style={s.card}>
             <div style={s.cardIcon}><UserCheck size={28} color={CYAN} /></div>
-            <h2 style={s.cardTitle}>Use Solo</h2>
+            <h2 style={s.cardTitle}>{t('pending_dashboard.solo.title', 'Use Solo')}</h2>
             <p style={s.cardDesc}>
-              Manage your own social media analytics independently — no agency needed.
-              You can connect your platforms right away.
+              {t('pending_dashboard.solo.desc', 'Manage your own social media analytics independently — no agency needed. You can connect your platforms right away.')}
             </p>
             <button
               style={{ ...s.primaryBtn, opacity: soloLoading ? 0.7 : 1 }}
@@ -130,8 +131,8 @@ export default function PendingDashboard() {
               disabled={soloLoading}
             >
               {soloLoading
-                ? <><Loader2 size={16} style={{ animation: 'spin .8s linear infinite' }} /> Setting up…</>
-                : <><span>Get started solo</span><ChevronRight size={16} /></>
+                ? <><Loader2 size={16} style={{ animation: 'spin .8s linear infinite' }} /> {t('pending_dashboard.solo.setting_up', 'Setting up…')}</>
+                : <><span>{t('pending_dashboard.solo.btn', 'Get started solo')}</span><ChevronRight size={16} /></>
               }
             </button>
           </div>
@@ -139,10 +140,9 @@ export default function PendingDashboard() {
           {/* Agency card */}
           <div style={s.card}>
             <div style={s.cardIcon}><Building2 size={28} color='#7c3aed' /></div>
-            <h2 style={s.cardTitle}>Connect with an Agency</h2>
+            <h2 style={s.cardTitle}>{t('pending_dashboard.agency.title', 'Connect with an Agency')}</h2>
             <p style={s.cardDesc}>
-              An agency can manage your analytics for you. Accept a pending invitation
-              below, or ask your agency to send you one.
+              {t('pending_dashboard.agency.desc', 'An agency can manage your analytics for you. Accept a pending invitation below, or ask your agency to send you one.')}
             </p>
 
             {loadingInvs ? (
@@ -150,7 +150,7 @@ export default function PendingDashboard() {
             ) : pendingCount === 0 ? (
               <div style={s.emptyInv}>
                 <Clock size={16} color='var(--text-tertiary)' />
-                <span>No pending invitations yet.</span>
+                <span>{t('pending_dashboard.agency.empty', 'No pending invitations yet.')}</span>
               </div>
             ) : (
               <div style={s.invList}>
@@ -169,7 +169,7 @@ export default function PendingDashboard() {
                       >
                         {respondingId === inv.token + 'accept'
                           ? <Loader2 size={13} style={{ animation: 'spin .8s linear infinite' }} />
-                          : <><CheckCircle size={13} /> Accept</>
+                          : <><CheckCircle size={13} /> {t('pending_dashboard.agency.accept', 'Accept')}</>
                         }
                       </button>
                       <button
@@ -179,7 +179,7 @@ export default function PendingDashboard() {
                       >
                         {respondingId === inv.token + 'reject'
                           ? <Loader2 size={13} style={{ animation: 'spin .8s linear infinite' }} />
-                          : <><XCircle size={13} /> Reject</>
+                          : <><XCircle size={13} /> {t('pending_dashboard.agency.reject', 'Reject')}</>
                         }
                       </button>
                     </div>

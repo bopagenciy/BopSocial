@@ -61,11 +61,12 @@ function BentoTile({
   const reduced = useReducedMotion();
 
   const toneStyles = {
-    cyan:   { accent: '#00CCF5', soft: 'rgba(0,204,245,0.08)',  glow: 'rgba(0,204,245,0.20)' },
+    gold:   { accent: '#F5A623', soft: 'rgba(245,166,35,0.10)', glow: 'rgba(245,166,35,0.22)' },
+    cyan:   { accent: '#F5A623', soft: 'rgba(245,166,35,0.10)', glow: 'rgba(245,166,35,0.22)' },
     purple: { accent: '#a78bfa', soft: 'rgba(139,92,246,0.08)', glow: 'rgba(139,92,246,0.20)' },
     pink:   { accent: '#f472b6', soft: 'rgba(236,72,153,0.08)', glow: 'rgba(236,72,153,0.20)' },
     green:  { accent: '#34d399', soft: 'rgba(16,185,129,0.08)', glow: 'rgba(16,185,129,0.20)' },
-    amber:  { accent: '#fbbf24', soft: 'rgba(245,158,11,0.08)', glow: 'rgba(245,158,11,0.20)' },
+    amber:  { accent: '#F5A623', soft: 'rgba(245,166,35,0.10)', glow: 'rgba(245,166,35,0.22)' },
   }[tone] || {};
 
   const bg = accentBg

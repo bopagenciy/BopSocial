@@ -7,6 +7,7 @@
  *  Released under the MIT License — see LICENSE. Keep this notice.
  * ========================================================================== */
 import { Link, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import {
   ArrowLeft, ArrowRight, Star, MapPin, Calendar, Users, Globe,
@@ -23,24 +24,16 @@ import JsonLd, {
   buildLocalBusiness, buildBreadcrumbs, SITE_URL,
 } from '../../components/JsonLd';
 
-import { getAgency, AGENCY_LIST } from './agencyProfiles';
+import { getAgency, getAgencies } from './agencyProfiles';
 import ComingSoonPage from './ComingSoonPage';
 
 /**
  * AgencyShowcasePage — /agencies/:slug
- *
- *   1. Hero (logo + name + headline metric, custom-colored)
- *   2. Profile sidebar (sticky) + about + services + portfolio
- *   3. Reviews
- *   4. Stats grid (animated)
- *   5. Contact card + similar agencies
- *   6. Bottom CTA
- *
- * Falls back to ComingSoonPage for unknown slugs.
  */
 export default function AgencyShowcasePage() {
   const { slug } = useParams();
-  const agency = getAgency(slug);
+  const { t, i18n } = useTranslation(['marketing', 'navigation', 'common']);
+  const agency = getAgency(slug, i18n.language);
   if (!agency) return <ComingSoonPage />;
 
   const {
@@ -50,15 +43,15 @@ export default function AgencyShowcasePage() {
     contact,
   } = agency;
 
-  const similar = AGENCY_LIST
+  const allAgencies = getAgencies(i18n.language);
+  const similar = allAgencies
     .filter((a) => a.slug !== slug && a.industries.some((i) => industries.includes(i)))
     .slice(0, 3);
 
   return (
     <MarketingLayout>
       <Meta
-        noSuffix
-        title={`${name} — Social Stats Partner Agency`}
+        title={`${name} — ${t('marketing:metadata.agencies_title', 'Partner Agency')}`}
         description={tagline}
       />
       <JsonLd
@@ -71,9 +64,9 @@ export default function AgencyShowcasePage() {
       <JsonLd
         id="breadcrumbs"
         data={buildBreadcrumbs([
-          { name: 'Home',     url: `${SITE_URL}/` },
-          { name: 'Agencies', url: `${SITE_URL}/agencies` },
-          { name,             url: `${SITE_URL}/agencies/${slug}` },
+          { name: t('navigation:home', 'Home'),           url: `${SITE_URL}/` },
+          { name: t('navigation:agencies', 'Agencies'),   url: `${SITE_URL}/agencies` },
+          { name,                                         url: `${SITE_URL}/agencies/${slug}` },
         ])}
       />
 
@@ -98,7 +91,7 @@ export default function AgencyShowcasePage() {
             textDecoration: 'none',
             marginBottom: 24,
           }}>
-            <ArrowLeft size={14} /> All agencies
+            <ArrowLeft size={14} /> {t('marketing:agencies_showcase.back_to_agencies', 'All agencies')}
           </Link>
 
           <div style={{
@@ -135,9 +128,9 @@ export default function AgencyShowcasePage() {
                     display: 'inline-flex', alignItems: 'center', gap: 4,
                     padding: '4px 10px',
                     fontSize: 11, fontWeight: 600,
-                    color: '#00CCF5',
-                    background: 'rgba(0,204,245,0.10)',
-                    border: '1px solid rgba(0,204,245,0.25)',
+                    color: 'var(--brand-primary)',
+                    background: 'var(--brand-primary-soft)',
+                    border: '1px solid var(--brand-primary-glow)',
                     borderRadius: 'var(--radius-pill)',
                   }}>
                     <BadgeCheck size={11} /> {b}
@@ -163,10 +156,10 @@ export default function AgencyShowcasePage() {
               }}>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: '#facc15' }}>
                   <Star size={13} fill="#facc15" /> {rating.score}
-                  <span style={{ color: 'rgba(255,255,255,0.55)', marginLeft: 2 }}>· {rating.count} reviews</span>
+                  <span style={{ color: 'rgba(255,255,255,0.55)', marginLeft: 2 }}>· {rating.count} {t('marketing:agencies_showcase.reviews_heading', 'reviews').toLowerCase()}</span>
                 </span>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                  <Briefcase size={13} /> From {pricing.from}
+                  <Briefcase size={13} /> {t('marketing:agencies_showcase.from', 'From')} {pricing.from}
                 </span>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
                   <Users size={13} /> {size}
@@ -182,7 +175,7 @@ export default function AgencyShowcasePage() {
                     background: `linear-gradient(135deg, ${accent}, ${accent}cc)`,
                     color: '#0a0e14', border: 'none',
                   }}>
-                  Contact agency <ArrowRight size={14} />
+                  {t('marketing:agencies_showcase.contact_agency', 'Contact agency')} <ArrowRight size={14} />
                 </Button>
                 <Button as="a" href={`https://${contact.website}`} target="_blank" rel="noopener noreferrer" size="md" variant="ghost"
                   style={{
@@ -190,7 +183,7 @@ export default function AgencyShowcasePage() {
                     background: 'rgba(255,255,255,0.06)',
                     border: '1px solid rgba(255,255,255,0.14)',
                   }}>
-                  <Globe size={14} /> Visit website
+                  <Globe size={14} /> {t('marketing:common.visit_website', 'Visit website')}
                 </Button>
               </div>
             </div>
@@ -259,20 +252,20 @@ export default function AgencyShowcasePage() {
               border: '1px solid rgba(255,255,255,0.08)',
               position: 'sticky', top: 96,
             }}>
-              <ProfileRow icon={Calendar} label="Founded"   value={founded} />
-              <ProfileRow icon={Users}    label="Team"      value={size} />
-              <ProfileRow icon={MapPin}   label="Location"  value={location} />
-              <ProfileRow icon={Briefcase}label="Pricing"   value={pricing.model} />
+              <ProfileRow icon={Calendar} label={t('marketing:case_study.founded', 'Founded')}   value={founded} />
+              <ProfileRow icon={Users}    label={t('marketing:case_study.size', 'Team')}          value={size} />
+              <ProfileRow icon={MapPin}   label={t('marketing:case_study.location', 'Location')}  value={location} />
+              <ProfileRow icon={Briefcase}label={t('marketing:common.pricing', 'Pricing')}        value={pricing.model} />
 
-              <SidebarBlock title="Industries">
+              <SidebarBlock title={t('marketing:case_study.industry', 'Industries')}>
                 {industries.map((i) => <Chip key={i}>{i}</Chip>)}
               </SidebarBlock>
 
-              <SidebarBlock title="Services">
+              <SidebarBlock title={t('marketing:agencies_showcase.services_heading', 'Services')}>
                 {services.map((s) => <Chip key={s}>{s}</Chip>)}
               </SidebarBlock>
 
-              <SidebarBlock title="Languages">
+              <SidebarBlock title={t('marketing:common.languages', 'Languages')}>
                 {languages.map((l) => <Chip key={l}>{l}</Chip>)}
               </SidebarBlock>
 
@@ -293,8 +286,8 @@ export default function AgencyShowcasePage() {
           {/* Long form */}
           <div style={{ minWidth: 0 }}>
             <ScrollReveal>
-              <SectionLabel accent={accent}>About</SectionLabel>
-              <h2 style={sectionH2}>About {name}</h2>
+              <SectionLabel accent={accent}>{t('marketing:agencies_showcase.about_heading', 'About')}</SectionLabel>
+              <h2 style={sectionH2}>{t('marketing:agencies_showcase.about_heading', 'About')} {name}</h2>
               {about.map((p, i) => <p key={i} style={paraStyle}>{p}</p>)}
             </ScrollReveal>
 
@@ -307,7 +300,7 @@ export default function AgencyShowcasePage() {
                 background: `linear-gradient(135deg, ${accent}10, rgba(255,255,255,0.02))`,
                 border: `1px solid ${accent}30`,
               }}>
-                <SectionLabel accent={accent}>By the numbers</SectionLabel>
+                <SectionLabel accent={accent}>{t('marketing:common.metrics', 'By the numbers')}</SectionLabel>
                 <div style={{
                   marginTop: 18,
                   display: 'grid',
@@ -342,8 +335,8 @@ export default function AgencyShowcasePage() {
             {/* Services detail */}
             <ScrollReveal>
               <div style={{ marginTop: 48 }}>
-                <SectionLabel accent={accent}>Services</SectionLabel>
-                <h2 style={sectionH2}>What they do</h2>
+                <SectionLabel accent={accent}>{t('marketing:agencies_showcase.services_heading', 'Services')}</SectionLabel>
+                <h2 style={sectionH2}>{t('marketing:agencies_showcase.services_heading', 'What they do')}</h2>
                 <div style={{
                   display: 'grid',
                   gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
@@ -383,8 +376,8 @@ export default function AgencyShowcasePage() {
             {/* Portfolio */}
             <ScrollReveal>
               <div style={{ marginTop: 48 }}>
-                <SectionLabel accent={accent}>Portfolio</SectionLabel>
-                <h2 style={sectionH2}>Featured work</h2>
+                <SectionLabel accent={accent}>{t('marketing:agencies_showcase.portfolio_heading', 'Portfolio')}</SectionLabel>
+                <h2 style={sectionH2}>{t('marketing:agencies_showcase.portfolio_heading', 'Featured work')}</h2>
                 <div style={{
                   display: 'grid',
                   gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
@@ -424,8 +417,8 @@ export default function AgencyShowcasePage() {
             {/* Reviews */}
             <ScrollReveal>
               <div style={{ marginTop: 48 }}>
-                <SectionLabel accent={accent}>Reviews</SectionLabel>
-                <h2 style={sectionH2}>What customers say</h2>
+                <SectionLabel accent={accent}>{t('marketing:agencies_showcase.reviews_heading', 'Reviews')}</SectionLabel>
+                <h2 style={sectionH2}>{t('marketing:agencies_showcase.reviews_heading', 'What customers say')}</h2>
                 <div style={{ marginTop: 18, display: 'grid', gap: 12 }}>
                   {reviews.map((r, i) => (
                     <article key={i} style={{
@@ -488,7 +481,7 @@ export default function AgencyShowcasePage() {
               color: 'rgba(255,255,255,0.55)',
               textAlign: 'center',
             }}>
-              Similar agencies
+              {t('marketing:agencies_showcase.similar_agencies', 'Similar agencies')}
             </h2>
             <div style={{
               display: 'grid',
@@ -543,7 +536,7 @@ export default function AgencyShowcasePage() {
             color: '#fff',
             lineHeight: 1.1,
           }}>
-            Ready to work with {name}?
+            {t('marketing:agencies_showcase.contact_card_title', 'Work with')} {name}?
           </h2>
 
           <p style={{
@@ -553,7 +546,7 @@ export default function AgencyShowcasePage() {
             color: 'rgba(255,255,255,0.75)',
             lineHeight: 1.55,
           }}>
-            All Social Stats partner agencies use the same product you would. You stay in control of your data, permissions, and access.
+            {t('marketing:agencies_showcase.hero_subtitle', 'All Bop Social partner agencies use the same product you would. You stay in control of your data, permissions, and access.')}
           </p>
 
           <div style={{
@@ -565,7 +558,7 @@ export default function AgencyShowcasePage() {
                 background: `linear-gradient(135deg, ${accent}, ${accent}cc)`,
                 color: '#0a0e14', border: 'none',
               }}>
-              Contact {name} <ArrowRight size={15} />
+              {t('marketing:agencies_showcase.contact_agency', 'Contact agency')} <ArrowRight size={15} />
             </Button>
             <Button as={Link} to="/agencies" size="lg" variant="ghost"
               style={{
@@ -573,7 +566,7 @@ export default function AgencyShowcasePage() {
                 background: 'rgba(255,255,255,0.08)',
                 border: '1px solid rgba(255,255,255,0.18)',
               }}>
-              <ArrowLeft size={15} /> All agencies
+              <ArrowLeft size={15} /> {t('marketing:agencies_showcase.back_to_agencies', 'All agencies')}
             </Button>
           </div>
         </div>

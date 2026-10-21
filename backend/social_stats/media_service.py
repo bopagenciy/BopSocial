@@ -27,12 +27,14 @@ Storage:
 from __future__ import annotations
 
 import io
+import ipaddress
 import logging
 import mimetypes
 import os
 import uuid
 from dataclasses import dataclass
 from typing import Any, Optional
+from urllib.parse import urlparse
 
 from django.conf import settings
 from django.core.files.base import ContentFile
@@ -40,7 +42,16 @@ from django.core.files.uploadedfile import UploadedFile
 from django.utils.text import slugify
 from PIL import Image, ImageOps
 
-from .models import MediaAsset
+from .models import (
+    MediaAsset,
+    media_asset_upload_path,
+    media_asset_thumb_upload_path,
+)
+from .video_probe import (
+    probe_video_metadata,
+    generate_video_thumbnail,
+    VideoProbeError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -58,9 +69,9 @@ PLATFORM_LIMITS: dict[str, dict] = {
                   'aspect_min': 4 / 5, 'aspect_max': 1.91, 'min_width': 320, 'max_width': 1440},
         'video': {'max_bytes': 1024 * 1024 * 1024, 'max_seconds': 60, 'allowed_mime': {'video/mp4', 'video/quicktime'},
                   'aspect_min': 4 / 5, 'aspect_max': 16 / 9},
-        'reel':  {'max_bytes': 1024 * 1024 * 1024, 'max_seconds': 90, 'allowed_mime': {'video/mp4'},
+        'reel':  {'max_bytes': 1024 * 1024 * 1024, 'min_seconds': 3.0, 'max_seconds': 90.0, 'allowed_mime': {'video/mp4', 'video/quicktime'},
                   'aspect_target': 9 / 16},
-        'story': {'max_bytes': 100 * 1024 * 1024, 'max_seconds': 60, 'allowed_mime': {'video/mp4', 'image/jpeg'},
+        'story': {'max_bytes': 100 * 1024 * 1024, 'max_seconds': 60.0, 'allowed_mime': {'video/mp4', 'video/quicktime', 'image/jpeg'},
                   'aspect_target': 9 / 16},
     },
     'youtube': {
@@ -122,7 +133,7 @@ def upload_media(
         tags=tags or [],
         folder=(folder or '').strip(),
     )
-    asset.file.save(name, file, save=False)
+    thumb_bytes = None
 
     # Image metadata + thumbnail
     if mime.startswith('image/'):
@@ -137,22 +148,71 @@ def upload_media(
                 if thumb.mode in ('RGBA', 'LA', 'P'):
                     thumb = thumb.convert('RGB')
                 thumb.save(thumb_buffer, format='JPEG', quality=80)
-                asset.thumbnail.save(
-                    f'{os.path.splitext(name)[0]}_thumb.jpg',
-                    ContentFile(thumb_buffer.getvalue()),
-                    save=False,
-                )
+                thumb_bytes = thumb_buffer.getvalue()
         except Exception:
             logger.exception('Failed to process image metadata for %s', name)
 
-    # Video duration via moviepy if available.
+    # Video metadata + thumbnail via authoritative ffprobe/ffmpeg
     elif mime.startswith('video/'):
-        duration = _probe_video_duration(asset.file.path if asset.file else None)
-        if duration:
-            asset.duration_seconds = duration
+        file.seek(0)
+        try:
+            v_meta = probe_video_metadata(file)
+            asset.duration_seconds = v_meta['duration_seconds']
+            asset.width = v_meta['width']
+            asset.height = v_meta['height']
+            asset.technical_metadata = v_meta
+        except VideoProbeError:
+            raise
+        except Exception as exc:
+            logger.exception('Failed to probe video metadata for %s: %s', name, exc)
+            raise VideoProbeError('Video metadata could not be verified.')
 
-    asset.save()
-    return asset
+        try:
+            file.seek(0)
+            thumb_bytes = generate_video_thumbnail(file, duration=asset.duration_seconds)
+        except Exception as exc:
+            logger.warning('Failed to generate video thumbnail for %s: %s', name, exc)
+
+    if _s3_enabled():
+        main_key = media_asset_upload_path(asset, name)
+        thumb_key = None
+        if thumb_bytes:
+            thumb_name = f"{os.path.splitext(name)[0]}_thumb.jpg"
+            thumb_key = media_asset_thumb_upload_path(asset, thumb_name)
+
+        uploaded_s3_keys = []
+        try:
+            # 1. Upload main file to S3
+            upload_to_s3(file, main_key, content_type=mime)
+            uploaded_s3_keys.append(main_key)
+            asset.file.name = main_key
+
+            # 2. Upload thumbnail if generated
+            if thumb_bytes and thumb_key:
+                upload_to_s3(thumb_bytes, thumb_key, content_type='image/jpeg')
+                uploaded_s3_keys.append(thumb_key)
+                asset.thumbnail.name = thumb_key
+
+            # 3. Persist record in database
+            asset.save()
+            return asset
+        except Exception:
+            # Atomic rollback: cleanup any already uploaded S3 objects
+            for k in uploaded_s3_keys:
+                delete_s3_object(k)
+            raise
+
+    else:
+        asset.file.save(name, file, save=False)
+        if thumb_bytes:
+            thumb_name = f"{os.path.splitext(name)[0]}_thumb.jpg"
+            asset.thumbnail.save(
+                thumb_name,
+                ContentFile(thumb_bytes),
+                save=False,
+            )
+        asset.save()
+        return asset
 
 
 def validate_for_platform(asset: MediaAsset, platform: str, post_type: str) -> ValidationResult:
@@ -166,6 +226,9 @@ def validate_for_platform(asset: MediaAsset, platform: str, post_type: str) -> V
     result = ValidationResult(ok=True, errors=[], warnings=[])
 
     rules = (PLATFORM_LIMITS.get(platform) or {}).get(post_type)
+    if not rules and post_type == 'carousel':
+        effective_type = 'video' if (getattr(asset, 'mime_type', '') or '').startswith('video/') else 'image'
+        rules = (PLATFORM_LIMITS.get(platform) or {}).get(effective_type)
     if not rules:
         result.add_warning(f'No validation rules defined for {platform}/{post_type}')
         return result
@@ -182,6 +245,13 @@ def validate_for_platform(asset: MediaAsset, platform: str, post_type: str) -> V
             f'{platform} {post_type} requires one of {sorted(allowed)} — got {asset.mime_type}'
         )
 
+    if rules.get('min_seconds') and asset.duration_seconds is not None:
+        if asset.duration_seconds < rules['min_seconds']:
+            result.add_error(
+                f'Video too short for {platform} {post_type}: '
+                f'{asset.duration_seconds:.1f}s < {rules["min_seconds"]:.1f}s'
+            )
+
     if rules.get('max_seconds') and asset.duration_seconds:
         if asset.duration_seconds > rules['max_seconds']:
             result.add_error(
@@ -189,13 +259,31 @@ def validate_for_platform(asset: MediaAsset, platform: str, post_type: str) -> V
                 f'{asset.duration_seconds:.0f}s > {rules["max_seconds"]:.0f}s'
             )
 
-    # Image dimension constraints
-    if rules.get('min_width') and asset.width and asset.width < rules['min_width']:
-        result.add_error(f'Image width {asset.width}px below minimum {rules["min_width"]}px')
-    if rules.get('min_height') and asset.height and asset.height < rules['min_height']:
-        result.add_error(f'Image height {asset.height}px below minimum {rules["min_height"]}px')
+    is_video = (getattr(asset, 'mime_type', '') or '').startswith('video/') or post_type in ('reel', 'video')
 
-    # Aspect ratio for image posts (warn rather than block — it's recoverable)
+    # Video dimension and codec constraints
+    if is_video and platform == 'instagram':
+        if not asset.width or not asset.height or asset.width <= 0 or asset.height <= 0:
+            result.add_error(f'Video dimensions could not be verified for {platform} {post_type}.')
+
+        tech_meta = getattr(asset, 'technical_metadata', {}) or {}
+        v_codec = tech_meta.get('video_codec')
+        if v_codec and v_codec not in {'h264', 'hevc', 'h265'}:
+            result.add_error(
+                f'Unsupported video codec for {platform} {post_type}: {v_codec}. Only H.264 and HEVC are supported.'
+            )
+        a_codec = tech_meta.get('audio_codec')
+        if a_codec and a_codec not in {'aac', 'mp3', 'mp4a'}:
+            result.add_warning(f'Audio codec {a_codec} may not be supported by {platform} (AAC recommended).')
+
+    # Image dimension constraints
+    if not is_video:
+        if rules.get('min_width') and asset.width and asset.width < rules['min_width']:
+            result.add_error(f'Image width {asset.width}px below minimum {rules["min_width"]}px')
+        if rules.get('min_height') and asset.height and asset.height < rules['min_height']:
+            result.add_error(f'Image height {asset.height}px below minimum {rules["min_height"]}px')
+
+    # Aspect ratio for image & video posts (warn rather than block — it's recoverable)
     if asset.width and asset.height:
         ar = asset.width / asset.height
         if rules.get('aspect_min') and ar < rules['aspect_min']:
@@ -205,6 +293,86 @@ def validate_for_platform(asset: MediaAsset, platform: str, post_type: str) -> V
         target = rules.get('aspect_target')
         if target and abs(ar - target) > 0.05:
             result.add_warning(f'{platform} prefers aspect ratio {target:.2f}, got {ar:.2f}')
+
+    return result
+
+
+
+
+def validate_carousel_for_platform(
+    assets: list[Any],
+    platform: str,
+    *,
+    lang: str = 'en',
+) -> ValidationResult:
+    """
+    Validate a sequence of assets for carousel publishing on the given platform.
+
+    Enforces:
+      - Item count limits (2 to 10 items for Instagram).
+      - Per-item format/size/dimension validation.
+      - Uniform aspect ratio across all items (comparing ratios with <= 0.01 tolerance).
+      - Strict blocking if dimensions cannot be determined (e.g. video without metadata).
+
+    Returns ValidationResult; never raises.
+    """
+    result = ValidationResult(ok=True, errors=[], warnings=[])
+    plat = (platform or '').lower()
+    from .locale_helpers import get_media_error_message
+
+    if plat == 'instagram':
+        # 1. Count validation: 2 to 10 items
+        if len(assets) < 2:
+            result.add_error(get_media_error_message('carousel_too_few_items', plat, lang=lang))
+        elif len(assets) > 10:
+            result.add_error(get_media_error_message('carousel_too_many_items', plat, lang=lang))
+
+        # 2. Individual asset validation
+        for asset in assets:
+            vr = validate_for_platform(asset, plat, 'carousel')
+            for e in vr.errors:
+                aid = getattr(asset, 'id', None)
+                result.add_error(f'asset#{aid}: {e}' if aid else e)
+            for w in vr.warnings:
+                aid = getattr(asset, 'id', None)
+                result.add_warning(f'asset#{aid}: {w}' if aid else w)
+
+        # 3. Uniform aspect ratio validation
+        if len(assets) >= 1:
+            first = assets[0]
+            f_w = getattr(first, 'width', None)
+            f_h = getattr(first, 'height', None)
+            f_mime = getattr(first, 'mime_type', '') or ''
+            if not f_w or not f_h or f_h <= 0:
+                if f_mime.startswith('video/'):
+                    result.add_error(get_media_error_message('carousel_video_dimensions_unknown', plat, lang=lang))
+                result.add_error(get_media_error_message('carousel_aspect_uniformity', plat, lang=lang))
+            else:
+                base_ar = f_w / f_h
+                for asset in assets[1:]:
+                    a_w = getattr(asset, 'width', None)
+                    a_h = getattr(asset, 'height', None)
+                    a_mime = getattr(asset, 'mime_type', '') or ''
+                    if not a_w or not a_h or a_h <= 0:
+                        if a_mime.startswith('video/'):
+                            result.add_error(get_media_error_message('carousel_video_dimensions_unknown', plat, lang=lang))
+                        result.add_error(get_media_error_message('carousel_aspect_uniformity', plat, lang=lang))
+                        break
+                    ar = a_w / a_h
+                    if abs(ar - base_ar) > 0.01:
+                        result.add_error(get_media_error_message('carousel_aspect_uniformity', plat, lang=lang))
+                        break
+    else:
+        if len(assets) < 2:
+            result.add_error(f'A {platform} carousel requires at least 2 items.')
+        for asset in assets:
+            vr = validate_for_platform(asset, plat, 'carousel')
+            for e in vr.errors:
+                aid = getattr(asset, 'id', None)
+                result.add_error(f'asset#{aid}: {e}' if aid else e)
+            for w in vr.warnings:
+                aid = getattr(asset, 'id', None)
+                result.add_warning(f'asset#{aid}: {w}' if aid else w)
 
     return result
 
@@ -219,7 +387,10 @@ def transcode_for_platform(asset: MediaAsset, platform: str, post_type: str) -> 
     Returns the (possibly new) MediaAsset. Real per-platform transcoding will
     expand here in this.
     """
-    rules = (PLATFORM_LIMITS.get(platform) or {}).get(post_type) or {}
+    rules = (PLATFORM_LIMITS.get(platform) or {}).get(post_type)
+    if not rules and post_type == 'carousel':
+        effective_type = 'video' if (getattr(asset, 'mime_type', '') or '').startswith('video/') else 'image'
+        rules = (PLATFORM_LIMITS.get(platform) or {}).get(effective_type) or {}
     max_bytes = rules.get('max_bytes')
 
     # Image: re-compress JPEG/PNG until under max_bytes.
@@ -267,8 +438,147 @@ def transcode_for_platform(asset: MediaAsset, platform: str, post_type: str) -> 
 
 
 # ── S3 helpers (used when settings configure S3) ──────────────────────────────
+LOCAL_HOSTNAMES = frozenset({
+    'localhost', '127.0.0.1', '::1', '0.0.0.0',
+    'testserver', 'web', 'example.com',
+    'host.docker.internal', 'backend', 'frontend', 'postgres', 'redis', 'worker', 'beat',
+})
+LOCAL_SUFFIXES = ('.local', '.internal', '.localhost', '.invalid', '.test')
+
+
+def get_s3_bucket_name() -> str:
+    """Return configured S3 bucket name checking both canonical variable names."""
+    return getattr(settings, 'AWS_STORAGE_BUCKET_NAME', '') or getattr(settings, 'AWS_S3_BUCKET', '') or ''
+
+
+def get_s3_region_name() -> Optional[str]:
+    """Return configured S3 region checking both canonical variable names."""
+    return getattr(settings, 'AWS_S3_REGION_NAME', None) or getattr(settings, 'AWS_S3_REGION', None)
+
+
 def _s3_enabled() -> bool:
-    return bool(getattr(settings, 'AWS_ACCESS_KEY_ID', None) and getattr(settings, 'AWS_S3_BUCKET', None))
+    """Return True if AWS credentials and bucket name are configured."""
+    return bool(getattr(settings, 'AWS_ACCESS_KEY_ID', None) and get_s3_bucket_name())
+
+
+def get_s3_client():
+    """Return an authenticated boto3 S3 client using settings."""
+    import boto3
+    return boto3.client(
+        's3',
+        aws_access_key_id=getattr(settings, 'AWS_ACCESS_KEY_ID', ''),
+        aws_secret_access_key=getattr(settings, 'AWS_SECRET_ACCESS_KEY', ''),
+        region_name=get_s3_region_name(),
+    )
+
+
+def upload_to_s3(file_obj, key: str, content_type: str = '') -> None:
+    """Upload a file or buffer to S3 using put_object with explicit ContentType."""
+    s3 = get_s3_client()
+    bucket = get_s3_bucket_name()
+    if hasattr(file_obj, 'seek'):
+        file_obj.seek(0)
+    body = file_obj.read() if hasattr(file_obj, 'read') else file_obj
+    kwargs = {
+        'Bucket': bucket,
+        'Key': key,
+        'Body': body,
+    }
+    if content_type:
+        kwargs['ContentType'] = content_type
+    s3.put_object(**kwargs)
+
+
+def delete_s3_object(key: str) -> bool:
+    """Best-effort deletion of an S3 object by key. Returns True if deleted, False on failure."""
+    if not key or not _s3_enabled():
+        return False
+    try:
+        s3 = get_s3_client()
+        s3.delete_object(Bucket=get_s3_bucket_name(), Key=key)
+        return True
+    except Exception:
+        logger.exception("Failed to delete S3 object: %s", key)
+        return False
+
+
+def validate_s3_configuration() -> dict:
+    """
+    Validate AWS S3 storage configuration without exposing secrets.
+
+    Returns:
+      dict with keys: 'valid' (bool), 'errors' (list[str]), 'warnings' (list[str]),
+      'bucket_configured' (bool), 'credentials_configured' (bool).
+    """
+    errors = []
+    warnings = []
+
+    access_key = getattr(settings, 'AWS_ACCESS_KEY_ID', '') or ''
+    secret_key = getattr(settings, 'AWS_SECRET_ACCESS_KEY', '') or ''
+    bucket = get_s3_bucket_name()
+    region = get_s3_region_name()
+    custom_domain = getattr(settings, 'AWS_S3_CUSTOM_DOMAIN', '') or ''
+
+    if not access_key:
+        errors.append('AWS_ACCESS_KEY_ID is missing or empty')
+    if not secret_key:
+        errors.append('AWS_SECRET_ACCESS_KEY is missing or empty')
+    if not bucket:
+        errors.append('AWS_STORAGE_BUCKET_NAME / AWS_S3_BUCKET is missing or empty')
+    if not region:
+        warnings.append('AWS_S3_REGION / AWS_S3_REGION_NAME is not explicitly set; defaulting to AWS SDK standard resolution')
+
+    if custom_domain:
+        if 'localhost' in custom_domain or '127.0.0.1' in custom_domain:
+            errors.append(f'AWS_S3_CUSTOM_DOMAIN contains local address: {custom_domain}')
+        elif not custom_domain.startswith('https://') and not custom_domain.startswith('http://'):
+            warnings.append(f'AWS_S3_CUSTOM_DOMAIN does not include https:// scheme: {custom_domain}')
+
+    return {
+        'valid': len(errors) == 0,
+        'errors': errors,
+        'warnings': warnings,
+        'bucket_configured': bool(bucket),
+        'credentials_configured': bool(access_key and secret_key),
+    }
+
+
+def is_public_https_url(url: str) -> tuple[bool, str]:
+    """
+    Validate that a media URL is externally accessible over HTTPS for external providers
+    such as Meta Graph API.
+
+    Returns (is_valid: bool, failure_reason: str).
+    """
+    if not url or not isinstance(url, str):
+        return False, 'URL is empty'
+
+    parsed = urlparse(url.strip())
+    if parsed.scheme.lower() != 'https':
+        return False, f"URL scheme must be HTTPS, got '{parsed.scheme or 'none'}'"
+
+    host = (parsed.hostname or '').lower().strip()
+    if not host:
+        return False, 'URL has no hostname'
+
+    if host in LOCAL_HOSTNAMES or any(host.endswith(sfx) for sfx in LOCAL_SUFFIXES):
+        return False, f"Host '{host}' is local/internal and not publicly reachable"
+
+    # Check for private/reserved IP addresses
+    try:
+        ip = ipaddress.ip_address(host)
+        if ip.is_private:
+            return False, f"Host '{host}' is in a private IP address range"
+        if ip.is_loopback:
+            return False, f"Host '{host}' is a loopback address"
+        if ip.is_link_local:
+            return False, f"Host '{host}' is a link-local address"
+        if ip.is_reserved:
+            return False, f"Host '{host}' is a reserved IP address"
+    except ValueError:
+        pass
+
+    return True, ''
 
 
 def presigned_url(asset: MediaAsset, *, expires: int = 3600) -> str:
@@ -280,25 +590,90 @@ def presigned_url(asset: MediaAsset, *, expires: int = 3600) -> str:
         return ''
     if _s3_enabled():
         try:
-            import boto3
-            client = boto3.client(
-                's3',
-                aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-                aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-                region_name=getattr(settings, 'AWS_S3_REGION', None),
-            )
+            client = get_s3_client()
             return client.generate_presigned_url(
                 'get_object',
-                Params={'Bucket': settings.AWS_S3_BUCKET, 'Key': asset.file.name},
+                Params={'Bucket': get_s3_bucket_name(), 'Key': asset.file.name},
                 ExpiresIn=expires,
             )
         except Exception:
             logger.exception('Failed to sign S3 URL for asset %s', asset.id)
-    # Local fallback — assumes Django is serving MEDIA_URL
+    # Controlled public publishing fallback — signed token with narrow scope (SEC-01)
     try:
-        return asset.file.url
+        return asset.get_public_publishing_url(expires_in=expires)
     except Exception:
+        try:
+            return asset.file.url
+        except Exception:
+            return ''
+
+
+def get_provider_media_url(asset: MediaAsset, provider: str, *, lang: str = 'en') -> str:
+    """
+    Resolve and validate a media URL for a specific target publishing provider.
+
+    Meta (Facebook & Instagram) requires a publicly accessible HTTPS URL.
+    Direct-upload providers (YouTube, LinkedIn, GMB) can use local or presigned URLs.
+    """
+    if not asset or not asset.file:
         return ''
+
+    prov = (provider or '').lower()
+    from .publishers.base import PublishError
+    from .locale_helpers import get_media_error_message
+
+    # 1. Direct upload providers (YouTube, LinkedIn, Google Business Profile)
+    # These platforms stream/download bytes on the backend server and upload directly.
+    # Local filesystem storage remains fully supported for dev and internal workflows.
+    if prov in ('youtube', 'linkedin', 'google_my_business', 'gmb'):
+        url = presigned_url(asset)
+        return url or asset.file.url
+
+    # 2. Meta (Facebook, Instagram) — strictly requires publicly accessible HTTPS URLs
+    if prov in ('facebook', 'instagram', 'meta'):
+        candidate_url = ''
+        if _s3_enabled():
+            candidate_url = presigned_url(asset)
+        elif getattr(settings, 'BACKEND_PUBLIC_URL', ''):
+            candidate_url = asset.get_public_publishing_url()
+        else:
+            candidate_url = presigned_url(asset)
+
+        is_valid, reason = is_public_https_url(candidate_url)
+        if not is_valid:
+            msg = get_media_error_message(
+                'public_media_required', prov, lang=lang, reason=reason,
+            )
+            logger.warning(
+                'Public media URL required for %s publish (asset=%s): candidate=%s rejected: %s',
+                prov, asset.id, candidate_url, reason
+            )
+            raise PublishError(
+                msg,
+                code='public_media_required',
+                status_code=400,
+                supported=True,
+            )
+        return candidate_url
+
+    # Fallback for unrecognized providers
+    return presigned_url(asset) or asset.file.url
+
+
+def validate_media_url_for_provider(url: str, provider: str, *, lang: str = 'en') -> str:
+    """
+    Validate that an existing URL string satisfies the provider's hosting requirements.
+    Raises PublishError if unsuitable.
+    """
+    prov = (provider or '').lower()
+    if prov in ('facebook', 'instagram', 'meta'):
+        is_valid, reason = is_public_https_url(url)
+        if not is_valid:
+            from .publishers.base import PublishError
+            from .locale_helpers import get_media_error_message
+            msg = get_media_error_message('invalid_media_url', prov, lang=lang, reason=reason)
+            raise PublishError(msg, code='invalid_media_url', status_code=400, supported=True)
+    return url
 
 
 # ── Internals ─────────────────────────────────────────────────────────────────
@@ -310,15 +685,11 @@ def _safe_filename(original: str) -> str:
 
 
 def _probe_video_duration(path: Optional[str]) -> float:
+    """Deprecated: Authoritative video probing is handled by probe_video_metadata."""
     if not path:
         return 0.0
     try:
-        from moviepy.editor import VideoFileClip
-    except ImportError:
-        return 0.0
-    try:
-        with VideoFileClip(path) as clip:
-            return float(clip.duration or 0)
+        meta = probe_video_metadata(path)
+        return float(meta.get('duration_seconds') or 0.0)
     except Exception:
-        logger.exception('Failed to probe video duration for %s', path)
         return 0.0

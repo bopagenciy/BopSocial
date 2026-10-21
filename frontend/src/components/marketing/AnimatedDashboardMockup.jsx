@@ -45,7 +45,7 @@ export default function AnimatedDashboardMockup() {
         overflow: 'hidden',
         background: 'linear-gradient(180deg, #0d1218 0%, #0a0e14 100%)',
         border: '1px solid rgba(255,255,255,0.08)',
-        boxShadow: '0 40px 120px rgba(0, 204, 245, 0.18), 0 8px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05)',
+        boxShadow: '0 40px 120px rgba(245, 166, 35, 0.22), 0 8px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05)',
       }}
     >
       {/* Window chrome */}
@@ -63,7 +63,7 @@ export default function AnimatedDashboardMockup() {
           fontSize: 10, fontFamily: 'var(--font-mono)', color: 'rgba(255,255,255,0.4)',
           background: 'rgba(255,255,255,0.06)',
           borderRadius: 'var(--radius-sm)',
-        }}>app.socialstats.app/dashboard</div>
+        }}>app.bopsocial.com/dashboard</div>
       </div>
 
       <div style={{ display: 'flex', height: 'calc(100% - 28px)' }}>
@@ -96,13 +96,13 @@ export default function AnimatedDashboardMockup() {
             </div>
             <div style={{
               width: 28, height: 28, borderRadius: '50%',
-              background: 'linear-gradient(135deg, #00CCF5, #8b5cf6)',
+              background: 'linear-gradient(135deg, #F5A623, #2D3142)',
             }} />
           </div>
 
           {/* Stat cards row */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
-            <StatCard label="Reach" value="248K" delta="+23%" tone="cyan" delay={0.2} />
+            <StatCard label="Reach" value="248K" delta="+23%" tone="gold" delay={0.2} />
             <StatCard label="Engagement" value="14.2K" delta="+12%" tone="purple" delay={0.4} />
             <StatCard label="Leads" value="312" delta="+5x" tone="green" delay={0.6} />
           </div>
@@ -122,17 +122,17 @@ export default function AnimatedDashboardMockup() {
                 <span style={{ fontSize: 10, fontWeight: 600, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                   Last 30 days
                 </span>
-                <TrendingUp size={11} color="#00CCF5" />
+                <TrendingUp size={11} color="#F5A623" />
               </div>
               <svg viewBox="0 0 400 90" preserveAspectRatio="none" style={{ width: '100%', flex: 1 }}>
                 <defs>
                   <linearGradient id="chart-line" x1="0" y1="0" x2="1" y2="0">
-                    <stop offset="0%"  stopColor="#00CCF5" />
-                    <stop offset="100%" stopColor="#8b5cf6" />
+                    <stop offset="0%"  stopColor="#F5A623" />
+                    <stop offset="100%" stopColor="#E09612" />
                   </linearGradient>
                   <linearGradient id="chart-fill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%"  stopColor="#00CCF5" stopOpacity="0.3" />
-                    <stop offset="100%" stopColor="#00CCF5" stopOpacity="0" />
+                    <stop offset="0%"  stopColor="#F5A623" stopOpacity="0.32" />
+                    <stop offset="100%" stopColor="#F5A623" stopOpacity="0" />
                   </linearGradient>
                 </defs>
                 <motion.path
@@ -184,8 +184,8 @@ function SidebarBtn({ children, active }) {
       width: 30, height: 30,
       display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
       borderRadius: 'var(--radius-sm)',
-      background: active ? 'rgba(0,204,245,0.18)' : 'transparent',
-      color: active ? '#00CCF5' : 'rgba(255,255,255,0.45)',
+      background: active ? 'rgba(245, 166, 35, 0.18)' : 'transparent',
+      color: active ? '#F5A623' : 'rgba(255,255,255,0.45)',
     }}>
       {children}
     </div>
@@ -194,9 +194,10 @@ function SidebarBtn({ children, active }) {
 
 function StatCard({ label, value, delta, tone, delay }) {
   const toneColors = {
-    cyan:   { bg: 'rgba(0,204,245,0.10)',  text: '#00CCF5' },
-    purple: { bg: 'rgba(139,92,246,0.10)', text: '#a78bfa' },
-    green:  { bg: 'rgba(16,185,129,0.10)', text: '#10b981' },
+    gold:   { bg: 'rgba(245, 166, 35, 0.12)', text: '#F5A623' },
+    cyan:   { bg: 'rgba(245, 166, 35, 0.12)', text: '#F5A623' },
+    purple: { bg: 'rgba(224, 150, 18, 0.12)', text: '#F5A623' },
+    green:  { bg: 'rgba(16,185,129,0.10)',    text: '#10b981' },
   }[tone] || { bg: 'rgba(255,255,255,0.04)', text: '#fff' };
 
   return (

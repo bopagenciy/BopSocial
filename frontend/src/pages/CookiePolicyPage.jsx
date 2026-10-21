@@ -151,7 +151,7 @@ export default function CookiePolicyPage() {
           title: '6. Contact',
           body: (
             <p>
-              Questions? Email <a href="mailto:privacy@socialstats.app">privacy@socialstats.app</a> or visit our{' '}
+              Questions? Email <a href="mailto:privacy@bopsocial.com">privacy@bopsocial.com</a> or visit our{' '}
               <a href="/privacy">privacy policy</a>.
             </p>
           ),

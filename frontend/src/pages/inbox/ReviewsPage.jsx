@@ -11,6 +11,7 @@ import {
   Star, Flag, MessageSquare, Send, Smile, Frown, Meh, Loader2,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 
 import PageHeader from '../../components/layout/PageHeader';
 import Card from '../../components/ui/Card';
@@ -19,6 +20,7 @@ import Badge from '../../components/ui/Badge';
 import EmptyState from '../../components/ui/EmptyState';
 import { useReviews } from '../../hooks/useInbox';
 import { inboxAPI } from '../../services/api';
+import { formatDate } from '../../utils/formatters';
 
 const STATUS_FILTERS = [
   { id: '',        label: 'All' },
@@ -35,6 +37,7 @@ const SENTIMENT = {
 };
 
 export default function ReviewsPage() {
+  const { t } = useTranslation('engagement');
   const [status, setStatus] = useState('');
   const [rating, setRating] = useState('');
 
@@ -47,8 +50,10 @@ export default function ReviewsPage() {
   return (
     <div style={{ paddingBottom: 32 }}>
       <PageHeader
-        title="Reviews"
-        subtitle={`${reviews.length} review${reviews.length === 1 ? '' : 's'}`}
+        title={t('reviews.title', 'Reviews')}
+        subtitle={reviews.length === 1
+          ? t('reviews.subtitle_one', '1 review', { count: 1 })
+          : t('reviews.subtitle_other', '{{count}} reviews', { count: reviews.length })}
       />
 
       <div style={{ padding: '0 24px' }}>
@@ -62,7 +67,7 @@ export default function ReviewsPage() {
             color: 'var(--text-tertiary)',
             textTransform: 'uppercase', letterSpacing: 0.4,
           }}>
-            Status
+            {t('reviews.filter_status', 'Status')}
           </span>
           {STATUS_FILTERS.map((f) => (
             <button
@@ -71,7 +76,7 @@ export default function ReviewsPage() {
               onClick={() => setStatus(f.id)}
               style={pillStyle(status === f.id)}
             >
-              {f.label}
+              {f.id === '' ? t('reviews.all', 'All') : t(`reviews.status.${f.id}`, f.label)}
             </button>
           ))}
           <span style={{ width: 1, height: 20, background: 'var(--border-subtle)' }} />
@@ -80,7 +85,7 @@ export default function ReviewsPage() {
             color: 'var(--text-tertiary)',
             textTransform: 'uppercase', letterSpacing: 0.4,
           }}>
-            Rating
+            {t('reviews.filter_rating', 'Rating')}
           </span>
           {['', '5', '4', '3', '2', '1'].map((r) => (
             <button
@@ -89,7 +94,7 @@ export default function ReviewsPage() {
               onClick={() => setRating(r)}
               style={pillStyle(rating === r)}
             >
-              {r ? `${r}★` : 'All'}
+              {r ? `${r}★` : t('reviews.all', 'All')}
             </button>
           ))}
         </Card>
@@ -104,8 +109,8 @@ export default function ReviewsPage() {
           <Card padding="none" style={{ overflow: 'hidden' }}>
             <EmptyState
               icon={Star}
-              title="No reviews to show"
-              description="When customers leave a review on Google Business Profile, it'll appear here. Make sure your GMB account is connected."
+              title={t('reviews.empty_title', 'No reviews to show')}
+              description={t('reviews.empty_desc', "When customers leave a review on Google Business Profile, it'll appear here. Make sure your GMB account is connected.")}
             />
           </Card>
         )}
@@ -127,6 +132,7 @@ export default function ReviewsPage() {
 }
 
 function ReviewCard({ review, onChange }) {
+  const { t } = useTranslation('engagement');
   const [reply, setReply] = useState('');
   const [sending, setSending] = useState(false);
   const sent = SENTIMENT[review.sentiment] || SENTIMENT.unknown;
@@ -137,27 +143,28 @@ function ReviewCard({ review, onChange }) {
     try {
       await inboxAPI.reviews.reply(review.id, reply.trim());
       setReply('');
-      toast.success('Reply posted');
+      toast.success(t('reviews.reply_posted', 'Reply posted'));
       onChange?.();
     } catch (e) {
-      toast.error(e.response?.data?.detail || 'Reply failed');
+      toast.error(e.response?.data?.detail || t('reviews.reply_failed', 'Reply failed'));
     } finally {
       setSending(false);
     }
   }
 
   async function flag() {
-    if (!window.confirm('Flag this review as inappropriate?')) return;
+    if (!window.confirm(t('reviews.flag_confirm', 'Flag this review as inappropriate?'))) return;
     try {
       await inboxAPI.reviews.flag(review.id);
-      toast.success('Review flagged');
+      toast.success(t('reviews.review_flagged', 'Review flagged'));
       onChange?.();
     } catch (e) {
-      toast.error('Flag failed');
+      toast.error(t('reviews.flag_failed', 'Flag failed'));
     }
   }
 
   const initial = (review.reviewer_name || '?')[0].toUpperCase();
+  const sentimentTooltip = review.sentiment ? t(`inbox.sentiments.${review.sentiment}`, sent.label) : '';
 
   return (
     <Card padding="md">
@@ -178,17 +185,17 @@ function ReviewCard({ review, onChange }) {
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
             <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 14 }}>
-              {review.reviewer_name || 'Anonymous'}
+              {review.reviewer_name || t('reviews.anonymous', 'Anonymous')}
             </span>
             <StatusBadge status={review.status} />
           </div>
           <Stars n={review.rating} />
           <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>
-            {review.created_at_platform ? new Date(review.created_at_platform).toLocaleDateString() : ''}
+            {review.created_at_platform ? formatDate(review.created_at_platform) : ''}
           </div>
         </div>
         {sent.icon && (
-          <span title={sent.label}><sent.icon size={16} color={sent.color} /></span>
+          <span title={sentimentTooltip}><sent.icon size={16} color={sent.color} /></span>
         )}
       </div>
 
@@ -218,7 +225,9 @@ function ReviewCard({ review, onChange }) {
             fontSize: 11, fontWeight: 700, marginBottom: 4,
             color: 'var(--brand-primary-hover)', textTransform: 'uppercase', letterSpacing: 0.4,
           }}>
-            Owner reply{review.replied_at ? ` · ${new Date(review.replied_at).toLocaleDateString()}` : ''}
+            {review.replied_at
+              ? t('reviews.owner_reply_date', 'Owner reply · {{date}}', { date: formatDate(review.replied_at) })
+              : t('reviews.owner_reply', 'Owner reply')}
           </div>
           {review.reply_text}
         </div>
@@ -228,7 +237,7 @@ function ReviewCard({ review, onChange }) {
             rows={2}
             value={reply}
             onChange={(e) => setReply(e.target.value)}
-            placeholder={review.status === 'flagged' ? 'Flagged — replies disabled' : 'Reply to this review…'}
+            placeholder={review.status === 'flagged' ? t('reviews.flagged_placeholder', 'Flagged — replies disabled') : t('reviews.reply_placeholder', 'Reply to this review…')}
             disabled={review.status === 'flagged' || sending}
             style={{
               flex: 1, padding: '10px 12px',
@@ -246,10 +255,10 @@ function ReviewCard({ review, onChange }) {
               onClick={send} loading={sending}
               disabled={!reply.trim() || review.status === 'flagged'}
             >
-              Reply
+              {t('reviews.btn_reply', 'Reply')}
             </Button>
             <Button variant="ghost" icon={Flag} size="sm" onClick={flag}>
-              Flag
+              {t('reviews.btn_flag', 'Flag')}
             </Button>
           </div>
         </div>
@@ -274,9 +283,10 @@ function Stars({ n }) {
 }
 
 function StatusBadge({ status }) {
-  if (status === 'replied') return <Badge variant="success" dot>Replied</Badge>;
-  if (status === 'flagged') return <Badge variant="warning" dot>Flagged</Badge>;
-  return <Badge variant="info" dot>New</Badge>;
+  const { t } = useTranslation('engagement');
+  if (status === 'replied') return <Badge variant="success" dot>{t('reviews.status.replied', 'Replied')}</Badge>;
+  if (status === 'flagged') return <Badge variant="warning" dot>{t('reviews.status.flagged', 'Flagged')}</Badge>;
+  return <Badge variant="info" dot>{t('reviews.status.new', 'New')}</Badge>;
 }
 
 function pillStyle(active) {

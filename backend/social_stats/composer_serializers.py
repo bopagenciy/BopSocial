@@ -13,6 +13,7 @@ from .models import (
     UnifiedPost, PlatformPublishLog, MediaAsset,
     PostQueue, QueuedItem, PostEngagement,
 )
+from .publishers import is_platform_supported
 
 
 # ── Media ─────────────────────────────────────────────────────────────────────
@@ -25,24 +26,32 @@ class MediaAssetSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'client',
             'mime_type', 'file_size', 'width', 'height', 'duration_seconds',
+            'technical_metadata',
             'alt_text', 'tags', 'folder', 'is_used',
             'file_url', 'thumbnail_url',
             'created_at',
         ]
         read_only_fields = [
             'mime_type', 'file_size', 'width', 'height', 'duration_seconds',
+            'technical_metadata',
             'is_used', 'created_at',
         ]
 
     def get_file_url(self, obj):
         try:
-            return obj.file.url if obj.file else ''
+            if not obj.file:
+                return ''
+            request = self.context.get('request')
+            return obj.get_authorized_url(request=request, thumb=False)
         except Exception:
             return ''
 
     def get_thumbnail_url(self, obj):
         try:
-            return obj.thumbnail.url if obj.thumbnail else ''
+            if not obj.thumbnail:
+                return ''
+            request = self.context.get('request')
+            return obj.get_authorized_url(request=request, thumb=True)
         except Exception:
             return ''
 
@@ -84,24 +93,32 @@ class UnifiedPostSerializer(serializers.ModelSerializer):
             'id', 'client',
             'title', 'content', 'media_urls', 'media_type',
             'target_platforms', 'platform_overrides',
-            'scheduled_at', 'published_at',
+            'scheduled_at', 'queued_at', 'published_at',
             'status', 'is_recurring', 'recurrence_rule',
             'ai_generated', 'ai_prompt',
             'created_by', 'created_by_name',
             'created_at', 'updated_at',
             'approved_by', 'approved_at',
+            'source_queue', 'source_queued_item',
             'publish_logs',
         ]
         read_only_fields = [
-            'status', 'published_at',
+            'status', 'queued_at', 'published_at',
             'created_by', 'created_by_name', 'created_at', 'updated_at',
             'approved_by', 'approved_at',
+            'source_queue', 'source_queued_item',
         ]
 
     def validate_target_platforms(self, value):
         if not isinstance(value, list):
             raise serializers.ValidationError('target_platforms must be a list')
-        return [str(p).lower() for p in value if p]
+        cleaned = [str(p).lower() for p in value if p]
+        for p in cleaned:
+            if not is_platform_supported(p):
+                raise serializers.ValidationError(
+                    f"Platform '{p}' is not currently supported for automated publishing. Coming soon."
+                )
+        return cleaned
 
     def validate(self, attrs):
         media_type = attrs.get('media_type', 'text')
@@ -110,6 +127,15 @@ class UnifiedPostSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 {'media_urls': 'At least one media URL is required for non-text posts'}
             )
+        if media_type == 'carousel':
+            if len(media_urls) < 2:
+                raise serializers.ValidationError(
+                    {'media_urls': 'An Instagram carousel requires at least 2 items.'}
+                )
+            if len(media_urls) > 10:
+                raise serializers.ValidationError(
+                    {'media_urls': 'An Instagram carousel cannot exceed 10 items.'}
+                )
         return attrs
 
 
@@ -123,6 +149,7 @@ class UnifiedPostListSerializer(serializers.ModelSerializer):
             'id', 'client', 'title',
             'content', 'media_type', 'target_platforms', 'platform_count',
             'status', 'scheduled_at', 'published_at',
+            'source_queue', 'source_queued_item',
             'created_by', 'created_at',
         ]
         read_only_fields = fields
@@ -133,19 +160,27 @@ class UnifiedPostListSerializer(serializers.ModelSerializer):
 
 # ── Queues ────────────────────────────────────────────────────────────────────
 class QueuedItemSerializer(serializers.ModelSerializer):
+    is_approved = serializers.BooleanField(read_only=True)
+    approved_by_name = serializers.CharField(source='approved_by.get_full_name', read_only=True)
+
     class Meta:
         model = QueuedItem
         fields = [
             'id', 'queue',
             'content', 'media_urls', 'hashtags', 'sort_order', 'status',
+            'approved_by', 'approved_by_name', 'approved_at', 'is_approved',
             'used_at', 'unified_post', 'created_at',
         ]
-        read_only_fields = ['status', 'used_at', 'unified_post', 'created_at']
+        read_only_fields = [
+            'status', 'used_at', 'unified_post', 'created_at',
+            'approved_by', 'approved_by_name', 'approved_at', 'is_approved',
+        ]
 
 
 class PostQueueSerializer(serializers.ModelSerializer):
     items_count   = serializers.SerializerMethodField()
     waiting_count = serializers.SerializerMethodField()
+    items         = QueuedItemSerializer(many=True, read_only=True)
 
     class Meta:
         model = PostQueue
@@ -153,7 +188,7 @@ class PostQueueSerializer(serializers.ModelSerializer):
             'id', 'client', 'name', 'platforms', 'schedule_rule',
             'queue_strategy', 'is_active',
             'last_dispatched_at',
-            'items_count', 'waiting_count',
+            'items_count', 'waiting_count', 'items',
             'created_at', 'updated_at',
         ]
         read_only_fields = ['last_dispatched_at', 'created_at', 'updated_at']

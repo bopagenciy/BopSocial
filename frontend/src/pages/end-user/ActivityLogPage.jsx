@@ -14,6 +14,7 @@
  * a "flag this" button so the user can mark suspicious actions for review.
  */
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation, Trans } from 'react-i18next';
 import {
   ShieldCheck, Filter, RefreshCw, Flag, AlertTriangle, Sparkles,
   Activity as ActivityIcon, Clock, Undo2, Download,
@@ -37,6 +38,7 @@ const SEVERITY_COLOR = {
 };
 
 export default function ActivityLogPage() {
+  const { t } = useTranslation('agency_portal');
   const [rows,    setRows]    = useState([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
@@ -53,32 +55,32 @@ export default function ActivityLogPage() {
     if (filters.flagged)    params.flagged    = '1';
     activityAPI.list(params)
       .then((r) => setRows(r.data?.rows || []))
-      .catch(() => toast.error('Could not load activity'))
+      .catch(() => toast.error(t('end_user.activity.err_load', 'Could not load activity')))
       .finally(() => setLoading(false));
   }
 
   useEffect(() => { reload(); /* eslint-disable-next-line */ }, [filters]);
 
   async function flag(id) {
-    const reason = window.prompt('What\'s wrong with this action? (optional)');
+    const reason = window.prompt(t('end_user.activity.flag_prompt', "What's wrong with this action? (optional)"));
     if (reason === null) return;
     try {
       await activityAPI.flag(id, reason);
       setRows((list) => list.map((r) => r.id === id ? { ...r, flagged_by_user: true } : r));
-      toast.success('Flagged for review');
+      toast.success(t('end_user.activity.toast_flagged', 'Flagged for review'));
     } catch (e) {
-      toast.error(e?.response?.data?.error || 'Could not flag');
+      toast.error(e?.response?.data?.error || t('end_user.activity.err_flag', 'Could not flag'));
     }
   }
 
   async function revert(id) {
-    if (!window.confirm('Revert this action? Where supported, the post will be removed from connected platforms.')) return;
+    if (!window.confirm(t('end_user.activity.revert_confirm', 'Revert this action? Where supported, the post will be removed from connected platforms.'))) return;
     try {
       const r = await activityAPI.revert(id);
-      toast.success(r.data?.message || 'Reverted');
+      toast.success(r.data?.message || t('end_user.activity.toast_reverted', 'Reverted'));
       reload();
     } catch (e) {
-      toast.error(e?.response?.data?.error || 'Could not revert');
+      toast.error(e?.response?.data?.error || t('end_user.activity.err_revert', 'Could not revert'));
     }
   }
 
@@ -99,15 +101,15 @@ export default function ActivityLogPage() {
             const a = document.createElement('a');
             const dl = window.URL.createObjectURL(blob);
             a.href = dl;
-            a.download = `socialstats-activity-${new Date().toISOString().slice(0, 10)}.csv`;
+            a.download = `bopsocial-activity-${new Date().toISOString().slice(0, 10)}.csv`;
             document.body.appendChild(a);
             a.click();
             a.remove();
             window.URL.revokeObjectURL(dl);
           })
-          .catch(() => toast.error('Could not download CSV'));
+          .catch(() => toast.error(t('end_user.activity.err_export', 'Could not download CSV')));
       })
-      .catch(() => toast.error('Could not download CSV'));
+      .catch(() => toast.error(t('end_user.activity.err_export', 'Could not download CSV')));
   }
 
   const stats = useMemo(() => {
@@ -133,18 +135,20 @@ export default function ActivityLogPage() {
         </span>
         <div style={{ flex: 1 }}>
           <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
-            Activity log
+            {t('end_user.activity.title', 'Activity log')}
           </h1>
           <p style={{ margin: '4px 0 0', color: 'var(--text-secondary)', fontSize: 14 }}>
-            Today: <strong>{stats.total}</strong> action{stats.total === 1 ? '' : 's'} · Agency: <strong>{stats.byAgency}</strong> · You: <strong>{stats.byMe}</strong>
+            <Trans i18nKey="end_user.activity.summary_today" t={t} values={{ total: stats.total, byAgency: stats.byAgency, byMe: stats.byMe }}>
+              Today: <strong>{stats.total}</strong> actions · Agency: <strong>{stats.byAgency}</strong> · You: <strong>{stats.byMe}</strong>
+            </Trans>
           </p>
         </div>
         <div style={{ display: 'flex', gap: 6 }}>
           <button type="button" onClick={exportCsv} style={btnGhost}>
-            <Download size={13} /> Export CSV
+            <Download size={13} /> {t('end_user.activity.export_csv', 'Export CSV')}
           </button>
-          <button type="button" onClick={reload} style={btnGhost} aria-label="Refresh">
-            <RefreshCw size={13} /> Refresh
+          <button type="button" onClick={reload} style={btnGhost} aria-label={t('end_user.activity.refresh', 'Refresh')}>
+            <RefreshCw size={13} /> {t('end_user.activity.refresh', 'Refresh')}
           </button>
         </div>
       </header>
@@ -152,43 +156,43 @@ export default function ActivityLogPage() {
       {/* Filters */}
       <div style={filterBar}>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--text-tertiary)', fontSize: 12, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-          <Filter size={11} /> Filter
+          <Filter size={11} /> {t('end_user.activity.filters.filter', 'Filter')}
         </span>
         <ChipGroup
           value={filters.actor_type}
           onChange={(v) => setFilters((f) => ({ ...f, actor_type: v }))}
           options={[
-            { value: '', label: 'All actors' },
-            { value: 'end_user', label: 'You' },
-            { value: 'agency',   label: 'Agency' },
-            { value: 'ai',       label: 'AI' },
-            { value: 'system',   label: 'System' },
+            { value: '', label: t('end_user.activity.filters.all_actors', 'All actors') },
+            { value: 'end_user', label: t('end_user.activity.actors.end_user', 'You') },
+            { value: 'agency',   label: t('end_user.activity.actors.agency', 'Agency') },
+            { value: 'ai',       label: t('end_user.activity.actors.ai', 'AI') },
+            { value: 'system',   label: t('end_user.activity.actors.system', 'System') },
           ]}
         />
         <ChipGroup
           value={filters.severity}
           onChange={(v) => setFilters((f) => ({ ...f, severity: v }))}
           options={[
-            { value: '',         label: 'Any severity' },
-            { value: 'info',     label: 'Info' },
-            { value: 'notice',   label: 'Notice' },
-            { value: 'warning',  label: 'Warning' },
-            { value: 'critical', label: 'Critical' },
+            { value: '',         label: t('end_user.activity.filters.any_severity', 'Any severity') },
+            { value: 'info',     label: t('end_user.activity.severities.info', 'Info') },
+            { value: 'notice',   label: t('end_user.activity.severities.notice', 'Notice') },
+            { value: 'warning',  label: t('end_user.activity.severities.warning', 'Warning') },
+            { value: 'critical', label: t('end_user.activity.severities.critical', 'Critical') },
           ]}
         />
         <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-secondary)', cursor: 'pointer' }}>
           <input type="checkbox" checked={filters.flagged} onChange={(e) => setFilters((f) => ({ ...f, flagged: e.target.checked }))} />
-          Flagged only
+          {t('end_user.activity.filters.flagged_only', 'Flagged only')}
         </label>
       </div>
 
       {/* Timeline */}
       {loading ? (
-        <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-tertiary)' }}>Loading…</div>
+        <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-tertiary)' }}>{t('common.loading', 'Loading…')}</div>
       ) : rows.length === 0 ? (
         <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-tertiary)', background: 'var(--surface-card)', border: '1px dashed var(--border-default)', borderRadius: 'var(--radius-md)' }}>
           <ActivityIcon size={28} strokeWidth={1.6} style={{ opacity: 0.4 }} />
-          <div style={{ marginTop: 8 }}>No activity matches your filters.</div>
+          <div style={{ marginTop: 8 }}>{t('end_user.activity.empty', 'No activity matches your filters.')}</div>
         </div>
       ) : (
         <ol style={timelineStyle}>
@@ -196,6 +200,7 @@ export default function ActivityLogPage() {
             <ActivityRow
               key={row.id}
               row={row}
+              t={t}
               onFlag={() => flag(row.id)}
               onRevert={row.is_reversible && !row.reverted_at ? () => revert(row.id) : null}
             />
@@ -234,10 +239,13 @@ function ChipGroup({ value, onChange, options }) {
   );
 }
 
-function ActivityRow({ row, onFlag, onRevert }) {
+function ActivityRow({ row, onFlag, onRevert, t }) {
   const actor = ACTOR_PILL[row.actor_type] || ACTOR_PILL.system;
   const severityColor = SEVERITY_COLOR[row.severity] || SEVERITY_COLOR.info;
   const Icon = row.actor_type === 'ai' ? Sparkles : ActivityIcon;
+  const actorLabel = t ? t(`end_user.activity.actors.${row.actor_type}`, actor.label) : actor.label;
+  const severityLabel = t ? t(`end_user.activity.severities.${row.severity}`, row.severity) : row.severity;
+
   return (
     <li style={rowStyle}>
       <span style={{
@@ -252,14 +260,14 @@ function ActivityRow({ row, onFlag, onRevert }) {
       </span>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <span style={{ ...actorPill, background: actor.bg, color: actor.fg }}>{actor.label}</span>
+          <span style={{ ...actorPill, background: actor.bg, color: actor.fg }}>{actorLabel}</span>
           {row.actor_user_name && <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>· {row.actor_user_name}</span>}
           {row.actor_agency_name && <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>· {row.actor_agency_name}</span>}
           <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', color: severityColor }}>
-            {row.severity}
+            {severityLabel}
           </span>
-          {row.flagged_by_user && <span style={flagChip}><Flag size={9} /> Flagged</span>}
-          {row.reverted_at && <span style={revertedChip}><Undo2 size={9} /> Reverted</span>}
+          {row.flagged_by_user && <span style={flagChip}><Flag size={9} /> {t ? t('end_user.activity.flagged', 'Flagged') : 'Flagged'}</span>}
+          {row.reverted_at && <span style={revertedChip}><Undo2 size={9} /> {t ? t('end_user.activity.reverted', 'Reverted') : 'Reverted'}</span>}
         </div>
         <div style={{ marginTop: 4, fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.5 }}>
           {row.description}
@@ -271,13 +279,13 @@ function ActivityRow({ row, onFlag, onRevert }) {
           {new Date(row.created_at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
         </span>
         {onRevert && (
-          <button type="button" onClick={onRevert} style={{ ...miniBtn, color: 'var(--warning)', borderColor: 'var(--warning)' }} aria-label="Revert this action">
-            <Undo2 size={11} /> Revert
+          <button type="button" onClick={onRevert} style={{ ...miniBtn, color: 'var(--warning)', borderColor: 'var(--warning)' }} aria-label={t ? t('end_user.activity.revert_btn', 'Revert') : 'Revert'}>
+            <Undo2 size={11} /> {t ? t('end_user.activity.revert_btn', 'Revert') : 'Revert'}
           </button>
         )}
         {!row.flagged_by_user && (
-          <button type="button" onClick={onFlag} style={miniBtn} aria-label="Flag this action">
-            <Flag size={11} /> Flag
+          <button type="button" onClick={onFlag} style={miniBtn} aria-label={t ? t('end_user.activity.flag_btn', 'Flag') : 'Flag'}>
+            <Flag size={11} /> {t ? t('end_user.activity.flag_btn', 'Flag') : 'Flag'}
           </button>
         )}
       </div>

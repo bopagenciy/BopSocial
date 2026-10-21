@@ -7,9 +7,10 @@
  *  Released under the MIT License — see LICENSE. Keep this notice.
  * ========================================================================== */
 import { Sparkles } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 /**
- * AILoading — the canonical "Social Stats is thinking…" shimmer used by every
+ * AILoading — the canonical "Bop Social is thinking…" shimmer used by every
  * AI surface that performs an async generation (chat, writer, insights, etc).
  *
  * Variants:
@@ -18,7 +19,7 @@ import { Sparkles } from 'lucide-react';
  *            'inline'            — a small inline label "✨ Generating…"
  *
  * Props:
- *   label:    visible label (default "Social Stats is thinking…")
+ *   label:    visible label (default "Bop Social is thinking…")
  *   height:   bar height in px (shimmer only) — default 18
  *   width:    bar width — default '100%'
  *
@@ -26,12 +27,14 @@ import { Sparkles } from 'lucide-react';
  */
 export default function AILoading({
   variant = 'shimmer',
-  label = 'Social Stats is thinking…',
+  label,
   height = 18,
   width = '100%',
   style,
   ...rest
 }) {
+  const { t } = useTranslation('ai');
+  const resolvedLabel = label ?? t('shared.ai_loading.thinking', 'Bop Social is thinking…');
   if (variant === 'inline') {
     return (
       <span
@@ -46,7 +49,7 @@ export default function AILoading({
         {...rest}
       >
         <Sparkles size={11} strokeWidth={2.4} className="ai-loading-pulse" />
-        {label}
+        {resolvedLabel}
         <style>{INLINE_KEYFRAMES}</style>
       </span>
     );
@@ -57,7 +60,7 @@ export default function AILoading({
       <span
         role="status"
         aria-live="polite"
-        aria-label={label}
+        aria-label={resolvedLabel}
         style={{ display: 'inline-flex', alignItems: 'center', gap: 8, ...style }}
         {...rest}
       >
@@ -89,7 +92,7 @@ export default function AILoading({
     <div
       role="status"
       aria-live="polite"
-      aria-label={label}
+      aria-label={resolvedLabel}
       style={{
         position: 'relative',
         width,

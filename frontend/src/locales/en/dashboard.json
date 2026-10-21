@@ -1,0 +1,237 @@
+{
+  "subtitle": "Social Media Analytics",
+  "sync_now": "Sync Now",
+  "syncing": "Syncing…",
+  "share": "Share",
+  "export_pdf": "Export PDF",
+  "tabs": {
+    "overview": "Overview",
+    "analytics": "Analytics",
+    "posts": "Posts",
+    "calendar": "Calendar",
+    "roi": "ROI"
+  },
+  "greeting": {
+    "title": "Good morning 👋",
+    "subtitle": "Here's a snapshot of your latest activity"
+  },
+  "empty_connections": {
+    "title": "No accounts connected yet",
+    "body": "Connect Facebook, Instagram, LinkedIn, YouTube, or Google My Business to start syncing your data.",
+    "action": "Connect accounts"
+  },
+  "empty_analytics": {
+    "title": "No analytics yet",
+    "body": "Your accounts are connected but we haven't pulled metrics yet. Click Sync Now to start."
+  },
+  "empty_posts": {
+    "title": "No posts in this range",
+    "body": "Try widening the date range, or run a sync to pull the latest posts from your connected accounts."
+  },
+  "highlights": {
+    "engagement_rate": "Engagement Rate",
+    "total_saves": "Total Saves",
+    "total_comments": "Total Comments",
+    "total_shares": "Total Shares"
+  },
+  "quick_links": {
+    "title": "Jump to",
+    "full_analytics": "Full analytics",
+    "all_posts": "All posts",
+    "calendar": "Calendar",
+    "roi": "ROI"
+  },
+  "platforms_box": {
+    "title": "Platforms",
+    "impr": "impr",
+    "reach": "reach",
+    "likes": "likes",
+    "new": "new"
+  },
+  "stats": {
+    "connected": "Connected",
+    "posts": "Posts",
+    "data": "Data",
+    "live": "Live",
+    "waiting": "Waiting"
+  },
+  "metrics": {
+    "impressions": "Impressions",
+    "reach": "Reach",
+    "clicks": "Clicks",
+    "likes": "Likes",
+    "comments": "Comments",
+    "shares": "Shares",
+    "video_views": "Video Views",
+    "followers": "Followers",
+    "unfollows": "Unfollows",
+    "page_views": "Page Views",
+    "engagements": "Engagements",
+    "profile_views": "Profile Views",
+    "website_clicks": "Website Clicks",
+    "saves": "Saves",
+    "phone_calls": "Phone Calls",
+    "direction_requests": "Direction Requests",
+    "search_impressions": "Search Impressions",
+    "maps_impressions": "Maps Impressions",
+    "photo_views": "Photo Views",
+    "watch_time": "Watch Time (min)",
+    "avg_view": "Avg View (sec)",
+    "subscribers": "Subscribers",
+    "unsubs": "Unsubs",
+    "interactions": "Interactions",
+    "accounts_engaged": "Accounts Engaged",
+    "email_clicks": "Email Clicks",
+    "phone_clicks": "Phone Clicks",
+    "direction_clicks": "Direction Clicks"
+  },
+  "loading_charts": "Loading charts…",
+  "empty_charts": {
+    "title": "No data yet",
+    "body": "Connect your accounts and click Sync Now to pull in data."
+  },
+  "breakdown": {
+    "title": "Platform Breakdown",
+    "headers": {
+      "platform": "Platform",
+      "reach": "Reach",
+      "impressions": "Impressions",
+      "likes": "Likes",
+      "comments": "Comments",
+      "shares": "Shares",
+      "video_views": "Video Views",
+      "followers": "Followers"
+    }
+  },
+  "posts": {
+    "title": "All Posts"
+  },
+  "profile": {
+    "hide": "Hide ▲",
+    "brand_profile": "Brand Profile ▼",
+    "about": "About",
+    "usp": "USP",
+    "target_audience": "Target Audience",
+    "subcategories": "Subcategories"
+  },
+  "upcoming": {
+    "title": "Upcoming Posts",
+    "view_all": "View all →"
+  },
+  "admin": {
+    "hero_eyebrow": "Agency Command Center",
+    "hero_title": "Make the numbers feel actionable.",
+    "hero_subtitle": "Track client momentum, sync health, campaign traction, and cross-platform performance from one polished control room.",
+    "active_users": "Active Users",
+    "top_platform": "Top Platform",
+    "click_efficiency": "Click Efficiency",
+    "sync_health": "Sync Health",
+    "date_window": "Date Window",
+    "best_reach": "Best Reach",
+    "total_reach": "Total Reach",
+    "latest_sync": "Latest Sync",
+    "performance_snapshot": "Performance Snapshot",
+    "core_metrics_subtitle": "Core agency metrics at a glance",
+    "operational_detail": "Operational Detail",
+    "operational_subtitle": "Performance tables, alerts, goals, and recent syncs",
+    "total_users": "Total Users",
+    "total_impressions": "Total Impressions",
+    "total_clicks": "Total Clicks",
+    "total_followers": "Total Followers",
+    "no_data_yet": "No data yet",
+    "waiting_for_synced_data": "Waiting for synced performance data",
+    "loading_agency_coverage": "Loading agency coverage",
+    "active_platforms_count": "{{count}} active platforms in this window",
+    "active_platforms_count_one": "{{count}} active platform in this window",
+    "active_platforms_count_other": "{{count}} active platforms in this window",
+    "clicks_from_impressions": "{{clicks}} clicks from {{impressions}} impressions",
+    "platform_impressions_reach": "{{impressions}} impressions · {{reach}} reach",
+    "no_recent_syncs": "No recent syncs",
+    "current_period": "Current period",
+    "platform_performance": "Platform Performance",
+    "recent_sync_activity": "Recent Sync Activity",
+    "sync_status": {
+      "success": "success",
+      "partial": "partial",
+      "failed": "failed",
+      "running": "running",
+      "queued": "queued"
+    },
+    "sync_table": {
+      "client": "Client",
+      "platform": "Platform",
+      "status": "Status",
+      "daily_rows": "Daily Rows",
+      "started": "Started"
+    },
+    "shared_links_panel": {
+      "title": "Shared Report Links",
+      "loading": "Loading…",
+      "no_shared_links": "No shared links yet.",
+      "user": "User",
+      "period": "Period",
+      "views": "Views",
+      "expires": "Expires",
+      "protected": "Protected",
+      "actions": "Actions",
+      "never": "Never",
+      "expired": "EXPIRED",
+      "copy_link": "Copy link",
+      "copied": "Copied!",
+      "open": "Open",
+      "deactivate": "Deactivate"
+    },
+    "roi_status": {
+      "excellent": "Excellent",
+      "good": "Good",
+      "average": "Average",
+      "review": "Review"
+    },
+    "goal_manager": {
+      "title": "Set Monthly Goals",
+      "user": "User",
+      "select_user": "Select user",
+      "platform": "Platform",
+      "metric": "Metric",
+      "target_value": "Target value",
+      "enter_target": "Enter target",
+      "month": "Month",
+      "year": "Year",
+      "save_goal": "Save Goal",
+      "saving": "Saving…",
+      "confirm_delete": "Delete this goal?",
+      "failed_save": "Failed to save goal",
+      "no_goals": "No goals set for this period — select a user to filter."
+    },
+    "alerts_panel": {
+      "title": "Smart Alerts",
+      "unread": "unread",
+      "mark_all_read": "Mark all read",
+      "no_alerts": "No alerts yet."
+    },
+    "top_posts_panel": {
+      "title": "Best Post of the Week — All Users",
+      "rescore_now": "Re-score now",
+      "loading": "Loading…",
+      "no_top_posts": "No top posts yet — posts are scored every Monday at 8am, or click \"Re-score now\".",
+      "user": "User",
+      "platform": "Platform",
+      "post": "Post",
+      "score": "Score",
+      "vs_avg": "vs Avg",
+      "date": "Date",
+      "view": "View"
+    },
+    "roi_panel": {
+      "title": "ROI Summary — {{month}} {{year}}",
+      "loading": "Loading…",
+      "no_reports": "No ROI reports saved for this month yet.",
+      "user": "User",
+      "roi_pct": "ROI %",
+      "est_revenue": "Est. Revenue",
+      "investment": "Investment",
+      "status": "Status",
+      "view": "View"
+    }
+  }
+}

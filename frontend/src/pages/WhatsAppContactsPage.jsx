@@ -7,6 +7,7 @@
  *  Released under the MIT License — see LICENSE. Keep this notice.
  * ========================================================================== */
 import { useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Plus, Upload, Search, Trash2, CheckSquare, XSquare,
   AlertCircle, Loader2, ListPlus, Download,
@@ -23,12 +24,13 @@ const COLORS = {
 };
 
 const OPT_COLORS = {
-  pending:   { bg: '#fef3c7', color: '#a16207', label: 'Pending' },
-  opted_in:  { bg: '#dcfce7', color: '#15803d', label: 'Opted in' },
-  opted_out: { bg: '#fee2e2', color: '#b91c1c', label: 'Opted out' },
+  pending:   { bg: '#fef3c7', color: '#a16207', key: 'pending', label: 'Pending' },
+  opted_in:  { bg: '#dcfce7', color: '#15803d', key: 'opted_in', label: 'Opted in' },
+  opted_out: { bg: '#fee2e2', color: '#b91c1c', key: 'opted_out', label: 'Opted out' },
 };
 
 export default function WhatsAppContactsPage() {
+  const { t } = useTranslation('messaging');
   const [search, setSearch] = useState('');
   const [optIn, setOptIn] = useState('');
   const [selected, setSelected] = useState(new Set());
@@ -49,10 +51,10 @@ export default function WhatsAppContactsPage() {
     setSelected(next);
   }
   function toggleAll() {
-    if (selected.size === contacts.length) {
+    if (selected.size === (contacts || []).length) {
       setSelected(new Set());
     } else {
-      setSelected(new Set(contacts.map((c) => c.id)));
+      setSelected(new Set((contacts || []).map((c) => c.id)));
     }
   }
 
@@ -92,15 +94,20 @@ export default function WhatsAppContactsPage() {
     URL.revokeObjectURL(url);
   }
 
+  const count = contacts?.length || 0;
+  const subtitle = count === 1
+    ? t('contacts.subtitle', { count, defaultValue: '1 contact' })
+    : t('contacts.subtitle_plural', { count, defaultValue: `${count} contacts` });
+
   return (
     <div style={{ paddingBottom: 32 }}>
       <PageHeader
-        title="Contacts"
-        subtitle={`${contacts?.length || 0} contacts`}
+        title={t('contacts.title', 'Contacts')}
+        subtitle={subtitle}
         action={
           <div style={{ display: 'flex', gap: 8 }}>
             <button onClick={() => fileInput.current?.click()} style={btnSecondary}>
-              <Upload size={14} /> Import CSV
+              <Upload size={14} /> {importing ? t('contacts.importing', 'Importing…') : t('contacts.import_csv', 'Import CSV')}
             </button>
             <input
               ref={fileInput}
@@ -110,7 +117,7 @@ export default function WhatsAppContactsPage() {
               onChange={(e) => e.target.files?.[0] && importCSV(e.target.files[0])}
             />
             <button onClick={() => setShowCreate(true)} style={btnPrimary}>
-              <Plus size={14} /> New Contact
+              <Plus size={14} /> {t('contacts.new_contact', 'New Contact')}
             </button>
           </div>
         }
@@ -125,33 +132,33 @@ export default function WhatsAppContactsPage() {
               <Search size={14} color={COLORS.muted}
                       style={{ position: 'absolute', top: 11, left: 10 }} />
               <input
-                placeholder="Search phone, name, email…"
+                placeholder={t('contacts.search_placeholder', 'Search phone, name, email…')}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 style={{ ...input, paddingLeft: 32 }}
               />
             </div>
             <select value={optIn} onChange={(e) => setOptIn(e.target.value)} style={input}>
-              <option value="">All statuses</option>
-              <option value="pending">Pending</option>
-              <option value="opted_in">Opted in</option>
-              <option value="opted_out">Opted out</option>
+              <option value="">{t('contacts.all_statuses', 'All statuses')}</option>
+              <option value="pending">{t('statuses.pending', 'Pending')}</option>
+              <option value="opted_in">{t('statuses.opted_in', 'Opted in')}</option>
+              <option value="opted_out">{t('statuses.opted_out', 'Opted out')}</option>
             </select>
-            <button onClick={exportCSV} style={btnSecondary}><Download size={14} /> Export</button>
+            <button onClick={exportCSV} style={btnSecondary}><Download size={14} /> {t('contacts.export_csv', 'Export CSV')}</button>
           </div>
 
           {importResult && (
-            <ImportResult result={importResult} onDismiss={() => setImportResult(null)} />
+            <ImportResult result={importResult} onDismiss={() => setImportResult(null)} t={t} />
           )}
-          {importing && <div style={infoBox}><Loader2 size={14} className="spin" /> Importing…</div>}
+          {importing && <div style={infoBox}><Loader2 size={14} className="spin" /> {t('contacts.importing', 'Importing…')}</div>}
 
           {/* Bulk actions */}
           {selected.size > 0 && (
             <div style={{ ...card, padding: 10, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ fontSize: 13, color: COLORS.muted }}>{selected.size} selected</span>
-              <button onClick={bulkOptIn} style={btnSecondary}><CheckSquare size={14} /> Opt-in</button>
-              <button onClick={bulkOptOut} style={btnSecondary}><XSquare size={14} /> Opt-out</button>
-              <BulkAddToList lists={lists} ids={Array.from(selected)} onDone={() => { setSelected(new Set()); refetch(); refetchLists(); }} />
+              <button onClick={bulkOptIn} style={btnSecondary}><CheckSquare size={14} /> {t('contacts.bulk_opt_in', 'Opt-in')}</button>
+              <button onClick={bulkOptOut} style={btnSecondary}><XSquare size={14} /> {t('contacts.bulk_opt_out', 'Opt-out')}</button>
+              <BulkAddToList lists={lists} ids={Array.from(selected)} onDone={() => { setSelected(new Set()); refetch(); refetchLists(); }} t={t} />
             </div>
           )}
 
@@ -162,27 +169,28 @@ export default function WhatsAppContactsPage() {
                 <tr>
                   <th style={th}>
                     <input type="checkbox"
-                           checked={contacts.length > 0 && selected.size === contacts.length}
+                           checked={(contacts || []).length > 0 && selected.size === (contacts || []).length}
                            onChange={toggleAll} />
                   </th>
-                  <th style={th}>Phone</th>
-                  <th style={th}>Name</th>
+                  <th style={th}>{t('contacts.th_phone', 'Phone')}</th>
+                  <th style={th}>{t('contacts.th_name', 'Name')}</th>
                   <th style={th}>Email</th>
-                  <th style={th}>Tags</th>
-                  <th style={th}>Status</th>
+                  <th style={th}>{t('contacts.th_tags', 'Tags')}</th>
+                  <th style={th}>{t('contacts.th_status', 'Status')}</th>
                   <th style={th}>24h</th>
                   <th style={th}></th>
                 </tr>
               </thead>
               <tbody>
                 {loading && (
-                  <tr><td colSpan={8} style={emptyRow}><Loader2 size={14} className="spin" /> Loading…</td></tr>
+                  <tr><td colSpan={8} style={emptyRow}><Loader2 size={14} className="spin" /> {t('contacts.loading', 'Loading…')}</td></tr>
                 )}
-                {!loading && contacts.length === 0 && (
-                  <tr><td colSpan={8} style={emptyRow}>No contacts. Import a CSV or add one manually.</td></tr>
+                {!loading && (contacts || []).length === 0 && (
+                  <tr><td colSpan={8} style={emptyRow}>{t('contacts.empty', 'No contacts match the filter.')}</td></tr>
                 )}
-                {contacts.map((c) => {
+                {(contacts || []).map((c) => {
                   const opt = OPT_COLORS[c.opt_in_status] || OPT_COLORS.pending;
+                  const optLabel = t(`statuses.${opt.key}`, opt.label);
                   return (
                     <tr key={c.id}>
                       <td style={td}>
@@ -191,9 +199,9 @@ export default function WhatsAppContactsPage() {
                       <td style={{ ...td, fontFamily: 'monospace' }}>{c.phone}</td>
                       <td style={td}>{c.name}</td>
                       <td style={td}>{c.email}</td>
-                      <td style={td}>{(c.tags || []).map((t) => <span key={t} style={tag}>{t}</span>)}</td>
+                      <td style={td}>{(c.tags || []).map((tVal) => <span key={tVal} style={tag}>{tVal}</span>)}</td>
                       <td style={td}>
-                        <span style={{ ...badge, background: opt.bg, color: opt.color }}>{opt.label}</span>
+                        <span style={{ ...badge, background: opt.bg, color: opt.color }}>{optLabel}</span>
                       </td>
                       <td style={td}>
                         {c.within_24h_window
@@ -201,7 +209,7 @@ export default function WhatsAppContactsPage() {
                           : <span style={{ ...badge, background: 'var(--surface-sunken)', color: 'var(--text-secondary)' }}>closed</span>}
                       </td>
                       <td style={td}>
-                        <button onClick={() => deleteContact(c.id, refetch)}
+                        <button onClick={() => deleteContact(c.id, refetch, t)}
                                 style={{ ...iconBtn, color: COLORS.danger }}>
                           <Trash2 size={14} />
                         </button>
@@ -215,11 +223,11 @@ export default function WhatsAppContactsPage() {
         </div>
 
         {/* Lists side panel */}
-        <ListsPanel lists={lists} refetch={refetchLists} />
+        <ListsPanel lists={lists} refetch={refetchLists} t={t} />
       </div>
 
       {showCreate && (
-        <CreateContactModal onClose={() => setShowCreate(false)} onCreated={() => { setShowCreate(false); refetch(); }} />
+        <CreateContactModal onClose={() => setShowCreate(false)} onCreated={() => { setShowCreate(false); refetch(); }} t={t} />
       )}
 
       <style>{`.spin { animation: spin 1s linear infinite; } @keyframes spin { to { transform: rotate(360deg); } }`}</style>
@@ -227,17 +235,18 @@ export default function WhatsAppContactsPage() {
   );
 }
 
-async function deleteContact(id, refetch) {
-  if (!window.confirm('Delete this contact?')) return;
+async function deleteContact(id, refetch, t) {
+  const msg = t ? t('campaigns.delete', 'Delete') + '?' : 'Delete this contact?';
+  if (!window.confirm(msg)) return;
   await whatsappAPI.contacts.delete(id);
   refetch();
 }
 
-function ImportResult({ result, onDismiss }) {
+function ImportResult({ result, onDismiss, t }) {
   if (result.error) {
     return (
       <div style={{ ...errorBox, marginBottom: 12 }}>
-        <AlertCircle size={14} /> Import failed: {result.error}
+        <AlertCircle size={14} /> {t ? t('contacts.import_error', { error: result.error, defaultValue: `Import failed: ${result.error}` }) : `Import failed: ${result.error}`}
         <button onClick={onDismiss} style={{ marginLeft: 'auto', ...iconBtn }}>×</button>
       </div>
     );
@@ -245,15 +254,14 @@ function ImportResult({ result, onDismiss }) {
   return (
     <div style={{ ...infoBox, marginBottom: 12 }}>
       <span>
-        Imported {result.created} created · {result.updated} updated · {result.skipped} skipped
-        {result.errors?.length ? ` · ${result.errors.length} errors` : ''}
+        {t ? t('contacts.import_success', { created: result.created, updated: result.updated, errors: result.errors?.length || 0, defaultValue: `Imported ${result.created} created · ${result.updated} updated` }) : `Imported ${result.created} created · ${result.updated} updated`}
       </span>
       <button onClick={onDismiss} style={{ marginLeft: 'auto', ...iconBtn }}>×</button>
     </div>
   );
 }
 
-function ListsPanel({ lists, refetch }) {
+function ListsPanel({ lists, refetch, t }) {
   const [name, setName] = useState('');
   async function create() {
     if (!name.trim()) return;
@@ -263,24 +271,24 @@ function ListsPanel({ lists, refetch }) {
   }
   return (
     <aside style={card}>
-      <header style={cardHeader}><h3 style={cardTitle}>Lists</h3></header>
+      <header style={cardHeader}><h3 style={cardTitle}>{t ? t('lists.title', 'Lists') : 'Lists'}</h3></header>
       <div style={{ padding: 14 }}>
         <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="New list name"
+            placeholder={t ? t('lists.new_list', 'New list') : 'New list name'}
             style={input}
           />
           <button onClick={create} style={btnPrimary}><Plus size={14} /></button>
         </div>
         {(lists || []).length === 0 && (
-          <div style={{ fontSize: 12, color: COLORS.muted }}>No lists yet.</div>
+          <div style={{ fontSize: 12, color: COLORS.muted }}>{t ? t('campaigns.empty', 'No lists yet.') : 'No lists yet.'}</div>
         )}
         {(lists || []).map((l) => (
           <div key={l.id} style={listRow}>
             <span style={{ fontWeight: 600, color: COLORS.text }}>{l.name}</span>
-            <span style={{ fontSize: 12, color: COLORS.muted }}>{l.contact_count} contacts</span>
+            <span style={{ fontSize: 12, color: COLORS.muted }}>{l.contact_count}</span>
           </div>
         ))}
       </div>
@@ -288,12 +296,12 @@ function ListsPanel({ lists, refetch }) {
   );
 }
 
-function BulkAddToList({ lists, ids, onDone }) {
+function BulkAddToList({ lists, ids, onDone, t }) {
   const [open, setOpen] = useState(false);
   return (
     <div style={{ position: 'relative' }}>
       <button onClick={() => setOpen((v) => !v)} style={btnSecondary}>
-        <ListPlus size={14} /> Add to list
+        <ListPlus size={14} /> {t ? t('contacts.add_to_list', 'Add to list') : 'Add to list'}
       </button>
       {open && (
         <div style={{
@@ -323,7 +331,7 @@ function BulkAddToList({ lists, ids, onDone }) {
   );
 }
 
-function CreateContactModal({ onClose, onCreated }) {
+function CreateContactModal({ onClose, onCreated, t }) {
   const [form, setForm] = useState({ phone: '', name: '', email: '', opt_in_status: 'pending' });
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -343,22 +351,22 @@ function CreateContactModal({ onClose, onCreated }) {
   return (
     <div style={modalBackdrop} onClick={onClose}>
       <div style={modalBox} onClick={(e) => e.stopPropagation()}>
-        <h3 style={{ marginTop: 0, color: COLORS.text }}>New Contact</h3>
-        <Field label="Phone (E.164)" value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} placeholder="+91XXXXXXXXXX" />
-        <Field label="Name"  value={form.name}  onChange={(v) => setForm({ ...form, name: v })} />
+        <h3 style={{ marginTop: 0, color: COLORS.text }}>{t ? t('contacts.drawer.title', 'New Contact') : 'New Contact'}</h3>
+        <Field label={t ? t('contacts.drawer.phone', 'Phone') : 'Phone (E.164)'} value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} placeholder="+91XXXXXXXXXX" />
+        <Field label={t ? t('contacts.th_name', 'Name') : 'Name'}  value={form.name}  onChange={(v) => setForm({ ...form, name: v })} />
         <Field label="Email" value={form.email} onChange={(v) => setForm({ ...form, email: v })} />
         <label style={{ display: 'block', marginBottom: 12 }}>
-          <span style={fieldLabel}>Opt-in</span>
+          <span style={fieldLabel}>{t ? t('contacts.drawer.opt_in_label', 'Opt-in') : 'Opt-in'}</span>
           <select value={form.opt_in_status} onChange={(e) => setForm({ ...form, opt_in_status: e.target.value })} style={input}>
-            <option value="pending">Pending</option>
-            <option value="opted_in">Opted in</option>
-            <option value="opted_out">Opted out</option>
+            <option value="pending">{t ? t('statuses.pending', 'Pending') : 'Pending'}</option>
+            <option value="opted_in">{t ? t('statuses.opted_in', 'Opted in') : 'Opted in'}</option>
+            <option value="opted_out">{t ? t('statuses.opted_out', 'Opted out') : 'Opted out'}</option>
           </select>
         </label>
         {error && <div style={errorBox}><AlertCircle size={14} /> {String(error)}</div>}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 12 }}>
-          <button onClick={onClose} style={btnSecondary}>Cancel</button>
-          <button onClick={save} disabled={saving} style={btnPrimary}>{saving ? 'Saving…' : 'Create'}</button>
+          <button onClick={onClose} style={btnSecondary}>{t ? t('contacts.drawer.cancel_btn', 'Cancel') : 'Cancel'}</button>
+          <button onClick={save} disabled={saving} style={btnPrimary}>{saving ? (t ? t('contacts.drawer.saving', 'Saving…') : 'Saving…') : (t ? t('contacts.drawer.save_btn', 'Create') : 'Create')}</button>
         </div>
       </div>
     </div>

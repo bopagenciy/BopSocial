@@ -18,23 +18,23 @@ const PLATFORMS = [
       <>Go to your <strong>Facebook account</strong> and click the top-right menu</>,
       <><strong>Settings &amp; Privacy</strong> → <strong>Settings</strong></>,
       <>Click <strong>Apps and Websites</strong> in the left menu</>,
-      <>Find <strong>Social Stats</strong> in the list → click <strong>View and edit</strong></>,
+      <>Find <strong>Bop Social</strong> in the list → click <strong>View and edit</strong></>,
       <>Scroll down and click <strong>Remove</strong> → <strong>Remove</strong> to confirm</>,
       <>Meta automatically notifies our servers via our registered data deletion callback — we will delete your data within 30 days</>,
     ],
-    note: 'Removing Social Stats also revokes access to any connected Instagram Business accounts linked to the same Facebook Page.',
+    note: 'Removing Bop Social also revokes access to any connected Instagram Business accounts linked to the same Facebook Page.',
   },
   {
     key: 'google',
     label: 'Google & YouTube',
     badge: 'Google',
     steps: [
-      <>Go to <a href="https://myaccount.google.com/permissions" target="_blank" rel="noreferrer" style={{ color: '#007a9a' }}>myaccount.google.com/permissions</a></>,
-      <>Find <strong>Social Stats</strong> in the list of third-party apps</>,
-      <>Click <strong>Social Stats</strong> → click <strong>Remove Access</strong></>,
+      <>Go to <a href="https://myaccount.google.com/permissions" target="_blank" rel="noreferrer" style={{ color: 'var(--text-link)' }}>myaccount.google.com/permissions</a></>,
+      <>Find <strong>Bop Social</strong> in the list of third-party apps</>,
+      <>Click <strong>Bop Social</strong> → click <strong>Remove Access</strong></>,
       <>Confirm removal — we will delete your cached analytics data within 30 days</>,
     ],
-    note: 'This revokes Social Stats\'s access to YouTube Data API, YouTube Analytics API, and Google Business Profile API data.',
+    note: 'This revokes Bop Social\'s access to YouTube Data API, YouTube Analytics API, and Google Business Profile API data.',
   },
   {
     key: 'linkedin',
@@ -44,7 +44,7 @@ const PLATFORMS = [
       <>Go to your <strong>LinkedIn account</strong> and click <strong>Me</strong> in the top navigation</>,
       <>Click <strong>Settings &amp; Privacy</strong></>,
       <>Click <strong>Data Privacy</strong> in the left menu → <strong>Other applications</strong></>,
-      <>Find <strong>Social Stats</strong> in the list → click <strong>Remove</strong></>,
+      <>Find <strong>Bop Social</strong> in the list → click <strong>Remove</strong></>,
       <>Confirm removal — we will delete your cached Page analytics data within 30 days</>,
     ],
     note: 'This revokes access to your LinkedIn Page analytics, post performance data, and follower statistics.',
@@ -69,12 +69,12 @@ export default function DataDeletionPage() {
           <p style={styles.meta}>Last Updated: April 3, 2026</p>
 
           <p style={styles.intro}>
-            Social Stats connects to Facebook, Instagram, Google, YouTube, and LinkedIn to display
+            Bop Social connects to Facebook, Instagram, Google, YouTube, and LinkedIn to display
             your social media analytics. You can revoke access and delete your data in three ways:{' '}
             <strong>(1)</strong> directly from each platform's settings below,{' '}
-            <strong>(2)</strong> from your Social Stats account settings (Settings → Delete Account), or{' '}
+            <strong>(2)</strong> from your Bop Social account settings (Settings → Delete Account), or{' '}
             <strong>(3)</strong> by emailing us at{' '}
-            <a href="mailto:support@socialstats.app" style={{ color: '#007a9a' }}>support@socialstats.app</a>.
+            <a href="mailto:support@bopsocial.com" style={{ color: 'var(--text-link)' }}>support@bopsocial.com</a>.
             All data is permanently deleted within <strong>30 days</strong> of a valid request.
           </p>
 
@@ -114,14 +114,14 @@ export default function DataDeletionPage() {
           </p>
           <div style={styles.emailBox}>
             <span style={styles.emailIcon}>✉</span>
-            <a href="mailto:support@socialstats.app" style={styles.emailLink}>
-              support@socialstats.app
+            <a href="mailto:support@bopsocial.com" style={styles.emailLink}>
+              support@bopsocial.com
             </a>
           </div>
           <p style={styles.p}>Please include in your email:</p>
           <ul style={styles.ul}>
             <li>Your full name</li>
-            <li>Email address associated with your Social Stats account</li>
+            <li>Email address associated with your Bop Social account</li>
             <li>Platform(s) you want data removed from (Facebook, Google, LinkedIn, or all)</li>
             <li>Subject line: <strong>"Data Deletion Request"</strong></li>
           </ul>
@@ -132,7 +132,7 @@ export default function DataDeletionPage() {
           <h3 style={styles.sectionGroupTitle}>What We Delete</h3>
           <p style={styles.p}>Upon a valid request, we permanently remove:</p>
           <ul style={styles.ul}>
-            <li>Your Social Stats account and login credentials</li>
+            <li>Your Bop Social account and login credentials</li>
             <li>All OAuth access tokens for every connected platform</li>
             <li>All analytics data: impressions, reach, likes, follower counts, post metrics</li>
             <li>Any reports or exports generated from your data</li>
@@ -154,7 +154,7 @@ export default function DataDeletionPage() {
             <p style={styles.contactTitle}>Questions?</p>
             <p style={styles.contactText}>
               Contact our privacy team at{' '}
-              <a href="mailto:support@socialstats.app" style={styles.inlineLink}>support@socialstats.app</a>
+              <a href="mailto:support@bopsocial.com" style={styles.inlineLink}>support@bopsocial.com</a>
               {' '}or visit our{' '}
               <a href="/privacy" style={styles.inlineLink}>Privacy Policy</a>.
             </p>
@@ -162,7 +162,7 @@ export default function DataDeletionPage() {
         </div>
 
         <p style={styles.footer}>
-          © 2026 Social Stats ·{' '}
+          © 2026 Bop Social ·{' '}
           <a href="/privacy" style={styles.footerLink}>Privacy Policy</a>{' '}·{' '}
           <a href="/terms" style={styles.footerLink}>Terms of Service</a>
         </p>

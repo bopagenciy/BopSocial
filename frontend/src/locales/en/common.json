@@ -1,0 +1,72 @@
+{
+  "actions": {
+    "save": "Save",
+    "save_changes": "Save Changes",
+    "saving": "Saving...",
+    "cancel": "Cancel",
+    "close": "Close",
+    "edit": "Edit",
+    "delete": "Delete",
+    "upload": "Upload",
+    "upload_photo": "Upload Photo",
+    "change_photo": "Change photo",
+    "remove_photo": "Remove photo",
+    "back": "Back",
+    "next": "Next",
+    "retry": "Retry",
+    "confirm": "Confirm",
+    "continue": "Continue",
+    "view_all": "View all",
+    "learn_more": "Learn more",
+    "get_started": "Get started",
+    "sign_in": "Sign in",
+    "sign_up": "Sign up",
+    "submit": "Submit",
+    "accept": "Accept",
+    "reject": "Reject"
+  },
+  "status": {
+    "loading": "Loading...",
+    "success": "Success",
+    "error": "Error",
+    "active": "Active",
+    "inactive": "Inactive",
+    "pending": "Pending"
+  },
+  "languages": {
+    "en": "English",
+    "es": "Español",
+    "select_language": "Select language",
+    "preferred_language": "Preferred Language",
+    "language_description": "Select the language you want to use across the platform."
+  },
+  "cookie_banner": {
+    "title": "We use cookies to improve your experience",
+    "description": "We use essential cookies to keep Bop Social secure and functional, plus optional analytics cookies to measure feature adoption.",
+    "accept_all": "Accept all",
+    "reject_non_essential": "Reject non-essential",
+    "customize": "Customize",
+    "save_preferences": "Save preferences",
+    "essential": "Essential",
+    "essential_desc": "Required for authentication, security, and session management.",
+    "functional": "Functional",
+    "functional_desc": "Remembers preferences like active workspace and interface language.",
+    "analytics": "Analytics",
+    "analytics_desc": "Helps us understand platform usage to build better features.",
+    "marketing": "Marketing",
+    "marketing_desc": "Used to measure effectiveness of platform announcements."
+  },
+  "comparison": {
+    "feature": "Feature",
+    "recommended": "RECOMMENDED"
+  },
+  "labels": {
+    "popular": "Popular",
+    "new": "New",
+    "verified": "Verified",
+    "sample_preview": "Sample preview",
+    "from": "From",
+    "to": "To",
+    "soon": "Soon"
+  }
+}

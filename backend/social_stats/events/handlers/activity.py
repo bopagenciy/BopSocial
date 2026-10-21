@@ -282,8 +282,8 @@ def log_lead_converted(event):
         target_object_type='Lead',
         target_object_id=lead.id,
         description=f'Lead "{lead.name or lead.phone}" converted'
-                    + (f' (₹{value})' if value else ''),
-        metadata={'lead_id': lead.id, 'value': str(value) if value else None},
+                    + (f' ({getattr(lead, "currency", "USD")} {value})' if value else ''),
+        metadata={'lead_id': lead.id, 'value': str(value) if value else None, 'currency': getattr(lead, 'currency', 'USD')},
     )
 
 

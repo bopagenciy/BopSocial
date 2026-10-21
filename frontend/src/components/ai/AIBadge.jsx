@@ -7,6 +7,7 @@
  *  Released under the MIT License — see LICENSE. Keep this notice.
  * ========================================================================== */
 import { Sparkles, Database } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 /**
  * AIBadge — universal "✨ AI-assisted" mark that goes wherever AI-generated
@@ -35,10 +36,13 @@ export default function AIBadge({
   style,
   ...rest
 }) {
-  const resolvedLabel = label ?? (cached ? 'AI · cached' : 'AI-assisted');
+  const { t } = useTranslation('ai');
+  const resolvedLabel = label ?? (cached
+    ? t('shared.ai_badge.cached', 'AI · cached')
+    : t('shared.ai_badge.assisted', 'AI-assisted'));
   const resolvedTitle = title ?? (cached
-    ? 'This was served from the AI cache — no new generation cost was incurred'
-    : 'This content was generated with Social Stats assistance');
+    ? t('shared.ai_badge.title_cached', 'This was served from the AI cache — no new generation cost was incurred')
+    : t('shared.ai_badge.title_assisted', 'This content was generated with Bop Social assistance'));
   const Icon = cached ? Database : Sparkles;
   if (variant === 'dot') {
     return (

@@ -7,7 +7,8 @@
  *  Released under the MIT License — see LICENSE. Keep this notice.
  * ========================================================================== */
 import { useEffect, useRef, useState } from 'react';
-import { useSearchParams, useLocation  } from 'react-router-dom';
+import { useSearchParams, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../hooks/useAuth';
 import { useOAuthStatus, useLookups } from '../hooks/useData';
 import { clientsAPI } from '../services/api';
@@ -56,6 +57,7 @@ const GENDERS = [
 ];
 
 export default function SettingsPage({ clientId: propClientId }) {
+  const { t }      = useTranslation('onboarding');
   const { user }   = useAuth();
   const clientId   = propClientId || user?.client_id;
   const { status, refetch } = useOAuthStatus(clientId);
@@ -78,6 +80,8 @@ export default function SettingsPage({ clientId: propClientId }) {
     whatsapp_number: '',
     website: '',
     gmb_url: '',
+    default_language: '',
+    currency: 'USD',
 
     // Brand Profile
     business_category: '',
@@ -114,6 +118,8 @@ export default function SettingsPage({ clientId: propClientId }) {
           whatsapp_number: client.whatsapp_number || '',
           website: client.website || '',
           gmb_url: client.gmb_url || '',
+          default_language: client.default_language || '',
+          currency: client.currency || 'USD',
           business_category: client.business_category || '',
           business_subcategories: client.business_subcategories || [],
           brand_description: client.brand_description || '',
@@ -132,7 +138,6 @@ export default function SettingsPage({ clientId: propClientId }) {
               ? comp.social_links
               : Object.entries(comp.social_links || {}).map(([platform, url]) => ({ platform, url }))
           })),
-
         });
       } catch (error) {
         console.error('Failed to load client data:', error);
@@ -293,13 +298,41 @@ export default function SettingsPage({ clientId: propClientId }) {
   const businessCategoryOptions = (lookups.business_categories || BUSINESS_CATEGORIES.map((label) => ({
     key: label.toLowerCase().replace(/[^a-z0-9]+/gi, '_'),
     label,
-  }))).map(item => ({ key: item.key, label: item.label }));
+  }))).map(item => ({
+    key: item.key,
+    label: t(`options.categories.${item.key}`, item.label),
+    rawLabel: item.label,
+  }));
 
-  const brandToneOptions = lookups.brand_tones?.map(item => ({ value: item.key, label: item.label })) || BRAND_TONES;
-  const genderOptions = lookups.genders?.map(item => ({ value: item.key, label: item.label })) || GENDERS;
+  const brandToneOptions = lookups.brand_tones?.map(item => ({
+    value: item.key,
+    label: t(`options.tones.${item.key}`, item.label),
+  })) || BRAND_TONES.map(item => ({
+    value: item.value,
+    label: t(`options.tones.${item.value}`, item.label),
+  }));
+
+  const genderOptions = lookups.genders?.map(item => ({
+    value: item.key,
+    label: t(`options.genders.${item.key}`, item.label),
+  })) || GENDERS.map(item => ({
+    value: item.value,
+    label: t(`options.genders.${item.value}`, item.label),
+  }));
+
   const socialPlatformOptions = lookups.platforms?.map(item => ({ value: item.key, label: item.label })) || SOCIAL_PLATFORMS;
 
-  const getCategoryKey = (categoryLabel) => businessCategoryOptions.find(item => item.label === categoryLabel)?.key;
+  const TARGET_LOCATION_OPTIONS = [
+    { key: 'local', value: 'Local (Same City)' },
+    { key: 'regional', value: 'Regional (Same State/Province)' },
+    { key: 'national', value: 'National' },
+    { key: 'international', value: 'International' },
+  ];
+
+  const getCategoryKey = (categoryLabel) => {
+    const found = businessCategoryOptions.find(item => item.label === categoryLabel || item.rawLabel === categoryLabel);
+    return found?.key;
+  };
 
   const getSubcategoriesForCategory = (category) => {
     const parentKey = getCategoryKey(category);
@@ -375,10 +408,10 @@ export default function SettingsPage({ clientId: propClientId }) {
       });
 
       await clientsAPI.update(clientId, submitData);
-      alert('Profile updated successfully!');
+      alert(t('client_settings.success', 'Profile updated successfully!'));
     } catch (error) {
       console.error('Failed to update profile:', error);
-      alert('Failed to update profile. Please try again.');
+      alert(t('client_settings.error', 'Failed to update profile. Please try again.'));
     } finally {
       setSaving(false);
     }
@@ -387,20 +420,20 @@ export default function SettingsPage({ clientId: propClientId }) {
   return (
     <div className="app-page app-page--content app-page--lg">
       <PageHeader
-        title="Settings"
-        subtitle="Manage your account and business profile."
+        title={t('client_settings.title', 'Settings')}
+        subtitle={t('client_settings.subtitle', 'Manage your account and business profile.')}
       />
 
       <div className="oauth-hero" style={heroStyle}>
         <div>
-          <span style={heroBadgeStyle}>Business Profile</span>
-          <h2 style={heroTitleStyle}>Keep your settings aligned with onboarding</h2>
+          <span style={heroBadgeStyle}>{t('client_settings.badge', 'Business Profile')}</span>
+          <h2 style={heroTitleStyle}>{t('client_settings.hero_title', 'Keep your settings aligned with onboarding')}</h2>
           <p style={heroTextStyle}>
-            Everything here mirrors the information that powers your dashboard, content generation, and reporting experience.
+            {t('client_settings.hero_text', 'Everything here mirrors the information that powers your dashboard, content generation, and reporting experience.')}
           </p>
         </div>
         <div style={heroPanelStyle}>
-          <div style={heroPanelLabelStyle}>Profile coverage</div>
+          <div style={heroPanelLabelStyle}>{t('client_settings.profile_coverage', 'Profile coverage')}</div>
           <div style={heroPanelValueStyle}>
             {[
               formData.company,
@@ -409,7 +442,7 @@ export default function SettingsPage({ clientId: propClientId }) {
               formData.business_location,
             ].filter(Boolean).length}/4
           </div>
-          <div style={heroPanelTextStyle}>Core profile areas completed</div>
+          <div style={heroPanelTextStyle}>{t('client_settings.profile_coverage_completed', 'Core profile areas completed')}</div>
         </div>
       </div>
 
@@ -417,8 +450,8 @@ export default function SettingsPage({ clientId: propClientId }) {
       <div style={{ marginBottom: 32 }}>
         <SegmentedTabs
           items={[
-            { id: 'accounts', label: 'Connect Accounts' },
-            { id: 'profile', label: 'Business Profile' },
+            { id: 'accounts', label: t('client_settings.tabs.accounts', 'Connect Accounts') },
+            { id: 'profile', label: t('client_settings.tabs.profile', 'Business Profile') },
           ]}
           active={activeTab}
           onChange={setActiveTab}
@@ -451,7 +484,7 @@ export default function SettingsPage({ clientId: propClientId }) {
           {profileLoading ? (
             <div style={loadingStateStyle}>
               <Loader2 size={24} style={{ animation: 'spin 1s linear infinite', color: CYAN }} />
-              <div style={{ marginTop: 16, color: '#6b7280' }}>Loading profile...</div>
+              <div style={{ marginTop: 16, color: '#6b7280' }}>{t('client_settings.loading_profile', 'Loading profile...')}</div>
             </div>
           ) : (
             <div style={{ display: 'grid', gap: 24 }}>
@@ -462,70 +495,109 @@ export default function SettingsPage({ clientId: propClientId }) {
                     <Building2 size={18} />
                   </div>
                   <div>
-                    <h3 style={sectionTitleStyle}>Business Basics</h3>
-                    <p style={sectionCopyStyle}>The details that anchor your workspace and keep your business identity consistent.</p>
+                    <h3 style={sectionTitleStyle}>{t('client_settings.sections.basics.title', 'Business Basics')}</h3>
+                    <p style={sectionCopyStyle}>{t('client_settings.sections.basics.copy', 'The details that anchor your workspace and keep your business identity consistent.')}</p>
                   </div>
                 </div>
                 <div style={gridTwoStyle}>
                   <div style={fieldStyle}>
-                    <label style={labelStyle}>Your Name</label>
+                    <label style={labelStyle}>{t('fields.your_name', 'Your Name')}</label>
                     <input
                       type="text"
                       value={formData.name}
                       onChange={(e) => handleInputChange('name', e.target.value)}
                       style={inputStyle}
-                      placeholder="Enter your full name"
+                      placeholder={t('fields.your_name_placeholder', 'Enter your full name')}
                     />
                   </div>
                   <div style={fieldStyle}>
-                    <label style={labelStyle}>Business Name <span style={{ color: '#ef4444', marginLeft: 2, fontWeight: 800 }}>*</span></label>
+                    <label style={labelStyle}>{t('fields.business_name', 'Business Name')} <span style={{ color: '#ef4444', marginLeft: 2, fontWeight: 800 }}>*</span></label>
                     <input
                       type="text"
                       value={formData.company}
                       onChange={(e) => handleInputChange('company', e.target.value)}
                       style={inputStyle}
-                      placeholder="Your company name"
+                      placeholder={t('fields.business_name_placeholder', 'Your company name')}
                     />
                   </div>
                   <div style={fieldStyle}>
-                    <label style={labelStyle}>Email</label>
+                    <label style={labelStyle}>{t('fields.email', 'Email')}</label>
                     <input
                       type="email"
                       value={formData.email}
                       onChange={(e) => handleInputChange('email', e.target.value)}
                       style={inputStyle}
-                      placeholder="business@email.com"
+                      placeholder={t('fields.email_placeholder', 'business@email.com')}
                     />
                   </div>
                   <div style={fieldStyle}>
-                    <label style={labelStyle}>Phone Number</label>
+                    <label style={labelStyle}>{t('fields.phone', 'Phone Number')}</label>
                     <input
                       type="tel"
                       value={formData.phone}
                       onChange={(e) => handleInputChange('phone', e.target.value)}
                       style={inputStyle}
-                      placeholder="+1 (555) 123-4567"
+                      placeholder={t('fields.phone_placeholder', '+1 (555) 123-4567')}
                     />
                   </div>
                   <div style={fieldStyle}>
-                    <label style={labelStyle}>WhatsApp Number</label>
+                    <label style={labelStyle}>{t('fields.whatsapp', 'WhatsApp Number')}</label>
                     <input
                       type="tel"
                       value={formData.whatsapp_number}
                       onChange={(e) => handleInputChange('whatsapp_number', e.target.value)}
                       style={inputStyle}
-                      placeholder="+1 (555) 123-4567"
+                      placeholder={t('fields.whatsapp_placeholder', '+1 (555) 123-4567')}
                     />
                   </div>
                   <div style={fieldStyle}>
-                    <label style={labelStyle}>Website</label>
+                    <label style={labelStyle}>{t('fields.website', 'Website')}</label>
                     <input
                       type="url"
                       value={formData.website}
                       onChange={(e) => handleInputChange('website', e.target.value)}
                       style={inputStyle}
-                      placeholder="https://yourwebsite.com"
+                      placeholder={t('fields.website_placeholder', 'https://yourwebsite.com')}
                     />
+                  </div>
+                  <div style={fieldStyle}>
+                    <label style={labelStyle}>{t('fields.default_language', 'Workspace Language')}</label>
+                    <select
+                      value={formData.default_language}
+                      onChange={(e) => handleInputChange('default_language', e.target.value)}
+                      style={inputStyle}
+                    >
+                      <option value="">{t('fields.lang_system', 'System / Browser default')}</option>
+                      <option value="en">{t('fields.lang_en', 'English')}</option>
+                      <option value="es">{t('fields.lang_es', 'Español')}</option>
+                    </select>
+                    <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 4 }}>
+                      {t('fields.default_language_hint', 'Workspace language preference when users have not set an individual choice.')}
+                    </div>
+                  </div>
+                  <div style={fieldStyle}>
+                    <label style={labelStyle}>{t('fields.currency', 'Workspace currency')}</label>
+                    <select
+                      value={formData.currency || 'USD'}
+                      onChange={(e) => handleInputChange('currency', e.target.value)}
+                      style={inputStyle}
+                      data-testid="workspace-currency-select"
+                    >
+                      <option value="USD">USD — US Dollar ($)</option>
+                      <option value="COP">COP — Peso colombiano ($)</option>
+                      <option value="EUR">EUR — Euro (€)</option>
+                      <option value="GBP">GBP — British Pound (£)</option>
+                      <option value="MXN">MXN — Peso mexicano ($)</option>
+                      <option value="CAD">CAD — Canadian Dollar ($)</option>
+                      <option value="INR">INR — Indian Rupee (₹)</option>
+                      <option value="BRL">BRL — Real brasileño (R$)</option>
+                      <option value="ARS">ARS — Peso argentino ($)</option>
+                      <option value="CLP">CLP — Peso chileno ($)</option>
+                      <option value="PEN">PEN — Sol peruano (S/)</option>
+                    </select>
+                    <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 4 }}>
+                      {t('fields.currency_hint', 'Canonical business currency for metrics, budgets, and reporting.')}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -537,32 +609,32 @@ export default function SettingsPage({ clientId: propClientId }) {
                     <Palette size={18} />
                   </div>
                   <div>
-                    <h3 style={sectionTitleStyle}>Brand Profile</h3>
-                    <p style={sectionCopyStyle}>Define tone, category, and the story your content should always reinforce.</p>
+                    <h3 style={sectionTitleStyle}>{t('client_settings.sections.brand.title', 'Brand Profile')}</h3>
+                    <p style={sectionCopyStyle}>{t('client_settings.sections.brand.copy', 'Define tone, category, and the story your content should always reinforce.')}</p>
                   </div>
                 </div>
                 <div style={gridTwoStyle}>
                   <div style={fieldStyle}>
-                    <label style={labelStyle}>Business Category</label>
+                    <label style={labelStyle}>{t('fields.business_category', 'Business Category')}</label>
                     <select
                       value={formData.business_category}
                       onChange={(e) => handleInputChange('business_category', e.target.value)}
                       style={inputStyle}
                     >
-                      <option value="">Select category</option>
+                      <option value="">{t('fields.select_category_short', 'Select category')}</option>
                       {businessCategoryOptions.map(item => (
-                        <option key={item.key} value={item.label}>{item.label}</option>
+                        <option key={item.key} value={item.rawLabel}>{item.label}</option>
                       ))}
                     </select>
                   </div>
                   <div style={fieldStyle}>
-                    <label style={labelStyle}>Brand Tone</label>
+                    <label style={labelStyle}>{t('fields.brand_tone', 'Brand Tone')}</label>
                     <select
                       value={formData.brand_tone}
                       onChange={(e) => handleInputChange('brand_tone', e.target.value)}
                       style={inputStyle}
                     >
-                      <option value="">Select tone</option>
+                      <option value="">{t('fields.select_tone', 'Select tone')}</option>
                       {brandToneOptions.map(tone => (
                         <option key={tone.value} value={tone.value}>{tone.label}</option>
                       ))}
@@ -570,7 +642,7 @@ export default function SettingsPage({ clientId: propClientId }) {
                   </div>
                   {formData.business_category && getSubcategoriesForCategory(formData.business_category).length > 0 && (
                     <div style={{ ...fieldStyle, gridColumn: '1 / -1' }}>
-                      <label style={labelStyle}>Subcategories (select all that apply)</label>
+                      <label style={labelStyle}>{t('fields.subcategories_hint', 'Subcategories (select all that apply)')}</label>
                       <div style={pillGridStyle}>
                         {getSubcategoriesForCategory(formData.business_category).map(sub => (
                           <label
@@ -593,21 +665,21 @@ export default function SettingsPage({ clientId: propClientId }) {
                     </div>
                   )}
                   <div style={{ ...fieldStyle, gridColumn: '1 / -1' }}>
-                    <label style={labelStyle}>Brand Description</label>
+                    <label style={labelStyle}>{t('fields.brand_description', 'Brand Description')}</label>
                     <textarea
                       value={formData.brand_description}
                       onChange={(e) => handleInputChange('brand_description', e.target.value)}
                       style={{ ...inputStyle, minHeight: 80, resize: 'vertical' }}
-                      placeholder="Describe your brand in 2-3 sentences..."
+                      placeholder={t('fields.brand_description_placeholder', 'Describe your brand in 2-3 sentences...')}
                     />
                   </div>
                   <div style={{ ...fieldStyle, gridColumn: '1 / -1' }}>
-                    <label style={labelStyle}>Unique Selling Proposition (USP)</label>
+                    <label style={labelStyle}>{t('fields.usp', 'Unique Selling Proposition (USP)')}</label>
                     <textarea
                       value={formData.usp}
                       onChange={(e) => handleInputChange('usp', e.target.value)}
                       style={{ ...inputStyle, minHeight: 60, resize: 'vertical' }}
-                      placeholder="What makes your business unique?"
+                      placeholder={t('fields.usp_placeholder', 'What makes your business unique?')}
                     />
                   </div>
                 </div>
@@ -620,22 +692,22 @@ export default function SettingsPage({ clientId: propClientId }) {
                     <Users size={18} />
                   </div>
                   <div>
-                    <h3 style={sectionTitleStyle}>Target Audience</h3>
-                    <p style={sectionCopyStyle}>Keep your messaging focused on the people you actually want to reach.</p>
+                    <h3 style={sectionTitleStyle}>{t('client_settings.sections.audience.title', 'Target Audience')}</h3>
+                    <p style={sectionCopyStyle}>{t('client_settings.sections.audience.copy', 'Keep your messaging focused on the people you actually want to reach.')}</p>
                   </div>
                 </div>
                 <div style={gridTwoStyle}>
                   <div style={{ ...fieldStyle, gridColumn: '1 / -1' }}>
-                    <label style={labelStyle}>Target Audience Description</label>
+                    <label style={labelStyle}>{t('fields.target_audience', 'Target Audience Description')}</label>
                     <textarea
                       value={formData.target_audience}
                       onChange={(e) => handleInputChange('target_audience', e.target.value)}
                       style={textareaStyle}
-                      placeholder="Describe your ideal customers..."
+                      placeholder={t('fields.target_audience_placeholder', 'Describe your ideal customers...')}
                     />
                   </div>
                   <div style={fieldStyle}>
-                    <label style={labelStyle}>Primary Gender</label>
+                    <label style={labelStyle}>{t('fields.primary_gender', 'Primary Gender')}</label>
                     <select
                       value={formData.gender}
                       onChange={(e) => handleInputChange('gender', e.target.value)}
@@ -647,33 +719,33 @@ export default function SettingsPage({ clientId: propClientId }) {
                     </select>
                   </div>
                   <div style={fieldStyle}>
-                    <label style={labelStyle}>Business Location</label>
+                    <label style={labelStyle}>{t('fields.business_location', 'Business Location')}</label>
                     <input
                       type="text"
                       value={formData.business_location}
                       onChange={(e) => handleInputChange('business_location', e.target.value)}
                       style={inputStyle}
-                      placeholder="City, State/Country"
+                      placeholder={t('fields.business_location_placeholder', 'City, State/Country')}
                     />
                   </div>
                   <div style={{ ...fieldStyle, gridColumn: '1 / -1' }}>
-                    <label style={labelStyle}>Target Locations</label>
+                    <label style={labelStyle}>{t('fields.target_locations', 'Target Locations')}</label>
                     <div style={pillGridStyle}>
-                      {['Local (Same City)', 'Regional (Same State/Province)', 'National', 'International'].map(loc => (
+                      {TARGET_LOCATION_OPTIONS.map(loc => (
                         <label
-                          key={loc}
+                          key={loc.key}
                           style={{
                             ...checkboxPillStyle,
-                            ...(formData.target_locations.includes(loc) ? checkboxPillActiveStyle : {}),
+                            ...(formData.target_locations.includes(loc.value) ? checkboxPillActiveStyle : {}),
                           }}
                         >
                           <input
                             type="checkbox"
-                            checked={formData.target_locations.includes(loc)}
-                            onChange={() => handleLocationToggle(loc)}
+                            checked={formData.target_locations.includes(loc.value)}
+                            onChange={() => handleLocationToggle(loc.value)}
                             style={checkboxStyle}
                           />
-                          <span>{loc}</span>
+                          <span>{t(`options.locations.${loc.key}`, loc.value)}</span>
                         </label>
                       ))}
                     </div>
@@ -688,14 +760,14 @@ export default function SettingsPage({ clientId: propClientId }) {
                     <ImagePlus size={18} />
                   </div>
                   <div>
-                    <h3 style={sectionTitleStyle}>Brand Assets</h3>
-                    <p style={sectionCopyStyle}>Use the same asset experience from onboarding so brand visuals stay organized.</p>
+                    <h3 style={sectionTitleStyle}>{t('client_settings.sections.assets.title', 'Brand Assets')}</h3>
+                    <p style={sectionCopyStyle}>{t('client_settings.sections.assets.copy', 'Use the same asset experience from onboarding so brand visuals stay organized.')}</p>
                   </div>
                 </div>
                 <div style={assetGridStyle}>
                   <div style={assetCardStyle}>
-                    <div style={assetTitleStyle}>Profile Image</div>
-                    <div style={assetTextStyle}>Upload a logo or a strong profile mark for your brand.</div>
+                    <div style={assetTitleStyle}>{t('fields.profile_image', 'Profile Image')}</div>
+                    <div style={assetTextStyle}>{t('fields.profile_image_desc_settings', 'Upload a logo or a strong profile mark for your brand.')}</div>
                     <div style={uploadStackStyle}>
                       <input
                         type="file"
@@ -706,7 +778,7 @@ export default function SettingsPage({ clientId: propClientId }) {
                       />
                       <label htmlFor="settings-profile-image" style={uploadLabelStyle}>
                         <Upload size={16} />
-                        Choose Profile Image
+                        {t('fields.choose_profile_image', 'Choose Profile Image')}
                       </label>
                       {formData.profile_image && (
                         <div style={previewWrapStyle}>
@@ -720,8 +792,8 @@ export default function SettingsPage({ clientId: propClientId }) {
                   </div>
 
                   <div style={assetCardAltStyle}>
-                    <div style={assetTitleStyle}>Product Images</div>
-                    <div style={assetTextStyle}>Keep a few product or service visuals handy for creative generation later.</div>
+                    <div style={assetTitleStyle}>{t('fields.product_images', 'Product Images')}</div>
+                    <div style={assetTextStyle}>{t('fields.product_images_desc_settings', 'Keep a few product or service visuals handy for creative generation later.')}</div>
                     <div style={uploadStackStyle}>
                       <input
                         type="file"
@@ -733,7 +805,7 @@ export default function SettingsPage({ clientId: propClientId }) {
                       />
                       <label htmlFor="settings-product-images" style={uploadLabelStyle}>
                         <Upload size={16} />
-                        Choose Product Images
+                        {t('fields.choose_product_images', 'Choose Product Images')}
                       </label>
                       <div style={settingsImageGridStyle}>
                         {formData.product_images.map((file, index) => (
@@ -762,8 +834,8 @@ export default function SettingsPage({ clientId: propClientId }) {
                   onUpdateLink={updateCompetitorLink}
                   onRemoveLink={removeCompetitorLink}
                   maxCompetitors={3}
-                  title="Competitors"
-                  subtitle="Keep your competitive set tidy and current so reports, ideas, and onboarding stay grounded in the right market context."
+                  title={t('competitors.title', 'Competitors')}
+                  subtitle={t('competitors.subtitle_settings', 'Keep your competitive set tidy and current so reports, ideas, and onboarding stay grounded in the right market context.')}
                 />
               </div>
 
@@ -771,7 +843,7 @@ export default function SettingsPage({ clientId: propClientId }) {
               <div style={saveBarStyle}>
                 <div style={saveBarCopyStyle}>
                   <Sparkles size={16} />
-                  Changes here keep your settings aligned with onboarding.
+                  {t('client_settings.save_bar_text', 'Changes here keep your settings aligned with onboarding.')}
                 </div>
                 <button
                   onClick={handleSave}
@@ -787,12 +859,12 @@ export default function SettingsPage({ clientId: propClientId }) {
                   {saving ? (
                     <>
                       <Loader2 size={16} style={{ animation: 'spin 1s linear infinite', marginRight: 8 }} />
-                      Saving...
+                      {t('client_settings.saving', 'Saving...')}
                     </>
                   ) : (
                     <>
                       <Save size={16} style={{ marginRight: 8 }} />
-                      Save Changes
+                      {t('client_settings.save_changes', 'Save Changes')}
                     </>
                   )}
                 </button>
@@ -927,7 +999,7 @@ const sectionCopyStyle = {
 
 const gridTwoStyle = {
   display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
   gap: 16,
 };
 

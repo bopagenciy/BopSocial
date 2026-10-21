@@ -30,6 +30,7 @@ from __future__ import annotations
 
 from django.contrib.auth.models import User
 from django.db import models
+from .currencies import CURRENCY_CHOICES
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -309,8 +310,22 @@ class Lead(models.Model):
     # Conversion
     converted_at     = models.DateTimeField(null=True, blank=True)
     conversion_value = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    currency         = models.CharField(max_length=3, choices=CURRENCY_CHOICES, default='USD')
 
     capi_pushed_at = models.DateTimeField(null=True, blank=True)
+
+    @property
+    def conversion_currency(self):
+        return self.currency
+
+    @conversion_currency.setter
+    def conversion_currency(self, val):
+        self.currency = val
+
+    @property
+    def bop_contact_id(self):
+        """Canonical contact identifier from associated WhatsAppContact."""
+        return self.contact.bop_contact_id if self.contact else None
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -421,6 +436,12 @@ class CTWACampaign(models.Model):
     ad_account_id     = models.CharField(max_length=100)
     campaign_id       = models.CharField(max_length=100)
     campaign_name     = models.CharField(max_length=200, blank=True)
+    currency          = models.CharField(
+        max_length=3,
+        choices=CURRENCY_CHOICES,
+        default='USD',
+        help_text="Meta Ad Account currency (ISO 4217 code)",
+    )
     adset_ids         = models.JSONField(default=list, blank=True)
     ad_ids            = models.JSONField(default=list, blank=True)
     pre_filled_message = models.CharField(max_length=200, default='Hello')

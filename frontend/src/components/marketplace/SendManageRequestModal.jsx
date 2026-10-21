@@ -21,10 +21,13 @@
  * to match the backend; a future stage can fetch it dynamically.
  */
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ArrowLeft, ArrowRight, Send, X, Check } from 'lucide-react';
 
 import { manageRequestAPI } from '../../services/api';
 import toast from '../ui/toast';
+import { formatCurrency } from '../../utils/formatters';
+import { CANONICAL_CURRENCIES, DEFAULT_CURRENCY } from '../../utils/currencies';
 
 // Matches backend AGENCY_CLIENT_PERMISSIONS (). Order = display order.
 const PERMISSIONS = [
@@ -76,6 +79,7 @@ function defaultPerms() {
 }
 
 export default function SendManageRequestModal({ open, onClose, onSent }) {
+  const { t, i18n } = useTranslation('agency_portal');
   const [step,    setStep]    = useState(1);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
@@ -84,6 +88,7 @@ export default function SendManageRequestModal({ open, onClose, onSent }) {
     permissions:  defaultPerms(),
     proposed_message: '',
     proposed_pricing: '',
+    proposed_currency: DEFAULT_CURRENCY,
     proposed_services: [],
   });
 
@@ -100,7 +105,7 @@ export default function SendManageRequestModal({ open, onClose, onSent }) {
 
   function next() {
     if (step === 1 && !/^\S+@\S+\.\S+$/.test(form.target_email)) {
-      return toast.error('Enter a valid email');
+      return toast.error(t('invitations.send_request_modal.err_email', 'Enter a valid email'));
     }
     setStep((s) => Math.min(4, s + 1));
   }
@@ -119,13 +124,14 @@ export default function SendManageRequestModal({ open, onClose, onSent }) {
         proposed_permissions: form.permissions,
         proposed_message:     form.proposed_message,
         proposed_pricing:     pricing,
+        proposed_currency:    form.proposed_currency,
         proposed_services:    form.proposed_services,
       });
-      toast.success(`Invitation sent to ${form.target_email}`);
+      toast.success(t('invitations.send_request_modal.toast_sent', 'Invitation sent to {{email}}', { email: form.target_email }));
       onSent?.(r.data);
       onClose?.();
     } catch (e) {
-      toast.error(e?.response?.data?.error || 'Could not send invitation');
+      toast.error(e?.response?.data?.error || t('invitations.send_request_modal.err_send', 'Could not send invitation'));
     } finally {
       setLoading(false);
     }
@@ -134,18 +140,18 @@ export default function SendManageRequestModal({ open, onClose, onSent }) {
   const granted = Object.values(form.permissions).filter(Boolean).length;
 
   return (
-    <div role="dialog" aria-modal="true" aria-label="Send manage request" style={backdropStyle} onClick={(e) => { if (e.target === e.currentTarget) onClose?.(); }}>
+    <div role="dialog" aria-modal="true" aria-label={t('invitations.send_request_modal.title', 'Invite a client to manage')} style={backdropStyle} onClick={(e) => { if (e.target === e.currentTarget) onClose?.(); }}>
       <div style={modalStyle}>
         <header style={headerStyle}>
           <div>
             <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-tertiary)' }}>
-              Step {step} of 4
+              {t('invitations.send_request_modal.step_indicator', 'Step {{step}} of 4', { step })}
             </div>
             <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text-primary)' }}>
-              Invite a client to manage
+              {t('invitations.send_request_modal.title', 'Invite a client to manage')}
             </div>
           </div>
-          <button type="button" onClick={onClose} aria-label="Close" style={iconBtn}><X size={16} /></button>
+          <button type="button" onClick={onClose} aria-label={t('common.close', 'Close')} style={iconBtn}><X size={16} /></button>
         </header>
 
         <Stepper current={step} />
@@ -153,10 +159,10 @@ export default function SendManageRequestModal({ open, onClose, onSent }) {
         <div style={{ flex: 1, overflowY: 'auto', padding: '4px 24px 18px' }}>
           {step === 1 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <Field label="Client email" type="email" value={form.target_email}
+              <Field label={t('invitations.send_request_modal.target_email', 'Client email')} type="email" value={form.target_email}
                      onChange={(e) => setForm((s) => ({ ...s, target_email: e.target.value }))}
                      placeholder="client@business.com" autoFocus />
-              <Field label="Phone (optional, sends WhatsApp invite)" value={form.target_phone}
+              <Field label={t('invitations.send_request_modal.target_phone', 'Phone (optional, sends WhatsApp invite)')} value={form.target_phone}
                      onChange={(e) => setForm((s) => ({ ...s, target_phone: e.target.value }))}
                      placeholder="+91 …" />
             </div>
@@ -165,22 +171,21 @@ export default function SendManageRequestModal({ open, onClose, onSent }) {
           {step === 2 && (
             <div>
               <p style={hintStyle}>
-                Pick which actions you should be able to perform on the client's behalf.
-                The client will see this list and can override anything before accepting.
+                {t('invitations.send_request_modal.permissions_desc', "Select the permissions you are requesting from this client.")}
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 {Object.entries(grouped).map(([cat, perms]) => (
                   <div key={cat}>
-                    <div style={catLabel}>{cat}</div>
+                    <div style={catLabel}>{t(`permissions.categories.${cat}`, cat)}</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                       {perms.map((p) => {
                         const on = !!form.permissions[p.key];
                         return (
                           <label key={p.key} style={permRow}>
                             <input type="checkbox" checked={on} onChange={() => togglePerm(p.key)} />
-                            <span style={{ flex: 1, color: 'var(--text-primary)' }}>{p.label}</span>
+                            <span style={{ flex: 1, color: 'var(--text-primary)' }}>{t(`permissions.labels.${p.key}`, p.label)}</span>
                             <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: RISK_COLOR[p.risk] }}>
-                              {p.risk}
+                              {t(`permissions.risk.${p.risk}`, p.risk)}
                             </span>
                           </label>
                         );
@@ -195,40 +200,54 @@ export default function SendManageRequestModal({ open, onClose, onSent }) {
           {step === 3 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div>
-                <Label>Message to the client</Label>
+                <Label>{t('invitations.send_request_modal.message_label', 'Message to client')}</Label>
                 <textarea
                   value={form.proposed_message}
                   onChange={(e) => setForm((s) => ({ ...s, proposed_message: e.target.value }))}
                   rows={4}
-                  placeholder="Tell them what you'll do for them — wins, examples, timeline."
+                  placeholder={t('invitations.send_request_modal.message_placeholder', 'Introduce your agency and explain your management plan...')}
                   style={textareaStyle}
                 />
               </div>
-              <Field label="Monthly fee (optional, in INR)" type="number"
-                     value={form.proposed_pricing}
-                     onChange={(e) => setForm((s) => ({ ...s, proposed_pricing: e.target.value }))}
-                     placeholder="e.g., 5000" />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px', gap: 10 }}>
+                <Field label={t('invitations.send_request_modal.pricing_label', 'Proposed monthly pricing')} type="number"
+                       value={form.proposed_pricing}
+                       onChange={(e) => setForm((s) => ({ ...s, proposed_pricing: e.target.value }))}
+                       placeholder="e.g., 5000" />
+                <div>
+                  <Label>{t('agency_marketplace_profile.fields.pricing_currency', 'Currency')}</Label>
+                  <select
+                    value={form.proposed_currency}
+                    onChange={(e) => setForm((s) => ({ ...s, proposed_currency: e.target.value }))}
+                    style={inputStyle}
+                  >
+                    {CANONICAL_CURRENCIES.map((c) => (
+                      <option key={c.code} value={c.code}>{c.code}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
             </div>
           )}
 
           {step === 4 && (
-            <ReviewSummary form={form} granted={granted} />
+            <ReviewSummary form={form} granted={granted} t={t} i18n={i18n} />
           )}
         </div>
 
         <footer style={footerStyle}>
           {step > 1 ? (
             <button type="button" onClick={() => setStep(step - 1)} style={btnGhost}>
-              <ArrowLeft size={14} /> Back
+              <ArrowLeft size={14} /> {t('invitations.invite_modal.back', 'Back')}
             </button>
           ) : <span />}
           {step < 4 ? (
             <button type="button" onClick={next} style={btnPrimary}>
-              Continue <ArrowRight size={14} />
+              {t('invitations.invite_modal.next', 'Next')} <ArrowRight size={14} />
             </button>
           ) : (
             <button type="button" onClick={send} disabled={loading} style={btnPrimary}>
-              {loading ? 'Sending…' : <>Send invitation <Send size={14} /></>}
+              {loading ? t('invitations.send_request_modal.sending', 'Sending…') : <>{t('invitations.send_request_modal.send', 'Send invitation')} <Send size={14} /></>}
             </button>
           )}
         </footer>
@@ -237,17 +256,22 @@ export default function SendManageRequestModal({ open, onClose, onSent }) {
   );
 }
 
-function ReviewSummary({ form, granted }) {
+function ReviewSummary({ form, granted, t, i18n }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <Row k="To"             v={form.target_email} />
-      {form.target_phone && <Row k="Phone" v={form.target_phone} />}
-      <Row k="Permissions"     v={`${granted} granted, ${PERMISSIONS.length - granted} declined`} />
-      {form.proposed_pricing && <Row k="Monthly fee"  v={`₹${form.proposed_pricing}`} />}
-      <Row k="Message"        v={form.proposed_message || <em style={{ color: 'var(--text-tertiary)' }}>(none)</em>} multiline />
+      <Row k={t('invitations.invite_modal.review_agency', 'To')} v={form.target_email} />
+      {form.target_phone && <Row k={t('invitations.send_request_modal.phone_label', 'Phone')} v={form.target_phone} />}
+      <Row k={t('invitations.invite_modal.review_perms', 'Permissions')} v={t('invitations.invite_modal.review_perms_detail', '{{granted}} granted, {{declined}} declined', { granted, declined: PERMISSIONS.length - granted })} />
+      {form.proposed_pricing && (
+        <Row
+          k={t('invitations.send_request_modal.monthly_fee', 'Monthly fee')}
+          v={formatCurrency(Number(form.proposed_pricing), form.proposed_currency, i18n?.language)}
+        />
+      )}
+      <Row k={t('invitations.agency_invite.message', 'Message')} v={form.proposed_message || <em style={{ color: 'var(--text-tertiary)' }}>{t('common.none', '(none)')}</em>} multiline />
       <p style={{ ...hintStyle, marginTop: 8 }}>
         <Check size={11} style={{ marginRight: 4, verticalAlign: 'middle', color: 'var(--success)' }} />
-        Client receives an email with a magic link. Their decision is recorded — you can cancel from your sent list any time.
+        {t('invitations.send_request_modal.review_hint', 'Client receives an email with a magic link. Their decision is recorded — you can cancel from your sent list any time.')}
       </p>
     </div>
   );

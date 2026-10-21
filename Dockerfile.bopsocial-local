@@ -1,0 +1,18 @@
+# ============================================================================
+#  Bop Social — Local Lightweight Frontend Server (Nginx)
+#
+#  Serves the locally compiled production React build (frontend/build/)
+#  and applies Bop Social single-origin reverse proxy routing:
+#    - /api/            → backend ASGI service (port 8000)
+#    - /ws/             → WebSocket proxy (Django Channels)
+#    - /media/          → media uploads & SEC-01 authorized media handler
+#    - /internal_media/ → internal X-Accel-Redirect protected storage
+#
+#  Usage:
+#    1. cd frontend && npm run build
+#    2. docker build -f Dockerfile.bopsocial-local -t bopsocial-frontend-local:bs-2.0 .
+# ============================================================================
+FROM nginx:1.28-alpine
+
+COPY frontend/docker/nginx.conf /etc/nginx/conf.d/default.conf
+COPY frontend/build/ /usr/share/nginx/html/
