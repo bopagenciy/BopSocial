@@ -676,6 +676,13 @@ export const composerAPI = {
     approveItem: (id, itemId) => api.post(`/composer/queues/${id}/items/${itemId}/approve/`),
     revokeItem:  (id, itemId) => api.post(`/composer/queues/${id}/items/${itemId}/revoke_approval/`),
   },
+  operations: {
+    list:        (params)   => api.get('/social/publications/operations/', { params }),
+    get:         (id)       => api.get(`/social/publications/operations/${id}/`),
+    recover:     (id)       => api.post(`/social/publications/operations/${id}/recover/`),
+    orphans:     (params)   => api.get('/social/publications/orphans/', { params }),
+    timeline:    (id)       => api.get(`/social/publications/${id}/timeline/`),
+  },
   preflight:     (data)     => api.post('/composer/preflight/', data),
 };
 
