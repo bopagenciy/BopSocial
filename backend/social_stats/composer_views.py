@@ -219,9 +219,11 @@ class UnifiedPostViewSet(TenantScopedMixin, viewsets.ModelViewSet):
                 {'detail': 'Post requires approval before publishing.', 'status': 'pending_approval'},
                 status=202,
             )
+        now = timezone.now()
         post.status = 'queued'
-        post.scheduled_at = timezone.now()
-        post.save(update_fields=['status', 'scheduled_at'])
+        post.queued_at = now
+        post.scheduled_at = now
+        post.save(update_fields=['status', 'queued_at', 'scheduled_at'])
         publish_unified_post.delay(post.id)
 
         log_activity_for_request(
@@ -317,9 +319,11 @@ class UnifiedPostViewSet(TenantScopedMixin, viewsets.ModelViewSet):
             # Do NOT dispatch Celery publication task; wait for scheduler tick at due time
             return Response(UnifiedPostSerializer(post).data)
         else:
+            now = timezone.now()
             post.status = 'queued'
-            post.scheduled_at = post.scheduled_at or timezone.now()
-            post.save(update_fields=['approved_by', 'approved_at', 'status', 'scheduled_at'])
+            post.queued_at = now
+            post.scheduled_at = post.scheduled_at or now
+            post.save(update_fields=['approved_by', 'approved_at', 'status', 'queued_at', 'scheduled_at'])
             publish_unified_post.delay(post.id)
             return Response(UnifiedPostSerializer(post).data)
 

@@ -33,13 +33,14 @@ BS-3G.2B Hardening:
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from celery import shared_task
 from croniter import croniter
-from django.db import transaction
+from django.db import models, transaction
+from django.db.models.functions import Coalesce
 from django.utils import timezone
 
 from .models import UnifiedPost, PostQueue, QueuedItem, MediaAsset
@@ -64,7 +65,7 @@ def process_scheduled_posts(self):
         with transaction.atomic():
             updated = (UnifiedPost.objects
                        .filter(id=post.id, status='scheduled')
-                       .update(status='queued'))
+                       .update(status='queued', queued_at=now))
             if not updated:
                 continue
         try:
@@ -103,6 +104,192 @@ def process_post_queues(self):
     if fired:
         logger.info('process_post_queues dispatched %s queue items', fired)
     return fired
+
+
+# ── Queued publication recovery watchdog ──────────────────────────────────────
+@shared_task(bind=True)
+def recover_orphaned_queued_posts(self, grace_seconds: int = 300) -> int:
+    """
+    Watchdog task to safely recover stranded UnifiedPost(status='queued') rows
+    that were materialized in the database but never dispatched to Celery
+    (e.g. broker connection failure during delay()).
+
+    Safety boundaries:
+      - Only status='queued'
+      - Age >= grace_seconds (default: 300s / 5min)
+      - select_for_update(skip_locked=True)
+      - client.is_active is True
+      - Approval state valid (if requires_approval, must have approved_by & approved_at)
+        Otherwise transitioned to pending_approval and approver notified
+      - Zero PlatformPublishLog rows (post never entered publish_unified_post execution)
+      - Never touches status='publishing', 'published', 'partial', 'failed'
+      - Secondary Celery inspect check (fails open on inspect error, but DB remains authoritative)
+      - Re-enqueues via publish_unified_post.delay(post.id)
+      - Preserves QueuedItem and source relations; never creates duplicate posts
+    """
+    now = timezone.now()
+    cutoff = now - timedelta(seconds=grace_seconds)
+
+    # Coalesce queued_at -> scheduled_at -> created_at for robust age detection
+    candidate_ids = list(
+        UnifiedPost.objects
+        .filter(status='queued')
+        .annotate(effective_queued_at=Coalesce('queued_at', 'scheduled_at', 'created_at'))
+        .filter(effective_queued_at__lte=cutoff)
+        .order_by('effective_queued_at')
+        .values_list('id', flat=True)[:100]
+    )
+
+    if not candidate_ids:
+        return 0
+
+    recovered = 0
+    for post_id in candidate_ids:
+        decision = _evaluate_and_recover_post(post_id, now, cutoff, grace_seconds)
+        if decision == 'RECOVERED':
+            recovered += 1
+
+    if recovered:
+        logger.info('recover_orphaned_queued_posts recovered %s orphaned posts', recovered)
+    return recovered
+
+
+def _evaluate_and_recover_post(
+    post_id: int,
+    now: datetime,
+    cutoff: datetime,
+    grace_seconds: int,
+) -> str:
+    """
+    Evaluate a candidate queued post under row lock and redispatch if provably safe.
+    Returns the decision string (RECOVERED, SKIPPED_*, DISPATCH_FAILED).
+    """
+    with transaction.atomic():
+        post = (
+            UnifiedPost.objects
+            .select_for_update(skip_locked=True)
+            .select_related('client')
+            .filter(id=post_id, status='queued')
+            .first()
+        )
+        if not post:
+            # Row locked by another concurrent worker or already transitioned out of queued
+            logger.debug(
+                'recover_orphaned_queued_posts: candidate_post_id=%s recovery_decision=SKIPPED_LOCKED reason="row locked or status changed"',
+                post_id,
+            )
+            return 'SKIPPED_LOCKED'
+
+        effective_queued_at = post.queued_at or post.scheduled_at or post.created_at
+        effective_age = (now - effective_queued_at).total_seconds() if effective_queued_at else 0.0
+
+        # Guard 1: Age check
+        if effective_age < grace_seconds:
+            logger.info(
+                'recover_orphaned_queued_posts: candidate_post_id=%s client_id=%s effective_queued_age=%.1fs queued_at=%s '
+                'recovery_decision=SKIPPED_FRESH reason="age < grace_period" recovery_timestamp=%s dispatch_attempt_result=NONE',
+                post.id, post.client_id, effective_age, post.queued_at, now.isoformat(),
+            )
+            return 'SKIPPED_FRESH'
+
+        # Guard 2: Inactive tenant
+        if not post.client.is_active:
+            logger.warning(
+                'recover_orphaned_queued_posts: candidate_post_id=%s client_id=%s effective_queued_age=%.1fs queued_at=%s '
+                'recovery_decision=SKIPPED_INACTIVE_CLIENT reason="client is inactive" recovery_timestamp=%s dispatch_attempt_result=NONE',
+                post.id, post.client_id, effective_age, post.queued_at, now.isoformat(),
+            )
+            return 'SKIPPED_INACTIVE_CLIENT'
+
+        # Guard 3: Approval safety
+        if post.client.requires_approval:
+            if not (post.approved_by_id and post.approved_at):
+                # Transition to pending_approval and notify approver
+                post.status = 'pending_approval'
+                post.save(update_fields=['status'])
+                logger.warning(
+                    'recover_orphaned_queued_posts: candidate_post_id=%s client_id=%s effective_queued_age=%.1fs queued_at=%s '
+                    'recovery_decision=SKIPPED_UNAPPROVED reason="missing approval; reverted to pending_approval" recovery_timestamp=%s dispatch_attempt_result=NONE',
+                    post.id, post.client_id, effective_age, post.queued_at, now.isoformat(),
+                )
+                try:
+                    from .notification_watchers import notify_approver_for_post
+                    notify_approver_for_post.delay(post.id)
+                except Exception as exc:
+                    logger.warning(
+                        'recover_orphaned_queued_posts: failed to dispatch approver notification for post_id=%s: %s',
+                        post.id, exc,
+                    )
+                return 'SKIPPED_UNAPPROVED'
+
+        # Guard 4: Zero PlatformPublishLog rows (must have 0 logs)
+        has_logs = post.publish_logs.exists()
+        if has_logs:
+            # Check for any success log, publishing log, or platform_post_id
+            suspicious_logs = post.publish_logs.filter(
+                models.Q(status__in=['success', 'publishing']) |
+                ~models.Q(platform_post_id='')
+            ).exists()
+            decision = 'SKIPPED_AMBIGUOUS' if suspicious_logs else 'SKIPPED_HAS_LOGS'
+            logger.warning(
+                'recover_orphaned_queued_posts: candidate_post_id=%s client_id=%s effective_queued_age=%.1fs queued_at=%s '
+                'recovery_decision=%s reason="post has existing platform publish logs" recovery_timestamp=%s dispatch_attempt_result=NONE',
+                post.id, post.client_id, effective_age, post.queued_at, decision, now.isoformat(),
+            )
+            return decision
+
+        # Guard 5: Secondary Celery inspect check (fails open on inspect error/timeout)
+        if _is_task_active_in_celery(post.id):
+            logger.info(
+                'recover_orphaned_queued_posts: candidate_post_id=%s client_id=%s effective_queued_age=%.1fs queued_at=%s '
+                'recovery_decision=SKIPPED_AMBIGUOUS reason="active/reserved task detected in Celery" recovery_timestamp=%s dispatch_attempt_result=NONE',
+                post.id, post.client_id, effective_age, post.queued_at, now.isoformat(),
+            )
+            return 'SKIPPED_AMBIGUOUS'
+
+        # Safe to redispatch
+        try:
+            publish_unified_post.delay(post.id)
+            logger.info(
+                'recover_orphaned_queued_posts: candidate_post_id=%s client_id=%s effective_queued_age=%.1fs queued_at=%s '
+                'recovery_decision=RECOVERED reason="stale queued orphan successfully redispatched" recovery_timestamp=%s dispatch_attempt_result=SUCCESS',
+                post.id, post.client_id, effective_age, post.queued_at, now.isoformat(),
+            )
+            return 'RECOVERED'
+        except Exception as exc:
+            logger.exception(
+                'recover_orphaned_queued_posts: candidate_post_id=%s client_id=%s effective_queued_age=%.1fs queued_at=%s '
+                'recovery_decision=DISPATCH_FAILED reason="broker failure during redispatch: %s" recovery_timestamp=%s dispatch_attempt_result=FAILED',
+                post.id, post.client_id, effective_age, post.queued_at, exc, now.isoformat(),
+            )
+            return 'DISPATCH_FAILED'
+
+
+def _is_task_active_in_celery(post_id: int) -> bool:
+    """
+    Secondary non-authoritative sanity check using Celery inspect.
+    Returns True if an active or reserved publish_unified_post task matching post_id is found.
+    Fails open (returns False) on inspect timeout or error.
+    """
+    try:
+        from dashboard.celery import app as celery_app
+        insp = celery_app.control.inspect(timeout=0.5)
+        if not insp:
+            return False
+
+        for task_dict in [insp.active(), insp.reserved(), insp.scheduled()]:
+            if not task_dict:
+                continue
+            for worker_tasks in task_dict.values():
+                for t in (worker_tasks or []):
+                    if t.get('name') == 'social_stats.orchestrator.publish_unified_post':
+                        args = t.get('args', [])
+                        if args and args[0] == post_id:
+                            return True
+    except Exception:
+        # Fails open per specification H
+        pass
+    return False
 
 
 def _process_single_queue(queue_id: int, now: datetime) -> bool:
@@ -342,6 +529,7 @@ def _dispatch_queued_item(queue: PostQueue, item: QueuedItem, now: Optional[date
             media_type=media_type,
             target_platforms=queue.platforms or [],
             status='queued',
+            queued_at=now,
             ai_generated=False,
             approved_by=item.approved_by if requires_approval else None,
             approved_at=item.approved_at if requires_approval else None,

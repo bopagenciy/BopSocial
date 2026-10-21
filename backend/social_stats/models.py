@@ -1942,6 +1942,7 @@ class UnifiedPost(models.Model):
     platform_overrides = models.JSONField(default=dict, blank=True, help_text='{platform: {content, media_urls, hashtags}}')
     status            = models.CharField(max_length=20, choices=UNIFIED_POST_STATUS_CHOICES, default='draft')
     scheduled_at      = models.DateTimeField(null=True, blank=True)
+    queued_at         = models.DateTimeField(null=True, blank=True)
     published_at      = models.DateTimeField(null=True, blank=True)
     created_at        = models.DateTimeField(auto_now_add=True)
     updated_at        = models.DateTimeField(auto_now=True)

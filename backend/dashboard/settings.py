@@ -378,6 +378,10 @@ CELERY_BEAT_SCHEDULE = {
         'task':     'social_stats.scheduler.process_post_queues',
         'schedule': crontab(minute='*'),
     },
+    'composer-recover-orphaned-queued-posts': {
+        'task':     'social_stats.scheduler.recover_orphaned_queued_posts',
+        'schedule': crontab(minute='*/2'),
+    },
     'inbox-sync-every-5min': {
         'task':     'social_stats.inbox_tasks.sync_inbox_for_all_clients',
         'schedule': crontab(minute='*/5'),

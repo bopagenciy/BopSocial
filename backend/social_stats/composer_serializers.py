@@ -93,7 +93,7 @@ class UnifiedPostSerializer(serializers.ModelSerializer):
             'id', 'client',
             'title', 'content', 'media_urls', 'media_type',
             'target_platforms', 'platform_overrides',
-            'scheduled_at', 'published_at',
+            'scheduled_at', 'queued_at', 'published_at',
             'status', 'is_recurring', 'recurrence_rule',
             'ai_generated', 'ai_prompt',
             'created_by', 'created_by_name',
@@ -103,7 +103,7 @@ class UnifiedPostSerializer(serializers.ModelSerializer):
             'publish_logs',
         ]
         read_only_fields = [
-            'status', 'published_at',
+            'status', 'queued_at', 'published_at',
             'created_by', 'created_by_name', 'created_at', 'updated_at',
             'approved_by', 'approved_at',
             'source_queue', 'source_queued_item',
