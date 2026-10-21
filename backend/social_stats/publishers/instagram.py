@@ -106,6 +106,12 @@ class InstagramPublisher(BasePublisher):
 
         if len(image_urls) == 1:
             container_id = self._create_image_container(credential, image_urls[0], caption=content)
+            on_created = kwargs.get('on_container_created')
+            if callable(on_created):
+                try:
+                    on_created(container_id)
+                except Exception as exc:
+                    logger.warning('on_container_created callback failed: %s', exc)
             return self._publish_container(credential, container_id)
 
         return self.publish_carousel(credential, content, image_urls, **kwargs)
@@ -130,6 +136,12 @@ class InstagramPublisher(BasePublisher):
         container_id = body.get('id')
         if not container_id:
             raise PublishError('IG media container missing id', raw=body)
+        on_created = kwargs.get('on_container_created')
+        if callable(on_created):
+            try:
+                on_created(container_id)
+            except Exception as exc:
+                logger.warning('on_container_created callback failed: %s', exc)
         self._wait_for_container_ready(credential, container_id)
         return self._publish_container(credential, container_id)
 
@@ -154,6 +166,12 @@ class InstagramPublisher(BasePublisher):
         container_id = body.get('id')
         if not container_id:
             raise PublishError('IG reel container missing id', raw=body)
+        on_created = kwargs.get('on_container_created')
+        if callable(on_created):
+            try:
+                on_created(container_id)
+            except Exception as exc:
+                logger.warning('on_container_created callback failed: %s', exc)
         self._wait_for_container_ready(credential, container_id)
         return self._publish_container(credential, container_id)
 
@@ -203,6 +221,12 @@ class InstagramPublisher(BasePublisher):
         container_id = body.get('id')
         if not container_id:
             raise PublishError('IG story container missing id', raw=body)
+        on_created = kwargs.get('on_container_created')
+        if callable(on_created):
+            try:
+                on_created(container_id)
+            except Exception as exc:
+                logger.warning('on_container_created callback failed: %s', exc)
         if media_kind == 'VIDEO':
             self._wait_for_container_ready(credential, container_id)
         return self._publish_container(
@@ -266,6 +290,12 @@ class InstagramPublisher(BasePublisher):
         container_id = carousel.get('id')
         if not container_id:
             raise PublishError('IG carousel container missing id', raw=carousel)
+        on_created = kwargs.get('on_container_created')
+        if callable(on_created):
+            try:
+                on_created(container_id)
+            except Exception as exc:
+                logger.warning('on_container_created callback failed: %s', exc)
         self._wait_for_container_ready(credential, container_id)
         return self._publish_container(credential, container_id)
 
@@ -390,7 +420,7 @@ class InstagramPublisher(BasePublisher):
             if provider_product_type:
                 raw['provider_media_product_type'] = provider_product_type
 
-        return PublishResult(
+        res = PublishResult(
             success=True,
             platform_post_id=str(media_id),
             platform_url=permalink or '',
@@ -398,6 +428,8 @@ class InstagramPublisher(BasePublisher):
             error_code=error_code,
             error_message=error_message,
         )
+        res.provider_container_id = container_id
+        return res
 
     def _require_ig(self, credential):
         if not getattr(credential, 'instagram_account_id', None):

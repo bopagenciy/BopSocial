@@ -213,6 +213,7 @@ from .publication_ops import (
     PublicationOperationsDetailView,
     PublicationOperationsRecoverView,
     PublicationPlatformRetryView,
+    PublicationPlatformReconcileView,
     PublicationOrphansListView,
     PublicationTimelineView,
 )
@@ -639,11 +640,12 @@ urlpatterns = [
     path('media/public/<str:signed_token>/', public_publishing_media_view, name='public_publishing_media'),
     path('media/serve-legacy/', legacy_media_proxy_view, name='legacy_media_proxy'),
 
-    # ── BS-3H / BS-3I Publication Operations & Platform Retry Console ───────
+    # ── BS-3H / BS-3I / BS-3J Publication Operations & Platform Retry Console ───────
     path('social/publications/operations/',                  PublicationOperationsListView.as_view(),   name='publication_operations_list'),
     path('social/publications/operations/<int:pk>/',         PublicationOperationsDetailView.as_view(), name='publication_operations_detail'),
     path('social/publications/operations/<int:pk>/recover/', PublicationOperationsRecoverView.as_view(), name='publication_operations_recover'),
     path('social/publications/operations/<int:pk>/retry-platform/', PublicationPlatformRetryView.as_view(), name='publication_operations_retry_platform'),
+    path('social/publications/operations/<int:pk>/reconcile/', PublicationPlatformReconcileView.as_view(), name='publication_operations_reconcile'),
     path('social/publications/orphans/',                     PublicationOrphansListView.as_view(),      name='publication_orphans_list'),
     path('social/publications/<int:pk>/timeline/',           PublicationTimelineView.as_view(),         name='publication_timeline'),
 
@@ -652,6 +654,7 @@ urlpatterns = [
     path('composer/publications/operations/<int:pk>/',       PublicationOperationsDetailView.as_view(), name='composer_publication_operations_detail'),
     path('composer/publications/operations/<int:pk>/recover/', PublicationOperationsRecoverView.as_view(), name='composer_publication_operations_recover'),
     path('composer/publications/operations/<int:pk>/retry-platform/', PublicationPlatformRetryView.as_view(), name='composer_publication_operations_retry_platform'),
+    path('composer/publications/operations/<int:pk>/reconcile/', PublicationPlatformReconcileView.as_view(), name='composer_publication_operations_reconcile'),
     path('composer/publications/orphans/',                   PublicationOrphansListView.as_view(),      name='composer_publication_orphans_list'),
     path('composer/publications/<int:pk>/timeline/',         PublicationTimelineView.as_view(),         name='composer_publication_timeline'),
 

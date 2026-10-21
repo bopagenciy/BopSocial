@@ -232,8 +232,20 @@ def publish_to_platform(self, unified_post_id: int, platform: str):
             update_unified_post_status(post.id)
             return
 
+    def _on_container_created(cid: str):
+        try:
+            log.provider_container_id = cid
+            log.save(update_fields=['provider_container_id'])
+            logger.info('publish_to_platform: persisted provider_container_id=%s for post=%s platform=%s before publish',
+                        cid, post.id, platform)
+        except Exception as exc:
+            logger.warning('Failed to persist container_id %s: %s', cid, exc)
+
     try:
-        result = _dispatch_publish(publisher, cred, content, media_urls, media_type, post=post)
+        result = _dispatch_publish(
+            publisher, cred, content, media_urls, media_type,
+            post=post, on_container_created=_on_container_created,
+        )
     except TokenExpiredError as e:
         # Mark credential dead + alert + persist
         _mark_failed(log, code='token_expired', message=str(e))
@@ -304,17 +316,20 @@ def publish_to_platform(self, unified_post_id: int, platform: str):
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
-def _dispatch_publish(publisher, credential, content, media_urls, media_type, *, post):
+def _dispatch_publish(publisher, credential, content, media_urls, media_type, *, post, on_container_created=None):
     """Pick the right publisher method based on media_type."""
     media_type = (media_type or 'text').lower()
+    kwargs = {}
+    if on_container_created:
+        kwargs['on_container_created'] = on_container_created
 
     if media_type == 'text':
-        return publisher.publish_text(credential, content)
+        return publisher.publish_text(credential, content, **kwargs)
     if media_type == 'image':
-        return publisher.publish_image(credential, content, media_urls)
+        return publisher.publish_image(credential, content, media_urls, **kwargs)
     if media_type == 'video':
         first = media_urls[0] if media_urls else ''
-        return publisher.publish_video(credential, content, first)
+        return publisher.publish_video(credential, content, first, **kwargs)
     if media_type == 'carousel':
         raw_urls = (post.platform_overrides or {}).get(publisher.platform, {}).get('media_urls') or post.media_urls
         children_metadata = _resolve_carousel_children(post, raw_urls, media_urls)
@@ -323,10 +338,11 @@ def _dispatch_publish(publisher, credential, content, media_urls, media_type, *,
             content,
             media_urls,
             children_metadata=children_metadata,
+            **kwargs,
         )
     if media_type == 'reel':
         first = media_urls[0] if media_urls else ''
-        return publisher.publish_reel(credential, first, content)
+        return publisher.publish_reel(credential, first, content, **kwargs)
     if media_type == 'story':
         if not media_urls:
             raise PublishError('Story requires exactly one media asset', code='missing_media')
@@ -335,7 +351,7 @@ def _dispatch_publish(publisher, credential, content, media_urls, media_type, *,
         first = media_urls[0]
         raw_urls = (post.platform_overrides or {}).get(publisher.platform, {}).get('media_urls') or post.media_urls
         media_kind = _resolve_story_media_kind(post, raw_urls)
-        return publisher.publish_story(credential, first, media_type=media_kind, media_kind=media_kind)
+        return publisher.publish_story(credential, first, media_type=media_kind, media_kind=media_kind, **kwargs)
 
     raise PublishError(f'Unknown media_type: {media_type}', code='unknown_media_type')
 

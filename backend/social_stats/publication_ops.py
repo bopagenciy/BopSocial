@@ -22,9 +22,18 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import ActionLog, PlatformPublishLog, UnifiedPost
+from .models import ActionLog, PlatformCredential, PlatformPublishLog, UnifiedPost
 from .orchestrator import publish_unified_post
 from .tenant_mixins import TenantScopedMixin
+from .reconciliation import (
+    OUTCOME_CONFIRMED_PUBLISHED,
+    OUTCOME_CONFIRMED_NOT_PUBLISHED,
+    OUTCOME_STILL_PROCESSING,
+    OUTCOME_AMBIGUOUS,
+    OUTCOME_RECONCILIATION_UNAVAILABLE,
+    OUTCOME_PROVIDER_ERROR,
+    get_reconciliation_adapter,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -569,6 +578,10 @@ def serialize_publication_operation(post: UnifiedPost, now: Optional[datetime] =
             'error_message': log.error_message if log else '',
             'provider_container_id': log.provider_container_id if log else '',
             'provider_request_id': log.provider_request_id if log else '',
+            'reconciliation_status': log.reconciliation_status if log else '',
+            'last_reconciled_at': log.last_reconciled_at.isoformat() if log and log.last_reconciled_at else None,
+            'reconciliation_evidence_type': log.reconciliation_evidence_type if log else '',
+            'reconciliation_reference': log.reconciliation_reference if log else '',
         })
 
     effective_time = post.queued_at or post.scheduled_at or post.created_at
@@ -811,6 +824,169 @@ def retry_failed_platform(post_id: int, platform: str, user=None) -> dict:
             'platform': platform,
             'detail': f"Platform '{platform}' successfully queued for retry; {len(successful_platforms)} successful platforms untouched",
             'untouched_platforms': successful_platforms,
+            'status_code': 200,
+        }
+
+
+# ============================================================================
+# 5C. CANONICAL SAFE PROVIDER RECONCILIATION (BS-3J)
+# ============================================================================
+
+def reconcile_platform_publication(post_id: int, platform: str, user=None) -> dict:
+    """
+    Canonical provider reconciliation service (BS-3J).
+    Deterministically queries external provider state to resolve ambiguous publishing states.
+    Never executes a publication command.
+    """
+    now = timezone.now()
+    with transaction.atomic():
+        post = (
+            UnifiedPost.objects
+            .select_for_update(of=('self',), skip_locked=True)
+            .select_related('client')
+            .filter(id=post_id)
+            .first()
+        )
+        if not post:
+            return {
+                'success': False,
+                'error': 'Post not found or currently locked by another operation',
+                'status_code': 409,
+            }
+
+        if not post.client.is_active:
+            return {
+                'success': False,
+                'error': 'Cannot reconcile: tenant workspace is inactive',
+                'status_code': 400,
+            }
+
+        targets = list(post.target_platforms or [])
+        if platform not in targets:
+            return {
+                'success': False,
+                'error': f"Platform '{platform}' is not targeted by this post ({targets})",
+                'status_code': 400,
+            }
+
+        log = (
+            PlatformPublishLog.objects
+            .select_for_update(of=('self',), skip_locked=True)
+            .filter(unified_post=post, platform=platform)
+            .first()
+        )
+        if not log:
+            return {
+                'success': False,
+                'error': f"No publish log exists for platform '{platform}'",
+                'status_code': 400,
+            }
+
+        # If already success with verified post ID, return confirmed published immediately
+        if log.status == 'success' and bool(log.platform_post_id):
+            return {
+                'success': True,
+                'post_id': post.id,
+                'platform': platform,
+                'outcome': OUTCOME_CONFIRMED_PUBLISHED,
+                'detail': f"Platform '{platform}' already has verified success evidence (id={log.platform_post_id})",
+                'is_immutable': True,
+                'safe_to_retry': False,
+                'status_code': 200,
+            }
+
+        cred = PlatformCredential.objects.filter(
+            client=post.client, platform=platform, is_active=True,
+        ).first()
+        if not cred:
+            return {
+                'success': False,
+                'error': f"No active {platform} credential available for reconciliation",
+                'status_code': 400,
+            }
+
+        try:
+            adapter = get_reconciliation_adapter(platform)
+        except ValueError as exc:
+            return {
+                'success': False,
+                'error': str(exc),
+                'status_code': 400,
+            }
+
+        previous_status = log.status
+        rec_res = adapter.reconcile(post, log, cred)
+
+        # Apply state transitions
+        log.last_reconciled_at = now
+        log.reconciliation_status = rec_res.outcome
+        log.reconciliation_evidence_type = rec_res.evidence_type
+        log.reconciliation_reference = rec_res.evidence_reference
+
+        from .orchestrator import update_unified_post_status
+
+        if rec_res.outcome == OUTCOME_CONFIRMED_PUBLISHED:
+            log.status = 'success'
+            if rec_res.provider_post_id:
+                log.platform_post_id = rec_res.provider_post_id
+            log.completed_at = now
+            log.error_code = ''
+            log.error_message = ''
+            log.save(update_fields=[
+                'status', 'platform_post_id', 'completed_at', 'error_code', 'error_message',
+                'last_reconciled_at', 'reconciliation_status', 'reconciliation_evidence_type',
+                'reconciliation_reference',
+            ])
+            update_unified_post_status(post.id)
+
+        elif rec_res.outcome == OUTCOME_CONFIRMED_NOT_PUBLISHED:
+            log.status = 'failed'
+            log.error_code = 'reconciled_not_published'
+            log.error_message = rec_res.message
+            log.completed_at = now
+            log.save(update_fields=[
+                'status', 'error_code', 'error_message', 'completed_at',
+                'last_reconciled_at', 'reconciliation_status', 'reconciliation_evidence_type',
+                'reconciliation_reference',
+            ])
+            update_unified_post_status(post.id)
+
+        else:
+            # STILL_PROCESSING, AMBIGUOUS, RECONCILIATION_UNAVAILABLE, PROVIDER_ERROR
+            log.save(update_fields=[
+                'last_reconciled_at', 'reconciliation_status',
+                'reconciliation_evidence_type', 'reconciliation_reference',
+            ])
+
+        # Record audit trail in ActionLog (no tokens or raw payloads)
+        ActionLog.objects.create(
+            actor=user if user and user.is_authenticated else None,
+            client=post.client,
+            action='composer.platform_reconcile',
+            platform=platform,
+            object_type='UnifiedPost',
+            object_id=str(post.id),
+            result='success' if rec_res.outcome in (OUTCOME_CONFIRMED_PUBLISHED, OUTCOME_CONFIRMED_NOT_PUBLISHED) else 'info',
+            details={
+                'platform': platform,
+                'previous_status': previous_status,
+                'reconciliation_outcome': rec_res.outcome,
+                'evidence_type': rec_res.evidence_type,
+                'evidence_reference': rec_res.evidence_reference,
+                'safe_to_retry': rec_res.safe_to_retry,
+                'message': rec_res.message,
+            },
+        )
+
+        return {
+            'success': True,
+            'post_id': post.id,
+            'platform': platform,
+            'outcome': rec_res.outcome,
+            'detail': rec_res.message,
+            'safe_to_retry': rec_res.safe_to_retry,
+            'evidence_type': rec_res.evidence_type,
+            'provider_post_id': rec_res.provider_post_id,
             'status_code': 200,
         }
 
@@ -1104,6 +1280,42 @@ class PublicationPlatformRetryView(TenantScopedMixin, APIView):
             return Response({'detail': "Missing or invalid 'platform' in request payload"}, status=status.HTTP_400_BAD_REQUEST)
 
         res = retry_failed_platform(post.id, platform.lower().strip(), user=request.user)
+        if not res['success']:
+            return Response({'detail': res['error']}, status=res.get('status_code', 400))
+        return Response(res, status=status.HTTP_200_OK)
+
+
+class PublicationPlatformReconcileView(TenantScopedMixin, APIView):
+    """Controlled manual safe provider reconciliation endpoint (BS-3J)."""
+    permission_classes = [IsAuthenticated]
+    client_field_name = 'client'
+
+    def post(self, request, pk: int):
+        post = UnifiedPost.objects.select_related('client').filter(id=pk).first()
+        if not post:
+            return Response({'detail': 'Publication not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        profile = self._profile()
+        if not profile:
+            raise PermissionDenied('No profile found')
+
+        # Tenant boundary check
+        if profile.role != 'superadmin':
+            if profile.role == 'staff':
+                if not profile.assigned_clients.filter(id=post.client_id).exists():
+                    raise PermissionDenied('Access denied to this tenant')
+            else:
+                agency_ids = self._agency_client_ids(profile)
+                if agency_ids and post.client_id not in agency_ids:
+                    raise PermissionDenied('Access denied to this tenant')
+                elif not agency_ids and profile.client_id != post.client_id:
+                    raise PermissionDenied('Access denied to this tenant')
+
+        platform = request.data.get('platform')
+        if not platform or not isinstance(platform, str):
+            return Response({'detail': "Missing or invalid 'platform' in request payload"}, status=status.HTTP_400_BAD_REQUEST)
+
+        res = reconcile_platform_publication(post.id, platform.lower().strip(), user=request.user)
         if not res['success']:
             return Response({'detail': res['error']}, status=res.get('status_code', 400))
         return Response(res, status=status.HTTP_200_OK)

@@ -1,11 +1,12 @@
 /* ============================================================================
- *  Social Stats — BS-3H / BS-3I Publication Operations & Platform Retry Console
+ *  Social Stats — BS-3H / BS-3I / BS-3J Publication Operations & Console
  * ========================================================================== */
 import { useEffect, useState, useMemo } from 'react';
 import {
   AlertTriangle, CheckCircle2, Clock, RefreshCw, XCircle, Eye,
   ShieldAlert, Play, Layers, Calendar, Send, HelpCircle, ArrowRight,
-  Filter, ChevronRight, X, Info, ExternalLink, RotateCcw, ShieldCheck
+  Filter, ChevronRight, X, Info, ExternalLink, RotateCcw, ShieldCheck,
+  SearchCheck, Search
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -46,6 +47,9 @@ export default function PublicationOperationsPage() {
   // BS-3I Platform Retry Modal State
   const [retryModal, setRetryModal] = useState(null);
   const [retrying, setRetrying] = useState(false);
+
+  // BS-3J Provider Reconciliation State
+  const [reconcilingPlatform, setReconcilingPlatform] = useState(null);
 
   const fetchOperations = async () => {
     setLoading(true);
@@ -137,11 +141,37 @@ export default function PublicationOperationsPage() {
     }
   };
 
+  // BS-3J Provider Reconciliation Handler
+  const handleReconcile = async (post, platform) => {
+    setReconcilingPlatform(platform);
+    try {
+      const res = await composerAPI.operations.reconcile(post.id, platform);
+      const outcome = res.data?.outcome;
+      if (outcome === 'CONFIRMED_PUBLISHED') {
+        toast.success(`Meta confirmed ${platform} published successfully!`);
+      } else if (outcome === 'CONFIRMED_NOT_PUBLISHED') {
+        toast.success(`Meta confirmed ${platform} was NOT published. Platform is now eligible for retry.`);
+      } else if (outcome === 'STILL_PROCESSING') {
+        toast('Media container is still processing on Meta servers.', { icon: '⏳' });
+      } else {
+        toast.error(res.data?.detail || `Reconciliation outcome: ${outcome}`);
+      }
+      fetchOperations();
+      if (selectedPost && selectedPost.id === post.id) {
+        openDetail(post);
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Reconciliation request failed');
+    } finally {
+      setReconcilingPlatform(null);
+    }
+  };
+
   return (
     <div style={{ padding: '24px 32px', maxWidth: 1400, margin: '0 auto' }}>
       <PageHeader
         title="Publication Operations & Orphan Console"
-        subtitle="Operational health, orphan visibility, multi-platform status, and platform-isolated retry (BS-3I)."
+        subtitle="Operational health, orphan visibility, multi-platform status, and provider reconciliation (BS-3J)."
         action={
           <Button icon={RefreshCw} onClick={fetchOperations} loading={loading} variant="secondary">
             Refresh
@@ -308,6 +338,28 @@ export default function PublicationOperationsPage() {
                                   }}
                                 >
                                   Retry
+                                </button>
+                              )}
+                              {isAmbiguous && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleReconcile(post, p.platform);
+                                  }}
+                                  disabled={reconcilingPlatform === p.platform}
+                                  style={{
+                                    border: 'none',
+                                    background: '#fef3c7',
+                                    color: '#92400e',
+                                    borderRadius: 3,
+                                    padding: '1px 4px',
+                                    fontSize: 10,
+                                    cursor: 'pointer',
+                                    fontWeight: 600,
+                                    marginLeft: 2,
+                                  }}
+                                >
+                                  {reconcilingPlatform === p.platform ? 'Checking...' : 'Check Status'}
                                 </button>
                               )}
                             </span>
@@ -515,7 +567,7 @@ export default function PublicationOperationsPage() {
                     </div>
                   </Card>
 
-                  {/* Platform Progress Breakdown with BS-3I Platform-Level Actions */}
+                  {/* Platform Progress Breakdown with BS-3I / BS-3J Platform-Level Actions */}
                   <Card style={{ padding: 16 }}>
                     <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 12 }}>
                       Platform Target Breakdown & Actions
@@ -559,14 +611,26 @@ export default function PublicationOperationsPage() {
                               </div>
                             )}
 
+                            {p.provider_container_id && (
+                              <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>
+                                Provider Container ID: <code style={{ background: 'var(--surface)', padding: '2px 4px', borderRadius: 4 }}>{p.provider_container_id}</code>
+                              </div>
+                            )}
+
+                            {p.reconciliation_status && (
+                              <div style={{ fontSize: 12, color: '#4b5563', marginTop: 4 }}>
+                                Last Reconciliation: <strong>{p.reconciliation_status}</strong>
+                              </div>
+                            )}
+
                             {p.error_message && (
                               <div style={{ fontSize: 12, color: '#dc2626', marginTop: 6, background: '#fef2f2', padding: 8, borderRadius: 6 }}>
                                 {p.error_message}
                               </div>
                             )}
 
-                            {/* BS-3I Individual Platform Action */}
-                            <div style={{ marginTop: 10, display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
+                            {/* BS-3I / BS-3J Actions */}
+                            <div style={{ marginTop: 10, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8 }}>
                               {p.can_retry ? (
                                 <Button
                                   size="sm"
@@ -581,9 +645,20 @@ export default function PublicationOperationsPage() {
                                   <ShieldCheck size={13} /> Protected against duplicate dispatch
                                 </span>
                               ) : isAmbiguous ? (
-                                <span style={{ fontSize: 11, color: '#b45309' }}>
-                                  Cannot retry automatically: provider response ambiguous
-                                </span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                  <span style={{ fontSize: 11, color: '#b45309' }}>
+                                    Retry blocked (ambiguous)
+                                  </span>
+                                  <Button
+                                    size="sm"
+                                    variant="secondary"
+                                    icon={SearchCheck}
+                                    loading={reconcilingPlatform === p.platform}
+                                    onClick={() => handleReconcile(detailData, p.platform)}
+                                  >
+                                    Check Provider Status
+                                  </Button>
+                                </div>
                               ) : null}
                             </div>
                           </div>

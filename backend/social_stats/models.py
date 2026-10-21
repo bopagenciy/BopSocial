@@ -1986,6 +1986,12 @@ class PlatformPublishLog(models.Model):
     provider_container_id  = models.CharField(max_length=255, blank=True, default='', db_index=True)
     provider_attempt_token = models.CharField(max_length=100, blank=True, default='')
 
+    # BS-3J Ambiguous Provider Reconciliation
+    last_reconciled_at           = models.DateTimeField(null=True, blank=True)
+    reconciliation_status        = models.CharField(max_length=50, blank=True, default='')
+    reconciliation_evidence_type = models.CharField(max_length=80, blank=True, default='')
+    reconciliation_reference     = models.CharField(max_length=255, blank=True, default='')
+
     class Meta:
         unique_together = ('unified_post', 'platform')
         ordering = ['-attempted_at']

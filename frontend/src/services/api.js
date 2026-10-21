@@ -681,6 +681,7 @@ export const composerAPI = {
     get:         (id)       => api.get(`/social/publications/operations/${id}/`),
     recover:     (id)       => api.post(`/social/publications/operations/${id}/recover/`),
     retryPlatform: (id, platform) => api.post(`/social/publications/operations/${id}/retry-platform/`, { platform }),
+    reconcile:     (id, platform) => api.post(`/social/publications/operations/${id}/reconcile/`, { platform }),
     orphans:     (params)   => api.get('/social/publications/orphans/', { params }),
     timeline:    (id)       => api.get(`/social/publications/${id}/timeline/`),
   },
