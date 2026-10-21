@@ -1951,6 +1951,8 @@ class UnifiedPost(models.Model):
     recurrence_rule   = models.CharField(max_length=500, blank=True, help_text='RFC 5545 RRULE')
     approved_by       = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='approved_unified_posts')
     approved_at       = models.DateTimeField(null=True, blank=True)
+    source_queue      = models.ForeignKey('social_stats.PostQueue', on_delete=models.SET_NULL, null=True, blank=True, related_name='unified_posts')
+    source_queued_item = models.ForeignKey('social_stats.QueuedItem', on_delete=models.SET_NULL, null=True, blank=True, related_name='materialized_posts')
 
     class Meta:
         ordering = ['-created_at']
@@ -2026,6 +2028,13 @@ class PostQueue(models.Model):
     def __str__(self):
         return f"{self.client.company} — {self.name}"
 
+    def save(self, *args, **kwargs):
+        if self.pk:
+            orig = PostQueue.objects.filter(pk=self.pk).values('platforms').first()
+            if orig and set(orig.get('platforms') or []) != set(self.platforms or []):
+                self.items.filter(status='waiting').update(approved_by=None, approved_at=None)
+        super().save(*args, **kwargs)
+
 
 class QueuedItem(models.Model):
     """A pre-written post sitting in a PostQueue waiting to be dispatched."""
@@ -2037,6 +2046,8 @@ class QueuedItem(models.Model):
     status       = models.CharField(max_length=20, choices=QUEUED_ITEM_STATUS_CHOICES, default='waiting')
     used_at      = models.DateTimeField(null=True, blank=True)
     unified_post = models.ForeignKey(UnifiedPost, on_delete=models.SET_NULL, null=True, blank=True, related_name='source_queue_item')
+    approved_by  = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='approved_queue_items')
+    approved_at  = models.DateTimeField(null=True, blank=True)
     created_at   = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -2045,6 +2056,28 @@ class QueuedItem(models.Model):
 
     def __str__(self):
         return f"{self.queue.name} #{self.sort_order} ({self.status})"
+
+    @property
+    def is_approved(self) -> bool:
+        return self.approved_by_id is not None and self.approved_at is not None
+
+    def save(self, *args, **kwargs):
+        if self.pk:
+            orig = QueuedItem.objects.filter(pk=self.pk).values(
+                'content', 'media_urls', 'hashtags', 'approved_by_id', 'approved_at',
+            ).first()
+            if orig and (orig['approved_by_id'] is not None or orig['approved_at'] is not None):
+                content_changed = self.content != orig['content']
+                media_changed = self.media_urls != orig['media_urls']
+                hashtags_changed = self.hashtags != orig['hashtags']
+                if content_changed or media_changed or hashtags_changed:
+                    self.approved_by = None
+                    self.approved_at = None
+                    if 'update_fields' in kwargs and kwargs['update_fields'] is not None:
+                        fields = set(kwargs['update_fields'])
+                        fields.update(['approved_by', 'approved_at'])
+                        kwargs['update_fields'] = list(fields)
+        super().save(*args, **kwargs)
 
 
 # ── Inbox & Engagement ────────────────────────────────────────────────────────

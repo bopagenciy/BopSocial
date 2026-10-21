@@ -9,6 +9,7 @@
 import { useEffect, useState } from 'react';
 import {
   Plus, Layers, Pause, Play, Trash2, Clock, Edit2, X, GripVertical,
+  CheckCircle2, AlertCircle, ArrowUp, ArrowDown, Image as ImageIcon,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
@@ -173,10 +174,12 @@ function QueueDetail({ queueId, onChanged }) {
     try {
       const res = await composerAPI.queues.get(queueId);
       setQueue(res.data);
-      setItems(res.data.items_list || []);  // not always exposed; fall back below
-      // Items are nested via prefetch on the serializer's items_count, but the
-      // item list itself isn't part of the queue serializer — fetch separately.
-      // We just compute from items_count & waiting_count for the header here.
+      if (res.data.items && Array.isArray(res.data.items)) {
+        setItems(res.data.items);
+      } else {
+        const itemRes = await composerAPI.queues.items(queueId);
+        setItems(itemRes.data || []);
+      }
     } catch (e) {
       toast.error(t('queues.failed'));
     } finally {
@@ -191,6 +194,42 @@ function QueueDetail({ queueId, onChanged }) {
       toast.success(t('queues.item_added'));
       load(); onChanged?.();
     } catch (e) { toast.error(t('queues.item_add_failed')); }
+  }
+
+  async function approveItem(itemId) {
+    try {
+      await composerAPI.queues.approveItem(queueId, itemId);
+      toast.success('Item approved');
+      load(); onChanged?.();
+    } catch (e) {
+      toast.error('Failed to approve item');
+    }
+  }
+
+  async function revokeItem(itemId) {
+    try {
+      await composerAPI.queues.revokeItem(queueId, itemId);
+      toast.success('Approval revoked');
+      load(); onChanged?.();
+    } catch (e) {
+      toast.error('Failed to revoke approval');
+    }
+  }
+
+  async function moveItem(index, delta) {
+    const targetIdx = index + delta;
+    if (targetIdx < 0 || targetIdx >= items.length) return;
+    const reordered = [...items];
+    const [moved] = reordered.splice(index, 1);
+    reordered.splice(targetIdx, 0, moved);
+    setItems(reordered);
+    try {
+      await composerAPI.queues.reorder(queueId, reordered.map((i) => i.id));
+      onChanged?.();
+    } catch {
+      toast.error('Failed to reorder items');
+      load();
+    }
   }
 
   if (loading || !queue) {
@@ -235,8 +274,105 @@ function QueueDetail({ queueId, onChanged }) {
           )}
         </div>
 
-        <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-          {t('queues.queue_drain_info')}
+        {/* Queued Items List */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {items.length === 0 ? (
+            <div style={{
+              padding: 24, textAlign: 'center',
+              color: 'var(--text-tertiary)', fontSize: 13,
+              background: 'var(--surface-sunken)', borderRadius: 'var(--radius-md)',
+            }}>
+              No items in queue. Add content above to start recurring publication.
+            </div>
+          ) : (
+            items.map((item, idx) => (
+              <div
+                key={item.id}
+                style={{
+                  display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12,
+                  padding: '12px 14px',
+                  background: 'var(--surface-sunken)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 'var(--radius-md)',
+                }}
+              >
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{
+                    fontSize: 13, color: 'var(--text-primary)',
+                    whiteSpace: 'pre-wrap', wordBreak: 'break-word', marginBottom: 6,
+                  }}>
+                    {item.content || <em style={{ color: 'var(--text-tertiary)' }}>(No text content)</em>}
+                  </div>
+                  {item.hashtags && item.hashtags.length > 0 && (
+                    <div style={{ fontSize: 11, color: 'var(--brand-primary)', marginBottom: 6 }}>
+                      {item.hashtags.map((h) => h.startsWith('#') ? h : `#${h}`).join(' ')}
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, fontSize: 11 }}>
+                    <Badge variant={item.status === 'used' ? 'default' : item.status === 'waiting' ? 'info' : 'danger'}>
+                      {item.status}
+                    </Badge>
+
+                    {item.media_urls && item.media_urls.length > 0 && (
+                      <Badge variant="default">
+                        <ImageIcon size={10} style={{ marginRight: 4 }} />
+                        {item.media_urls.length} media
+                      </Badge>
+                    )}
+
+                    {item.is_approved ? (
+                      <Badge variant="success">
+                        <CheckCircle2 size={10} style={{ marginRight: 4 }} />
+                        Approved
+                      </Badge>
+                    ) : item.status === 'waiting' ? (
+                      <Badge variant="warning">
+                        <AlertCircle size={10} style={{ marginRight: 4 }} />
+                        Pending Approval
+                      </Badge>
+                    ) : null}
+
+                    {item.unified_post && (
+                      <span style={{ color: 'var(--text-tertiary)', fontFamily: 'var(--font-mono)' }}>
+                        Post #{item.unified_post}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+                  {item.status === 'waiting' && !item.is_approved && (
+                    <Button size="xs" variant="primary" onClick={() => approveItem(item.id)}>
+                      Approve
+                    </Button>
+                  )}
+                  {item.status === 'waiting' && item.is_approved && (
+                    <Button size="xs" variant="secondary" onClick={() => revokeItem(item.id)}>
+                      Revoke
+                    </Button>
+                  )}
+                  <button
+                    type="button"
+                    disabled={idx === 0}
+                    onClick={() => moveItem(idx, -1)}
+                    style={{ ...iconBtnStyle, opacity: idx === 0 ? 0.3 : 1 }}
+                    title="Move up"
+                  >
+                    <ArrowUp size={12} />
+                  </button>
+                  <button
+                    type="button"
+                    disabled={idx === items.length - 1}
+                    onClick={() => moveItem(idx, 1)}
+                    style={{ ...iconBtnStyle, opacity: idx === items.length - 1 ? 0.3 : 1 }}
+                    title="Move down"
+                  >
+                    <ArrowDown size={12} />
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
 
@@ -279,6 +415,18 @@ function CreateQueueModal({ onClose, onCreated }) {
           <button onClick={onClose} style={iconBtnStyle} aria-label="Close"><X size={14} /></button>
         </div>
         <div style={{ padding: 16 }}>
+          <div style={{
+            padding: '10px 12px',
+            background: 'var(--surface-sunken)',
+            borderRadius: 'var(--radius-md)',
+            fontSize: 12,
+            color: 'var(--text-secondary)',
+            marginBottom: 14,
+            lineHeight: 1.5,
+            border: '1px solid var(--border-subtle)',
+          }}>
+            <strong>Policy D Notice:</strong> Queue items must be explicitly approved before autonomous recurring publication if your tenant requires approval.
+          </div>
           <Field label={t('queues.field_name')}>
             <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
                    placeholder={t('queues.name_placeholder')} style={inputStyle} autoFocus />

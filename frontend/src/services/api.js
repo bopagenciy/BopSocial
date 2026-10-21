@@ -672,6 +672,9 @@ export const composerAPI = {
     reorder:     (id, order) => api.post(`/composer/queues/${id}/reorder/`, { order }),
     pause:       (id)       => api.post(`/composer/queues/${id}/pause/`),
     resume:      (id)       => api.post(`/composer/queues/${id}/resume/`),
+    items:       (id)       => api.get(`/composer/queues/${id}/items/`),
+    approveItem: (id, itemId) => api.post(`/composer/queues/${id}/items/${itemId}/approve/`),
+    revokeItem:  (id, itemId) => api.post(`/composer/queues/${id}/items/${itemId}/revoke_approval/`),
   },
   preflight:     (data)     => api.post('/composer/preflight/', data),
 };

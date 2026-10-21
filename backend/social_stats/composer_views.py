@@ -493,6 +493,40 @@ class PostQueueViewSet(TenantScopedMixin, viewsets.ModelViewSet):
         queue.save(update_fields=['is_active'])
         return Response({'is_active': True})
 
+    @action(detail=True, methods=['get'])
+    def items(self, request, pk=None):
+        queue = self.get_object()
+        items = queue.items.order_by('sort_order', 'id')
+        return Response(QueuedItemSerializer(items, many=True).data)
+
+    @action(detail=True, methods=['post'], url_path=r'items/(?P<item_id>\d+)/approve')
+    def approve_item(self, request, pk=None, item_id=None):
+        queue = self.get_object()
+        try:
+            item = queue.items.get(id=item_id)
+        except QueuedItem.DoesNotExist:
+            return Response({'detail': f'QueuedItem {item_id} not found in this queue.'}, status=404)
+        if item.status == 'used':
+            return Response({'detail': 'Cannot approve an item that has already been used.'}, status=400)
+        item.approved_by = request.user
+        item.approved_at = timezone.now()
+        item.save(update_fields=['approved_by', 'approved_at'])
+        return Response(QueuedItemSerializer(item).data)
+
+    @action(detail=True, methods=['post'], url_path=r'items/(?P<item_id>\d+)/revoke_approval')
+    def revoke_item_approval(self, request, pk=None, item_id=None):
+        queue = self.get_object()
+        try:
+            item = queue.items.get(id=item_id)
+        except QueuedItem.DoesNotExist:
+            return Response({'detail': f'QueuedItem {item_id} not found in this queue.'}, status=404)
+        if item.status == 'used':
+            return Response({'detail': 'Cannot revoke approval for an item that has already been used.'}, status=400)
+        item.approved_by = None
+        item.approved_at = None
+        item.save(update_fields=['approved_by', 'approved_at'])
+        return Response(QueuedItemSerializer(item).data)
+
 
 # ── Preflight ─────────────────────────────────────────────────────────────────
 class PreflightCheckView(APIView):

@@ -99,12 +99,14 @@ class UnifiedPostSerializer(serializers.ModelSerializer):
             'created_by', 'created_by_name',
             'created_at', 'updated_at',
             'approved_by', 'approved_at',
+            'source_queue', 'source_queued_item',
             'publish_logs',
         ]
         read_only_fields = [
             'status', 'published_at',
             'created_by', 'created_by_name', 'created_at', 'updated_at',
             'approved_by', 'approved_at',
+            'source_queue', 'source_queued_item',
         ]
 
     def validate_target_platforms(self, value):
@@ -147,6 +149,7 @@ class UnifiedPostListSerializer(serializers.ModelSerializer):
             'id', 'client', 'title',
             'content', 'media_type', 'target_platforms', 'platform_count',
             'status', 'scheduled_at', 'published_at',
+            'source_queue', 'source_queued_item',
             'created_by', 'created_at',
         ]
         read_only_fields = fields
@@ -157,19 +160,27 @@ class UnifiedPostListSerializer(serializers.ModelSerializer):
 
 # ── Queues ────────────────────────────────────────────────────────────────────
 class QueuedItemSerializer(serializers.ModelSerializer):
+    is_approved = serializers.BooleanField(read_only=True)
+    approved_by_name = serializers.CharField(source='approved_by.get_full_name', read_only=True)
+
     class Meta:
         model = QueuedItem
         fields = [
             'id', 'queue',
             'content', 'media_urls', 'hashtags', 'sort_order', 'status',
+            'approved_by', 'approved_by_name', 'approved_at', 'is_approved',
             'used_at', 'unified_post', 'created_at',
         ]
-        read_only_fields = ['status', 'used_at', 'unified_post', 'created_at']
+        read_only_fields = [
+            'status', 'used_at', 'unified_post', 'created_at',
+            'approved_by', 'approved_by_name', 'approved_at', 'is_approved',
+        ]
 
 
 class PostQueueSerializer(serializers.ModelSerializer):
     items_count   = serializers.SerializerMethodField()
     waiting_count = serializers.SerializerMethodField()
+    items         = QueuedItemSerializer(many=True, read_only=True)
 
     class Meta:
         model = PostQueue
@@ -177,7 +188,7 @@ class PostQueueSerializer(serializers.ModelSerializer):
             'id', 'client', 'name', 'platforms', 'schedule_rule',
             'queue_strategy', 'is_active',
             'last_dispatched_at',
-            'items_count', 'waiting_count',
+            'items_count', 'waiting_count', 'items',
             'created_at', 'updated_at',
         ]
         read_only_fields = ['last_dispatched_at', 'created_at', 'updated_at']
