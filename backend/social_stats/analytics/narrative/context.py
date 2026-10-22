@@ -62,73 +62,179 @@ def build_grounded_narrative_context(report, business_signals: Optional[List[Any
     }
 
     # 2. KPIs Summary
-    summary_data = report_data.get('summary', {})
-    kpis = {
-        "followers_total": summary_data.get('followers_total', 0),
-        "reactions": summary_data.get('reactions', 0),
-        "comments": summary_data.get('comments', 0),
-        "average_daily_reach": summary_data.get('average_daily_reach', 0),
-        "shares": summary_data.get('shares', 0),
-        "saves": summary_data.get('saves', 0),
-        "video_views": summary_data.get('video_views', 0),
-        "engagement_total": summary_data.get('engagement_total', 0),
-    }
+    ALLOWLISTED_KPIS = [
+        ("FOLLOWERS_TOTAL", "followers_total"),
+        ("FOLLOWERS_NET_CHANGE", "followers_net_change"),
+        ("REACTIONS", "reactions"),
+        ("COMMENTS", "comments"),
+        ("SHARES", "shares"),
+        ("SAVES", "saves"),
+        ("VIDEO_VIEWS", "video_views"),
+        ("ENGAGEMENT_TOTAL", "engagement_total"),
+        ("AVERAGE_DAILY_REACH", "average_daily_reach"),
+    ]
+
+    kpis = {}
+    kpi_details = []
+    canonical_kpi_overview = report_data.get("kpi_overview")
+    has_canonical_kpis = isinstance(canonical_kpi_overview, dict) and bool(canonical_kpi_overview.get("kpis"))
+
+    if has_canonical_kpis:
+        raw_kpi_list = canonical_kpi_overview.get("kpis", [])
+        kpi_by_key = {}
+        for item in raw_kpi_list:
+            if isinstance(item, dict):
+                m_ident = (item.get("metric_key") or item.get("metric") or "").upper()
+                if m_ident:
+                    kpi_by_key[m_ident] = item
+
+        for upper_key, lower_key in ALLOWLISTED_KPIS:
+            item = kpi_by_key.get(upper_key)
+            if item:
+                is_avail = item.get("is_available", True)
+                cur_val = item.get("current_value")
+                # Do NOT convert unavailable values to zero; preserve None if unavailable
+                val = float(cur_val) if (is_avail and cur_val is not None) else None
+                kpis[lower_key] = val
+                kpi_details.append({
+                    "metric": upper_key,
+                    "metric_key": lower_key,
+                    "value": val,
+                    "is_available": is_avail,
+                    "aggregation": item.get("aggregation", "SUM"),
+                    "unavailable_reason": item.get("unavailable_reason"),
+                })
+            else:
+                kpis[lower_key] = None
+    else:
+        # Legacy fallback
+        summary_data = report_data.get("summary", {})
+        for upper_key, lower_key in ALLOWLISTED_KPIS:
+            kpis[lower_key] = summary_data.get(lower_key, 0)
 
     # 3. Platform Breakdown & Capabilities
-    raw_platforms = report_data.get('platforms', {})
     platforms = {}
-    for platform_name, p_data in raw_platforms.items():
-        if not isinstance(p_data, dict):
-            continue
-        platforms[platform_name] = {
-            "status": p_data.get('capability', 'COMPLETE'),
-            "supported_metrics": p_data.get('supported_metrics', []),
-            "unsupported_metrics": p_data.get('unsupported_metrics', []),
-            "metrics": p_data.get('metrics', {}),
-        }
+    canonical_platform_breakdown = report_data.get("platform_breakdown")
+    has_canonical_platforms = isinstance(canonical_platform_breakdown, dict) and bool(canonical_platform_breakdown.get("platforms"))
+
+    if has_canonical_platforms:
+        p_list = canonical_platform_breakdown.get("platforms", [])
+        for p in p_list:
+            if not isinstance(p, dict):
+                continue
+            p_name = (p.get("platform") or "").lower()
+            if not p_name:
+                continue
+            status_mode = p.get("status_mode") or p.get("capability") or "FULL"
+            avail = p.get("available_metrics") or p.get("supported_metrics") or []
+            unavail = p.get("unavailable_metrics") or p.get("unsupported_metrics") or []
+            freshness = p.get("freshness", "FRESH")
+
+            p_metrics = {}
+            if "reactions_total" in p:
+                p_metrics["reactions_total"] = p.get("reactions_total")
+            if "comments_total" in p:
+                p_metrics["comments_total"] = p.get("comments_total")
+
+            platforms[p_name] = {
+                "platform": p_name,
+                "status": status_mode,
+                "capability_mode": status_mode,
+                "freshness": freshness,
+                "supported_metrics": avail,
+                "available_metrics": avail,
+                "unsupported_metrics": unavail,
+                "unavailable_metrics": unavail,
+                "metrics": p_metrics,
+            }
+    else:
+        # Legacy fallback
+        raw_platforms = report_data.get("platforms", {})
+        if isinstance(raw_platforms, dict):
+            for platform_name, p_data in raw_platforms.items():
+                if not isinstance(p_data, dict):
+                    continue
+                platforms[platform_name] = {
+                    "platform": platform_name,
+                    "status": p_data.get("capability", "COMPLETE"),
+                    "capability_mode": p_data.get("capability", "COMPLETE"),
+                    "freshness": p_data.get("freshness", "FRESH"),
+                    "supported_metrics": p_data.get("supported_metrics", []),
+                    "available_metrics": p_data.get("supported_metrics", []),
+                    "unsupported_metrics": p_data.get("unsupported_metrics", []),
+                    "unavailable_metrics": p_data.get("unsupported_metrics", []),
+                    "metrics": p_data.get("metrics", {}),
+                }
 
     # 4. Signals & Evidence Registry
     evidence_registry = {}
     signals_list = []
-
-    # Get signals from parameter or from report_data or database
     raw_signals = []
+
     if business_signals is not None:
         for s in business_signals:
             if hasattr(s, 'to_dict'):
                 raw_signals.append(s.to_dict())
             elif hasattr(s, 'signal_type'):
                 conf = getattr(s, 'confidence_level', getattr(s, 'confidence', 'NONE'))
-                summ = getattr(s, 'explanation_template', getattr(s, 'summary', ''))
+                summ = getattr(s, 'explanation_template', getattr(s, 'summary', getattr(s, 'explanation', '')))
                 raw_signals.append({
                     "id": getattr(s, 'id', None),
                     "signal_type": s.signal_type,
+                    "metric": getattr(s, 'metric', ''),
+                    "platform": getattr(s, 'platform', ''),
                     "confidence": conf,
+                    "confidence_level": conf,
+                    "sample_size": getattr(s, 'sample_size', 0),
+                    "is_actionable": getattr(s, 'is_actionable', False),
                     "summary": summ,
+                    "explanation": summ,
                     "status": getattr(s, 'status', 'ACTIVE'),
                     "evidence": getattr(s, 'evidence', {}),
                 })
             elif isinstance(s, dict):
                 conf = s.get('confidence_level') or s.get('confidence') or 'NONE'
-                summ = s.get('explanation_template') or s.get('summary') or ''
+                summ = s.get('explanation') or s.get('explanation_template') or s.get('summary') or ''
                 raw_signals.append({
                     "id": s.get('id'),
                     "signal_type": s.get('signal_type', 'GENERAL'),
+                    "metric": s.get('metric', ''),
+                    "platform": s.get('platform', ''),
                     "confidence": conf,
+                    "confidence_level": conf,
+                    "sample_size": s.get('sample_size', 0),
+                    "is_actionable": s.get('is_actionable', False),
                     "summary": summ,
+                    "explanation": summ,
                     "status": s.get('status', 'ACTIVE'),
                     "evidence": s.get('evidence', {}),
                 })
     else:
-        for s in report_data.get('signals', []):
+        # Precedence: canonical BS-4G business_intelligence_signals first
+        canonical_bis = report_data.get("business_intelligence_signals")
+        signals_source = []
+        if isinstance(canonical_bis, dict) and bool(canonical_bis.get("signals")):
+            signals_source = canonical_bis.get("signals", [])
+        elif isinstance(canonical_bis, list) and bool(canonical_bis):
+            signals_source = canonical_bis
+        elif bool(report_data.get("signals")):
+            signals_source = report_data.get("signals", [])
+
+        for s in signals_source:
             if isinstance(s, dict):
                 conf = s.get('confidence_level') or s.get('confidence') or 'NONE'
-                summ = s.get('explanation_template') or s.get('summary') or s.get('explanation') or ''
+                summ = s.get('explanation') or s.get('explanation_template') or s.get('summary') or ''
                 raw_signals.append({
                     "id": s.get('id'),
                     "signal_type": s.get('signal_type', 'GENERAL'),
+                    "metric": s.get('metric', ''),
+                    "platform": s.get('platform', ''),
                     "confidence": conf,
+                    "confidence_level": conf,
+                    "sample_size": s.get('sample_size', 0),
+                    "is_actionable": s.get('is_actionable', False),
                     "summary": summ,
+                    "explanation": summ,
                     "status": s.get('status', 'ACTIVE'),
                     "evidence": s.get('evidence', {}),
                 })
@@ -137,20 +243,33 @@ def build_grounded_narrative_context(report, business_signals: Optional[List[Any
     for s in raw_signals[:MAX_SIGNALS_IN_CONTEXT]:
         sig_type = s.get('signal_type', 'GENERAL')
         ref_id = f"SIG-{sig_counter}"
+        conf = s.get('confidence') or s.get('confidence_level') or 'NONE'
+        summ = s.get('summary') or s.get('explanation') or ''
+
         sig_entry = {
             "ref_id": ref_id,
             "signal_type": sig_type,
+            "metric": s.get('metric', ''),
+            "platform": s.get('platform', ''),
             "status": s.get('status', 'ACTIVE'),
-            "confidence": s.get('confidence', 'NONE'),
-            "summary": s.get('summary', ''),
+            "confidence": conf,
+            "sample_size": s.get('sample_size', 0),
+            "is_actionable": s.get('is_actionable', False),
+            "summary": summ,
+            "explanation": summ,
             "evidence": s.get('evidence', {}),
         }
         signals_list.append(sig_entry)
         evidence_registry[ref_id] = {
             "type": "BUSINESS_SIGNAL",
             "signal_type": sig_type,
-            "confidence": s.get('confidence', 'NONE'),
-            "summary": s.get('summary', ''),
+            "metric": s.get('metric', ''),
+            "platform": s.get('platform', ''),
+            "confidence": conf,
+            "sample_size": s.get('sample_size', 0),
+            "is_actionable": s.get('is_actionable', False),
+            "summary": summ,
+            "explanation": summ,
             "evidence": s.get('evidence', {}),
         }
         sig_counter += 1
@@ -159,7 +278,7 @@ def build_grounded_narrative_context(report, business_signals: Optional[List[Any
     limitations_list = []
     raw_limitations = report_data.get('limitations', [])
     # Always include known platform partial limitations
-    if any(p.get('status') == 'PARTIAL' for p in platforms.values()):
+    if any(p.get('status') in ('PARTIAL', 'DEGRADED') for p in platforms.values()):
         ref_ig = "LIMITATION-IG-PARTIAL"
         lim_entry = {
             "ref_id": ref_ig,
@@ -185,14 +304,19 @@ def build_grounded_narrative_context(report, business_signals: Optional[List[Any
 
     # 6. Supported deterministic recommendation directions
     supported_recommendations = []
-    # If any signal has INSUFFICIENT_SAMPLE or sample size is small
-    if any(s.get('signal_type') == 'INSUFFICIENT_SAMPLE' for s in signals_list) or not report_data.get('has_sufficient_data', True):
+    has_sufficient_data = False
+    if "has_sufficient_data" in report_data:
+        has_sufficient_data = bool(report_data["has_sufficient_data"])
+    elif isinstance(report_data.get("winning_formats"), dict):
+        has_sufficient_data = bool(report_data["winning_formats"].get("has_sufficient_data", False))
+
+    if any(s.get('signal_type') == 'INSUFFICIENT_SAMPLE' for s in signals_list) or not has_sufficient_data:
         supported_recommendations.append({
             "type": "CONTINUE_COLLECTING_DATA",
             "allowed_strengths": ["OBSERVE", "CONSIDER"],
             "guidance": "Recommend accumulating more comparable post publications before altering format or cadence strategy.",
         })
-    if any(s.get('signal_type') == 'PROVIDER_PARTIAL' for s in signals_list) or any(p.get('status') == 'PARTIAL' for p in platforms.values()):
+    if any(s.get('signal_type') == 'PROVIDER_PARTIAL' for s in signals_list) or any(p.get('status') in ('PARTIAL', 'DEGRADED') for p in platforms.values()):
         supported_recommendations.append({
             "type": "REVIEW_PROVIDER_PERMISSIONS",
             "allowed_strengths": ["OBSERVE", "CONSIDER"],
@@ -204,12 +328,13 @@ def build_grounded_narrative_context(report, business_signals: Optional[List[Any
         "context_schema_version": CONTEXT_SCHEMA_VERSION,
         "report": context_report,
         "kpis": kpis,
+        "kpi_details": kpi_details,
         "platforms": platforms,
         "signals": signals_list,
         "limitations": limitations_list,
         "supported_recommendations": supported_recommendations,
         "evidence_registry": evidence_registry,
-        "has_sufficient_data": report_data.get('has_sufficient_data', False),
+        "has_sufficient_data": has_sufficient_data,
     }
 
     # 7. Content examples if present (capped at MAX_CONTENT_EXAMPLES)

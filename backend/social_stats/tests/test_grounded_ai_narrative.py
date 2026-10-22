@@ -3,6 +3,7 @@ Comprehensive Test Suite for Grounded AI Executive Narrative & Recommendation La
 Validates allowlist boundaries, fact locking, metric availability, sample locks, confidence locks,
 causality defense, schema integrity, tenant isolation, context hashes, and stale detection.
 """
+import json
 from datetime import date, timedelta
 from django.contrib.auth.models import User
 from django.test import TestCase
@@ -590,3 +591,246 @@ class OllamaNarrativeProviderTests(TestCase):
                     provider.generate(self.context)
                 self.assertIn("Malformed JSON in Ollama narrative response", str(ctx.exception))
                 self.assertEqual(mock_post.call_count, 1)
+
+
+class GroundedContextSchemaMappingTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="schema_user", password="password123")
+        self.client = Client.objects.create(
+            name="Bop Agencia",
+            company="Bop Agencia",
+            email="bop@test.com",
+            owner_user=self.user,
+            is_active=True,
+        )
+
+        # BS-4G Canonical Report Fixture (matches ExecutiveReport #1)
+        self.canonical_report_data = {
+            "kpi_overview": {
+                "title": "Indicadores Clave de Rendimiento (KPIs)",
+                "kpis": [
+                    {
+                        "label": "Total de Seguidores",
+                        "metric": "FOLLOWERS_TOTAL",
+                        "metric_key": "FOLLOWERS_TOTAL",
+                        "is_available": True,
+                        "current_value": 50.0,
+                        "aggregation": "POINT_IN_TIME",
+                    },
+                    {
+                        "label": "Reacciones / Me Gusta",
+                        "metric": "REACTIONS",
+                        "metric_key": "REACTIONS",
+                        "is_available": True,
+                        "current_value": 6.0,
+                        "aggregation": "SUM",
+                    },
+                    {
+                        "label": "Comentarios",
+                        "metric": "COMMENTS",
+                        "metric_key": "COMMENTS",
+                        "is_available": True,
+                        "current_value": 0.0,
+                        "aggregation": "SUM",
+                    },
+                    {
+                        "label": "Alcance diario promedio",
+                        "metric": "AVERAGE_DAILY_REACH",
+                        "metric_key": "AVERAGE_DAILY_REACH",
+                        "is_available": True,
+                        "current_value": None,
+                        "aggregation": "DAILY_AVERAGE",
+                        "unavailable_reason": None,
+                    },
+                    {
+                        "label": "Interacciones Totales",
+                        "metric": "ENGAGEMENT_TOTAL",
+                        "metric_key": "ENGAGEMENT_TOTAL",
+                        "is_available": True,
+                        "current_value": 0.0,
+                        "aggregation": "SUM",
+                    },
+                ]
+            },
+            "platform_breakdown": {
+                "title": "Desglose por Plataforma",
+                "platforms": [
+                    {
+                        "platform": "facebook",
+                        "connected": True,
+                        "freshness": "FRESH",
+                        "status_mode": "FULL",
+                        "reactions_total": 0,
+                        "comments_total": 0,
+                        "available_metrics": ["FOLLOWERS_TOTAL", "REACTIONS", "COMMENTS", "REACH", "AVERAGE_DAILY_REACH"],
+                        "unavailable_metrics": [],
+                    },
+                    {
+                        "platform": "instagram",
+                        "connected": True,
+                        "freshness": "FRESH",
+                        "status_mode": "PARTIAL",
+                        "reactions_total": 6,
+                        "comments_total": 0,
+                        "available_metrics": ["FOLLOWERS_TOTAL", "REACTIONS", "COMMENTS"],
+                        "unavailable_metrics": ["SHARES", "SAVES", "REACH", "AVERAGE_DAILY_REACH", "VIDEO_VIEWS", "ENGAGEMENT_TOTAL"],
+                    }
+                ]
+            },
+            "business_intelligence_signals": {
+                "count": 5,
+                "title": "Inteligencia de Negocio y Señales Estratégicas",
+                "signals": [
+                    {
+                        "id": 1,
+                        "signal_type": "PROVIDER_PARTIAL",
+                        "metric": "",
+                        "platform": "instagram",
+                        "confidence_level": "HIGH",
+                        "sample_size": 0,
+                        "is_actionable": False,
+                        "explanation": "Instagram analytics is operating in PARTIAL capability mode.",
+                        "evidence": {"platform": "instagram", "support_level": "PARTIAL"}
+                    },
+                    {
+                        "id": 2,
+                        "signal_type": "INSUFFICIENT_SAMPLE",
+                        "metric": "REACTIONS",
+                        "platform": "instagram",
+                        "confidence_level": "NONE",
+                        "sample_size": 2,
+                        "is_actionable": False,
+                        "explanation": "Insufficient sample for carousel on Instagram (n=2, min=3).",
+                        "evidence": {"format": "carousel", "sample_size": 2}
+                    },
+                    {
+                        "id": 3,
+                        "signal_type": "INSUFFICIENT_SAMPLE",
+                        "metric": "COMMENTS",
+                        "platform": "instagram",
+                        "confidence_level": "NONE",
+                        "sample_size": 2,
+                        "is_actionable": False,
+                        "explanation": "Insufficient sample for carousel on Instagram (n=2, min=3).",
+                        "evidence": {"format": "carousel", "sample_size": 2}
+                    },
+                    {
+                        "id": 4,
+                        "signal_type": "INSUFFICIENT_SAMPLE",
+                        "metric": "REACTIONS",
+                        "platform": "instagram",
+                        "confidence_level": "NONE",
+                        "sample_size": 1,
+                        "is_actionable": False,
+                        "explanation": "Insufficient sample for video on Instagram (n=1, min=3).",
+                        "evidence": {"format": "video", "sample_size": 1}
+                    },
+                    {
+                        "id": 5,
+                        "signal_type": "INSUFFICIENT_SAMPLE",
+                        "metric": "COMMENTS",
+                        "platform": "instagram",
+                        "confidence_level": "NONE",
+                        "sample_size": 1,
+                        "is_actionable": False,
+                        "explanation": "Insufficient sample for video on Instagram (n=1, min=3).",
+                        "evidence": {"format": "video", "sample_size": 1}
+                    },
+                ]
+            },
+            "winning_formats": {
+                "has_sufficient_data": False,
+                "formats": [],
+            }
+        }
+
+        self.canonical_report = ExecutiveReport.objects.create(
+            client=self.client,
+            report_type="EXECUTIVE",
+            period_start=date(2026, 9, 22),
+            period_end=date(2026, 10, 22),
+            language="es",
+            status="GENERATED",
+            title="Informe Ejecutivo Septiembre - Octubre 2026",
+            source_rollup_count=551,
+            source_signal_count=5,
+            source_hash="test_canonical_source_hash_123",
+            report_data=self.canonical_report_data,
+        )
+
+    def test_canonical_kpi_mapping(self):
+        """Verify BS-4G kpi_overview is mapped authoritatively into context."""
+        context = build_grounded_narrative_context(self.canonical_report)
+        self.assertEqual(context["kpis"]["followers_total"], 50.0)
+        self.assertEqual(context["kpis"]["reactions"], 6.0)
+        self.assertEqual(context["kpis"]["comments"], 0.0)
+        self.assertIsNone(context["kpis"]["average_daily_reach"])
+        self.assertIn("kpi_details", context)
+        self.assertTrue(len(context["kpi_details"]) >= 5)
+
+    def test_canonical_platform_breakdown_mapping(self):
+        """Verify BS-4G platform_breakdown is mapped with exact capability and unavailable metrics."""
+        context = build_grounded_narrative_context(self.canonical_report)
+        self.assertIn("facebook", context["platforms"])
+        self.assertIn("instagram", context["platforms"])
+        self.assertEqual(context["platforms"]["facebook"]["status"], "FULL")
+        self.assertEqual(context["platforms"]["instagram"]["status"], "PARTIAL")
+        self.assertIn("REACH", context["platforms"]["instagram"]["unavailable_metrics"])
+        self.assertIn("SHARES", context["platforms"]["instagram"]["unavailable_metrics"])
+        self.assertIn("SAVES", context["platforms"]["instagram"]["unavailable_metrics"])
+
+    def test_canonical_business_signals_mapping(self):
+        """Verify BS-4G business_intelligence_signals is mapped to signals list."""
+        context = build_grounded_narrative_context(self.canonical_report)
+        self.assertEqual(len(context["signals"]), 5)
+        self.assertEqual(context["signals"][0]["signal_type"], "PROVIDER_PARTIAL")
+        self.assertEqual(context["signals"][1]["signal_type"], "INSUFFICIENT_SAMPLE")
+
+    def test_canonical_fields_take_precedence_over_empty_legacy_fields(self):
+        """Verify populated canonical fields override empty legacy fields."""
+        mutated_data = dict(self.canonical_report_data)
+        mutated_data["summary"] = {}
+        mutated_data["platforms"] = {}
+        mutated_data["signals"] = []
+
+        report = ExecutiveReport(
+            client=self.client,
+            period_start=date(2026, 9, 22),
+            period_end=date(2026, 10, 22),
+            language="es",
+            report_data=mutated_data,
+        )
+        context = build_grounded_narrative_context(report)
+        self.assertEqual(context["kpis"]["followers_total"], 50.0)
+        self.assertEqual(context["kpis"]["reactions"], 6.0)
+        self.assertEqual(context["platforms"]["instagram"]["status"], "PARTIAL")
+        self.assertEqual(len(context["signals"]), 5)
+
+    def test_evidence_registry_populated_correctly(self):
+        """Verify evidence_registry contains SIG-1..SIG-5 and LIMITATION-IG-PARTIAL."""
+        context = build_grounded_narrative_context(self.canonical_report)
+        reg = context["evidence_registry"]
+        for i in range(1, 6):
+            self.assertIn(f"SIG-{i}", reg)
+        self.assertIn("LIMITATION-IG-PARTIAL", reg)
+
+    def test_unavailable_metrics_remain_unavailable(self):
+        """Verify unavailable metrics are None, not coerced to 0."""
+        context = build_grounded_narrative_context(self.canonical_report)
+        self.assertIsNone(context["kpis"]["average_daily_reach"])
+
+    def test_executive_report_fixture_sanity(self):
+        """Verify ExecutiveReport #1 fixture produces expected values."""
+        context = build_grounded_narrative_context(self.canonical_report)
+        self.assertEqual(context["kpis"]["followers_total"], 50.0)
+        self.assertEqual(context["kpis"]["reactions"], 6.0)
+        self.assertEqual(context["platforms"]["instagram"]["status"], "PARTIAL")
+        self.assertEqual(len(context["signals"]), 5)
+        self.assertFalse(context["has_sufficient_data"])
+
+    def test_no_forbidden_fields_in_grounded_context(self):
+        """Verify no forbidden credentials or secret keys exist in constructed context."""
+        context = build_grounded_narrative_context(self.canonical_report)
+        raw_json = json.dumps(context).lower()
+        for forbidden in FORBIDDEN_KEYS:
+            self.assertNotIn(forbidden.lower(), raw_json)
