@@ -8,7 +8,7 @@
 # ============================================================================
 from django.contrib import admin
 from .models import (
-    SocialMetricSnapshot, SocialMetricRollup,
+    SocialMetricSnapshot, SocialMetricRollup, BusinessSignal, ExecutiveReport,
     Client, UserProfile, PlatformCredential, DailyMetric, PostMetric, SyncLog,
     ROISettings, ROIReport,
     CalendarPost, CalendarNote, PostingSchedule, SiteContent, LookupCollection, LookupItem,
@@ -122,3 +122,18 @@ class SocialMetricRollupAdmin(admin.ModelAdmin):
     search_fields = ['client__company', 'object_id', 'normalized_metric']
     raw_id_fields = ['client']
     readonly_fields = ['computed_at']
+
+@admin.register(BusinessSignal)
+class BusinessSignalAdmin(admin.ModelAdmin):
+    list_display = ['client', 'platform', 'signal_type', 'metric', 'confidence_level', 'severity', 'is_actionable', 'period_end']
+    list_filter = ['platform', 'signal_type', 'confidence_level', 'severity', 'is_actionable']
+    search_fields = ['client__company', 'signal_type', 'metric', 'signal_identity']
+    readonly_fields = ['signal_identity', 'created_at', 'updated_at']
+
+
+@admin.register(ExecutiveReport)
+class ExecutiveReportAdmin(admin.ModelAdmin):
+    list_display = ['client', 'title', 'report_type', 'period_start', 'period_end', 'language', 'status', 'generated_at']
+    list_filter = ['report_type', 'language', 'status']
+    search_fields = ['client__company', 'title', 'source_hash']
+    readonly_fields = ['source_hash', 'created_at', 'updated_at']

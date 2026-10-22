@@ -331,6 +331,13 @@ export const analyticsAPI = {
   insights:         (params) => api.get('/analytics/insights/', { params }),
   executiveSummary: (params) => api.get('/analytics/executive-summary/', { params }),
   history:          (params) => api.get('/analytics/insights/history/', { params }),
+  // BS-4G Executive Reporting
+  reportPreview:    (data) => api.post('/analytics/reports/preview/', data),
+  listReports:      (params) => api.get('/analytics/reports/', { params }),
+  saveReport:       (data) => api.post('/analytics/reports/', data),
+  getReport:        (id) => api.get('/analytics/reports/' + id + '/'),
+  generateReportPDF:(id) => api.post('/analytics/reports/' + id + '/pdf/'),
+  deleteReport:     (id) => api.delete('/analytics/reports/' + id + '/'),
 };
 
 // ── Admin ─────────────────────────────────────────────

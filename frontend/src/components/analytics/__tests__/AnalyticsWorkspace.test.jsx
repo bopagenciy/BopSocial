@@ -13,6 +13,11 @@ jest.mock('../../../services/api', () => ({
     topPosts: jest.fn(),
     insights: jest.fn(),
     executiveSummary: jest.fn(),
+    reportPreview: jest.fn(),
+    listReports: jest.fn(),
+    saveReport: jest.fn(),
+    generateReportPDF: jest.fn(),
+    deleteReport: jest.fn(),
   },
 }));
 
@@ -222,7 +227,7 @@ const mockSummaryBIResponse = {
   },
 };
 
-describe('AnalyticsWorkspace UI Suite (BS-4E & BS-4F)', () => {
+describe('AnalyticsWorkspace UI Suite (BS-4E & BS-4F & BS-4G)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     api.analyticsAPI.summary.mockResolvedValue(mockSummaryResponse);
@@ -230,6 +235,71 @@ describe('AnalyticsWorkspace UI Suite (BS-4E & BS-4F)', () => {
     api.analyticsAPI.topPosts.mockResolvedValue(mockTopPostsResponse);
     api.analyticsAPI.insights.mockResolvedValue(mockInsightsResponse);
     api.analyticsAPI.executiveSummary.mockResolvedValue(mockSummaryBIResponse);
+    api.analyticsAPI.reportPreview.mockResolvedValue({
+      data: {
+        metadata: {
+          template_version: 'bs4g-v1',
+          source_hash: 'abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890',
+        },
+        cover: {
+          title: 'Informe Ejecutivo de Rendimiento Social',
+          client_name: 'Alpha Corp',
+          period_label: '22/09/2026 — 22/10/2026',
+          platform_filter: 'All',
+        },
+        executive_summary: {
+          title: 'Resumen Ejecutivo',
+          bullets: [
+            'Total audience stands at 12,500 followers.',
+            'Instagram is currently operating under PARTIAL capability mode.',
+          ],
+        },
+        kpi_overview: {
+          title: 'Indicadores Clave de Rendimiento (KPIs)',
+          kpis: [
+            {
+              metric_key: 'FOLLOWERS_TOTAL',
+              label: 'Total de Seguidores',
+              current_value: 12500,
+              baseline_value: 12000,
+              delta_display: '+500 (+4.2%)',
+              is_available: true,
+            },
+            {
+              metric_key: 'SHARES',
+              label: 'Compartidos',
+              current_value: null,
+              baseline_value: null,
+              delta_display: '—',
+              is_available: false,
+              unavailable_reason: 'No soportado con los permisos actuales de Instagram',
+            },
+          ],
+        },
+        business_intelligence_signals: {
+          title: 'Inteligencia de Negocio y Señales Estratégicas',
+          count: 1,
+          signals: [
+            {
+              signal_identity: 'sig_123',
+              platform: 'instagram',
+              signal_type: 'PROVIDER_PARTIAL',
+              confidence_label: 'Alta',
+              severity_label: 'Informativo',
+              explanation: 'Instagram analytics partial mode.',
+            },
+          ],
+        },
+        methodology: {
+          title: 'Metodología y Definiciones Técnicas',
+          points: ['Comparación contra medianas para evitar distorsiones.'],
+        },
+      },
+    });
+    api.analyticsAPI.listReports.mockResolvedValue({ data: { client_id: 3, count: 0, reports: [] } });
+    api.analyticsAPI.saveReport.mockResolvedValue({ data: { id: 42, title: 'Custom Report' } });
+    api.analyticsAPI.generateReportPDF.mockResolvedValue({ data: { id: 42, status: 'GENERATED', pdf_checksum: 'chk_123' } });
+    api.analyticsAPI.deleteReport.mockResolvedValue({ data: {} });
   });
 
   const renderComponent = () =>
@@ -370,6 +440,150 @@ describe('AnalyticsWorkspace UI Suite (BS-4E & BS-4F)', () => {
       expect(emptyNotices.length).toBeGreaterThanOrEqual(1);
       expect(screen.getByText('Not enough data yet')).toBeInTheDocument();
       expect(screen.queryByText(/^0%$/)).not.toBeInTheDocument();
+    });
+  });
+
+  test('11: renders Tab 7 (Reports & PDF Export) and loads report preview', async () => {
+    api.analyticsAPI.reportPreview.mockResolvedValue({
+      data: {
+        metadata: {
+          template_version: 'bs4g-v1',
+          source_hash: 'abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890',
+        },
+        cover: {
+          title: 'Informe Ejecutivo de Rendimiento Social',
+          client_name: 'Alpha Corp',
+          period_label: '22/09/2026 — 22/10/2026',
+          platform_filter: 'All',
+        },
+        executive_summary: {
+          title: 'Resumen Ejecutivo',
+          bullets: [
+            'Total audience stands at 12,500 followers.',
+            'Instagram is currently operating under PARTIAL capability mode.',
+          ],
+        },
+        kpi_overview: {
+          title: 'Indicadores Clave de Rendimiento (KPIs)',
+          kpis: [
+            {
+              metric_key: 'FOLLOWERS_TOTAL',
+              label: 'Total de Seguidores',
+              current_value: 12500,
+              baseline_value: 12000,
+              delta_display: '+500 (+4.2%)',
+              is_available: true,
+            },
+            {
+              metric_key: 'SHARES',
+              label: 'Compartidos',
+              current_value: null,
+              baseline_value: null,
+              delta_display: '—',
+              is_available: false,
+              unavailable_reason: 'No soportado con los permisos actuales de Instagram',
+            },
+          ],
+        },
+        business_intelligence_signals: {
+          title: 'Inteligencia de Negocio y Señales Estratégicas',
+          count: 1,
+          signals: [
+            {
+              signal_identity: 'sig_123',
+              platform: 'instagram',
+              signal_type: 'PROVIDER_PARTIAL',
+              confidence_label: 'Alta',
+              severity_label: 'Informativo',
+              explanation: 'Instagram analytics partial mode.',
+            },
+          ],
+        },
+        methodology: {
+          title: 'Metodología y Definiciones Técnicas',
+          points: ['Comparación contra medianas para evitar distorsiones.'],
+        },
+      },
+    });
+    api.analyticsAPI.listReports.mockResolvedValue({ data: { client_id: 3, count: 0, reports: [] } });
+
+    renderComponent();
+    const reportsTab = screen.getByText('7. Reports & PDF Export');
+    fireEvent.click(reportsTab);
+
+    await waitFor(() => {
+      expect(screen.getByText('Executive Report Generator')).toBeInTheDocument();
+      expect(screen.getByText('Informe Ejecutivo de Rendimiento Social')).toBeInTheDocument();
+      expect(screen.getByText('Total audience stands at 12,500 followers.')).toBeInTheDocument();
+      expect(screen.getByText('Unavailable')).toBeInTheDocument();
+    });
+  });
+
+  test('12: handles report save and displays saved reports history', async () => {
+    api.analyticsAPI.listReports.mockResolvedValue({
+      data: {
+        client_id: 3,
+        count: 1,
+        reports: [
+          {
+            id: 42,
+            title: 'Executive Report Alpha',
+            period_start: '2026-09-22',
+            period_end: '2026-10-22',
+            platform_filter: 'all',
+            language: 'es',
+            status: 'GENERATED',
+          },
+        ],
+      },
+    });
+
+    renderComponent();
+    const reportsTab = screen.getByText('7. Reports & PDF Export');
+    fireEvent.click(reportsTab);
+
+    await waitFor(() => {
+      expect(screen.getByText('Executive Report Alpha')).toBeInTheDocument();
+      expect(screen.getByText('#42')).toBeInTheDocument();
+    });
+  });
+
+  test('13: triggers PDF generation and download action', async () => {
+    window.open = jest.fn();
+    api.analyticsAPI.generateReportPDF.mockResolvedValue({
+      data: { id: 42, status: 'GENERATED', pdf_checksum: 'fake_chk_123' },
+    });
+    api.analyticsAPI.listReports.mockResolvedValue({
+      data: {
+        client_id: 3,
+        count: 1,
+        reports: [
+          {
+            id: 42,
+            title: 'Executive Report Alpha',
+            period_start: '2026-09-22',
+            period_end: '2026-10-22',
+            platform_filter: 'all',
+            language: 'es',
+            status: 'GENERATED',
+          },
+        ],
+      },
+    });
+
+    renderComponent();
+    const reportsTab = screen.getByText('7. Reports & PDF Export');
+    fireEvent.click(reportsTab);
+
+    await waitFor(() => {
+      expect(screen.getByText('PDF')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('PDF'));
+
+    await waitFor(() => {
+      expect(api.analyticsAPI.generateReportPDF).toHaveBeenCalledWith(42);
+      expect(window.open).toHaveBeenCalledWith('/api/analytics/reports/42/download/', '_blank');
     });
   });
 });

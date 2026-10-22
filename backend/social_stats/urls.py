@@ -17,6 +17,11 @@ from .analytics.api import (
     AnalyticsInsightsView,
     AnalyticsExecutiveSummaryView,
     AnalyticsInsightsHistoryView,
+    ExecutiveReportPreviewView,
+    ExecutiveReportListView,
+    ExecutiveReportDetailView,
+    ExecutiveReportGeneratePDFView,
+    ExecutiveReportDownloadPDFView,
 )
 from .views import (
     LoginView, me, ClientViewSet, CredentialViewSet,
@@ -674,6 +679,13 @@ urlpatterns = [
     path('analytics/insights/',          AnalyticsInsightsView.as_view(),          name='analytics_insights'),
     path('analytics/executive-summary/', AnalyticsExecutiveSummaryView.as_view(),  name='analytics_executive_summary'),
     path('analytics/insights/history/',  AnalyticsInsightsHistoryView.as_view(),   name='analytics_insights_history'),
+
+    # ── BS-4G Executive Reporting API ─────────────────────────────────────────
+    path('analytics/reports/preview/',           ExecutiveReportPreviewView.as_view(),       name='analytics_report_preview'),
+    path('analytics/reports/',                   ExecutiveReportListView.as_view(),          name='analytics_report_list'),
+    path('analytics/reports/<int:pk>/',          ExecutiveReportDetailView.as_view(),        name='analytics_report_detail'),
+    path('analytics/reports/<int:pk>/pdf/',      ExecutiveReportGeneratePDFView.as_view(),   name='analytics_report_generate_pdf'),
+    path('analytics/reports/<int:pk>/download/', ExecutiveReportDownloadPDFView.as_view(),   name='analytics_report_download_pdf'),
     # REST API
     path('', include(router.urls)),
 ]

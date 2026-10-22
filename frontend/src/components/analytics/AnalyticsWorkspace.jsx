@@ -15,7 +15,7 @@ import {
   Clock, ExternalLink, ShieldCheck, HelpCircle, Info,
   Layers, BarChart2, MessageSquare, ThumbsUp, Share2,
   Bookmark, Video, Image, FileText, Smartphone,
-  Zap, ChevronDown, ChevronUp, Target
+  Zap, ChevronDown, ChevronUp, Target, Download, Trash2, Printer
 } from 'lucide-react';
 import { analyticsAPI } from '../../services/api';
 import SocialPlatformIcon from '../ui/SocialPlatformIcon';
@@ -199,6 +199,91 @@ export default function AnalyticsWorkspace({ clientId, clientName, allClients = 
   const [insightsError, setInsightsError] = useState(null);
   const [expandedEvidence, setExpandedEvidence] = useState({});
 
+  // ── Tab 7 Reports State (BS-4G) ──
+  const [reportDays, setReportDays] = useState(30);
+  const [reportPlatform, setReportPlatform] = useState('all');
+  const [reportLanguage, setReportLanguage] = useState('es');
+  const [reportType, setReportType] = useState('EXECUTIVE');
+  const [reportTitle, setReportTitle] = useState('');
+  const [reportPreviewData, setReportPreviewData] = useState(null);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportError, setReportError] = useState(null);
+  const [savedReports, setSavedReports] = useState([]);
+  const [savedReportsLoading, setSavedReportsLoading] = useState(false);
+  const [saveSuccessMsg, setSaveSuccessMsg] = useState(null);
+  const [pdfGeneratingId, setPdfGeneratingId] = useState(null);
+
+  const fetchReportPreview = useCallback(() => {
+    if (!clientId) return;
+    setReportLoading(true);
+    setReportError(null);
+    setSaveSuccessMsg(null);
+    const endD = new Date().toISOString().slice(0, 10);
+    const startD = new Date(Date.now() - reportDays * 86400000).toISOString().slice(0, 10);
+    analyticsAPI.reportPreview({
+      client_id: clientId,
+      date_from: startD,
+      date_to: endD,
+      platform: reportPlatform,
+      language: reportLanguage,
+      report_type: reportType,
+    })
+      .then(res => setReportPreviewData(res.data))
+      .catch(err => setReportError(err.response?.data?.error || 'Failed to generate report preview'))
+      .finally(() => setReportLoading(false));
+  }, [clientId, reportDays, reportPlatform, reportLanguage, reportType]);
+
+  const fetchSavedReports = useCallback(() => {
+    if (!clientId) return;
+    setSavedReportsLoading(true);
+    analyticsAPI.listReports({ client_id: clientId })
+      .then(res => setSavedReports(res.data?.reports || []))
+      .catch(() => setSavedReports([]))
+      .finally(() => setSavedReportsLoading(false));
+  }, [clientId]);
+
+  const handleSaveReport = useCallback(() => {
+    if (!clientId) return;
+    setReportLoading(true);
+    setReportError(null);
+    const endD = new Date().toISOString().slice(0, 10);
+    const startD = new Date(Date.now() - reportDays * 86400000).toISOString().slice(0, 10);
+    analyticsAPI.saveReport({
+      client_id: clientId,
+      date_from: startD,
+      date_to: endD,
+      platform: reportPlatform,
+      language: reportLanguage,
+      report_type: reportType,
+      title: reportTitle || undefined,
+    })
+      .then(res => {
+        setSaveSuccessMsg(`Report #${res.data.id} saved successfully!`);
+        fetchSavedReports();
+      })
+      .catch(err => setReportError(err.response?.data?.error || 'Failed to save report'))
+      .finally(() => setReportLoading(false));
+  }, [clientId, reportDays, reportPlatform, reportLanguage, reportType, reportTitle, fetchSavedReports]);
+
+  const handleGenerateAndDownloadPDF = useCallback((reportId) => {
+    setPdfGeneratingId(reportId);
+    setReportError(null);
+    analyticsAPI.generateReportPDF(reportId)
+      .then(() => {
+        window.open(`/api/analytics/reports/${reportId}/download/`, '_blank');
+        fetchSavedReports();
+      })
+      .catch(err => setReportError(err.response?.data?.error || 'Failed to generate PDF'))
+      .finally(() => setPdfGeneratingId(null));
+  }, [fetchSavedReports]);
+
+  const handleDeleteReport = useCallback((reportId) => {
+    if (!window.confirm('Delete this report? (Underlying analytics data will remain unaffected)')) return;
+    analyticsAPI.deleteReport(reportId)
+      .then(() => fetchSavedReports())
+      .catch(err => setReportError(err.response?.data?.error || 'Failed to delete report'));
+  }, [fetchSavedReports]);
+
   // Fetch Summary
   const fetchSummary = useCallback(() => {
     if (!clientId) return;
@@ -300,6 +385,12 @@ export default function AnalyticsWorkspace({ clientId, clientName, allClients = 
   useEffect(() => {
     if (activeTab === 'intelligence') fetchInsights();
   }, [activeTab, fetchInsights]);
+  useEffect(() => {
+    if (activeTab === 'reports') {
+      fetchSavedReports();
+      fetchReportPreview();
+    }
+  }, [activeTab, fetchSavedReports, fetchReportPreview]);
 
   // Refresh all active data
   const handleRefresh = () => {
@@ -307,6 +398,10 @@ export default function AnalyticsWorkspace({ clientId, clientName, allClients = 
     if (activeTab === 'trends') fetchTrends();
     if (activeTab === 'content') fetchTopPosts();
     if (activeTab === 'intelligence') fetchInsights();
+    if (activeTab === 'reports') {
+      fetchSavedReports();
+      fetchReportPreview();
+    }
   };
 
   const isInstagramDegraded = summaryData?.capabilities?.instagram?.status === 'PARTIAL';
@@ -457,6 +552,7 @@ export default function AnalyticsWorkspace({ clientId, clientName, allClients = 
           { id: 'platform',     label: '4. Platform Breakdown', icon: Smartphone },
           { id: 'health',       label: '5. Data Health & Freshness', icon: ShieldCheck },
           { id: 'intelligence', label: '6. Executive Insights & BI', icon: Zap },
+          { id: 'reports',      label: '7. Reports & PDF Export', icon: Download },
         ].map(tab => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -1339,6 +1435,328 @@ export default function AnalyticsWorkspace({ clientId, clientName, allClients = 
                   );
                 })}
               </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Tab 7: Reports & PDF Export (BS-4G) ─────────────────────────── */}
+      {activeTab === 'reports' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+          {/* Configuration Card */}
+          <div style={{
+            background: 'var(--surface-card)', borderRadius: 16, padding: '24px 28px',
+            border: '1px solid var(--border-default)', boxShadow: '0 2px 10px rgba(0,0,0,0.03)',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18, flexWrap: 'wrap', gap: 12 }}>
+              <div>
+                <h2 style={{ fontSize: 16, fontWeight: 800, margin: 0 }}>Executive Report Generator</h2>
+                <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '4px 0 0' }}>
+                  Generate deterministic, client-facing executive reports with PDF export. Zero generative AI or invented data.
+                </p>
+              </div>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <button
+                  onClick={fetchReportPreview}
+                  disabled={reportLoading}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    padding: '8px 16px', borderRadius: 8,
+                    background: 'var(--surface-sunken)', border: '1px solid var(--border-default)',
+                    color: 'var(--text-primary)', fontWeight: 700, fontSize: 12, cursor: 'pointer',
+                  }}
+                >
+                  <RefreshCw size={14} className={reportLoading ? 'animate-spin' : ''} />
+                  <span>Generate Preview</span>
+                </button>
+                <button
+                  onClick={handleSaveReport}
+                  disabled={reportLoading}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    padding: '8px 16px', borderRadius: 8,
+                    background: '#059669', border: 'none',
+                    color: '#FFFFFF', fontWeight: 700, fontSize: 12, cursor: 'pointer',
+                  }}
+                >
+                  <CheckCircle2 size={14} />
+                  <span>Save Report</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Config Controls Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: 6 }}>
+                  Period Range
+                </label>
+                <select
+                  value={reportDays}
+                  onChange={e => setReportDays(Number(e.target.value))}
+                  style={{ ...controlSelectStyle, width: '100%' }}
+                >
+                  <option value={7}>Last 7 Days</option>
+                  <option value={30}>Last 30 Days</option>
+                  <option value={90}>Last 90 Days</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: 6 }}>
+                  Platform Scope
+                </label>
+                <select
+                  value={reportPlatform}
+                  onChange={e => setReportPlatform(e.target.value)}
+                  style={{ ...controlSelectStyle, width: '100%' }}
+                >
+                  <option value="all">All Connected Platforms</option>
+                  <option value="facebook">Facebook Only</option>
+                  <option value="instagram">Instagram Only</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: 6 }}>
+                  Language / Idioma
+                </label>
+                <select
+                  value={reportLanguage}
+                  onChange={e => setReportLanguage(e.target.value)}
+                  style={{ ...controlSelectStyle, width: '100%' }}
+                >
+                  <option value="es">Español (ES)</option>
+                  <option value="en">English (EN)</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: 6 }}>
+                  Report Type
+                </label>
+                <select
+                  value={reportType}
+                  onChange={e => setReportType(e.target.value)}
+                  style={{ ...controlSelectStyle, width: '100%' }}
+                >
+                  <option value="EXECUTIVE">Executive Summary</option>
+                  <option value="MONTHLY">Monthly Performance</option>
+                  <option value="WEEKLY">Weekly Digest</option>
+                  <option value="CUSTOM">Custom Period</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Custom Title Input */}
+            <div style={{ marginTop: 14 }}>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: 6 }}>
+                Optional Report Title Override
+              </label>
+              <input
+                type="text"
+                value={reportTitle}
+                onChange={e => setReportTitle(e.target.value)}
+                placeholder="Leave blank for automatic canonical title"
+                style={{
+                  width: '100%', padding: '8px 12px', borderRadius: 8,
+                  border: '1px solid var(--border-default)', background: 'var(--surface-sunken)',
+                  fontSize: 12, color: 'var(--text-primary)', boxSizing: 'border-box',
+                }}
+              />
+            </div>
+
+            {/* Alerts */}
+            {saveSuccessMsg && (
+              <div style={{ marginTop: 14, padding: '10px 14px', background: 'rgba(5, 150, 105, 0.1)', border: '1px solid #059669', borderRadius: 8, color: '#059669', fontSize: 12, fontWeight: 700 }}>
+                ✓ {saveSuccessMsg}
+              </div>
+            )}
+            {reportError && (
+              <div style={{ marginTop: 14, padding: '10px 14px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid #ef4444', borderRadius: 8, color: '#ef4444', fontSize: 12, fontWeight: 700 }}>
+                ⚠ {reportError}
+              </div>
+            )}
+          </div>
+
+          {/* Report Web Preview */}
+          {reportPreviewData && (
+            <div style={{
+              background: 'var(--surface-card)', borderRadius: 16, padding: '28px 32px',
+              border: '1px solid var(--border-default)', boxShadow: '0 4px 14px rgba(0,0,0,0.04)',
+            }}>
+              {/* Cover Preview Header */}
+              <div style={{ borderBottom: '2px solid #1e202a', paddingBottom: 16, marginBottom: 20 }}>
+                <div style={{ display: 'inline-block', background: '#1e202a', color: '#FFFFFF', padding: '4px 10px', borderRadius: 4, fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
+                  Bop Social Executive Report
+                </div>
+                <h1 style={{ fontSize: 22, fontWeight: 900, color: 'var(--text-primary)', margin: '0 0 6px 0' }}>
+                  {reportPreviewData.cover.title}
+                </h1>
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                  <strong>Client:</strong> {reportPreviewData.cover.client_name} &nbsp;·&nbsp;
+                  <strong>Period:</strong> {reportPreviewData.cover.period_label} &nbsp;·&nbsp;
+                  <strong>Scope:</strong> {reportPreviewData.cover.platform_filter} &nbsp;·&nbsp;
+                  <strong>Source Hash:</strong> <code>{reportPreviewData.metadata.source_hash.slice(0, 16)}...</code>
+                </div>
+              </div>
+
+              {/* Executive Summary Bullets */}
+              <div style={{ background: 'var(--surface-sunken)', borderLeft: '4px solid #f5a623', padding: '16px 20px', borderRadius: '0 10px 10px 0', marginBottom: 24 }}>
+                <h3 style={{ fontSize: 13, fontWeight: 800, textTransform: 'uppercase', margin: '0 0 8px 0', color: 'var(--text-primary)' }}>
+                  {reportPreviewData.executive_summary.title}
+                </h3>
+                <ul style={{ margin: 0, paddingLeft: 20 }}>
+                  {reportPreviewData.executive_summary.bullets.map((b, i) => (
+                    <li key={i} style={{ fontSize: 12.5, color: 'var(--text-primary)', marginBottom: 6, lineHeight: 1.45 }}>
+                      {b}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* KPIs Table */}
+              <div style={{ marginBottom: 24 }}>
+                <h3 style={{ fontSize: 14, fontWeight: 800, textTransform: 'uppercase', margin: '0 0 12px 0' }}>
+                  {reportPreviewData.kpi_overview.title}
+                </h3>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                  <thead>
+                    <tr style={{ background: 'var(--surface-sunken)', borderBottom: '1px solid var(--border-default)' }}>
+                      <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 800 }}>Metric</th>
+                      <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 800 }}>Current Period</th>
+                      <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 800 }}>Previous Period</th>
+                      <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 800 }}>Delta</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reportPreviewData.kpi_overview.kpis.map(k => (
+                      <tr key={k.metric_key} style={{ borderBottom: '1px solid var(--border-default)' }}>
+                        <td style={{ padding: '8px 10px', fontWeight: 700 }}>{k.label}</td>
+                        <td style={{ padding: '8px 10px' }}>
+                          {!k.is_available ? (
+                            <span style={{ padding: '2px 6px', borderRadius: 4, background: '#fef3c7', color: '#b45309', fontSize: 11, fontWeight: 700 }}>Unavailable</span>
+                          ) : (
+                            <span style={{ fontWeight: 800 }}>{k.current_value !== null ? Number(k.current_value).toLocaleString() : '—'}</span>
+                          )}
+                        </td>
+                        <td style={{ padding: '8px 10px' }}>
+                          {k.baseline_value !== null ? Number(k.baseline_value).toLocaleString() : '—'}
+                        </td>
+                        <td style={{ padding: '8px 10px' }}>
+                          {k.delta_display}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Business Intelligence Signals */}
+              <div style={{ marginBottom: 24 }}>
+                <h3 style={{ fontSize: 14, fontWeight: 800, textTransform: 'uppercase', margin: '0 0 12px 0' }}>
+                  {reportPreviewData.business_intelligence_signals.title} ({reportPreviewData.business_intelligence_signals.count})
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {reportPreviewData.business_intelligence_signals.signals.map(s => (
+                    <div key={s.signal_identity} style={{ background: 'var(--surface-sunken)', borderLeft: '4px solid #00d7ff', padding: '12px 16px', borderRadius: '0 8px 8px 0' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                        <span style={{ fontSize: 12.5, fontWeight: 800 }}>[{s.platform.toUpperCase()}] {s.signal_type.replace(/_/g, ' ')}</span>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <span style={{ padding: '2px 6px', borderRadius: 4, background: '#dbeafe', color: '#1d4ed8', fontSize: 10, fontWeight: 700 }}>{s.confidence_label}</span>
+                          <span style={{ padding: '2px 6px', borderRadius: 4, background: '#e0f2fe', color: '#0369a1', fontSize: 10, fontWeight: 700 }}>{s.severity_label}</span>
+                        </div>
+                      </div>
+                      <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{s.explanation}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Methodology & Technical Notes */}
+              <div style={{ background: 'var(--surface-sunken)', padding: '16px 20px', borderRadius: 8, fontSize: 11.5, color: 'var(--text-secondary)' }}>
+                <h4 style={{ fontSize: 12, fontWeight: 800, textTransform: 'uppercase', margin: '0 0 6px 0', color: 'var(--text-primary)' }}>
+                  {reportPreviewData.methodology.title}
+                </h4>
+                <ul style={{ margin: 0, paddingLeft: 18 }}>
+                  {reportPreviewData.methodology.points.map((pt, i) => (
+                    <li key={i} style={{ marginBottom: 4 }}>{pt}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
+
+          {/* Saved Reports History Table */}
+          <div style={{
+            background: 'var(--surface-card)', borderRadius: 16, padding: '24px 28px',
+            border: '1px solid var(--border-default)', boxShadow: '0 2px 10px rgba(0,0,0,0.03)',
+          }}>
+            <h3 style={{ fontSize: 15, fontWeight: 800, textTransform: 'uppercase', margin: '0 0 14px 0' }}>
+              Saved Reports History
+            </h3>
+            {savedReportsLoading ? (
+              <div style={{ padding: '20px 0', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 12 }}>
+                Loading saved reports...
+              </div>
+            ) : savedReports.length === 0 ? (
+              <div style={{ padding: '20px 0', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 12 }}>
+                No saved reports found. Use "Save Report" above to persist an executive report snapshot.
+              </div>
+            ) : (
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                <thead>
+                  <tr style={{ background: 'var(--surface-sunken)', borderBottom: '1px solid var(--border-default)' }}>
+                    <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 800 }}>ID</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 800 }}>Title</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 800 }}>Period</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 800 }}>Scope</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 800 }}>Language</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 800 }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {savedReports.map(r => (
+                    <tr key={r.id} style={{ borderBottom: '1px solid var(--border-default)' }}>
+                      <td style={{ padding: '8px 10px', fontWeight: 800 }}>#{r.id}</td>
+                      <td style={{ padding: '8px 10px', fontWeight: 700 }}>{r.title}</td>
+                      <td style={{ padding: '8px 10px', color: 'var(--text-secondary)' }}>{r.period_start} to {r.period_end}</td>
+                      <td style={{ padding: '8px 10px' }}>{r.platform_filter || 'All'}</td>
+                      <td style={{ padding: '8px 10px' }}>{r.language.toUpperCase()}</td>
+                      <td style={{ padding: '8px 10px' }}>
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                          <button
+                            onClick={() => handleGenerateAndDownloadPDF(r.id)}
+                            disabled={pdfGeneratingId === r.id}
+                            style={{
+                              display: 'flex', alignItems: 'center', gap: 4,
+                              padding: '4px 10px', borderRadius: 6,
+                              background: '#2563eb', border: 'none', color: '#FFFFFF',
+                              fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                            }}
+                            title="Download PDF"
+                          >
+                            <Download size={12} className={pdfGeneratingId === r.id ? 'animate-spin' : ''} />
+                            <span>{pdfGeneratingId === r.id ? 'Generating...' : 'PDF'}</span>
+                          </button>
+                          <button
+                            onClick={() => handleDeleteReport(r.id)}
+                            style={{
+                              display: 'flex', alignItems: 'center', gap: 4,
+                              padding: '4px 8px', borderRadius: 6,
+                              background: 'rgba(239, 68, 68, 0.1)', border: 'none', color: '#ef4444',
+                              fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                            }}
+                            title="Delete Report"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             )}
           </div>
         </div>

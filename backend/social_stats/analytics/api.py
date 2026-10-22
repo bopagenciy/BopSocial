@@ -655,3 +655,271 @@ class AnalyticsInsightsHistoryView(AnalyticsBaseView):
             "count": len(signals_data),
             "signals": signals_data,
         })
+
+
+# ── BS-4G Executive Reporting API Views ──────────────────────────────────────
+from datetime import timedelta
+from django.http import FileResponse, Http404
+from social_stats.models import ExecutiveReport
+from .reporting.service import (
+    preview_executive_report,
+    save_executive_report,
+    generate_pdf_for_report,
+    delete_executive_report,
+)
+
+
+class ExecutiveReportPreviewView(AnalyticsBaseView):
+    """
+    POST /api/analytics/reports/preview/
+    Read-only preview generation.
+    Computes deterministic executive report JSON payload without DB persistence.
+    """
+
+    def post(self, request):
+        client_id_raw = request.data.get('client_id') or request.query_params.get('client_id')
+        client = self.validate_client(request, client_id_raw)
+        if not client:
+            return Response({'error': 'Client not found or unauthorized'}, status=status.HTTP_404_NOT_FOUND)
+
+        start_date = _parse_date(request.data.get('date_from') or request.data.get('start_date'))
+        end_date = _parse_date(request.data.get('date_to') or request.data.get('end_date'))
+
+        today = timezone.now().date()
+        end_date = end_date or today
+        start_date = start_date or (end_date - timedelta(days=30))
+
+        platform = request.data.get('platform')
+        language = request.data.get('language', 'es')
+        report_type = request.data.get('report_type', 'EXECUTIVE')
+
+        try:
+            report_data = preview_executive_report(
+                client_id=client.id,
+                date_from=start_date,
+                date_to=end_date,
+                platform=platform,
+                language=language,
+                report_type=report_type,
+            )
+            return Response(report_data, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.exception(f'Error previewing executive report for client {client.id}: {e}')
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ExecutiveReportListView(AnalyticsBaseView):
+    """
+    GET  /api/analytics/reports/  — List saved executive reports for client
+    POST /api/analytics/reports/  — Persist an executive report
+    """
+
+    def get(self, request):
+        client_id_raw = request.query_params.get('client_id')
+        client = self.validate_client(request, client_id_raw)
+        if not client:
+            return Response({'error': 'Client not found or unauthorized'}, status=status.HTTP_404_NOT_FOUND)
+
+        report_type = request.query_params.get('report_type')
+        status_param = request.query_params.get('status')
+
+        qs = ExecutiveReport.objects.filter(client=client)
+        if report_type:
+            qs = qs.filter(report_type=report_type)
+        if status_param:
+            qs = qs.filter(status=status_param)
+
+        reports = []
+        for r in qs.order_by('-period_end', '-generated_at')[:50]:
+            pdf_url = None
+            if r.pdf_file:
+                pdf_url = request.build_absolute_uri(f'/api/analytics/reports/{r.id}/download/')
+
+            reports.append({
+                'id': r.id,
+                'client_id': r.client_id,
+                'title': r.title,
+                'report_type': r.report_type,
+                'period_start': r.period_start.isoformat(),
+                'period_end': r.period_end.isoformat(),
+                'platform_filter': r.platform_filter,
+                'language': r.language,
+                'status': r.status,
+                'generated_at': r.generated_at.isoformat(),
+                'source_rollup_count': r.source_rollup_count,
+                'source_signal_count': r.source_signal_count,
+                'source_hash': r.source_hash,
+                'has_pdf': bool(r.pdf_file),
+                'pdf_checksum': r.pdf_checksum,
+                'pdf_url': pdf_url,
+                'template_version': r.template_version,
+            })
+
+        return Response({
+            'client_id': client.id,
+            'count': len(reports),
+            'reports': reports,
+        })
+
+    def post(self, request):
+        client_id_raw = request.data.get('client_id')
+        client = self.validate_client(request, client_id_raw)
+        if not client:
+            return Response({'error': 'Client not found or unauthorized'}, status=status.HTTP_404_NOT_FOUND)
+
+        start_date = _parse_date(request.data.get('date_from') or request.data.get('start_date'))
+        end_date = _parse_date(request.data.get('date_to') or request.data.get('end_date'))
+
+        today = timezone.now().date()
+        end_date = end_date or today
+        start_date = start_date or (end_date - timedelta(days=30))
+
+        platform = request.data.get('platform')
+        language = request.data.get('language', 'es')
+        report_type = request.data.get('report_type', 'EXECUTIVE')
+        title = request.data.get('title')
+
+        try:
+            report = save_executive_report(
+                client_id=client.id,
+                date_from=start_date,
+                date_to=end_date,
+                platform=platform,
+                language=language,
+                report_type=report_type,
+                user=request.user,
+                title=title,
+            )
+            return Response({
+                'id': report.id,
+                'client_id': report.client_id,
+                'title': report.title,
+                'report_type': report.report_type,
+                'period_start': report.period_start.isoformat(),
+                'period_end': report.period_end.isoformat(),
+                'language': report.language,
+                'status': report.status,
+                'generated_at': report.generated_at.isoformat(),
+                'source_rollup_count': report.source_rollup_count,
+                'source_signal_count': report.source_signal_count,
+                'source_hash': report.source_hash,
+                'report_data': report.report_data,
+            }, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            logger.exception(f'Error saving executive report: {e}')
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ExecutiveReportDetailView(AnalyticsBaseView):
+    """
+    GET    /api/analytics/reports/<int:pk>/  — Retrieve full report metadata and report_data
+    DELETE /api/analytics/reports/<int:pk>/  — Delete report without touching analytics source
+    """
+
+    def _get_authorized_report(self, request, pk):
+        report = ExecutiveReport.objects.filter(id=pk).first()
+        if not report:
+            return None
+        # Tenant isolation
+        client = self.validate_client(request, report.client_id)
+        if not client:
+            return None
+        return report
+
+    def get(self, request, pk):
+        report = self._get_authorized_report(request, pk)
+        if not report:
+            return Response({'error': 'Report not found or unauthorized'}, status=status.HTTP_404_NOT_FOUND)
+
+        pdf_url = None
+        if report.pdf_file:
+            pdf_url = request.build_absolute_uri(f'/api/analytics/reports/{report.id}/download/')
+
+        return Response({
+            'id': report.id,
+            'client_id': report.client_id,
+            'title': report.title,
+            'report_type': report.report_type,
+            'period_start': report.period_start.isoformat(),
+            'period_end': report.period_end.isoformat(),
+            'platform_filter': report.platform_filter,
+            'language': report.language,
+            'status': report.status,
+            'generated_at': report.generated_at.isoformat(),
+            'source_rollup_count': report.source_rollup_count,
+            'source_signal_count': report.source_signal_count,
+            'source_hash': report.source_hash,
+            'has_pdf': bool(report.pdf_file),
+            'pdf_checksum': report.pdf_checksum,
+            'pdf_url': pdf_url,
+            'template_version': report.template_version,
+            'report_data': report.report_data,
+        })
+
+    def delete(self, request, pk):
+        report = self._get_authorized_report(request, pk)
+        if not report:
+            return Response({'error': 'Report not found or unauthorized'}, status=status.HTTP_404_NOT_FOUND)
+
+        delete_executive_report(report.id, report.client)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ExecutiveReportGeneratePDFView(AnalyticsBaseView):
+    """
+    POST /api/analytics/reports/<int:pk>/pdf/
+    Renders deterministic PDF using WeasyPrint and saves to media storage.
+    """
+
+    def post(self, request, pk):
+        report = ExecutiveReport.objects.filter(id=pk).first()
+        if not report:
+            return Response({'error': 'Report not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        client = self.validate_client(request, report.client_id)
+        if not client:
+            return Response({'error': 'Report not found or unauthorized'}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            report, _ = generate_pdf_for_report(report)
+            pdf_url = request.build_absolute_uri(f'/api/analytics/reports/{report.id}/download/')
+            return Response({
+                'id': report.id,
+                'status': report.status,
+                'pdf_checksum': report.pdf_checksum,
+                'pdf_url': pdf_url,
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.exception(f'Error generating PDF for report {report.id}: {e}')
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class ExecutiveReportDownloadPDFView(AnalyticsBaseView):
+    """
+    GET /api/analytics/reports/<int:pk>/download/
+    Authenticated streaming download of generated PDF report.
+    Never exposes internal filesystem paths.
+    """
+
+    def get(self, request, pk):
+        report = ExecutiveReport.objects.filter(id=pk).first()
+        if not report:
+            raise Http404('Report not found')
+
+        client = self.validate_client(request, report.client_id)
+        if not client:
+            raise Http404('Report not found or unauthorized')
+
+        if not report.pdf_file:
+            # Auto-generate if missing
+            report, _ = generate_pdf_for_report(report)
+
+        try:
+            company_clean = (report.client.company or 'client').replace(' ', '_')
+            safe_filename = f"{company_clean}_Report_{report.period_start.isoformat()}_{report.period_end.isoformat()}.pdf"
+            response = FileResponse(report.pdf_file.open('rb'), content_type='application/pdf')
+            response['Content-Disposition'] = f'attachment; filename="{safe_filename}"'
+            return response
+        except Exception as e:
+            logger.exception(f'Error downloading PDF for report {report.id}: {e}')
+            raise Http404('PDF file could not be read')

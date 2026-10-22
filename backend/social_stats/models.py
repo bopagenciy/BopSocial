@@ -2256,6 +2256,62 @@ class BusinessSignal(models.Model):
         return f"{self.client_id} | {self.signal_type} | {self.platform} ({self.confidence_level}) @ {self.period_end}"
 
 
+REPORT_TYPE_CHOICES = [
+    ('EXECUTIVE', 'Executive Summary'),
+    ('MONTHLY', 'Monthly Performance'),
+    ('WEEKLY', 'Weekly Digest'),
+    ('CUSTOM', 'Custom Period'),
+]
+
+REPORT_STATUS_CHOICES = [
+    ('DRAFT', 'Draft'),
+    ('GENERATED', 'Generated'),
+    ('FAILED', 'Failed'),
+]
+
+
+class ExecutiveReport(models.Model):
+    """
+    Deterministic client-facing executive report capturing structured analytics,
+    business intelligence signals, and rendered PDF artifact metadata.
+    """
+    client               = models.ForeignKey(Client, on_delete=models.CASCADE, related_name='executive_reports', db_index=True)
+    report_type          = models.CharField(max_length=20, choices=REPORT_TYPE_CHOICES, default='EXECUTIVE', db_index=True)
+    period_start         = models.DateField(db_index=True)
+    period_end           = models.DateField(db_index=True)
+    platform_filter      = models.CharField(max_length=30, blank=True, null=True, default=None)
+    language             = models.CharField(max_length=10, default='es')
+    status               = models.CharField(max_length=20, choices=REPORT_STATUS_CHOICES, default='GENERATED', db_index=True)
+    title                = models.CharField(max_length=255)
+
+    generated_at         = models.DateTimeField(default=timezone.now)
+    generated_by         = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='generated_executive_reports')
+
+    source_rollup_count  = models.IntegerField(default=0)
+    source_signal_count  = models.IntegerField(default=0)
+    source_hash          = models.CharField(max_length=64, db_index=True)
+
+    report_data          = models.JSONField(default=dict)
+    pdf_file             = models.FileField(upload_to='reports/executive/%Y/%m/', null=True, blank=True)
+    pdf_checksum         = models.CharField(max_length=64, null=True, blank=True)
+    template_version     = models.CharField(max_length=20, default='bs4g-v1')
+    metadata             = models.JSONField(default=dict, blank=True)
+
+    created_at           = models.DateTimeField(auto_now_add=True)
+    updated_at           = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-period_end', '-generated_at']
+        indexes = [
+            models.Index(fields=['client', 'report_type', 'period_end']),
+            models.Index(fields=['client', 'status']),
+            models.Index(fields=['client', 'source_hash']),
+        ]
+
+    def __str__(self):
+        return f"ExecutiveReport #{self.id} | {self.client_id} | {self.title} ({self.period_start} to {self.period_end})"
+
+
 class PostQueue(models.Model):
     """A reusable schedule (e.g. 'every weekday 10am') that drains QueuedItems."""
     client          = models.ForeignKey(Client, on_delete=models.CASCADE, related_name='post_queues')
