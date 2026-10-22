@@ -1084,21 +1084,33 @@ export default function AnalyticsWorkspace({ clientId, clientName, allClients = 
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                 <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>
-                  Engagement Trend
+                  {platform === 'instagram' && isInstagramDegraded ? 'Total Engagement' : 'Engagement Trend'}
                 </span>
                 <span style={{
                   padding: '2px 8px', borderRadius: 12, fontSize: 10.5, fontWeight: 800,
-                  background: summaryBI?.engagement_direction?.direction === 'UP' ? 'rgba(5, 150, 105, 0.15)' : (summaryBI?.engagement_direction?.direction === 'DOWN' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(100, 116, 139, 0.15)'),
-                  color: summaryBI?.engagement_direction?.direction === 'UP' ? '#059669' : (summaryBI?.engagement_direction?.direction === 'DOWN' ? '#ef4444' : '#64748b'),
+                  background: platform === 'instagram' && isInstagramDegraded
+                    ? 'rgba(245, 158, 11, 0.15)'
+                    : (summaryBI?.engagement_direction?.direction === 'UP' ? 'rgba(5, 150, 105, 0.15)' : (summaryBI?.engagement_direction?.direction === 'DOWN' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(100, 116, 139, 0.15)')),
+                  color: platform === 'instagram' && isInstagramDegraded
+                    ? '#d97706'
+                    : (summaryBI?.engagement_direction?.direction === 'UP' ? '#059669' : (summaryBI?.engagement_direction?.direction === 'DOWN' ? '#ef4444' : '#64748b')),
                 }}>
-                  {summaryBI?.engagement_direction?.direction || 'NEUTRAL'}
+                  {platform === 'instagram' && isInstagramDegraded
+                    ? 'Unavailable'
+                    : (summaryBI?.engagement_direction?.direction || 'NEUTRAL')}
                 </span>
               </div>
               <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 4 }}>
-                {summaryBI?.engagement_direction?.relative_delta != null ? `${(summaryBI.engagement_direction.relative_delta * 100).toFixed(1)}%` : '—'}
+                {platform === 'instagram' && isInstagramDegraded ? (
+                  <span style={{ fontSize: 16, color: 'var(--text-tertiary)', fontWeight: 600 }}>Unavailable</span>
+                ) : (
+                  summaryBI?.engagement_direction?.relative_delta != null ? `${(summaryBI.engagement_direction.relative_delta * 100).toFixed(1)}%` : '—'
+                )}
               </div>
               <div style={{ fontSize: 11.5, color: 'var(--text-secondary)' }}>
-                {summaryBI?.engagement_direction?.explanation || 'Stable trend over period'}
+                {platform === 'instagram' && isInstagramDegraded
+                  ? 'Not available with current Instagram permissions'
+                  : (summaryBI?.engagement_direction?.explanation || 'Stable trend over period')}
               </div>
             </div>
 

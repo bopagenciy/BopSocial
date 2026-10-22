@@ -473,6 +473,7 @@ class AnalyticsInsightsView(AnalyticsBaseView):
             return Response({"error": "Client not found or unauthorized"}, status=status.HTTP_404_NOT_FOUND)
 
         platform = request.query_params.get("platform")
+        metric_param = request.query_params.get("metric")
         start_date = _parse_date(request.query_params.get("date_from") or request.query_params.get("start_date"))
         end_date = _parse_date(request.query_params.get("date_to") or request.query_params.get("end_date"))
         signal_type = request.query_params.get("signal_type")
@@ -488,12 +489,15 @@ class AnalyticsInsightsView(AnalyticsBaseView):
             date_from=start_date,
             date_to=end_date,
             platform=platform,
+            metric=metric_param,
             persist=False,
         )
 
         # Apply optional query filters
         filtered = []
         for s in signals:
+            if metric_param and s.get("metric") and s.get("metric").upper() != metric_param.upper():
+                continue
             if signal_type and s.get("signal_type") != signal_type:
                 continue
             if severity and s.get("severity") != severity:
@@ -533,7 +537,7 @@ class AnalyticsInsightsView(AnalyticsBaseView):
                 "created_at": s["created_at"],
             })
 
-        return Response({
+        response_payload = {
             "client_id": client.id,
             "platform": platform or "all",
             "period": {
@@ -542,7 +546,17 @@ class AnalyticsInsightsView(AnalyticsBaseView):
             },
             "count": len(filtered),
             "signals": filtered,
-        })
+        }
+
+        if metric_param:
+            response_payload["metric"] = metric_param
+            if (platform or "").lower() == "instagram" and metric_param.upper() == "ENGAGEMENT_TOTAL":
+                response_payload["is_available"] = False
+                response_payload["reason"] = "missing_required_components"
+                response_payload["missing_components"] = ["SHARES"]
+                response_payload["message"] = "Not available with current Instagram permissions"
+
+        return Response(response_payload)
 
 
 class AnalyticsExecutiveSummaryView(AnalyticsBaseView):

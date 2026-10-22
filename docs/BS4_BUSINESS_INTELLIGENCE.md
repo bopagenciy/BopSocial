@@ -90,10 +90,17 @@ Confidence is never subjective. It is calculated deterministically:
    - Posting-time intelligence strictly utilizes `client.timezone` (e.g. `America/New_York`, `America/Bogota`).
    - Time buckets: `morning` (06:00–11:59), `afternoon` (12:00–17:59), `evening` (18:00–21:59), `late_night` (22:00–05:59).
    - Time windows require $n \ge 3$ within the bucket and $\ge 5$ total posts before recommendations are surfaced.
-5. **Instagram PARTIAL Mode Guard**:
+5. **Instagram PARTIAL Mode Guard & Metric Integrity**:
    - Client #3 Instagram operates with basic media counters.
-   - The intelligence engine dynamically checks `get_provider_capability`.
-   - Signals for `REACH`, `SAVES`, `SHARES`, `VIDEO_VIEWS`, and `ENGAGEMENT_TOTAL` are suppressed on Instagram PARTIAL mode, emitting a `PROVIDER_PARTIAL` operational health signal instead.
+   - Authoritative supported metrics: `FOLLOWERS_TOTAL`, `REACTIONS`, `COMMENTS`.
+   - Unavailable unless future snapshots explicitly exist: `SHARES`, `SAVES`, `REACH`, `VIDEO_VIEWS`, `ENGAGEMENT_TOTAL`.
+   - **Canonical ENGAGEMENT_TOTAL Policy**: Canonical `ENGAGEMENT_TOTAL` strictly requires all three core components: `REACTIONS`, `COMMENTS`, and `SHARES`.
+   - **Unavailable vs. Zero Distinction**:
+     - An explicit observation of `SHARES = 0` is valid numerical data.
+     - A missing or unsupported `SHARES` metric is `UNAVAILABLE`.
+     - The system never treats missing `SHARES` as zero and never silently derives partial engagement totals.
+     - Consequently, for Instagram PARTIAL mode, `ENGAGEMENT_TOTAL` is strictly `UNAVAILABLE`.
+   - Signals for `REACH`, `SAVES`, `SHARES`, `VIDEO_VIEWS`, and `ENGAGEMENT_TOTAL` are suppressed on Instagram PARTIAL mode, emitting a `PROVIDER_PARTIAL` operational health signal or `METRIC_UNAVAILABLE` with explicit component reasons.
 6. **Bop-Authored vs External Organic**:
    - Posts are tagged with `is_bop_authored` and `source_label` ("Published by Bop Social" vs "Organic / External").
 
@@ -148,3 +155,27 @@ Every persisted signal stores comprehensive structured `evidence`:
 ## 9. Future AI Boundary
 
 Future phases (BS-5+) that introduce LLM-based narrative generation or automated PDF reports must consume the machine-readable fields of `BusinessSignal` (`observed_value`, `baseline_value`, `relative_delta`, `confidence_level`, `evidence`) as immutable truth inputs. The LLM must not invent metrics, re-estimate baselines, or alter confidence tiers.
+
+---
+
+## 10. Operational Rollback Procedure (BS-INFRA-1 Compliant)
+
+Container file-copy hacks (`docker cp`) are strictly prohibited under the BS-INFRA-1 local runtime isolation model. Code updates and rollbacks must follow the canonical Git + Bop Social runtime procedure:
+
+```powershell
+# 1. Rollback database migrations if schema changes are to be reverted
+docker compose exec backend python manage.py migrate social_stats <target_migration>
+
+# 2. Checkout target known-good commit or branch
+git checkout <known-good-ref>
+
+# 3. Canonical stack startup and rebuild via Bop-owned runner
+.\scripts\start-bopsocial.ps1
+```
+
+If a clean container rebuild is required without touching persistent database volumes:
+```powershell
+.\scripts\stop-bopsocial.ps1 -Down
+.\scripts\start-bopsocial.ps1
+```
+This guarantees image immutability (`bopsocial-backend:local`, `bopsocial-frontend:local`) and prevents runtime drift.

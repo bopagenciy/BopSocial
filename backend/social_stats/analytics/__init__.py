@@ -32,6 +32,9 @@ from .derived import (
     calculate_engagement_rate_reach,
     calculate_engagement_rate_followers,
     calculate_follower_growth_rate,
+    can_derive_metric,
+    derive_canonical_engagement_total,
+    CANONICAL_REQUIRED_COMPONENTS,
 )
 from .ingestion import (
     compute_dimensions_hash,
@@ -114,6 +117,9 @@ __all__ = [
     "calculate_engagement_rate_reach",
     "calculate_engagement_rate_followers",
     "calculate_follower_growth_rate",
+    "can_derive_metric",
+    "derive_canonical_engagement_total",
+    "CANONICAL_REQUIRED_COMPONENTS",
     "compute_dimensions_hash",
     "find_publish_log_and_unified_post",
     "ingest_metric_snapshot",

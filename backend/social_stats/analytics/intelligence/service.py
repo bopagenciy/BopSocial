@@ -26,6 +26,7 @@ from social_stats.models import (
 from ..capabilities import SupportLevel, get_provider_capability
 from ..freshness import get_client_platform_freshness
 from ..registry import AggregationBehavior, CANONICAL_METRICS
+from ..derived import can_derive_metric, derive_canonical_engagement_total
 from .baselines import (
     calculate_deltas,
     calculate_mad,
@@ -90,6 +91,7 @@ def generate_business_signals(
     date_from: Optional[date] = None,
     date_to: Optional[date] = None,
     platform: Optional[str] = None,
+    metric: Optional[str] = None,
     persist: bool = False,
 ) -> List[Dict[str, Any]]:
     """
@@ -163,6 +165,40 @@ def generate_business_signals(
                 cohort_hash="provider_cap",
             )
             signals.append(sig)
+
+            # Explicit unavailable signal for ENGAGEMENT_TOTAL if requested or evaluating partial capability
+            if metric and metric.upper() == "ENGAGEMENT_TOTAL":
+                unavail_sig = _build_signal_dict(
+                    client=client,
+                    platform=p_name,
+                    signal_type=SignalType.METRIC_UNAVAILABLE,
+                    metric="ENGAGEMENT_TOTAL",
+                    scope="account",
+                    object_id="",
+                    unified_post=None,
+                    period_start=start_date,
+                    period_end=end_date,
+                    observed_value=None,
+                    baseline_value=None,
+                    absolute_delta=None,
+                    relative_delta=None,
+                    sample_size=0,
+                    confidence_level="NONE",
+                    direction="NEUTRAL",
+                    severity="INFO",
+                    is_actionable=False,
+                    evidence={
+                        "platform": p_name,
+                        "metric": "ENGAGEMENT_TOTAL",
+                        "is_available": False,
+                        "reason": "missing_required_components",
+                        "missing_components": ["SHARES"],
+                        "permission_guidance": "Not available with current Instagram permissions",
+                    },
+                    context={"platform": p_name, "metric": "Total Engagement"},
+                    cohort_hash=f"unavailable:{p_name}:ENGAGEMENT_TOTAL",
+                )
+                signals.append(unavail_sig)
 
         if is_stale:
             sig = _build_signal_dict(
@@ -240,6 +276,25 @@ def generate_business_signals(
         pdata["is_bop_authored"] = is_bop
         pdata["unified_post_id"] = unified_id
 
+        # Derive canonical ENGAGEMENT_TOTAL only if all required components exist and are available
+        if "ENGAGEMENT_TOTAL" not in pdata["metrics"]:
+            plat_cap = capabilities_by_plat.get(pdata["platform"])
+            cap_mode = plat_cap.overall_support if plat_cap else None
+            can_der, _, _ = can_derive_metric(
+                platform=pdata["platform"],
+                capability_mode=cap_mode,
+                metric="ENGAGEMENT_TOTAL",
+                available_source_metrics=pdata["metrics"],
+            )
+            if can_der:
+                tot = derive_canonical_engagement_total(
+                    source_metrics=pdata["metrics"],
+                    platform=pdata["platform"],
+                    capability_mode=cap_mode,
+                )
+                if tot is not None:
+                    pdata["metrics"]["ENGAGEMENT_TOTAL"] = tot
+
     # Group posts into cohorts by (platform, format)
     cohorts: Dict[Tuple[str, str], List[Dict[str, Any]]] = {}
     for pdata in posts_by_key.values():
@@ -253,15 +308,31 @@ def generate_business_signals(
         fresh = freshness_by_plat.get(plat, {})
         is_stale = fresh.get("is_stale", False)
 
-        # Metrics to analyze: REACTIONS, COMMENTS (and ENGAGEMENT_TOTAL if full capability)
+        # Metrics to analyze: REACTIONS, COMMENTS (and ENGAGEMENT_TOTAL only if fully supported and all components exist)
         candidate_metrics = ["REACTIONS", "COMMENTS"]
-        if not is_partial:
+        can_cohort_eng, _, _ = can_derive_metric(
+            platform=plat,
+            capability_mode=cap.overall_support if cap else None,
+            metric="ENGAGEMENT_TOTAL",
+            available_source_metrics=set().union(*(p["metrics"].keys() for p in cohort_posts)) if cohort_posts else set(),
+        )
+        if can_cohort_eng and not is_partial and any("ENGAGEMENT_TOTAL" in p["metrics"] for p in cohort_posts):
             candidate_metrics.append("ENGAGEMENT_TOTAL")
 
-        for metric in candidate_metrics:
-            values = [p["metrics"].get(metric, Decimal("0")) for p in cohort_posts if metric in p["metrics"]]
+        # If a specific metric was requested, filter candidate metrics
+        if metric:
+            target_metric = metric.upper()
+            if target_metric in candidate_metrics:
+                cohort_eval_metrics = [target_metric]
+            else:
+                cohort_eval_metrics = []
+        else:
+            cohort_eval_metrics = candidate_metrics
+
+        for m_name in cohort_eval_metrics:
+            values = [p["metrics"].get(m_name, Decimal("0")) for p in cohort_posts if m_name in p["metrics"]]
             sample_size = len(values)
-            cohort_hash = f"cohort:{plat}:{fmt}:{metric}"
+            cohort_hash = f"cohort:{plat}:{fmt}:{m_name}"
 
             if sample_size < SAMPLE_THRESHOLDS["MINIMUM_FOR_SIGNAL"]:
                 # Small sample protection
@@ -269,7 +340,7 @@ def generate_business_signals(
                     client=client,
                     platform=plat,
                     signal_type=SignalType.INSUFFICIENT_SAMPLE,
-                    metric=metric,
+                    metric=m_name,
                     scope="post",
                     object_id="",
                     unified_post=None,
@@ -285,14 +356,14 @@ def generate_business_signals(
                     severity="INFO",
                     is_actionable=False,
                     evidence={
-                        "cohort": {"platform": plat, "format": fmt, "metric": metric},
+                        "cohort": {"platform": plat, "format": fmt, "metric": m_name},
                         "sample_size": sample_size,
                         "min_required": SAMPLE_THRESHOLDS["MINIMUM_FOR_SIGNAL"],
                     },
                     context={
                         "platform": plat,
                         "format": fmt,
-                        "metric": metric,
+                        "metric": m_name,
                         "sample_size": sample_size,
                         "min_required": SAMPLE_THRESHOLDS["MINIMUM_FOR_SIGNAL"],
                     },
@@ -309,9 +380,9 @@ def generate_business_signals(
 
             # Check individual posts vs cohort median
             for p in cohort_posts:
-                if metric not in p["metrics"]:
+                if m_name not in p["metrics"]:
                     continue
-                obs_val = p["metrics"][metric]
+                obs_val = p["metrics"][m_name]
                 abs_delta, rel_delta = calculate_deltas(obs_val, cohort_median)
                 tier = classify_performance_tier(rel_delta)
 
@@ -337,7 +408,7 @@ def generate_business_signals(
                     "cohort": {
                         "platform": plat,
                         "format": fmt,
-                        "metric": metric,
+                        "metric": m_name,
                         "window_days": window_days,
                     },
                     "is_bop_authored": p["is_bop_authored"],
@@ -354,7 +425,7 @@ def generate_business_signals(
                     client=client,
                     platform=plat,
                     signal_type=sig_type,
-                    metric=metric,
+                    metric=m_name,
                     scope="post",
                     object_id=p["object_id"],
                     unified_post=up_obj,
@@ -373,7 +444,7 @@ def generate_business_signals(
                     context={
                         "platform": plat,
                         "format": fmt,
-                        "metric": metric,
+                        "metric": m_name,
                         "observed_value": obs_val,
                         "baseline_value": cohort_median,
                         "sample_size": sample_size,
@@ -969,9 +1040,10 @@ def get_executive_summary(
 
     # 6. Platform health & capability registry
     creds = list(PlatformCredential.objects.filter(client=client, is_active=True))
+    capabilities_by_plat = {c.platform: get_provider_capability(c.platform, c) for c in creds}
     platform_health = {}
     for c in creds:
-        cap = get_provider_capability(c.platform, c)
+        cap = capabilities_by_plat[c.platform]
         fresh = get_client_platform_freshness(client.id, c.platform)
         status_label = "HEALTHY"
         if fresh.get("is_stale"):
@@ -1025,6 +1097,52 @@ def get_executive_summary(
             "cohort_hash": s["cohort_hash"],
         })
 
+    # 8. Engagement Total Availability & Integrity Guard
+    target_platform = (platform or "").lower()
+    ig_cap = capabilities_by_plat.get("instagram")
+    is_ig_partial = ig_cap and ig_cap.overall_support == SupportLevel.PARTIAL
+
+    if target_platform == "instagram" and is_ig_partial:
+        has_ig_shares = SocialMetricSnapshot.objects.filter(
+            client=client,
+            platform="instagram",
+            normalized_metric="SHARES",
+            bucket_timestamp__date__range=(start_date, end_date),
+        ).exists()
+        can_derive_ig, reason_ig, missing_ig = can_derive_metric(
+            platform="instagram",
+            capability_mode=SupportLevel.PARTIAL,
+            metric="ENGAGEMENT_TOTAL",
+            available_source_metrics={"REACTIONS": 1, "COMMENTS": 1, "SHARES": 1} if has_ig_shares else {"REACTIONS": 1, "COMMENTS": 1},
+        )
+        engagement_total_meta = {
+            "metric": "ENGAGEMENT_TOTAL",
+            "is_available": can_derive_ig,
+            "value": None,
+            "reason": reason_ig if not can_derive_ig else None,
+            "missing_components": missing_ig if not can_derive_ig else [],
+            "message": "Not available with current Instagram permissions" if not can_derive_ig else None,
+        }
+    elif target_platform == "facebook":
+        engagement_total_meta = {
+            "metric": "ENGAGEMENT_TOTAL",
+            "is_available": True,
+            "value": None,
+            "reason": None,
+            "missing_components": [],
+            "message": None,
+        }
+    else:
+        has_partial_channel = any(c.overall_support == SupportLevel.PARTIAL for c in capabilities_by_plat.values())
+        engagement_total_meta = {
+            "metric": "ENGAGEMENT_TOTAL",
+            "is_available": not has_partial_channel,
+            "value": None,
+            "reason": "missing_required_components" if has_partial_channel else None,
+            "missing_components": ["SHARES"] if has_partial_channel else [],
+            "message": "Instagram component metrics (Shares) unavailable under current permissions" if has_partial_channel else None,
+        }
+
     return {
         "client_id": client.id,
         "platform": platform or "all",
@@ -1032,6 +1150,7 @@ def get_executive_summary(
             "start": str(start_date),
             "end": str(end_date),
         },
+        "engagement_total": engagement_total_meta,
         "key_signals": formatted_signals,
         "best_performing_content": formatted_signals[:5] if best_content else [],
         "weakest_performing_content": [s for s in formatted_signals if s["signal_type"] == SignalType.CONTENT_UNDERPERFORMING][:5],

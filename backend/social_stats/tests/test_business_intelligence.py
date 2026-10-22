@@ -25,6 +25,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from social_stats.analytics.capabilities import SupportLevel, get_provider_capability
+from social_stats.analytics import can_derive_metric, derive_canonical_engagement_total
 from social_stats.analytics.intelligence.baselines import (
     calculate_deltas,
     calculate_mad,
@@ -521,3 +522,152 @@ class TestBusinessIntelligenceAPI(TestCase):
         unauth_client = APIClient()
         res = unauth_client.get(f"/api/analytics/insights/?client_id={self.client_a.id}")
         self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
+
+
+class InstagramPartialMetricIntegrityTests(TestCase):
+    """
+    Section I, J, K, L, M:
+    Tests verifying Instagram PARTIAL capability metric integrity:
+    - ENGAGEMENT_TOTAL requires REACTIONS, COMMENTS, SHARES.
+    - Missing SHARES is NOT treated as zero.
+    - Explicit SHARES=0 is valid data.
+    - Signal suppression for incomplete derived metrics.
+    - API exposure of unavailable metadata without fake zeros.
+    """
+
+    def setUp(self):
+        self.user = User.objects.create_user(username="ig_integrity_user", password="password")
+        self.client_ig = Client.objects.create(
+            name="IG Integrity Client",
+            company="IG Integrity Corp",
+            email="ig_integrity@example.com",
+            owner_user=self.user,
+        )
+        self.cred = PlatformCredential.objects.create(
+            client=self.client_ig,
+            platform="instagram",
+            scope="instagram_basic,pages_show_list",
+            access_token="fake_ig_token",
+            is_active=True,
+        )
+        self.api = APIClient()
+        self.api.force_authenticate(user=self.user)
+
+    def test_can_derive_metric_guard(self):
+        # Case 1: Missing SHARES in dict -> unavailable
+        can_derive, reason, missing = can_derive_metric(
+            platform="instagram",
+            capability_mode="PARTIAL",
+            metric="ENGAGEMENT_TOTAL",
+            available_source_metrics={"REACTIONS": 50, "COMMENTS": 10},
+        )
+        self.assertFalse(can_derive)
+        self.assertEqual(reason, "missing_required_components")
+        self.assertIn("SHARES", missing)
+
+        # Case 2: In list of metric keys without SHARES
+        can_derive_list, _, missing_list = can_derive_metric(
+            platform="instagram",
+            capability_mode="PARTIAL",
+            metric="ENGAGEMENT_TOTAL",
+            available_source_metrics=["REACTIONS", "COMMENTS"],
+        )
+        self.assertFalse(can_derive_list)
+        self.assertIn("SHARES", missing_list)
+
+    def test_shares_zero_valid_vs_shares_unavailable(self):
+        # Test 1: Explicit SHARES = 0 is valid numeric data
+        source_with_zero = {"REACTIONS": 50, "COMMENTS": 20, "SHARES": 0}
+        can_derive, reason, missing = can_derive_metric(
+            platform="facebook",
+            capability_mode="FULL",
+            metric="ENGAGEMENT_TOTAL",
+            available_source_metrics=source_with_zero,
+        )
+        self.assertTrue(can_derive)
+        self.assertIsNone(reason)
+        self.assertEqual(missing, [])
+        derived_sum = derive_canonical_engagement_total(source_with_zero, "facebook")
+        self.assertEqual(derived_sum, Decimal("70"))
+
+        # Test 2: SHARES missing / None is unavailable
+        source_with_none = {"REACTIONS": 50, "COMMENTS": 20, "SHARES": None}
+        can_derive_none, reason_none, missing_none = can_derive_metric(
+            platform="facebook",
+            capability_mode="FULL",
+            metric="ENGAGEMENT_TOTAL",
+            available_source_metrics=source_with_none,
+        )
+        self.assertFalse(can_derive_none)
+        self.assertEqual(reason_none, "missing_required_components")
+        self.assertIn("SHARES", missing_none)
+        self.assertIsNone(derive_canonical_engagement_total(source_with_none, "facebook"))
+
+    def test_full_capability_derivation(self):
+        # Fully supported provider with all required components
+        full_source = {"REACTIONS": Decimal("100"), "COMMENTS": Decimal("25"), "SHARES": Decimal("15")}
+        total = derive_canonical_engagement_total(full_source, platform="facebook")
+        self.assertEqual(total, Decimal("140"))
+
+    def test_instagram_partial_signal_suppression_for_missing_shares(self):
+        # Ingest 5 Instagram posts with REACTIONS and COMMENTS only (no SHARES)
+        base_time = timezone.now() - timedelta(days=5)
+        for i in range(5):
+            SocialMetricSnapshot.objects.create(
+                client=self.client_ig,
+                platform="instagram",
+                metric_scope="post",
+                object_id=f"ig_post_{i}",
+                normalized_metric="REACTIONS",
+                metric_value=Decimal(str(20 + i * 5)),
+                raw_metric_name="like_count",
+                bucket_timestamp=base_time + timedelta(hours=i),
+                metadata={"media_type": "image"},
+            )
+            SocialMetricSnapshot.objects.create(
+                client=self.client_ig,
+                platform="instagram",
+                metric_scope="post",
+                object_id=f"ig_post_{i}",
+                normalized_metric="COMMENTS",
+                metric_value=Decimal(str(5 + i)),
+                raw_metric_name="comments_count",
+                bucket_timestamp=base_time + timedelta(hours=i),
+                metadata={"media_type": "image"},
+            )
+
+        # Generate signals
+        signals = generate_business_signals(client_id=self.client_ig.id, platform="instagram")
+
+        # Verify NO signal uses ENGAGEMENT_TOTAL for content performance, format, or time
+        eng_total_content_signals = [
+            s for s in signals
+            if s.get("metric") == "ENGAGEMENT_TOTAL" and s.get("signal_type") in (
+                SignalType.CONTENT_OUTPERFORMING,
+                SignalType.CONTENT_UNDERPERFORMING,
+                SignalType.FORMAT_OUTPERFORMING,
+                SignalType.POSTING_TIME_OUTPERFORMING,
+            )
+        ]
+        self.assertEqual(len(eng_total_content_signals), 0)
+
+        # Content signals should exist based on supported metric (REACTIONS)
+        reaction_signals = [s for s in signals if s.get("metric") == "REACTIONS"]
+        self.assertGreater(len(reaction_signals), 0)
+
+    def test_api_executive_summary_and_insights_unavailable_engagement_total(self):
+        # Executive summary endpoint
+        res = self.api.get(f"/api/analytics/executive-summary/?client_id={self.client_ig.id}&platform=instagram")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertIn("engagement_total", res.data)
+        eng_meta = res.data["engagement_total"]
+        self.assertFalse(eng_meta["is_available"])
+        self.assertEqual(eng_meta["reason"], "missing_required_components")
+        self.assertIn("SHARES", eng_meta["missing_components"])
+        self.assertIsNone(eng_meta["value"])  # Zero is NOT fabricated
+
+        # Insights endpoint queried specifically for ENGAGEMENT_TOTAL
+        res_ins = self.api.get(f"/api/analytics/insights/?client_id={self.client_ig.id}&platform=instagram&metric=ENGAGEMENT_TOTAL")
+        self.assertEqual(res_ins.status_code, status.HTTP_200_OK)
+        self.assertFalse(res_ins.data.get("is_available", True))
+        self.assertIn("SHARES", res_ins.data.get("missing_components", []))
