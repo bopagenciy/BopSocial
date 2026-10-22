@@ -671,3 +671,41 @@ class InstagramPartialMetricIntegrityTests(TestCase):
         self.assertEqual(res_ins.status_code, status.HTTP_200_OK)
         self.assertFalse(res_ins.data.get("is_available", True))
         self.assertIn("SHARES", res_ins.data.get("missing_components", []))
+
+    def test_credential_token_fields_deferred_in_intelligence_services(self):
+        """
+        Regression test for BS-4F.1 dry-run defect:
+        Verifies that generate_business_signals and get_executive_summary defer
+        access_token and refresh_token, executing safely even when token decryption fails.
+        """
+        from unittest.mock import patch
+        from cryptography.fernet import InvalidToken
+
+        # Add Facebook credential to test both providers
+        PlatformCredential.objects.create(
+            client=self.client_ig,
+            platform="facebook",
+            scope="pages_show_list,read_insights,pages_manage_posts",
+            access_token="fake_fb_token",
+            is_active=True,
+        )
+
+        with patch("social_stats.fields.decrypt_value", side_effect=InvalidToken):
+            # 1. Direct access to encrypted token field would raise InvalidToken
+            with self.assertRaises(InvalidToken):
+                _ = PlatformCredential.objects.get(id=self.cred.id).access_token
+
+            # 2. generate_business_signals safely defers token fields
+            signals = generate_business_signals(client_id=self.client_ig.id, persist=False)
+            self.assertIsInstance(signals, list)
+
+            # 3. get_executive_summary safely defers token fields
+            summary = get_executive_summary(client_id=self.client_ig.id)
+            self.assertIsInstance(summary, dict)
+
+            # 4. Capabilities resolve correctly without decrypting tokens
+            p_health = summary.get("platform_health", {})
+            self.assertIn("instagram", p_health)
+            self.assertIn("facebook", p_health)
+            self.assertEqual(p_health["instagram"]["overall_support"], "PARTIAL")
+            self.assertEqual(p_health["facebook"]["overall_support"], "FULL")

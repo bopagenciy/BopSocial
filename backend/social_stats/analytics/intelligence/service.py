@@ -112,7 +112,7 @@ def generate_business_signals(
     baseline_end = start_date - timedelta(days=1)
 
     # 1. Inspect credentials, capability modes, and freshness
-    creds_qs = PlatformCredential.objects.filter(client=client, is_active=True)
+    creds_qs = PlatformCredential.objects.defer("access_token", "refresh_token").filter(client=client, is_active=True)
     if platform and platform != "all":
         creds_qs = creds_qs.filter(platform=platform)
 
@@ -1039,7 +1039,7 @@ def get_executive_summary(
     }
 
     # 6. Platform health & capability registry
-    creds = list(PlatformCredential.objects.filter(client=client, is_active=True))
+    creds = list(PlatformCredential.objects.defer("access_token", "refresh_token").filter(client=client, is_active=True))
     capabilities_by_plat = {c.platform: get_provider_capability(c.platform, c) for c in creds}
     platform_health = {}
     for c in creds:
