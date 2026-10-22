@@ -18,7 +18,7 @@ class OpenAINarrativeProvider(BaseNarrativeProvider):
     Adapter for OpenAI models.
     """
 
-    def __init__(self, model_name: str = "gpt-4o-mini"):
+    def __init__(self, model_name: str = "gpt-4o-mini", **kwargs):
         super().__init__(model_name=model_name)
 
     def generate(

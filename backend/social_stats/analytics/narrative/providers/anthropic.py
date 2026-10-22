@@ -18,7 +18,7 @@ class AnthropicNarrativeProvider(BaseNarrativeProvider):
     Adapter for Anthropic Claude models.
     """
 
-    def __init__(self, model_name: str = "claude-haiku-4-5-20251001"):
+    def __init__(self, model_name: str = "claude-haiku-4-5-20251001", **kwargs):
         super().__init__(model_name=model_name)
 
     def generate(

@@ -18,7 +18,7 @@ class GeminiNarrativeProvider(BaseNarrativeProvider):
     Adapter for Google Gemini models.
     """
 
-    def __init__(self, model_name: str = "gemini-1.5-flash"):
+    def __init__(self, model_name: str = "gemini-1.5-flash", **kwargs):
         super().__init__(model_name=model_name)
 
     def generate(
