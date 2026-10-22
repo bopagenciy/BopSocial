@@ -60,7 +60,8 @@ REPORT_STRINGS = {
         "kpi_saves": "Guardados",
         "kpi_video_views": "Reproducciones de Video",
         "kpi_clicks_total": "Clics Totales",
-        "kpi_reach": "Alcance Diario Promedio",
+        "kpi_reach": "Alcance",
+        "kpi_average_daily_reach": "Alcance diario promedio",
         "kpi_profile_views": "Visitas al Perfil",
         
         # Table Headers & Metrics
@@ -84,6 +85,7 @@ REPORT_STRINGS = {
         "unavailable": "No disponible",
         "gauge_note": "Medición puntual de estado",
         "reach_note": "Audiencias únicas diarias; no acumulable en el tiempo",
+        "average_daily_reach_note": "Media aritmética de observaciones diarias; no acumulable en el tiempo",
         "partial_mode": "Capacidad parcial",
         "full_mode": "Soporte completo",
         "fresh": "Al día",
@@ -111,7 +113,7 @@ REPORT_STRINGS = {
             "Comparación contra medianas: Las comparaciones de rendimiento de contenido se calculan contra la mediana estadística del cohorte comparable (plataforma + formato), evitando distorsiones por valores atípicos.",
             "Calibración de confianza: Los niveles de confianza (Alta, Media, Baja, Datos insuficientes) dependen estrictamente del tamaño muestral (n) y la frescura de los datos.",
             "Integridad de métricas no disponibles: Las métricas no soportadas por la API del proveedor (como alcance o compartidos en Instagram en modo parcial) se reportan explícitamente como no disponibles y jamás se sintetizan como cero.",
-            "Semántica de acumulación: El alcance (Reach) representa audiencias únicas diarias y no se suma a través de días para evitar inflación artificial. El total de seguidores representa una medición de estado puntual.",
+            "Alcance diario promedio: Representa la media aritmética de las observaciones diarias de alcance reportadas por el proveedor y no equivale a la audiencia única total alcanzada a lo largo del período completo de reporte. El alcance diario jamás se suma entre días para evitar duplicación artificial de audiencias.",
             "Sin sesgo algorítmico ni IA generativa: Todas las conclusiones se derivan determinísticamente de datos verificados en base de datos sin inferencias de cajas negras ni alucinaciones."
         ],
     },
@@ -149,7 +151,8 @@ REPORT_STRINGS = {
         "kpi_saves": "Saves",
         "kpi_video_views": "Video Views",
         "kpi_clicks_total": "Total Clicks",
-        "kpi_reach": "Average Daily Reach",
+        "kpi_reach": "Reach",
+        "kpi_average_daily_reach": "Average Daily Reach",
         "kpi_profile_views": "Profile Views",
         
         # Table Headers & Metrics
@@ -173,6 +176,7 @@ REPORT_STRINGS = {
         "unavailable": "Unavailable",
         "gauge_note": "Point-in-time gauge value",
         "reach_note": "Daily unique audiences; non-aggregatable over time",
+        "average_daily_reach_note": "Arithmetic mean of daily observations; non-aggregatable over time",
         "partial_mode": "Partial capability",
         "full_mode": "Full support",
         "fresh": "Fresh",
@@ -200,7 +204,7 @@ REPORT_STRINGS = {
             "Median-based comparisons: Content performance comparisons are calculated against the statistical median of comparable cohorts (platform + format), preventing outlier distortion.",
             "Confidence calibration: Confidence tiers (High, Medium, Low, Insufficient data) are strictly calibrated by sample size (n) and data freshness.",
             "Unavailable metric integrity: Metrics unsupported by provider APIs (such as Reach or Shares on Instagram under partial mode) are explicitly marked unavailable and never converted into zero.",
-            "Aggregation semantics: Reach represents unique daily audiences and is never summed across days to prevent artificial audience inflation. Total followers represents a point-in-time gauge.",
+            "Average Daily Reach: Represents the arithmetic mean of available daily provider-reported reach observations and is not equivalent to total unique audience reached across the complete reporting period. Daily reach is never summed across days to prevent artificial audience duplication.",
             "No algorithmic black boxes or generative AI: All findings are deterministically derived from verified database records without fabricated narrative or hallucinated benchmarks."
         ],
     }

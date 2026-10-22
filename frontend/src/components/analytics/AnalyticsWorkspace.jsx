@@ -31,6 +31,7 @@ const METRIC_CONFIG = {
   PROFILE_VIEWS:        { label: 'Profile Views',         icon: Eye,          color: '#f59e0b' },
   VIDEO_VIEWS:          { label: 'Video Views',           icon: Play,         color: '#06b6d4' },
   REACH:                { label: 'Reach',                 icon: Users,        color: '#00d7ff', nonAggregatable: true },
+  AVERAGE_DAILY_REACH:  { label: 'Average Daily Reach',   icon: Users,        color: '#00d7ff', nonAggregatable: true },
 };
 
 function fmt(n) {

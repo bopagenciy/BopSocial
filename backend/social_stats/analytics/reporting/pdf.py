@@ -361,12 +361,18 @@ def render_report_html(report_data: Dict[str, Any], language: str = "es") -> str
         else:
             curr_val = k.get("current_value")
             prev_val = k.get("baseline_value")
-            curr_str = f'<span class="val-strong">{int(curr_val):,}</span>' if curr_val is not None else "—"
-            prev_str = f"{int(prev_val):,}" if prev_val is not None else "—"
+            if k.get("metric_key") == "AVERAGE_DAILY_REACH":
+                curr_str = f'<span class="val-strong">{float(curr_val):,.1f}</span>' if curr_val is not None else "—"
+                prev_str = f"{float(prev_val):,.1f}" if prev_val is not None else "—"
+            else:
+                curr_str = f'<span class="val-strong">{int(curr_val):,}</span>' if curr_val is not None else "—"
+                prev_str = f"{int(prev_val):,}" if prev_val is not None else "—"
             delta_str = escape(k.get("delta_display", "—"))
 
             if k.get("is_gauge"):
                 curr_str += f' <span style="font-size:7pt; color:{colors["text_tertiary"]};">({escape(strings["gauge_note"])})</span>'
+            elif k.get("metric_key") == "AVERAGE_DAILY_REACH":
+                curr_str += f' <span style="font-size:7pt; color:{colors["text_tertiary"]};">({escape(strings.get("average_daily_reach_note", strings["reach_note"]))})</span>'
             elif k.get("is_non_aggregatable"):
                 curr_str += f' <span style="font-size:7pt; color:{colors["text_tertiary"]};">({escape(strings["reach_note"])})</span>'
 

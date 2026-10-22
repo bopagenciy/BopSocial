@@ -64,6 +64,7 @@ def build_executive_report_data(
     platform: Optional[str] = None,
     language: str = "es",
     report_type: str = "EXECUTIVE",
+    candidate_kpis: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     """
     Builds a canonical, deterministic JSON-serializable executive report payload.
@@ -144,17 +145,28 @@ def build_executive_report_data(
     )
 
     # 4. KPI Overview Construction (With Strict Metric Semantics)
-    CANDIDATE_KPIS = [
-        "FOLLOWERS_TOTAL",
-        "FOLLOWERS_NET_CHANGE",
-        "ENGAGEMENT_TOTAL",
-        "REACTIONS",
-        "COMMENTS",
-        "SHARES",
-        "VIDEO_VIEWS",
-        "PROFILE_VIEWS",
-        "REACH",
-    ]
+    if candidate_kpis is not None:
+        CANDIDATE_KPIS = candidate_kpis
+    else:
+        has_provider_period_reach = rollups_qs.filter(
+            normalized_metric="REACH",
+            period__in=["month", "custom", "total", "quarter", "year", "period"],
+        ).exists()
+
+        CANDIDATE_KPIS = [
+            "FOLLOWERS_TOTAL",
+            "FOLLOWERS_NET_CHANGE",
+            "ENGAGEMENT_TOTAL",
+            "REACTIONS",
+            "COMMENTS",
+            "SHARES",
+            "VIDEO_VIEWS",
+            "PROFILE_VIEWS",
+        ]
+        if has_provider_period_reach:
+            CANDIDATE_KPIS.append("REACH")
+        else:
+            CANDIDATE_KPIS.append("AVERAGE_DAILY_REACH")
 
     kpis_list = []
     # Identify which metrics are unsupported/partially supported per active platform
@@ -165,14 +177,14 @@ def build_executive_report_data(
         comparability_warning = None
 
         if platform_filter == "instagram":
-            if m_key in ["SHARES", "SAVES", "REACH", "VIDEO_VIEWS", "ENGAGEMENT_TOTAL"]:
+            if m_key in ["SHARES", "SAVES", "REACH", "AVERAGE_DAILY_REACH", "VIDEO_VIEWS", "ENGAGEMENT_TOTAL"]:
                 is_available = False
                 unavailable_reason = "No soportado con los permisos actuales de Instagram" if language == "es" else "Unsupported with current Instagram permissions"
         elif not platform_filter:
             # Multi-platform view: if all connected platforms lack it
             all_lacking = True
             for p_name, cap in capabilities_by_plat.items():
-                if p_name == "instagram" and m_key in ["SHARES", "SAVES", "REACH", "VIDEO_VIEWS", "ENGAGEMENT_TOTAL"]:
+                if p_name == "instagram" and m_key in ["SHARES", "SAVES", "REACH", "AVERAGE_DAILY_REACH", "VIDEO_VIEWS", "ENGAGEMENT_TOTAL"]:
                     continue
                 all_lacking = False
             if all_lacking and "instagram" in capabilities_by_plat and len(capabilities_by_plat) == 1:
@@ -181,7 +193,9 @@ def build_executive_report_data(
 
         label = strings.get(f"kpi_{m_key.lower()}", m_key)
         is_gauge = (m_key == "FOLLOWERS_TOTAL")
-        is_non_aggregatable = (m_key == "REACH")
+        is_non_aggregatable = (m_key in ["REACH", "AVERAGE_DAILY_REACH"])
+        source_metric = "REACH" if m_key in ["REACH", "AVERAGE_DAILY_REACH"] else m_key
+        aggregation = "DAILY_AVERAGE" if m_key == "AVERAGE_DAILY_REACH" else ("PROVIDER_PERIOD" if m_key == "REACH" else ("POINT_IN_TIME" if is_gauge else "SUM"))
 
         curr_val = None
         base_val = None
@@ -198,14 +212,23 @@ def build_executive_report_data(
                 latest_base = baseline_rollups_qs.filter(normalized_metric=m_key).order_by("-period_start").first()
                 if latest_base:
                     base_val = latest_base.metric_value
-            elif is_non_aggregatable:
+            elif m_key == "AVERAGE_DAILY_REACH":
                 # Average daily reach (never sum across days!)
-                avg_curr = rollups_qs.filter(normalized_metric=m_key).aggregate(val=Avg("metric_value"))["val"]
+                avg_curr = rollups_qs.filter(normalized_metric="REACH").aggregate(val=Avg("metric_value"))["val"]
                 if avg_curr is not None:
                     curr_val = Decimal(str(avg_curr)).quantize(Decimal("0.0001"))
-                avg_base = baseline_rollups_qs.filter(normalized_metric=m_key).aggregate(val=Avg("metric_value"))["val"]
+                avg_base = baseline_rollups_qs.filter(normalized_metric="REACH").aggregate(val=Avg("metric_value"))["val"]
                 if avg_base is not None:
                     base_val = Decimal(str(avg_base)).quantize(Decimal("0.0001"))
+                comparability_warning = strings.get("average_daily_reach_note", strings["reach_note"])
+            elif m_key == "REACH":
+                # Provider-supplied period reach
+                period_curr = rollups_qs.filter(normalized_metric="REACH", period__in=["month", "custom", "total", "quarter", "year", "period"]).first()
+                if period_curr:
+                    curr_val = period_curr.metric_value
+                period_base = baseline_rollups_qs.filter(normalized_metric="REACH", period__in=["month", "custom", "total", "quarter", "year", "period"]).first()
+                if period_base:
+                    base_val = period_base.metric_value
                 comparability_warning = strings["reach_note"]
             else:
                 # Aggregatable metrics: sum rollups
@@ -226,6 +249,9 @@ def build_executive_report_data(
 
         kpi_entry = {
             "metric_key": m_key,
+            "metric": m_key,
+            "source_metric": source_metric,
+            "aggregation": aggregation,
             "label": label,
             "is_available": is_available,
             "is_gauge": is_gauge,
@@ -363,9 +389,9 @@ def build_executive_report_data(
         avail_m = ["FOLLOWERS_TOTAL", "REACTIONS", "COMMENTS"]
         unavail_m = []
         if status_mode == "FULL":
-            avail_m.extend(["SHARES", "SAVES", "CLICKS_TOTAL", "VIDEO_VIEWS", "ENGAGEMENT_TOTAL", "REACH"])
+            avail_m.extend(["SHARES", "SAVES", "CLICKS_TOTAL", "VIDEO_VIEWS", "ENGAGEMENT_TOTAL", "REACH", "AVERAGE_DAILY_REACH"])
         else:
-            unavail_m = ["SHARES", "SAVES", "REACH", "VIDEO_VIEWS", "ENGAGEMENT_TOTAL"]
+            unavail_m = ["SHARES", "SAVES", "REACH", "AVERAGE_DAILY_REACH", "VIDEO_VIEWS", "ENGAGEMENT_TOTAL"]
 
         platform_breakdown.append({
             "platform": p_name,

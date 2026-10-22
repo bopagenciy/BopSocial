@@ -136,9 +136,12 @@ class ExecutiveReportingTests(TestCase):
         self.assertTrue(kpis["FOLLOWERS_TOTAL"]["is_gauge"])
         self.assertEqual(kpis["FOLLOWERS_TOTAL"]["current_value"], 55.0)
 
-        # Reach = daily average 150, NOT sum (300)
-        self.assertTrue(kpis["REACH"]["is_non_aggregatable"])
-        self.assertEqual(kpis["REACH"]["current_value"], 150.0)
+        # Reach = daily average 150 under AVERAGE_DAILY_REACH, NOT sum (300), and never plain REACH
+        self.assertIn("AVERAGE_DAILY_REACH", kpis)
+        self.assertNotIn("REACH", kpis)
+        self.assertTrue(kpis["AVERAGE_DAILY_REACH"]["is_non_aggregatable"])
+        self.assertEqual(kpis["AVERAGE_DAILY_REACH"]["current_value"], 150.0)
+        self.assertEqual(kpis["AVERAGE_DAILY_REACH"]["label"], "Alcance diario promedio")
 
     def test_instagram_partial_integrity_no_fake_zeros(self):
         """
@@ -164,13 +167,14 @@ class ExecutiveReportingTests(TestCase):
 
         kpis = {k["metric_key"]: k for k in report["kpi_overview"]["kpis"]}
 
-        # SHARES and REACH must be unavailable
+        # SHARES and AVERAGE_DAILY_REACH must be unavailable
         self.assertFalse(kpis["SHARES"]["is_available"])
         self.assertIsNone(kpis["SHARES"]["current_value"])
         self.assertIn("No soportado", kpis["SHARES"]["unavailable_reason"])
 
-        self.assertFalse(kpis["REACH"]["is_available"])
-        self.assertIsNone(kpis["REACH"]["current_value"])
+        self.assertFalse(kpis["AVERAGE_DAILY_REACH"]["is_available"])
+        self.assertIsNone(kpis["AVERAGE_DAILY_REACH"]["current_value"])
+        self.assertIn("No soportado", kpis["AVERAGE_DAILY_REACH"]["unavailable_reason"])
 
     def test_insufficient_sample_protection(self):
         """
@@ -353,3 +357,129 @@ class ExecutiveReportingTests(TestCase):
         res_delete = self.api_client1.delete(f"/api/analytics/reports/{report_id}/")
         self.assertEqual(res_delete.status_code, status.HTTP_204_NO_CONTENT)
         self.assertEqual(ExecutiveReport.objects.count(), 0)
+
+    def test_reach_reporting_semantic_integrity(self):
+        """
+        BS-4G.0A Reach Reporting Semantic Integrity:
+        1. Multi-day derived reach from daily observations (1000, 1500, 900) derives
+           1133.3333 under identity AVERAGE_DAILY_REACH.
+        2. Derived value is never 3400 (summed).
+        3. Label is 'Alcance diario promedio' (ES) and 'Average Daily Reach' (EN).
+        4. Provider-supplied period reach retains REACH ('Alcance' / 'Reach').
+        5. Instagram PARTIAL marks both REACH and AVERAGE_DAILY_REACH unavailable (never fake 0).
+        6. PDF / HTML rendering contains the explicit methodology definition and labels.
+        """
+        # Part 1 & 2: Daily reach observations (1000, 1500, 900)
+        SocialMetricRollup.objects.create(
+            client=self.client1, platform="facebook", metric_scope="account",
+            object_id="fb_page_reach", normalized_metric="REACH", period="day",
+            period_start=date(2026, 10, 2), metric_value=Decimal("1000.0000"), sample_count=1
+        )
+        SocialMetricRollup.objects.create(
+            client=self.client1, platform="facebook", metric_scope="account",
+            object_id="fb_page_reach", normalized_metric="REACH", period="day",
+            period_start=date(2026, 10, 4), metric_value=Decimal("1500.0000"), sample_count=1
+        )
+        SocialMetricRollup.objects.create(
+            client=self.client1, platform="facebook", metric_scope="account",
+            object_id="fb_page_reach", normalized_metric="REACH", period="day",
+            period_start=date(2026, 10, 6), metric_value=Decimal("900.0000"), sample_count=1
+        )
+
+        # Build ES report
+        report_es = build_executive_report_data(
+            client_id=self.client1.id,
+            date_from=self.date_from,
+            date_to=self.date_to,
+            platform="facebook",
+            language="es",
+        )
+        kpis_es = {k["metric_key"]: k for k in report_es["kpi_overview"]["kpis"]}
+
+        # Must be AVERAGE_DAILY_REACH, never plain REACH
+        self.assertIn("AVERAGE_DAILY_REACH", kpis_es)
+        self.assertNotIn("REACH", kpis_es)
+
+        avg_kpi_es = kpis_es["AVERAGE_DAILY_REACH"]
+        # Value is 1133.3333, never 3400
+        self.assertAlmostEqual(avg_kpi_es["current_value"], 1133.3333, places=3)
+        self.assertNotEqual(avg_kpi_es["current_value"], 3400.0)
+        self.assertEqual(avg_kpi_es["source_metric"], "REACH")
+        self.assertEqual(avg_kpi_es["aggregation"], "DAILY_AVERAGE")
+        self.assertTrue(avg_kpi_es["is_non_aggregatable"])
+        self.assertEqual(avg_kpi_es["label"], "Alcance diario promedio")
+        self.assertEqual(
+            avg_kpi_es["comparability_warning"],
+            "Media aritmética de observaciones diarias; no acumulable en el tiempo"
+        )
+
+        # Part 3: English localization
+        report_en = build_executive_report_data(
+            client_id=self.client1.id,
+            date_from=self.date_from,
+            date_to=self.date_to,
+            platform="facebook",
+            language="en",
+        )
+        kpis_en = {k["metric_key"]: k for k in report_en["kpi_overview"]["kpis"]}
+        avg_kpi_en = kpis_en["AVERAGE_DAILY_REACH"]
+        self.assertEqual(avg_kpi_en["label"], "Average Daily Reach")
+        self.assertEqual(
+            avg_kpi_en["comparability_warning"],
+            "Arithmetic mean of daily observations; non-aggregatable over time"
+        )
+
+        # Part 4: Provider-supplied period reach retains REACH
+        # Create a provider period rollup for Client 2
+        SocialMetricRollup.objects.create(
+            client=self.client2, platform="facebook", metric_scope="account",
+            object_id="fb_page_reach_m", normalized_metric="REACH", period="month",
+            period_start=date(2026, 10, 1), metric_value=Decimal("8500.0000"), sample_count=1
+        )
+        report_client2 = build_executive_report_data(
+            client_id=self.client2.id,
+            date_from=self.date_from,
+            date_to=self.date_to,
+            platform="facebook",
+            language="es",
+        )
+        kpis_client2 = {k["metric_key"]: k for k in report_client2["kpi_overview"]["kpis"]}
+        self.assertIn("REACH", kpis_client2)
+        self.assertEqual(kpis_client2["REACH"]["current_value"], 8500.0)
+        self.assertEqual(kpis_client2["REACH"]["label"], "Alcance")
+        self.assertEqual(kpis_client2["REACH"]["aggregation"], "PROVIDER_PERIOD")
+
+        # Part 5: Instagram PARTIAL marks both REACH and AVERAGE_DAILY_REACH unavailable
+        PlatformCredential.objects.create(
+            client=self.client2,
+            platform="instagram",
+            scope="instagram_basic,pages_show_list",
+            access_token="fake_token_2",
+            is_active=True,
+        )
+        report_ig = build_executive_report_data(
+            client_id=self.client2.id,
+            date_from=self.date_from,
+            date_to=self.date_to,
+            platform="instagram",
+            language="es",
+            candidate_kpis=["REACH", "AVERAGE_DAILY_REACH", "SHARES"],
+        )
+        kpis_ig = {k["metric_key"]: k for k in report_ig["kpi_overview"]["kpis"]}
+        self.assertFalse(kpis_ig["REACH"]["is_available"])
+        self.assertIsNone(kpis_ig["REACH"]["current_value"])
+        self.assertFalse(kpis_ig["AVERAGE_DAILY_REACH"]["is_available"])
+        self.assertIsNone(kpis_ig["AVERAGE_DAILY_REACH"]["current_value"])
+
+        # Part 6: PDF / HTML rendering contains the explicit methodology definition and labels
+        html_es = render_report_html(report_es)
+        self.assertIn("Alcance diario promedio", html_es)
+        self.assertIn("1,133.3", html_es)
+        self.assertNotIn("3,400", html_es)
+        self.assertIn("Media aritmética de observaciones diarias; no acumulable en el tiempo", html_es)
+        self.assertIn("Representa la media aritmética de las observaciones diarias de alcance reportadas por el proveedor", html_es)
+
+        html_en = render_report_html(report_en)
+        self.assertIn("Average Daily Reach", html_en)
+        self.assertIn("Represents the arithmetic mean of available daily provider-reported reach observations", html_en)
+        self.assertIn("Daily reach is never summed across days to prevent artificial audience duplication", html_en)
