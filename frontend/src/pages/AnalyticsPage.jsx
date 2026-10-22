@@ -19,6 +19,8 @@ import { TrendingUp, TrendingDown, Minus, RefreshCw, Users, Eye, MousePointer, P
 import DateRangePicker from '../components/ui/DateRangePicker';
 import SocialPlatformIcon from '../components/ui/SocialPlatformIcon';
 import PageHeader from '../components/layout/PageHeader';
+import { useSearchParams } from 'react-router-dom';
+import AnalyticsWorkspace from '../components/analytics/AnalyticsWorkspace';
 import { formatDateRange, formatDate } from '../utils/formatters';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -132,7 +134,9 @@ const CustomTooltip = ({ active, payload, label }) => {
 export default function AnalyticsPage() {
   const { t, i18n } = useTranslation('analytics');
   const { clients } = useClients();
-  const [selectedClientId, setSelectedClientId] = useState('all');
+  const [searchParams] = useSearchParams();
+  const urlClientId = searchParams.get('client_id');
+  const [selectedClientId, setSelectedClientId] = useState(urlClientId || 'all');
   const [selectedPlatform, setSelectedPlatform] = useState('all');
   const [range, setRange]               = useDateRange(30);
   const [activeMetric, setActiveMetric] = useState('impressions');
@@ -263,6 +267,43 @@ export default function AnalyticsPage() {
   const formattedRange = useMemo(() => {
     return formatDateRange(range.since, range.until, { dateStyle: 'medium' }, i18n?.language);
   }, [range.since, range.until, i18n?.language]);
+
+  if (selectedClientId && selectedClientId !== 'all') {
+    return (
+      <div style={{ background: 'var(--surface-page)', minHeight: '100vh' }}>
+        <div style={{ padding: '20px 32px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <button
+              onClick={() => setSelectedClientId('all')}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '6px 12px', borderRadius: 8,
+                border: '1px solid var(--border-default)',
+                background: 'var(--surface-card)', color: 'var(--text-secondary)',
+                fontSize: 12, fontWeight: 700, cursor: 'pointer',
+              }}
+            >
+              ← {t('all_users', 'All Clients Overview')}
+            </button>
+            <select
+              value={selectedClientId}
+              onChange={e => setSelectedClientId(e.target.value)}
+              style={selectStyle}
+            >
+              {clients.map(c => (
+                <option key={c.id} value={c.id}>{c.company}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <AnalyticsWorkspace
+          clientId={selectedClientId}
+          clientName={selectedClientName}
+          allClients={clients}
+        />
+      </div>
+    );
+  }
 
   return (
     <div style={{ padding: '32px 36px', background: 'var(--surface-page)', minHeight: '100vh' }}>

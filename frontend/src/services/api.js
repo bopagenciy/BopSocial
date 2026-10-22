@@ -323,6 +323,13 @@ export const overviewAPI = {
   get: (params) => api.get('/overview/', { params }),
 };
 
+// ── BS-4 Normalized Analytics Read API ──
+export const analyticsAPI = {
+  summary:  (params) => api.get('/analytics/summary/', { params }),
+  trends:   (params) => api.get('/analytics/trends/', { params }),
+  topPosts: (params) => api.get('/analytics/top-posts/', { params }),
+};
+
 // ── Admin ─────────────────────────────────────────────
 export const adminAPI = {
   createClient: (data) => api.post('/admin/create-client/', data),
