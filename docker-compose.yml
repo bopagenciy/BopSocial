@@ -38,7 +38,8 @@ services:
       retries: 10
 
   backend:
-    image: ghcr.io/cbsshekhawat18-lab/social-stats-backend:latest
+    image: bopsocial-backend:local
+    pull_policy: build
     build: ./backend
     env_file:
       - path: .env.docker
@@ -80,7 +81,8 @@ services:
       start_period: 30s
 
   worker:
-    image: ghcr.io/cbsshekhawat18-lab/social-stats-backend:latest
+    image: bopsocial-backend:local
+    pull_policy: build
     build: ./backend
     env_file:
       - path: .env.docker
@@ -94,7 +96,8 @@ services:
         condition: service_healthy
 
   beat:
-    image: ghcr.io/cbsshekhawat18-lab/social-stats-backend:latest
+    image: bopsocial-backend:local
+    pull_policy: build
     build: ./backend
     env_file:
       - path: .env.docker
@@ -106,11 +109,15 @@ services:
         condition: service_healthy
 
   frontend:
-    image: ghcr.io/cbsshekhawat18-lab/social-stats-frontend:latest
-    build: ./frontend
+    image: bopsocial-frontend:local
+    pull_policy: build
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.runtime
     ports:
       - "${FRONTEND_PORT:-3010}:80"
     volumes:
+      - ./frontend/build:/usr/share/nginx/html:ro
       - media:/srv/media:ro
     depends_on:
       backend:
