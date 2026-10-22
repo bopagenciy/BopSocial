@@ -22,6 +22,8 @@ from .analytics.api import (
     ExecutiveReportDetailView,
     ExecutiveReportGeneratePDFView,
     ExecutiveReportDownloadPDFView,
+    ReportNarrativePreviewView,
+    ReportNarrativeView,
 )
 from .views import (
     LoginView, me, ClientViewSet, CredentialViewSet,
@@ -686,6 +688,10 @@ urlpatterns = [
     path('analytics/reports/<int:pk>/',          ExecutiveReportDetailView.as_view(),        name='analytics_report_detail'),
     path('analytics/reports/<int:pk>/pdf/',      ExecutiveReportGeneratePDFView.as_view(),   name='analytics_report_generate_pdf'),
     path('analytics/reports/<int:pk>/download/', ExecutiveReportDownloadPDFView.as_view(),   name='analytics_report_download_pdf'),
+
+    # ── BS-4H Grounded AI Executive Narrative API ─────────────────────────────
+    path('analytics/reports/<int:pk>/narrative/preview/', ReportNarrativePreviewView.as_view(), name='analytics_report_narrative_preview'),
+    path('analytics/reports/<int:pk>/narrative/',         ReportNarrativeView.as_view(),        name='analytics_report_narrative'),
     # REST API
     path('', include(router.urls)),
 ]

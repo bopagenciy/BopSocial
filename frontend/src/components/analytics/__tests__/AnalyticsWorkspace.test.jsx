@@ -18,6 +18,9 @@ jest.mock('../../../services/api', () => ({
     saveReport: jest.fn(),
     generateReportPDF: jest.fn(),
     deleteReport: jest.fn(),
+    reportNarrativePreview: jest.fn(),
+    saveReportNarrative: jest.fn(),
+    getReportNarrative: jest.fn(),
   },
 }));
 
@@ -586,4 +589,208 @@ describe('AnalyticsWorkspace UI Suite (BS-4E & BS-4F & BS-4G)', () => {
       expect(window.open).toHaveBeenCalledWith('/api/analytics/reports/42/download/', '_blank');
     });
   });
+
+  test('14: renders AI Executive Narrative section and handles Not Generated state', async () => {
+    api.analyticsAPI.listReports.mockResolvedValue({
+      data: {
+        client_id: 3,
+        count: 1,
+        reports: [
+          {
+            id: 42,
+            title: 'Executive Report Alpha',
+            period_start: '2026-09-22',
+            period_end: '2026-10-22',
+            platform_filter: 'all',
+            language: 'es',
+            status: 'GENERATED',
+          },
+        ],
+      },
+    });
+    api.analyticsAPI.getReportNarrative.mockResolvedValue({
+      data: {
+        status: 'NOT_GENERATED',
+        narrative: null,
+        is_stale: false,
+      },
+    });
+
+    renderComponent();
+    const reportsTab = screen.getByText('7. Reports & PDF Export');
+    fireEvent.click(reportsTab);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('ai-narrative-section')).toBeInTheDocument();
+      expect(screen.getByText('AI Executive Narrative (Report #42)')).toBeInTheDocument();
+      expect(screen.getByText('No AI narrative generated yet for this report.')).toBeInTheDocument();
+      expect(screen.getByText('Generate AI Preview')).toBeInTheDocument();
+    });
+  });
+
+  test('15: generates and displays grounded narrative preview', async () => {
+    api.analyticsAPI.listReports.mockResolvedValue({
+      data: {
+        client_id: 3,
+        count: 1,
+        reports: [
+          {
+            id: 42,
+            title: 'Executive Report Alpha',
+            period_start: '2026-09-22',
+            period_end: '2026-10-22',
+            platform_filter: 'all',
+            language: 'es',
+            status: 'GENERATED',
+          },
+        ],
+      },
+    });
+    api.analyticsAPI.getReportNarrative.mockResolvedValue({
+      data: {
+        status: 'NOT_GENERATED',
+        narrative: null,
+      },
+    });
+    api.analyticsAPI.reportNarrativePreview.mockResolvedValue({
+      data: {
+        report_id: 42,
+        status: 'VALIDATED',
+        validation_status: 'PASS',
+        is_valid: true,
+        narrative: {
+          executive_summary: ['Resumen ejecutivo simulado para Alpha.'],
+          performance_observations: ['Observación analítica verificada.'],
+          recommendations: [
+            {
+              text: 'Continuar recopilando datos de publicaciones.',
+              recommendation_type: 'CONTINUE_COLLECTING_DATA',
+              strength: 'OBSERVE',
+              confidence: 'LOW',
+              evidence_refs: ['SIG-1'],
+            },
+          ],
+          limitations: ['Muestra reducida n=2.'],
+        },
+      },
+    });
+
+    renderComponent();
+    const reportsTab = screen.getByText('7. Reports & PDF Export');
+    fireEvent.click(reportsTab);
+
+    await waitFor(() => {
+      expect(screen.getByText('Generate AI Preview')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('Generate AI Preview'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Preview Mode (Unsaved)')).toBeInTheDocument();
+      expect(screen.getByText('Resumen ejecutivo simulado para Alpha.')).toBeInTheDocument();
+      expect(screen.getByText('Save Narrative')).toBeInTheDocument();
+    });
+  });
+
+  test('16: displays validated narrative with expandable evidence details', async () => {
+    api.analyticsAPI.listReports.mockResolvedValue({
+      data: {
+        client_id: 3,
+        count: 1,
+        reports: [
+          {
+            id: 42,
+            title: 'Executive Report Alpha',
+            period_start: '2026-09-22',
+            period_end: '2026-10-22',
+            platform_filter: 'all',
+            language: 'es',
+            status: 'GENERATED',
+          },
+        ],
+      },
+    });
+    api.analyticsAPI.getReportNarrative.mockResolvedValue({
+      data: {
+        id: 101,
+        report_id: 42,
+        status: 'VALIDATED',
+        validation_status: 'PASS',
+        is_stale: false,
+        narrative: {
+          executive_summary: ['Executive narrative fact-locked summary.'],
+          performance_observations: ['Stable baseline reactions recorded.'],
+          recommendations: [
+            {
+              text: 'Maintain current cadence while accumulating sample.',
+              recommendation_type: 'MAINTAIN_CURRENT_STRATEGY',
+              strength: 'OBSERVE',
+              confidence: 'LOW',
+              evidence_refs: ['SIG-INSUFFICIENT-1'],
+            },
+          ],
+          limitations: ['Instagram PARTIAL mode.'],
+        },
+      },
+    });
+
+    renderComponent();
+    const reportsTab = screen.getByText('7. Reports & PDF Export');
+    fireEvent.click(reportsTab);
+
+    await waitFor(() => {
+      expect(screen.getByText('Validated AI Narrative')).toBeInTheDocument();
+      expect(screen.getByText('Maintain current cadence while accumulating sample.')).toBeInTheDocument();
+      expect(screen.getByText('Why this recommendation?')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('Why this recommendation?'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Evidence References:')).toBeInTheDocument();
+      expect(screen.getByText(/SIG-INSUFFICIENT-1/)).toBeInTheDocument();
+    });
+  });
+
+  test('17: displays rejection alert when AI draft fails validation', async () => {
+    api.analyticsAPI.listReports.mockResolvedValue({
+      data: {
+        client_id: 3,
+        count: 1,
+        reports: [
+          {
+            id: 42,
+            title: 'Executive Report Alpha',
+            period_start: '2026-09-22',
+            period_end: '2026-10-22',
+            platform_filter: 'all',
+            language: 'es',
+            status: 'GENERATED',
+          },
+        ],
+      },
+    });
+    api.analyticsAPI.getReportNarrative.mockResolvedValue({
+      data: {
+        id: 102,
+        report_id: 42,
+        status: 'REJECTED',
+        validation_status: 'FAIL',
+        validation_results: {
+          errors: ['Fact lock failed: Output contains unsupported numeric facts: [87.0]'],
+        },
+      },
+    });
+
+    renderComponent();
+    const reportsTab = screen.getByText('7. Reports & PDF Export');
+    fireEvent.click(reportsTab);
+
+    await waitFor(() => {
+      expect(screen.getByText('⚠ AI draft did not pass evidence validation.')).toBeInTheDocument();
+      expect(screen.getByText(/Fact lock failed/)).toBeInTheDocument();
+      expect(screen.getByText('Re-generate Preview')).toBeInTheDocument();
+    });
+  });
 });
+

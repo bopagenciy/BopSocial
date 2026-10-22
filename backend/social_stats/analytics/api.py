@@ -660,12 +660,17 @@ class AnalyticsInsightsHistoryView(AnalyticsBaseView):
 # ── BS-4G Executive Reporting API Views ──────────────────────────────────────
 from datetime import timedelta
 from django.http import FileResponse, Http404
-from social_stats.models import ExecutiveReport
+from social_stats.models import ExecutiveReport, ExecutiveNarrative
 from .reporting.service import (
     preview_executive_report,
     save_executive_report,
     generate_pdf_for_report,
     delete_executive_report,
+)
+from .narrative import (
+    preview_narrative,
+    generate_and_save_narrative,
+    get_latest_narrative_for_report,
 )
 
 
@@ -923,3 +928,133 @@ class ExecutiveReportDownloadPDFView(AnalyticsBaseView):
         except Exception as e:
             logger.exception(f'Error downloading PDF for report {report.id}: {e}')
             raise Http404('PDF file could not be read')
+
+
+# ── BS-4H Grounded AI Narrative API Views ───────────────────────────────────
+
+class ReportNarrativePreviewView(AnalyticsBaseView):
+    """
+    POST /api/analytics/reports/<int:pk>/narrative/preview/
+    Generates deterministic preview of AI narrative for a report.
+    Guarantees 0 database rows are created.
+    """
+
+    def post(self, request, pk):
+        report = ExecutiveReport.objects.filter(id=pk).first()
+        if not report:
+            return Response({'error': 'Report not found'}, status=status.HTTP_404_NOT_FOUND)
+        client = self.validate_client(request, report.client_id)
+        if not client:
+            return Response({'error': 'Report not found or unauthorized'}, status=status.HTTP_404_NOT_FOUND)
+
+        language = request.data.get('language') or report.language
+        style = request.data.get('style', 'EXECUTIVE')
+        provider = request.data.get('provider', 'fake')
+        mock_mode = request.data.get('mock_mode', 'VALID')
+
+        try:
+            preview_data = preview_narrative(
+                report=report,
+                language=language,
+                style=style,
+                provider_name=provider,
+                mock_mode=mock_mode,
+            )
+            return Response(preview_data, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.exception(f'Error previewing narrative for report {report.id}: {e}')
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ReportNarrativeView(AnalyticsBaseView):
+    """
+    GET  /api/analytics/reports/<int:pk>/narrative/  — Retrieve latest narrative with stale detection
+    POST /api/analytics/reports/<int:pk>/narrative/  — Generate and persist narrative
+    """
+
+    def get(self, request, pk):
+        report = ExecutiveReport.objects.filter(id=pk).first()
+        if not report:
+            return Response({'error': 'Report not found'}, status=status.HTTP_404_NOT_FOUND)
+        client = self.validate_client(request, report.client_id)
+        if not client:
+            return Response({'error': 'Report not found or unauthorized'}, status=status.HTTP_404_NOT_FOUND)
+
+        narrative, is_stale = get_latest_narrative_for_report(report)
+        if not narrative:
+            return Response({
+                'status': 'NOT_GENERATED',
+                'narrative': None,
+                'is_stale': False,
+            }, status=status.HTTP_200_OK)
+
+        return Response({
+            'id': narrative.id,
+            'report_id': narrative.executive_report_id,
+            'client_id': narrative.client_id,
+            'status': narrative.status,
+            'language': narrative.language,
+            'provider': narrative.provider,
+            'model_name': narrative.model_name,
+            'prompt_version': narrative.prompt_version,
+            'context_schema_version': narrative.context_schema_version,
+            'source_hash': narrative.source_hash,
+            'context_hash': narrative.context_hash,
+            'narrative': narrative.narrative_json,
+            'rendered_text': narrative.rendered_text,
+            'validation_status': narrative.validation_status,
+            'validation_results': narrative.validation_results,
+            'is_stale': is_stale,
+            'generated_at': narrative.generated_at.isoformat(),
+        }, status=status.HTTP_200_OK)
+
+    def post(self, request, pk):
+        report = ExecutiveReport.objects.filter(id=pk).first()
+        if not report:
+            return Response({'error': 'Report not found'}, status=status.HTTP_404_NOT_FOUND)
+        client = self.validate_client(request, report.client_id)
+        if not client:
+            return Response({'error': 'Report not found or unauthorized'}, status=status.HTTP_404_NOT_FOUND)
+
+        language = request.data.get('language') or report.language
+        style = request.data.get('style', 'EXECUTIVE')
+        provider = request.data.get('provider', 'fake')
+        mock_mode = request.data.get('mock_mode', 'VALID')
+
+        try:
+            narrative = generate_and_save_narrative(
+                report=report,
+                user=request.user,
+                language=language,
+                style=style,
+                provider_name=provider,
+                mock_mode=mock_mode,
+            )
+            return Response({
+                'id': narrative.id,
+                'report_id': narrative.executive_report_id,
+                'client_id': narrative.client_id,
+                'status': narrative.status,
+                'language': narrative.language,
+                'provider': narrative.provider,
+                'model_name': narrative.model_name,
+                'prompt_version': narrative.prompt_version,
+                'context_schema_version': narrative.context_schema_version,
+                'source_hash': narrative.source_hash,
+                'context_hash': narrative.context_hash,
+                'narrative': narrative.narrative_json,
+                'rendered_text': narrative.rendered_text,
+                'validation_status': narrative.validation_status,
+                'validation_results': narrative.validation_results,
+                'is_stale': narrative.is_stale,
+                'generated_at': narrative.generated_at.isoformat(),
+            }, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            logger.exception(f'Error generating narrative for report {report.id}: {e}')
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+ReportNarrativeSaveView = ReportNarrativeView
+ReportNarrativeDetailView = ReportNarrativeView
+
+

@@ -338,6 +338,10 @@ export const analyticsAPI = {
   getReport:        (id) => api.get('/analytics/reports/' + id + '/'),
   generateReportPDF:(id) => api.post('/analytics/reports/' + id + '/pdf/'),
   deleteReport:     (id) => api.delete('/analytics/reports/' + id + '/'),
+  // BS-4H Grounded AI Executive Narrative
+  reportNarrativePreview: (id, data) => api.post(`/analytics/reports/${id}/narrative/preview/`, data),
+  saveReportNarrative:    (id, data) => api.post(`/analytics/reports/${id}/narrative/`, data),
+  getReportNarrative:     (id)       => api.get(`/analytics/reports/${id}/narrative/`),
 };
 
 // ── Admin ─────────────────────────────────────────────

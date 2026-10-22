@@ -214,6 +214,71 @@ export default function AnalyticsWorkspace({ clientId, clientName, allClients = 
   const [saveSuccessMsg, setSaveSuccessMsg] = useState(null);
   const [pdfGeneratingId, setPdfGeneratingId] = useState(null);
 
+  // ── Tab 7 Grounded AI Executive Narrative State (BS-4H) ──
+  const [selectedReportId, setSelectedReportId] = useState(null);
+  const [narrativeData, setNarrativeData] = useState(null);
+  const [narrativeLoading, setNarrativeLoading] = useState(false);
+  const [narrativeError, setNarrativeError] = useState(null);
+  const [narrativePreviewMode, setNarrativePreviewMode] = useState(false);
+  const [expandedNarrativeEvidence, setExpandedNarrativeEvidence] = useState({});
+
+  const fetchNarrativeForReport = useCallback((reportId) => {
+    if (!reportId) return;
+    setSelectedReportId(reportId);
+    setNarrativeLoading(true);
+    setNarrativeError(null);
+    setNarrativePreviewMode(false);
+    analyticsAPI.getReportNarrative(reportId)
+      .then(res => {
+        setNarrativeData(res.data);
+      })
+      .catch(err => {
+        setNarrativeError(err.response?.data?.error || 'Failed to fetch AI narrative');
+        setNarrativeData(null);
+      })
+      .finally(() => setNarrativeLoading(false));
+  }, []);
+
+  const handleGenerateNarrativePreview = useCallback((reportId) => {
+    if (!reportId) return;
+    setNarrativeLoading(true);
+    setNarrativeError(null);
+    analyticsAPI.reportNarrativePreview(reportId, {
+      language: reportLanguage,
+      style: 'EXECUTIVE',
+      provider: 'fake',
+      mock_mode: 'VALID',
+    })
+      .then(res => {
+        setNarrativeData(res.data);
+        setNarrativePreviewMode(true);
+      })
+      .catch(err => {
+        setNarrativeError(err.response?.data?.error || 'Failed to generate narrative preview');
+      })
+      .finally(() => setNarrativeLoading(false));
+  }, [reportLanguage]);
+
+  const handleSaveNarrative = useCallback((reportId) => {
+    if (!reportId) return;
+    setNarrativeLoading(true);
+    setNarrativeError(null);
+    analyticsAPI.saveReportNarrative(reportId, {
+      language: reportLanguage,
+      style: 'EXECUTIVE',
+      provider: 'fake',
+      mock_mode: 'VALID',
+    })
+      .then(res => {
+        setNarrativeData(res.data);
+        setNarrativePreviewMode(false);
+      })
+      .catch(err => {
+        setNarrativeError(err.response?.data?.error || 'Failed to save narrative');
+      })
+      .finally(() => setNarrativeLoading(false));
+  }, [reportLanguage]);
+
   const fetchReportPreview = useCallback(() => {
     if (!clientId) return;
     setReportLoading(true);
@@ -238,10 +303,16 @@ export default function AnalyticsWorkspace({ clientId, clientName, allClients = 
     if (!clientId) return;
     setSavedReportsLoading(true);
     analyticsAPI.listReports({ client_id: clientId })
-      .then(res => setSavedReports(res.data?.reports || []))
+      .then(res => {
+        const reports = res.data?.reports || [];
+        setSavedReports(reports);
+        if (reports.length > 0 && !selectedReportId) {
+          fetchNarrativeForReport(reports[0].id);
+        }
+      })
       .catch(() => setSavedReports([]))
       .finally(() => setSavedReportsLoading(false));
-  }, [clientId]);
+  }, [clientId, selectedReportId, fetchNarrativeForReport]);
 
   const handleSaveReport = useCallback(() => {
     if (!clientId) return;
@@ -1727,6 +1798,24 @@ export default function AnalyticsWorkspace({ clientId, clientName, allClients = 
                       <td style={{ padding: '8px 10px' }}>
                         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                           <button
+                            onClick={() => {
+                              setSelectedReportId(r.id);
+                              fetchNarrativeForReport(r.id);
+                            }}
+                            style={{
+                              display: 'flex', alignItems: 'center', gap: 4,
+                              padding: '4px 10px', borderRadius: 6,
+                              background: selectedReportId === r.id ? '#6366f1' : 'var(--surface-sunken)',
+                              border: '1px solid var(--border-default)',
+                              color: selectedReportId === r.id ? '#FFFFFF' : 'var(--text-primary)',
+                              fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                            }}
+                            title="AI Narrative"
+                          >
+                            <Zap size={12} />
+                            <span>AI Narrative</span>
+                          </button>
+                          <button
                             onClick={() => handleGenerateAndDownloadPDF(r.id)}
                             disabled={pdfGeneratingId === r.id}
                             style={{
@@ -1760,6 +1849,237 @@ export default function AnalyticsWorkspace({ clientId, clientName, allClients = 
               </table>
             )}
           </div>
+
+          {/* Grounded AI Executive Narrative Section (BS-4H) */}
+          {selectedReportId && (
+            <div
+              data-testid="ai-narrative-section"
+              style={{
+                background: 'var(--surface-card)', borderRadius: 16, padding: '24px 28px',
+                border: '1px solid var(--border-default)', boxShadow: '0 2px 10px rgba(0,0,0,0.03)',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ padding: 6, borderRadius: 8, background: 'rgba(99, 102, 241, 0.1)', color: '#6366f1' }}>
+                    <Zap size={18} />
+                  </div>
+                  <div>
+                    <h3 style={{ fontSize: 15, fontWeight: 800, margin: 0, textTransform: 'uppercase' }}>
+                      AI Executive Narrative (Report #{selectedReportId})
+                    </h3>
+                    <p style={{ fontSize: 11, color: 'var(--text-secondary)', margin: '2px 0 0' }}>
+                      Language layer strictly bound by verified report facts & business intelligence signals.
+                    </p>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  {narrativeData?.status === 'VALIDATED' && !narrativePreviewMode && (
+                    <span style={{ padding: '4px 10px', borderRadius: 6, background: '#dcfce7', color: '#15803d', fontSize: 11, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <CheckCircle2 size={12} /> Validated AI Narrative
+                    </span>
+                  )}
+                  {narrativePreviewMode && (
+                    <span style={{ padding: '4px 10px', borderRadius: 6, background: '#dbeafe', color: '#1d4ed8', fontSize: 11, fontWeight: 800 }}>
+                      Preview Mode (Unsaved)
+                    </span>
+                  )}
+                  {narrativeData?.is_stale && (
+                    <span style={{ padding: '4px 10px', borderRadius: 6, background: '#fef3c7', color: '#b45309', fontSize: 11, fontWeight: 800 }}>
+                      Stale Report Data
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Stale Warning Banner */}
+              {narrativeData?.is_stale && (
+                <div style={{ marginBottom: 14, padding: '10px 14px', background: 'rgba(245, 166, 35, 0.1)', border: '1px solid #f5a623', borderRadius: 8, color: '#b45309', fontSize: 12, fontWeight: 600 }}>
+                  ⚠ Stale Narrative: The source data of this executive report has been updated since narrative generation. Regenerate preview to reflect updated metrics.
+                </div>
+              )}
+
+              {/* Error / Rejection Banner */}
+              {narrativeData?.status === 'REJECTED' && (
+                <div style={{ marginBottom: 14, padding: '12px 16px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid #ef4444', borderRadius: 8, color: '#ef4444', fontSize: 12 }}>
+                  <div style={{ fontWeight: 800, marginBottom: 4 }}>⚠ AI draft did not pass evidence validation.</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+                    To ensure client integrity, ungrounded drafts or unsupported claims are rejected and never served as final deliverables.
+                  </div>
+                  {narrativeData?.validation_results?.errors?.length > 0 && (
+                    <ul style={{ margin: '8px 0 0 16px', padding: 0 }}>
+                      {narrativeData.validation_results.errors.map((err, i) => (
+                        <li key={i} style={{ fontSize: 11, color: '#ef4444' }}>{err}</li>
+                      ))}
+                    </ul>
+                  )}
+                  <button
+                    onClick={() => handleGenerateNarrativePreview(selectedReportId)}
+                    disabled={narrativeLoading}
+                    style={{
+                      marginTop: 10, padding: '6px 12px', borderRadius: 6, background: '#ef4444', color: '#FFFFFF',
+                      border: 'none', fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                    }}
+                  >
+                    Re-generate Preview
+                  </button>
+                </div>
+              )}
+
+              {/* Loading State */}
+              {narrativeLoading && (
+                <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--text-secondary)', fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                  <RefreshCw size={14} className="animate-spin" />
+                  <span>Processing grounded AI narrative...</span>
+                </div>
+              )}
+
+              {/* Narrative Content */}
+              {!narrativeLoading && (!narrativeData || narrativeData.status === 'NOT_GENERATED') && (
+                <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 12 }}>
+                  <p style={{ margin: '0 0 12px 0' }}>No AI narrative generated yet for this report.</p>
+                  <button
+                    onClick={() => handleGenerateNarrativePreview(selectedReportId)}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 6,
+                      padding: '8px 16px', borderRadius: 8, background: '#6366f1',
+                      border: 'none', color: '#FFFFFF', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                    }}
+                  >
+                    <Zap size={14} />
+                    <span>Generate AI Preview</span>
+                  </button>
+                </div>
+              )}
+
+              {/* Rendered Narrative (Validated or Preview) */}
+              {!narrativeLoading && narrativeData?.narrative && narrativeData.status !== 'REJECTED' && (
+                <div>
+                  {/* Executive Summary */}
+                  {narrativeData.narrative.executive_summary?.length > 0 && (
+                    <div style={{ marginBottom: 16 }}>
+                      <h4 style={{ fontSize: 12, fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-secondary)', margin: '0 0 8px 0' }}>
+                        Executive Summary
+                      </h4>
+                      <div style={{ background: 'var(--surface-sunken)', padding: '14px 18px', borderRadius: 8, fontSize: 12.5, lineHeight: 1.5, color: 'var(--text-primary)' }}>
+                        {narrativeData.narrative.executive_summary.map((para, i) => (
+                          <p key={i} style={{ margin: i === 0 ? 0 : '8px 0 0 0' }}>{para}</p>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Key Observations */}
+                  {narrativeData.narrative.performance_observations?.length > 0 && (
+                    <div style={{ marginBottom: 16 }}>
+                      <h4 style={{ fontSize: 12, fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-secondary)', margin: '0 0 8px 0' }}>
+                        Key Observations
+                      </h4>
+                      <ul style={{ margin: 0, paddingLeft: 20 }}>
+                        {narrativeData.narrative.performance_observations.map((obs, i) => (
+                          <li key={i} style={{ fontSize: 12, color: 'var(--text-primary)', marginBottom: 6 }}>{obs}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Recommendations */}
+                  {narrativeData.narrative.recommendations?.length > 0 && (
+                    <div style={{ marginBottom: 16 }}>
+                      <h4 style={{ fontSize: 12, fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-secondary)', margin: '0 0 8px 0' }}>
+                        Actionable Recommendations
+                      </h4>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        {narrativeData.narrative.recommendations.map((rec, i) => {
+                          const isExpanded = !!expandedNarrativeEvidence[i];
+                          return (
+                            <div key={i} style={{ background: 'var(--surface-sunken)', padding: '12px 16px', borderRadius: 8, borderLeft: '4px solid #6366f1' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, marginBottom: 6 }}>
+                                <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-primary)' }}>{rec.text}</div>
+                                <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                                  <span style={{ padding: '2px 6px', borderRadius: 4, background: '#ede9fe', color: '#6d28d9', fontSize: 10, fontWeight: 800 }}>
+                                    {rec.strength}
+                                  </span>
+                                  <span style={{ padding: '2px 6px', borderRadius: 4, background: '#e0e7ff', color: '#3730a3', fontSize: 10, fontWeight: 800 }}>
+                                    {rec.confidence}
+                                  </span>
+                                </div>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                                <button
+                                  onClick={() => setExpandedNarrativeEvidence(prev => ({ ...prev, [i]: !prev[i] }))}
+                                  style={{
+                                    display: 'inline-flex', alignItems: 'center', gap: 4,
+                                    background: 'none', border: 'none', color: '#6366f1',
+                                    fontSize: 11, fontWeight: 700, cursor: 'pointer', padding: 0,
+                                  }}
+                                >
+                                  <span>Why this recommendation?</span>
+                                  {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                                </button>
+                              </div>
+                              {isExpanded && (
+                                <div style={{ marginTop: 8, padding: '8px 12px', background: 'var(--surface-card)', borderRadius: 6, fontSize: 11, color: 'var(--text-secondary)', border: '1px solid var(--border-default)' }}>
+                                  <strong>Evidence References:</strong> {rec.evidence_refs?.join(', ') || 'General baseline rollup'}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Limitations */}
+                  {narrativeData.narrative.limitations?.length > 0 && (
+                    <div style={{ marginBottom: 16 }}>
+                      <h4 style={{ fontSize: 12, fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-secondary)', margin: '0 0 8px 0' }}>
+                        Data Limitations
+                      </h4>
+                      <ul style={{ margin: 0, paddingLeft: 20 }}>
+                        {narrativeData.narrative.limitations.map((lim, i) => (
+                          <li key={i} style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginBottom: 4 }}>{lim}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Preview Mode Actions */}
+                  {narrativePreviewMode && (
+                    <div style={{ display: 'flex', gap: 10, marginTop: 18, paddingTop: 14, borderTop: '1px solid var(--border-default)' }}>
+                      <button
+                        onClick={() => handleSaveNarrative(selectedReportId)}
+                        disabled={narrativeLoading}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 6,
+                          padding: '8px 16px', borderRadius: 8, background: '#059669',
+                          border: 'none', color: '#FFFFFF', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                        }}
+                      >
+                        <CheckCircle2 size={14} />
+                        <span>Save Narrative</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setNarrativePreviewMode(false);
+                          fetchNarrativeForReport(selectedReportId);
+                        }}
+                        style={{
+                          padding: '8px 14px', borderRadius: 8, background: 'var(--surface-sunken)',
+                          border: '1px solid var(--border-default)', color: 'var(--text-primary)',
+                          fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                        }}
+                      >
+                        Discard Preview
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
         </div>
       )}
     </div>

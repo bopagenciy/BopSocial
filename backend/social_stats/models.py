@@ -2269,6 +2269,14 @@ REPORT_STATUS_CHOICES = [
     ('FAILED', 'Failed'),
 ]
 
+NARRATIVE_STATUS_CHOICES = [
+    ('DRAFT', 'Draft'),
+    ('GENERATED', 'Generated'),
+    ('VALIDATED', 'Validated'),
+    ('REJECTED', 'Rejected'),
+    ('FAILED', 'Failed'),
+]
+
 
 class ExecutiveReport(models.Model):
     """
@@ -2310,6 +2318,58 @@ class ExecutiveReport(models.Model):
 
     def __str__(self):
         return f"ExecutiveReport #{self.id} | {self.client_id} | {self.title} ({self.period_start} to {self.period_end})"
+
+
+class ExecutiveNarrative(models.Model):
+    """
+    Grounded client-facing narrative and recommendations generated from deterministic
+    ExecutiveReport.report_data and BusinessSignal evidence, validated against hallucinations,
+    unsupported causality, and unobserved metrics.
+    """
+    client                 = models.ForeignKey(Client, on_delete=models.CASCADE, related_name='executive_narratives', db_index=True)
+    executive_report       = models.ForeignKey(ExecutiveReport, on_delete=models.CASCADE, related_name='narratives', db_index=True)
+    language               = models.CharField(max_length=10, default='es')
+    status                 = models.CharField(max_length=20, choices=NARRATIVE_STATUS_CHOICES, default='DRAFT', db_index=True)
+
+    provider               = models.CharField(max_length=50, default='fake')
+    model_name             = models.CharField(max_length=100, default='stub-model-v1')
+    prompt_version         = models.CharField(max_length=50, default='bs4h-prompt-v1')
+    context_schema_version = models.CharField(max_length=50, default='bs4h-context-v1')
+
+    source_hash            = models.CharField(max_length=64, db_index=True)
+    context_hash           = models.CharField(max_length=64, db_index=True)
+
+    narrative_json         = models.JSONField(default=dict)
+    rendered_text          = models.TextField(blank=True, default='')
+    validation_status      = models.CharField(max_length=20, default='PENDING')  # PENDING, PASS, FAIL
+    validation_results     = models.JSONField(default=dict, blank=True)
+
+    generated_at           = models.DateTimeField(default=timezone.now)
+    created_by             = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='created_executive_narratives')
+    metadata               = models.JSONField(default=dict, blank=True)
+
+    created_at             = models.DateTimeField(auto_now_add=True)
+    updated_at             = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['client', '-created_at']),
+            models.Index(fields=['executive_report', '-created_at']),
+            models.Index(fields=['client', 'status']),
+            models.Index(fields=['source_hash']),
+            models.Index(fields=['context_hash']),
+        ]
+
+    def __str__(self):
+        return f"ExecutiveNarrative #{self.id} | Report #{self.executive_report_id} | {self.status} | {self.provider}"
+
+    @property
+    def is_stale(self) -> bool:
+        """Determines if the underlying report source_hash has changed since narrative generation."""
+        if not self.executive_report:
+            return True
+        return self.source_hash != self.executive_report.source_hash
 
 
 class PostQueue(models.Model):
