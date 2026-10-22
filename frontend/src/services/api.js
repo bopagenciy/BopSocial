@@ -325,9 +325,12 @@ export const overviewAPI = {
 
 // ── BS-4 Normalized Analytics Read API ──
 export const analyticsAPI = {
-  summary:  (params) => api.get('/analytics/summary/', { params }),
-  trends:   (params) => api.get('/analytics/trends/', { params }),
-  topPosts: (params) => api.get('/analytics/top-posts/', { params }),
+  summary:          (params) => api.get('/analytics/summary/', { params }),
+  trends:           (params) => api.get('/analytics/trends/', { params }),
+  topPosts:         (params) => api.get('/analytics/top-posts/', { params }),
+  insights:         (params) => api.get('/analytics/insights/', { params }),
+  executiveSummary: (params) => api.get('/analytics/executive-summary/', { params }),
+  history:          (params) => api.get('/analytics/insights/history/', { params }),
 };
 
 // ── Admin ─────────────────────────────────────────────

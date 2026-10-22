@@ -14,7 +14,8 @@ import {
   MousePointer, Play, UserPlus, AlertCircle, CheckCircle2,
   Clock, ExternalLink, ShieldCheck, HelpCircle, Info,
   Layers, BarChart2, MessageSquare, ThumbsUp, Share2,
-  Bookmark, Video, Image, FileText, Smartphone
+  Bookmark, Video, Image, FileText, Smartphone,
+  Zap, ChevronDown, ChevronUp, Target
 } from 'lucide-react';
 import { analyticsAPI } from '../../services/api';
 import SocialPlatformIcon from '../ui/SocialPlatformIcon';
@@ -135,6 +136,8 @@ function MetricKPICard({ metricKey, data, loading }) {
           ⚠️ {warning}
         </div>
       )}
+
+
     </div>
   );
 }
@@ -188,6 +191,13 @@ export default function AnalyticsWorkspace({ clientId, clientName, allClients = 
 
   const [topPosts, setTopPosts] = useState([]);
   const [topPostsLoading, setTopPostsLoading] = useState(false);
+
+  // Business Intelligence & Signals State
+  const [insightsData, setInsightsData] = useState(null);
+  const [summaryBI, setSummaryBI] = useState(null);
+  const [insightsLoading, setInsightsLoading] = useState(false);
+  const [insightsError, setInsightsError] = useState(null);
+  const [expandedEvidence, setExpandedEvidence] = useState({});
 
   // Fetch Summary
   const fetchSummary = useCallback(() => {
@@ -249,6 +259,36 @@ export default function AnalyticsWorkspace({ clientId, clientName, allClients = 
       .finally(() => setTopPostsLoading(false));
   }, [clientId, platform, rankingMetric, dateRange.start_date, dateRange.end_date]);
 
+  // Fetch Business Intelligence Signals & Executive Summary
+  const fetchInsights = useCallback(() => {
+    if (!clientId) return;
+    setInsightsLoading(true);
+    setInsightsError(null);
+    Promise.all([
+      analyticsAPI.insights({
+        client_id: clientId,
+        platform,
+        start_date: dateRange.start_date,
+        end_date: dateRange.end_date,
+      }),
+      analyticsAPI.executiveSummary({
+        client_id: clientId,
+        platform,
+        start_date: dateRange.start_date,
+        end_date: dateRange.end_date,
+      }),
+    ])
+      .then(([insRes, sumRes]) => {
+        setInsightsData(insRes.data);
+        setSummaryBI(sumRes.data);
+      })
+      .catch(err => {
+        const msg = err.response?.data?.error || 'Failed to load business intelligence signals';
+        setInsightsError(msg);
+      })
+      .finally(() => setInsightsLoading(false));
+  }, [clientId, platform, dateRange.start_date, dateRange.end_date]);
+
   // Effects
   useEffect(() => { fetchSummary(); }, [fetchSummary]);
   useEffect(() => {
@@ -257,12 +297,16 @@ export default function AnalyticsWorkspace({ clientId, clientName, allClients = 
   useEffect(() => {
     if (activeTab === 'content') fetchTopPosts();
   }, [activeTab, fetchTopPosts]);
+  useEffect(() => {
+    if (activeTab === 'intelligence') fetchInsights();
+  }, [activeTab, fetchInsights]);
 
   // Refresh all active data
   const handleRefresh = () => {
     fetchSummary();
     if (activeTab === 'trends') fetchTrends();
     if (activeTab === 'content') fetchTopPosts();
+    if (activeTab === 'intelligence') fetchInsights();
   };
 
   const isInstagramDegraded = summaryData?.capabilities?.instagram?.status === 'PARTIAL';
@@ -407,11 +451,12 @@ export default function AnalyticsWorkspace({ clientId, clientName, allClients = 
       {/* ── Section Navigation Tabs ───────────────────────────────────────── */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 24, borderBottom: '1px solid var(--border-default)', paddingBottom: 8 }}>
         {[
-          { id: 'overview', label: '1. Overview', icon: Layers },
-          { id: 'trends',   label: '2. Trends', icon: BarChart2 },
-          { id: 'content',  label: '3. Content Performance', icon: FileText },
-          { id: 'platform', label: '4. Platform Breakdown', icon: Smartphone },
-          { id: 'health',   label: '5. Data Health & Freshness', icon: ShieldCheck },
+          { id: 'overview',     label: '1. Overview', icon: Layers },
+          { id: 'trends',       label: '2. Trends', icon: BarChart2 },
+          { id: 'content',      label: '3. Content Performance', icon: FileText },
+          { id: 'platform',     label: '4. Platform Breakdown', icon: Smartphone },
+          { id: 'health',       label: '5. Data Health & Freshness', icon: ShieldCheck },
+          { id: 'intelligence', label: '6. Executive Insights & BI', icon: Zap },
         ].map(tab => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -1021,6 +1066,268 @@ export default function AnalyticsWorkspace({ clientId, clientName, allClients = 
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* ═════════════════════════════════════════════════════════════════════ */}
+      {/* TAB 6: EXECUTIVE INSIGHTS & BUSINESS INTELLIGENCE                     */}
+      {/* ═════════════════════════════════════════════════════════════════════ */}
+      {activeTab === 'intelligence' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+          {/* Executive Overview Cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
+            {/* Engagement Direction */}
+            <div style={{
+              background: 'var(--surface-card)', borderRadius: 14, padding: '18px 20px',
+              border: '1px solid var(--border-default)', boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>
+                  Engagement Trend
+                </span>
+                <span style={{
+                  padding: '2px 8px', borderRadius: 12, fontSize: 10.5, fontWeight: 800,
+                  background: summaryBI?.engagement_direction?.direction === 'UP' ? 'rgba(5, 150, 105, 0.15)' : (summaryBI?.engagement_direction?.direction === 'DOWN' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(100, 116, 139, 0.15)'),
+                  color: summaryBI?.engagement_direction?.direction === 'UP' ? '#059669' : (summaryBI?.engagement_direction?.direction === 'DOWN' ? '#ef4444' : '#64748b'),
+                }}>
+                  {summaryBI?.engagement_direction?.direction || 'NEUTRAL'}
+                </span>
+              </div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 4 }}>
+                {summaryBI?.engagement_direction?.relative_delta != null ? `${(summaryBI.engagement_direction.relative_delta * 100).toFixed(1)}%` : '—'}
+              </div>
+              <div style={{ fontSize: 11.5, color: 'var(--text-secondary)' }}>
+                {summaryBI?.engagement_direction?.explanation || 'Stable trend over period'}
+              </div>
+            </div>
+
+            {/* Follower Direction */}
+            <div style={{
+              background: 'var(--surface-card)', borderRadius: 14, padding: '18px 20px',
+              border: '1px solid var(--border-default)', boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>
+                  Audience Direction
+                </span>
+                <span style={{
+                  padding: '2px 8px', borderRadius: 12, fontSize: 10.5, fontWeight: 800,
+                  background: summaryBI?.follower_direction?.direction === 'UP' ? 'rgba(5, 150, 105, 0.15)' : (summaryBI?.follower_direction?.direction === 'DOWN' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(100, 116, 139, 0.15)'),
+                  color: summaryBI?.follower_direction?.direction === 'UP' ? '#059669' : (summaryBI?.follower_direction?.direction === 'DOWN' ? '#ef4444' : '#64748b'),
+                }}>
+                  {summaryBI?.follower_direction?.direction || 'NEUTRAL'}
+                </span>
+              </div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 4 }}>
+                {summaryBI?.follower_direction?.net_change != null ? `+${summaryBI.follower_direction.net_change}` : '—'}
+              </div>
+              <div style={{ fontSize: 11.5, color: 'var(--text-secondary)' }}>
+                {summaryBI?.follower_direction?.explanation || 'Follower counts steady'}
+              </div>
+            </div>
+
+            {/* Winning Formats Card */}
+            <div style={{
+              background: 'var(--surface-card)', borderRadius: 14, padding: '18px 20px',
+              border: '1px solid var(--border-default)', boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>
+                  Winning Format
+                </span>
+                <span style={{
+                  padding: '2px 8px', borderRadius: 12, fontSize: 10.5, fontWeight: 800,
+                  background: summaryBI?.winning_formats?.length > 0 ? 'rgba(16, 185, 129, 0.15)' : 'rgba(100, 116, 139, 0.15)',
+                  color: summaryBI?.winning_formats?.length > 0 ? '#10b981' : '#64748b',
+                }}>
+                  {summaryBI?.winning_formats?.length > 0 ? `${summaryBI.winning_formats[0].confidence} confidence` : 'Low sample'}
+                </span>
+              </div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 4 }}>
+                {summaryBI?.winning_formats?.length > 0 ? `${summaryBI.winning_formats[0].format.toUpperCase()} (+${summaryBI.winning_formats[0].relative_delta_pct}%)` : 'Not enough comparable historical data yet'}
+              </div>
+              <div style={{ fontSize: 11.5, color: 'var(--text-secondary)' }}>
+                {summaryBI?.winning_formats?.length > 0 ? `n=${summaryBI.winning_formats[0].sample_size} posts observed vs cohort median` : 'Publish more distinct formats to unlock format intelligence.'}
+              </div>
+            </div>
+
+            {/* Posting Time Card */}
+            <div style={{
+              background: 'var(--surface-card)', borderRadius: 14, padding: '18px 20px',
+              border: '1px solid var(--border-default)', boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>
+                  Posting Time
+                </span>
+                <span style={{
+                  padding: '2px 8px', borderRadius: 12, fontSize: 10.5, fontWeight: 800,
+                  background: summaryBI?.posting_time_insights?.has_sufficient_data ? 'rgba(59, 130, 246, 0.15)' : 'rgba(100, 116, 139, 0.15)',
+                  color: summaryBI?.posting_time_insights?.has_sufficient_data ? '#3b82f6' : '#64748b',
+                }}>
+                  {summaryBI?.posting_time_insights?.has_sufficient_data ? 'Supported' : 'Insufficient data'}
+                </span>
+              </div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 4 }}>
+                {summaryBI?.posting_time_insights?.has_sufficient_data ? `${summaryBI.posting_time_insights.recommendations[0].bucket.toUpperCase()} (+${summaryBI.posting_time_insights.recommendations[0].relative_delta_pct}%)` : 'Not enough data yet'}
+              </div>
+              <div style={{ fontSize: 11.5, color: 'var(--text-secondary)' }}>
+                {summaryBI?.posting_time_insights?.has_sufficient_data ? `Client timezone: ${clientName || 'Local'}` : 'Requires at least 5 posts across multiple time buckets to determine optimal hours.'}
+              </div>
+            </div>
+          </div>
+
+          {/* Key Business Signals Container */}
+          <div style={{
+            background: 'var(--surface-card)', borderRadius: 16, padding: '24px 28px',
+            border: '1px solid var(--border-default)', boxShadow: '0 2px 10px rgba(0,0,0,0.03)',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <div>
+                <h2 style={{ fontSize: 16, fontWeight: 800, margin: 0 }}>Deterministic Business Signals</h2>
+                <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '4px 0 0' }}>
+                  Defensible, machine-readable performance conclusions derived strictly from statistical medians and verified cohorts.
+                </p>
+              </div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-tertiary)' }}>
+                {insightsData?.signals?.length || 0} signals identified
+              </div>
+            </div>
+
+            {insightsLoading ? (
+              <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--text-tertiary)' }}>
+                Computing deterministic baselines and confidence tiers...
+              </div>
+            ) : (!insightsData?.signals || insightsData.signals.length === 0) ? (
+              <div style={{
+                padding: '40px 20px', textAlign: 'center', background: 'var(--surface-sunken)',
+                borderRadius: 12, border: '1px dashed var(--border-default)',
+              }}>
+                <div style={{ fontSize: 24, marginBottom: 8 }}>📊</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>
+                  Not enough comparable historical data yet
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)', maxWidth: 480, margin: '0 auto' }}>
+                  Signals require at least 3 comparable observations per cohort. As you publish more content, outperformance, momentum, and format baselines will activate automatically.
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {insightsData.signals.map(sig => {
+                  const isExpanded = !!expandedEvidence[sig.signal_identity];
+                  const relPct = sig.relative_delta != null ? `${(sig.relative_delta * 100).toFixed(1)}%` : null;
+
+                  return (
+                    <div
+                      key={sig.signal_identity}
+                      style={{
+                        background: 'var(--surface-sunken)',
+                        borderRadius: 12,
+                        padding: '16px 20px',
+                        border: '1px solid var(--border-default)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 10,
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 10 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                          <SocialPlatformIcon platform={sig.platform} size={16} />
+                          <span style={{ fontSize: 13, fontWeight: 800 }}>
+                            {sig.signal_type.replace(/_/g, ' ')}
+                          </span>
+                          {/* Severity Badge */}
+                          <span style={{
+                            padding: '2px 8px', borderRadius: 12, fontSize: 10.5, fontWeight: 800,
+                            background: sig.severity === 'POSITIVE' ? 'rgba(5, 150, 105, 0.15)' : (sig.severity === 'CRITICAL' ? 'rgba(239, 68, 68, 0.2)' : (sig.severity === 'WARNING' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(100, 116, 139, 0.15)')),
+                            color: sig.severity === 'POSITIVE' ? '#059669' : (sig.severity === 'CRITICAL' ? '#dc2626' : (sig.severity === 'WARNING' ? '#d97706' : '#64748b')),
+                          }}>
+                            {sig.severity}
+                          </span>
+                          {/* Confidence Badge */}
+                          <span style={{
+                            padding: '2px 8px', borderRadius: 12, fontSize: 10.5, fontWeight: 700,
+                            background: sig.confidence_level === 'HIGH' ? 'rgba(59, 130, 246, 0.15)' : (sig.confidence_level === 'MEDIUM' ? 'rgba(139, 92, 246, 0.15)' : 'rgba(100, 116, 139, 0.15)'),
+                            color: sig.confidence_level === 'HIGH' ? '#2563eb' : (sig.confidence_level === 'MEDIUM' ? '#7c3aed' : '#64748b'),
+                          }}>
+                            {sig.confidence_level === 'HIGH' ? 'High confidence' : (sig.confidence_level === 'MEDIUM' ? 'Medium confidence' : 'Low confidence')}
+                          </span>
+                          {/* Source Attribution Tag */}
+                          {sig.evidence?.source_label && (
+                            <span style={{
+                              padding: '2px 8px', borderRadius: 12, fontSize: 10.5, fontWeight: 600,
+                              background: sig.evidence?.is_bop_authored ? 'rgba(0, 215, 255, 0.12)' : 'rgba(148, 163, 184, 0.15)',
+                              color: sig.evidence?.is_bop_authored ? '#0891b2' : '#64748b',
+                            }}>
+                              {sig.evidence.source_label}
+                            </span>
+                          )}
+                        </div>
+
+                        {relPct && (
+                          <div style={{
+                            fontSize: 14, fontWeight: 800,
+                            color: sig.direction === 'UP' ? '#059669' : (sig.direction === 'DOWN' ? '#ef4444' : 'var(--text-secondary)'),
+                          }}>
+                            {sig.direction === 'UP' ? '▲ ' : (sig.direction === 'DOWN' ? '▼ ' : '')}{relPct} vs baseline
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Explanation Sentence */}
+                      <div style={{ fontSize: 12.5, color: 'var(--text-primary)', lineHeight: 1.45 }}>
+                        {sig.explanation}
+                      </div>
+
+                      {/* Evidence Accordion Toggle */}
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 4 }}>
+                        <button
+                          onClick={() => setExpandedEvidence(prev => ({ ...prev, [sig.signal_identity]: !prev[sig.signal_identity] }))}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: 4,
+                            background: 'transparent', border: 'none', cursor: 'pointer',
+                            fontSize: 11.5, fontWeight: 700, color: '#00d7ff',
+                          }}
+                        >
+                          <span>{isExpanded ? 'Hide calculation evidence' : 'Why am I seeing this?'}</span>
+                          {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                        </button>
+                      </div>
+
+                      {/* Expanded Evidence Drawer */}
+                      {isExpanded && (
+                        <div style={{
+                          marginTop: 8, padding: '12px 14px', borderRadius: 8,
+                          background: 'var(--surface-card)', border: '1px solid var(--border-default)',
+                          fontSize: 11.5, color: 'var(--text-secondary)',
+                          display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10,
+                        }}>
+                          <div>
+                            <strong>Observed Value:</strong> {sig.observed_value != null ? sig.observed_value : 'N/A'}
+                          </div>
+                          <div>
+                            <strong>Baseline (Median):</strong> {sig.baseline_value != null ? sig.baseline_value : 'N/A'}
+                          </div>
+                          <div>
+                            <strong>Sample Size:</strong> n = {sig.sample_size}
+                          </div>
+                          <div>
+                            <strong>Cohort Method:</strong> {sig.evidence?.baseline_method || 'cohort median'}
+                          </div>
+                          <div>
+                            <strong>Comparison Window:</strong> {sig.period_start} to {sig.period_end}
+                          </div>
+                          <div>
+                            <strong>Data Freshness:</strong> {sig.evidence?.freshness || 'FRESH'}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       )}

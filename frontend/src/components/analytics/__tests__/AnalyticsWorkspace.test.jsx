@@ -11,6 +11,8 @@ jest.mock('../../../services/api', () => ({
     summary: jest.fn(),
     trends: jest.fn(),
     topPosts: jest.fn(),
+    insights: jest.fn(),
+    executiveSummary: jest.fn(),
   },
 }));
 
@@ -143,12 +145,91 @@ const mockTopPostsResponse = {
   },
 };
 
-describe('AnalyticsWorkspace UI Suite (BS-4E)', () => {
+
+const mockInsightsResponse = {
+  data: {
+    client_id: 3,
+    platform: 'all',
+    count: 1,
+    signals: [
+      {
+        signal_identity: 'sig_outperform_1',
+        platform: 'facebook',
+        signal_type: 'CONTENT_OUTPERFORMING',
+        metric: 'REACTIONS',
+        scope: 'post',
+        object_id: 'fb_post_101',
+        unified_post_id: 1,
+        period_start: '2026-09-21',
+        period_end: '2026-10-21',
+        observed_value: 120.0,
+        baseline_value: 50.0,
+        absolute_delta: 70.0,
+        relative_delta: 1.4,
+        sample_size: 15,
+        confidence_level: 'HIGH',
+        direction: 'UP',
+        severity: 'POSITIVE',
+        is_actionable: true,
+        explanation: 'This post generated 120 Reactions, which is +140.0% above the recent median (50.0) of 15 comparable image posts on Facebook over the last 30 days.',
+        evidence: {
+          observed_value: 120.0,
+          baseline_value: 50.0,
+          baseline_method: 'median',
+          sample_size: 15,
+          is_bop_authored: true,
+          source_label: 'Published by Bop Social',
+          freshness: 'FRESH',
+        },
+      },
+    ],
+  },
+};
+
+const mockSummaryBIResponse = {
+  data: {
+    client_id: 3,
+    platform: 'all',
+    engagement_direction: {
+      direction: 'UP',
+      relative_delta: 0.25,
+      explanation: 'Overall Reactions trended up by +25.0%',
+    },
+    follower_direction: {
+      direction: 'UP',
+      net_change: 85,
+      explanation: 'Net follower growth accelerated with 85 new followers',
+    },
+    winning_formats: [
+      {
+        format: 'reel',
+        platform: 'facebook',
+        metric: 'REACTIONS',
+        relative_delta_pct: 42.0,
+        sample_size: 8,
+        confidence: 'Medium',
+      },
+    ],
+    posting_time_insights: {
+      has_sufficient_data: true,
+      recommendations: [
+        {
+          bucket: 'evening',
+          relative_delta_pct: 35.0,
+        },
+      ],
+    },
+  },
+};
+
+describe('AnalyticsWorkspace UI Suite (BS-4E & BS-4F)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     api.analyticsAPI.summary.mockResolvedValue(mockSummaryResponse);
     api.analyticsAPI.trends.mockResolvedValue({ data: { is_available: true, datapoints: [] } });
     api.analyticsAPI.topPosts.mockResolvedValue(mockTopPostsResponse);
+    api.analyticsAPI.insights.mockResolvedValue(mockInsightsResponse);
+    api.analyticsAPI.executiveSummary.mockResolvedValue(mockSummaryBIResponse);
   });
 
   const renderComponent = () =>
@@ -222,6 +303,73 @@ describe('AnalyticsWorkspace UI Suite (BS-4E)', () => {
       expect(screen.getByText('Data Health & Telemetry Status')).toBeInTheDocument();
       const freshBadges = screen.getAllByText('Fresh');
       expect(freshBadges.length).toBeGreaterThanOrEqual(2);
+    });
+  });
+
+  test('07: switches to Executive Insights & BI tab and renders deterministic signal card and confidence', async () => {
+    renderComponent();
+    const biTab = screen.getByText('6. Executive Insights & BI');
+    fireEvent.click(biTab);
+
+    await waitFor(() => {
+      expect(screen.getByText('Deterministic Business Signals')).toBeInTheDocument();
+      expect(screen.getByText('CONTENT OUTPERFORMING')).toBeInTheDocument();
+      expect(screen.getByText('High confidence')).toBeInTheDocument();
+      expect(screen.getByText('POSITIVE')).toBeInTheDocument();
+      expect(screen.getByText(/above the recent median/)).toBeInTheDocument();
+    });
+  });
+
+  test('08: expands evidence drawer upon clicking Why am I seeing this', async () => {
+    renderComponent();
+    const biTab = screen.getByText('6. Executive Insights & BI');
+    fireEvent.click(biTab);
+
+    await waitFor(() => {
+      expect(screen.getByText('Why am I seeing this?')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('Why am I seeing this?'));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Observed Value:/)).toBeInTheDocument();
+      expect(screen.getByText('120')).toBeInTheDocument();
+      expect(screen.getByText(/Baseline \(Median\):/)).toBeInTheDocument();
+      expect(screen.getByText('50')).toBeInTheDocument();
+      expect(screen.getByText(/Sample Size:/)).toBeInTheDocument();
+      expect(screen.getByText('n = 15')).toBeInTheDocument();
+    });
+  });
+
+  test('09: displays Winning Formats card and Posting Time recommendations', async () => {
+    renderComponent();
+    const biTab = screen.getByText('6. Executive Insights & BI');
+    fireEvent.click(biTab);
+
+    await waitFor(() => {
+      expect(screen.getByText('REEL (+42%)')).toBeInTheDocument();
+      expect(screen.getByText('EVENING (+35%)')).toBeInTheDocument();
+    });
+  });
+
+  test('10: renders explicit insufficient data message when empty, never fake zero', async () => {
+    api.analyticsAPI.insights.mockResolvedValue({ data: { client_id: 3, signals: [] } });
+    api.analyticsAPI.executiveSummary.mockResolvedValue({
+      data: {
+        winning_formats: [],
+        posting_time_insights: { has_sufficient_data: false },
+      },
+    });
+
+    renderComponent();
+    const biTab = screen.getByText('6. Executive Insights & BI');
+    fireEvent.click(biTab);
+
+    await waitFor(() => {
+      const emptyNotices = screen.getAllByText('Not enough comparable historical data yet');
+      expect(emptyNotices.length).toBeGreaterThanOrEqual(1);
+      expect(screen.getByText('Not enough data yet')).toBeInTheDocument();
+      expect(screen.queryByText(/^0%$/)).not.toBeInTheDocument();
     });
   });
 });

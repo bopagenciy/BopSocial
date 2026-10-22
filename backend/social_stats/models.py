@@ -2180,6 +2180,82 @@ class SocialMetricRollup(models.Model):
         return f"{self.client_id} | {self.platform} | {self.normalized_metric} = {self.metric_value} ({self.period} @ {self.period_start})"
 
 
+# ── BS-4F Deterministic Business Intelligence Foundation ───────────────────────
+SIGNAL_DIRECTION_CHOICES = [
+    ('UP', 'Up'),
+    ('DOWN', 'Down'),
+    ('NEUTRAL', 'Neutral'),
+    ('FLAT', 'Flat'),
+]
+
+SIGNAL_SEVERITY_CHOICES = [
+    ('INFO', 'Info'),
+    ('POSITIVE', 'Positive'),
+    ('WARNING', 'Warning'),
+    ('CRITICAL', 'Critical'),
+]
+
+CONFIDENCE_LEVEL_CHOICES = [
+    ('LOW', 'Low'),
+    ('MEDIUM', 'Medium'),
+    ('HIGH', 'High'),
+    ('NONE', 'None'),
+]
+
+
+class BusinessSignal(models.Model):
+    """
+    Deterministic, explainable business intelligence signal derived from
+    normalized analytics rollups and snapshots without generative AI.
+    """
+    client        = models.ForeignKey(Client, on_delete=models.CASCADE, related_name='business_signals', db_index=True)
+    platform      = models.CharField(max_length=30, db_index=True)
+    signal_type   = models.CharField(max_length=60, db_index=True)
+    metric        = models.CharField(max_length=60, blank=True, db_index=True)
+    scope         = models.CharField(max_length=30, default='account', db_index=True)
+    object_id     = models.CharField(max_length=255, blank=True, default='', db_index=True)
+    unified_post  = models.ForeignKey('UnifiedPost', null=True, blank=True, on_delete=models.SET_NULL, related_name='business_signals')
+
+    period_start  = models.DateField(db_index=True)
+    period_end    = models.DateField(db_index=True)
+
+    observed_value = models.DecimalField(max_digits=20, decimal_places=4, null=True, blank=True)
+    baseline_value = models.DecimalField(max_digits=20, decimal_places=4, null=True, blank=True)
+    absolute_delta = models.DecimalField(max_digits=20, decimal_places=4, null=True, blank=True)
+    relative_delta = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+
+    sample_size      = models.IntegerField(default=0)
+    confidence_level = models.CharField(max_length=20, choices=CONFIDENCE_LEVEL_CHOICES, default='NONE')
+
+    direction     = models.CharField(max_length=20, choices=SIGNAL_DIRECTION_CHOICES, default='NEUTRAL')
+    severity      = models.CharField(max_length=20, choices=SIGNAL_SEVERITY_CHOICES, default='INFO')
+
+    is_actionable = models.BooleanField(default=False)
+
+    evidence              = models.JSONField(default=dict, blank=True)
+    explanation_template  = models.TextField(blank=True)
+    metadata              = models.JSONField(default=dict, blank=True)
+    cohort_hash           = models.CharField(max_length=64, blank=True, default='')
+
+    # Stable identity key ensuring zero duplicate signals
+    signal_identity = models.CharField(max_length=128, unique=True, db_index=True)
+
+    created_at    = models.DateTimeField(auto_now_add=True)
+    updated_at    = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-period_end', '-created_at']
+        indexes = [
+            models.Index(fields=['client', 'signal_type', 'period_end']),
+            models.Index(fields=['client', 'platform', 'period_end']),
+            models.Index(fields=['client', 'severity']),
+            models.Index(fields=['client', 'confidence_level']),
+        ]
+
+    def __str__(self):
+        return f"{self.client_id} | {self.signal_type} | {self.platform} ({self.confidence_level}) @ {self.period_end}"
+
+
 class PostQueue(models.Model):
     """A reusable schedule (e.g. 'every weekday 10am') that drains QueuedItems."""
     client          = models.ForeignKey(Client, on_delete=models.CASCADE, related_name='post_queues')

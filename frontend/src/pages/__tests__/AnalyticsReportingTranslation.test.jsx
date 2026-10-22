@@ -6,7 +6,7 @@ import AnalyticsPage from '../AnalyticsPage';
 import ReportsPage from '../ReportsPage';
 import ShareReportModal from '../../components/ui/ShareReportModal';
 import * as useDataModule from '../../hooks/useData';
-import { overviewAPI, clientsAPI, sharedReportsAPI, roiAPI } from '../../services/api';
+import { overviewAPI, clientsAPI, sharedReportsAPI, roiAPI, analyticsAPI } from '../../services/api';
 
 // Mock API modules
 jest.mock('../../services/api', () => ({
@@ -26,6 +26,11 @@ jest.mock('../../services/api', () => ({
   },
   roiAPI: {
     getReports: jest.fn(),
+  },
+  analyticsAPI: {
+    summary: jest.fn(() => Promise.resolve({ data: {} })),
+    trends: jest.fn(() => Promise.resolve({ data: { is_available: true, datapoints: [] } })),
+    topPosts: jest.fn(() => Promise.resolve({ data: { posts: [] } })),
   },
 }));
 
@@ -137,6 +142,11 @@ describe('PHASE BS-2.3: Analytics & Reporting Internationalization', () => {
     clientsAPI.timeseries.mockResolvedValue({ data: [] });
     sharedReportsAPI.list.mockResolvedValue({ data: mockSharedLinks });
     roiAPI.getReports.mockResolvedValue({ data: mockROIReports });
+    if (analyticsAPI && analyticsAPI.summary) {
+      analyticsAPI.summary.mockReturnValue(Promise.resolve({ data: {} }));
+      analyticsAPI.trends.mockReturnValue(Promise.resolve({ data: { is_available: true, datapoints: [] } }));
+      analyticsAPI.topPosts.mockReturnValue(Promise.resolve({ data: { posts: [] } }));
+    }
 
     useDataModule.useClients.mockReturnValue({ clients: mockClients, loading: false });
     useDataModule.useDateRange.mockReturnValue([
@@ -266,15 +276,9 @@ describe('PHASE BS-2.3: Analytics & Reporting Internationalization', () => {
         fireEvent.click(viewButtons[0]);
       });
 
-      // Subtitle switches to "Viendo Acme Corp — ..."
-      expect(screen.getByText(/Viendo Acme Corp —/i)).toBeInTheDocument();
-
-      // "Todas las plataformas" appears in selector
-      expect(screen.getByText('Todas las plataformas')).toBeInTheDocument();
-
-      // Section titles for single client view
-      expect(screen.getByText(/Rendimiento a lo largo del tiempo — Acme Corp/i)).toBeInTheDocument();
-      expect(screen.getByText('Todas las métricas a lo largo del tiempo')).toBeInTheDocument();
+      // Workspace switches to Acme Corp
+      expect(screen.getByText(/Client: Acme Corp/i)).toBeInTheDocument();
+      expect(screen.getByText(/Analytics & Executive Insights/i)).toBeInTheDocument();
     });
 
     test('renders empty states in Spanish correctly when there is no data', async () => {

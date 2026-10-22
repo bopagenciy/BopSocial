@@ -14,6 +14,9 @@ from .analytics.api import (
     AnalyticsSummaryView,
     AnalyticsTrendsView,
     AnalyticsTopPostsView,
+    AnalyticsInsightsView,
+    AnalyticsExecutiveSummaryView,
+    AnalyticsInsightsHistoryView,
 )
 from .views import (
     LoginView, me, ClientViewSet, CredentialViewSet,
@@ -665,9 +668,12 @@ urlpatterns = [
 
 
     # ── BS-4D Social Analytics Read API ──────────────────────────────────────────
-    path('analytics/summary/',   AnalyticsSummaryView.as_view(),   name='analytics_summary'),
-    path('analytics/trends/',    AnalyticsTrendsView.as_view(),    name='analytics_trends'),
-    path('analytics/top-posts/', AnalyticsTopPostsView.as_view(),  name='analytics_top_posts'),
+    path('analytics/summary/',           AnalyticsSummaryView.as_view(),           name='analytics_summary'),
+    path('analytics/trends/',            AnalyticsTrendsView.as_view(),            name='analytics_trends'),
+    path('analytics/top-posts/',         AnalyticsTopPostsView.as_view(),          name='analytics_top_posts'),
+    path('analytics/insights/',          AnalyticsInsightsView.as_view(),          name='analytics_insights'),
+    path('analytics/executive-summary/', AnalyticsExecutiveSummaryView.as_view(),  name='analytics_executive_summary'),
+    path('analytics/insights/history/',  AnalyticsInsightsHistoryView.as_view(),   name='analytics_insights_history'),
     # REST API
     path('', include(router.urls)),
 ]
