@@ -13,8 +13,9 @@ import requests
 from django.conf import settings
 
 from social_stats.ai_helpers import parse_json_response
+from ..confidence import enrich_narrative_with_derived_confidence
 from ..prompts import build_user_prompt, get_system_prompt
-from ..schemas import EXECUTIVE_NARRATIVE_JSON_SCHEMA
+from ..schemas import LLM_EXECUTIVE_NARRATIVE_JSON_SCHEMA
 from .base import BaseNarrativeProvider, NarrativeProviderResult
 
 logger = logging.getLogger(__name__)
@@ -66,7 +67,7 @@ class OllamaNarrativeProvider(BaseNarrativeProvider):
             "model": self.model_name or "qwen3.5:9b",
             "system": system_prompt,
             "prompt": user_prompt,
-            "format": EXECUTIVE_NARRATIVE_JSON_SCHEMA,
+            "format": LLM_EXECUTIVE_NARRATIVE_JSON_SCHEMA,
             "stream": False,
             "think": False,
             "options": {
@@ -132,6 +133,9 @@ class OllamaNarrativeProvider(BaseNarrativeProvider):
 
         if not isinstance(parsed_json, dict):
             raise RuntimeError(f"Ollama narrative root must be a JSON object, got {type(parsed_json).__name__}")
+
+        # Deterministic Enrichment: attach derived confidence from evidence_refs (BS-4H.1D)
+        parsed_json = enrich_narrative_with_derived_confidence(parsed_json, context)
 
         input_tokens = data.get("prompt_eval_count") or 0
         output_tokens = data.get("eval_count") or 0

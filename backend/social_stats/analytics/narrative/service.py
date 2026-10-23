@@ -12,6 +12,7 @@ from django.utils import timezone
 from social_stats.models import ExecutiveNarrative, ExecutiveReport
 
 from .context import build_grounded_narrative_context, compute_context_hash
+from .confidence import enrich_narrative_with_derived_confidence
 from .prompts import PROMPT_VERSION
 from .providers import get_narrative_provider
 from .schemas import CONTEXT_SCHEMA_VERSION
@@ -45,7 +46,8 @@ def preview_narrative(
         **kwargs
     )
 
-    is_valid, val_summary = NarrativeValidator.validate(result.parsed_json, context)
+    enriched_narrative = enrich_narrative_with_derived_confidence(result.parsed_json, context)
+    is_valid, val_summary = NarrativeValidator.validate(enriched_narrative, context)
 
     return {
         "report_id": report.id,
@@ -58,7 +60,7 @@ def preview_narrative(
         "source_hash": report.source_hash,
         "context_hash": context_hash,
         "context": context,
-        "narrative": result.parsed_json,
+        "narrative": enriched_narrative,
         "raw_response": result.raw_response,
         "validation_status": val_summary["status"],
         "validation_results": val_summary["results"],
@@ -95,9 +97,10 @@ def generate_and_save_narrative(
         **kwargs
     )
 
-    is_valid, val_summary = NarrativeValidator.validate(result.parsed_json, context)
+    enriched_narrative = enrich_narrative_with_derived_confidence(result.parsed_json, context)
+    is_valid, val_summary = NarrativeValidator.validate(enriched_narrative, context)
 
-    if not result.parsed_json:
+    if not enriched_narrative:
         final_status = "FAILED"
     elif is_valid:
         final_status = "VALIDATED"
@@ -105,10 +108,10 @@ def generate_and_save_narrative(
         final_status = "REJECTED"
 
     rendered_text = ""
-    if result.parsed_json:
+    if enriched_narrative:
         sections = []
         for sec in ["executive_summary", "performance_observations"]:
-            items = result.parsed_json.get(sec, [])
+            items = enriched_narrative.get(sec, [])
             if items:
                 sections.append("\n".join(items))
         rendered_text = "\n\n".join(sections)
@@ -124,7 +127,7 @@ def generate_and_save_narrative(
         context_schema_version=CONTEXT_SCHEMA_VERSION,
         source_hash=report.source_hash,
         context_hash=context_hash,
-        narrative_json=result.parsed_json,
+        narrative_json=enriched_narrative,
         rendered_text=rendered_text,
         validation_status=val_summary["status"],
         validation_results=val_summary,

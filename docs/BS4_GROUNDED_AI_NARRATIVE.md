@@ -204,4 +204,40 @@ Phase BS-4H.1-R3 demonstrated successful root-level JSON schema adherence under 
    - The exact raw output from R3 is preserved as a deterministic regression fixture, verifying that it passes Gates 1, 2, 3, 4, 6, and 7, and fails exclusively Gate 5 (`confidence_preserved`).
    - The corrected R3 fixture (confidence adjusted to `NONE` for recommendation #1) passes 100% of validation gates.
 
+---
+
+### 13. Deterministic Recommendation Confidence Derivation (Phase BS-4H.1D Hardening)
+In small parameter-efficient models (e.g., `qwen3.5:9b`), semantic estimation of statistical uncertainty repeatedly exhibited hallucinated overconfidence across live attempts (emitting `confidence: "HIGH"` despite explicit instructions when evidence carried `confidence: "NONE"`). Recommendation confidence is an empirical mathematical property derived from evidence, not an authorial linguistic artifact.
+
+1. **Architectural Separation of Concerns**:
+   - **LLM Authoring Scope**: The LLM is confined to rendering language and structural taxonomy: `text`, `recommendation_type`, `strength`, and `evidence_refs`.
+   - **Deterministic Engine Scope**: Bop Social is the sole authority for calculating recommendation `confidence`. The LLM is strictly prohibited from authoring `confidence`.
+
+2. **Schema Specialization (Dual Schemas)**:
+   - **Provider Schema (`LLM_EXECUTIVE_NARRATIVE_JSON_SCHEMA`)**: Dispatched to Ollama via `format`. Strictly defines recommendations without `confidence` and enforces `additionalProperties: false`. Any recommendation containing `confidence` in raw LLM output violates schema constraints.
+   - **Canonical Schema (`CANONICAL_EXECUTIVE_NARRATIVE_JSON_SCHEMA`)**: Internal canonical contract requiring `confidence` (`HIGH`, `MEDIUM`, `LOW`, `NONE`) across all validated and persisted narratives.
+
+3. **Deterministic Derivation Rule**:
+   - Implemented in `backend/social_stats/analytics/narrative/confidence.py`:
+     $$\text{confidence}(\text{rec}) = \min_{e \in \text{evidence\_refs}} \text{confidence}(e)$$
+   - Priority order: `NONE` < `LOW` < `MEDIUM` < `HIGH`.
+   - **Empty / Unknown Evidence**: Returns `NONE` (fail-closed against unsubstantiated recommendations).
+   - **Data Limitations**: Verified system limitations (`DATA_LIMITATION` / `LIMITATION-*`) carry deterministic `HIGH` confidence.
+   - **Mixed Evidence**: If a recommendation cites both a high-confidence limitation and a zero-confidence signal (`NONE`), the conservative minimum evaluates to `NONE`.
+
+4. **Deterministic Enrichment & Text Immutability**:
+   - `enrich_narrative_with_derived_confidence` attaches `confidence` to each recommendation dictionary in-memory before validation.
+   - All LLM-generated text, structures, observations, summaries, and limitations remain strictly unmodified.
+
+5. **Validator Gate 5 Enforcement**:
+   - Gate 5 (`confidence_preserved`) verifies that every recommendation's `confidence` exactly matches the deterministic derivation from its cited evidence.
+   - Any missing, invalid, or mismatched confidence level fails closed.
+
+6. **Prompt Contract v4 (`bs4h-prompt-v4`)**:
+   - Prompt instructions and few-shot structural examples are updated to completely exclude `confidence` from recommendation schema requirements.
+
+7. **R4 Replay Verification**:
+   - The raw output from R4, when stripped of LLM confidence and deterministically enriched by Bop Social, passes all 7 validation gates (`json_schema`, `facts_supported`, `metrics_supported`, `insufficient_sample_preserved`, `confidence_preserved`, `causality_safe`, `recommendations_grounded`).
+
+
 

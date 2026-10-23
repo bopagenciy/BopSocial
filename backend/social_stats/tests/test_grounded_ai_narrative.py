@@ -27,10 +27,19 @@ from social_stats.analytics.narrative.schemas import (
     PROMPT_VERSION,
     FORBIDDEN_KEYS,
     EXECUTIVE_NARRATIVE_JSON_SCHEMA,
+    CANONICAL_EXECUTIVE_NARRATIVE_JSON_SCHEMA,
+    LLM_EXECUTIVE_NARRATIVE_JSON_SCHEMA,
     get_executive_narrative_json_schema,
+    get_provider_narrative_json_schema,
+    get_canonical_narrative_json_schema,
     RECOMMENDATION_TAXONOMY,
     RECOMMENDATION_STRENGTHS,
     CONFIDENCE_LEVELS,
+)
+from social_stats.analytics.narrative.confidence import (
+    derive_recommendation_confidence,
+    enrich_narrative_with_derived_confidence,
+    CONFIDENCE_RANK,
 )
 from social_stats.analytics.narrative.prompts import (
     get_system_prompt,
@@ -569,7 +578,7 @@ class OllamaNarrativeProviderTests(TestCase):
                 self.assertIn("think", sent_payload)
                 self.assertEqual(sent_payload["think"], False)
                 self.assertEqual(sent_payload["model"], "qwen3.5:9b")
-                self.assertEqual(sent_payload["format"], EXECUTIVE_NARRATIVE_JSON_SCHEMA)
+                self.assertEqual(sent_payload["format"], LLM_EXECUTIVE_NARRATIVE_JSON_SCHEMA)
                 self.assertEqual(sent_payload["stream"], False)
                 self.assertEqual(sent_payload["options"]["temperature"], 0.0)
 
@@ -995,9 +1004,9 @@ class GroundedContextSchemaMappingTests(TestCase):
 
     # ── BS-4H.1B Schema & Alignment Tests ────────────────────────────────────
 
-    def test_prompt_version_is_v3(self):
-        """Verify PROMPT_VERSION is incremented to bs4h-prompt-v3."""
-        self.assertEqual(PROMPT_VERSION, "bs4h-prompt-v3")
+    def test_prompt_version_is_v4(self):
+        """Verify PROMPT_VERSION is incremented to bs4h-prompt-v4."""
+        self.assertEqual(PROMPT_VERSION, "bs4h-prompt-v4")
         self.assertEqual(CONTEXT_SCHEMA_VERSION, "bs4h-context-v1")
 
     @patch("requests.post")
@@ -1074,7 +1083,7 @@ class GroundedContextSchemaMappingTests(TestCase):
                     "recommendation_type": "CONTINUE_COLLECTING_DATA",
                     "strength": "OBSERVE",
                     "confidence": "NONE",
-                    "evidence_refs": ["SIG-1"]
+                    "evidence_refs": ["SIG-2"]
                 }
             ],
             "limitations": [
@@ -1170,7 +1179,7 @@ class GroundedContextSchemaMappingTests(TestCase):
                     "recommendation_type": "CONTINUE_COLLECTING_DATA",
                     "strength": "OBSERVE",
                     "confidence": "NONE",
-                    "evidence_refs": ["SIG-1"]
+                    "evidence_refs": ["SIG-2"]
                 }
             ],
             "limitations": ["Limitación mínima válida."]
@@ -1582,5 +1591,211 @@ class GroundedContextSchemaMappingTests(TestCase):
         is_valid, summary = NarrativeValidator.validate(payload, context)
         self.assertTrue(summary["results"]["confidence_preserved"], f"DATA_LIMITATION allows HIGH: {summary['errors']}")
         self.assertTrue(is_valid, f"Should be valid: {summary['errors']}")
+
+    # ── BS-4H.1D Deterministic Recommendation Confidence Derivation Tests ────
+
+    def test_derive_confidence_none_from_insufficient_sample(self):
+        """Section O: Evidence signals with NONE confidence derive NONE."""
+        registry = {
+            "SIG-2": {"type": "BUSINESS_SIGNAL", "confidence": "NONE"},
+            "SIG-3": {"type": "BUSINESS_SIGNAL", "confidence": "NONE"},
+            "SIG-4": {"type": "BUSINESS_SIGNAL", "confidence": "NONE"},
+            "SIG-5": {"type": "BUSINESS_SIGNAL", "confidence": "NONE"},
+        }
+        derived = derive_recommendation_confidence(["SIG-2", "SIG-3", "SIG-4", "SIG-5"], registry)
+        self.assertEqual(derived, "NONE")
+
+    def test_derive_confidence_mixed_none_high(self):
+        """Section P: Mixed evidence (NONE + HIGH) strictly derives conservative NONE."""
+        registry = {
+            "SIG-1": {"type": "BUSINESS_SIGNAL", "confidence": "HIGH"},
+            "SIG-2": {"type": "BUSINESS_SIGNAL", "confidence": "NONE"},
+        }
+        derived = derive_recommendation_confidence(["SIG-1", "SIG-2"], registry)
+        self.assertEqual(derived, "NONE")
+
+    def test_derive_confidence_low_medium(self):
+        """Section Q: Evidence (LOW + MEDIUM) strictly derives conservative LOW."""
+        registry = {
+            "SIG-A": {"type": "BUSINESS_SIGNAL", "confidence": "LOW"},
+            "SIG-B": {"type": "BUSINESS_SIGNAL", "confidence": "MEDIUM"},
+        }
+        derived = derive_recommendation_confidence(["SIG-A", "SIG-B"], registry)
+        self.assertEqual(derived, "LOW")
+
+    def test_derive_confidence_medium_high(self):
+        """Section R: Evidence (MEDIUM + HIGH) strictly derives conservative MEDIUM."""
+        registry = {
+            "SIG-A": {"type": "BUSINESS_SIGNAL", "confidence": "MEDIUM"},
+            "SIG-B": {"type": "BUSINESS_SIGNAL", "confidence": "HIGH"},
+        }
+        derived = derive_recommendation_confidence(["SIG-A", "SIG-B"], registry)
+        self.assertEqual(derived, "MEDIUM")
+
+    def test_derive_confidence_high_high(self):
+        """Section S: Evidence (HIGH + HIGH) derives HIGH."""
+        registry = {
+            "SIG-A": {"type": "BUSINESS_SIGNAL", "confidence": "HIGH"},
+            "SIG-B": {"type": "BUSINESS_SIGNAL", "confidence": "HIGH"},
+        }
+        derived = derive_recommendation_confidence(["SIG-A", "SIG-B"], registry)
+        self.assertEqual(derived, "HIGH")
+
+    def test_derive_confidence_unknown_evidence_fails_closed(self):
+        """Section T: Unknown evidence reference raises ValueError and fails closed."""
+        registry = {
+            "SIG-1": {"type": "BUSINESS_SIGNAL", "confidence": "HIGH"},
+        }
+        with self.assertRaises(ValueError):
+            derive_recommendation_confidence(["SIG-1", "SIG-UNKNOWN"], registry)
+
+    def test_derive_confidence_empty_evidence_fails_closed(self):
+        """Section U: Empty evidence refs list raises ValueError."""
+        registry = {
+            "SIG-1": {"type": "BUSINESS_SIGNAL", "confidence": "HIGH"},
+        }
+        with self.assertRaises(ValueError):
+            derive_recommendation_confidence([], registry)
+
+    def test_derive_confidence_limitation_is_high(self):
+        """Section V: Verified DATA_LIMITATION derives HIGH confidence."""
+        context = build_grounded_narrative_context(self.canonical_report)
+        registry = context.get("evidence_registry", {})
+        self.assertIn("LIMITATION-IG-PARTIAL", registry)
+        derived = derive_recommendation_confidence(["LIMITATION-IG-PARTIAL"], registry)
+        self.assertEqual(derived, "HIGH")
+
+    def test_provider_schema_excludes_confidence(self):
+        """Section W: Provider-facing schema strictly excludes confidence from recommendations."""
+        schema = get_provider_narrative_json_schema()
+        rec_schema = schema["properties"]["recommendations"]["items"]
+        self.assertNotIn("confidence", rec_schema["properties"])
+        self.assertNotIn("confidence", rec_schema["required"])
+        self.assertEqual(
+            rec_schema["required"],
+            ["text", "recommendation_type", "strength", "evidence_refs"]
+        )
+        self.assertFalse(rec_schema["additionalProperties"])
+
+    def test_canonical_internal_schema_requires_confidence(self):
+        """Section X: Canonical internal schema requires confidence."""
+        schema = get_canonical_narrative_json_schema()
+        rec_schema = schema["properties"]["recommendations"]["items"]
+        self.assertIn("confidence", rec_schema["properties"])
+        self.assertIn("confidence", rec_schema["required"])
+        self.assertEqual(
+            rec_schema["required"],
+            ["text", "recommendation_type", "strength", "confidence", "evidence_refs"]
+        )
+        self.assertFalse(rec_schema["additionalProperties"])
+
+    def test_model_authored_confidence_rejected_by_provider_schema(self):
+        """Section Y: Model attempting to output confidence violates provider schema additionalProperties: false."""
+        provider_schema = get_provider_narrative_json_schema()
+        rec_schema = provider_schema["properties"]["recommendations"]["items"]
+
+        # 1. Assert confidence is NOT in allowed properties
+        self.assertNotIn("confidence", rec_schema["properties"])
+        self.assertNotIn("confidence", rec_schema["required"])
+        # 2. Assert additionalProperties is strictly False
+        self.assertFalse(rec_schema["additionalProperties"])
+
+        # 3. Verify that an attempted recommendation with confidence contains an unallowlisted key
+        attempted_rec = {
+            "text": "Texto.",
+            "recommendation_type": "CONTINUE_COLLECTING_DATA",
+            "strength": "OBSERVE",
+            "confidence": "HIGH",  # Model illegally authored confidence
+            "evidence_refs": ["SIG-1"]
+        }
+        allowed_keys = set(rec_schema["properties"].keys())
+        extra_keys = set(attempted_rec.keys()) - allowed_keys
+        self.assertIn("confidence", extra_keys)
+        # Structural contract: additionalProperties is False, so extra_keys constitutes rejection
+        self.assertTrue(bool(extra_keys and not rec_schema["additionalProperties"]))
+
+    def test_r4_output_replay_passes_all_gates(self):
+        """Section Z: Replay of R4 output with deterministic confidence derivation passes ALL 7 gates."""
+        context = build_grounded_narrative_context(self.canonical_report)
+        # R4 draft produced under LLM schema (confidence omitted)
+        r4_llm_draft = {
+            "executive_summary": [
+                "Instagram analytics is currently operating in PARTIAL capability mode due to missing Meta permissions for advanced metrics.",
+                "Core source-backed metrics (Reactions, Comments, Total Followers) are active and reliable.",
+                "Advanced metrics including Reach, Saves, Video Views, Shares, and Engagement Total remain unavailable under current provider constraints.",
+                "Statistical baselines for new content formats (Carousel Albums, Videos) are currently inactive due to insufficient historical sample sizes."
+            ],
+            "performance_observations": [
+                "The data pipeline successfully ingests core engagement metrics from Instagram despite partial API access.",
+                "Analysis of Carousel Album posts is limited by a sample size of 2, falling short of the minimum required threshold of 3 for baseline activation.",
+                "Analysis of Video content is significantly constrained with a sample size of 1, well below the required minimum of 3.",
+                "No actionable insights can be generated for Reach or Saves until either provider permissions are upgraded or sufficient historical data accumulates."
+            ],
+            "recommendations": [
+                {
+                    "text": "Continue collecting data on existing content formats to accumulate the necessary sample sizes (n=3) required to activate statistical baselines for Carousel Albums and Videos.",
+                    "recommendation_type": "CONTINUE_COLLECTING_DATA",
+                    "strength": "OBSERVE",
+                    "evidence_refs": ["SIG-2", "SIG-3", "SIG-4", "SIG-5"]
+                },
+                {
+                    "text": "Review and request additional Meta permissions (specifically instagram_manage_insights) to unlock unavailable metrics such as Reach, Saves, Video Views, and Engagement Total.",
+                    "recommendation_type": "REVIEW_PROVIDER_PERMISSIONS",
+                    "strength": "CONSIDER",
+                    "evidence_refs": ["LIMITATION-IG-PARTIAL"]
+                }
+            ],
+            "limitations": [
+                "Instagram capability is PARTIAL. Reach, Shares, Saves, Video Views, and Engagement Total are unavailable from provider."
+            ]
+        }
+
+        # Deterministic enrichment step
+        canonical_narrative = enrich_narrative_with_derived_confidence(r4_llm_draft, context)
+
+        # Assert derived confidences
+        rec1 = canonical_narrative["recommendations"][0]
+        rec2 = canonical_narrative["recommendations"][1]
+        self.assertEqual(rec1["confidence"], "NONE")
+        self.assertEqual(rec2["confidence"], "HIGH")
+
+        # Validate through 7-gate pipeline
+        is_valid, summary = NarrativeValidator.validate(canonical_narrative, context)
+        self.assertTrue(is_valid, f"R4 replay must pass all gates: {summary['errors']}")
+        self.assertEqual(summary["status"], "PASS")
+        for gate, res in summary["results"].items():
+            self.assertTrue(res, f"Gate {gate} failed in R4 replay")
+
+    def test_r4_enrichment_text_immutability(self):
+        """Section AA: Deterministic enrichment modifies ZERO generated prose, only attaches confidence."""
+        context = build_grounded_narrative_context(self.canonical_report)
+        draft = {
+            "executive_summary": ["Párrafo de resumen 1.", "Párrafo de resumen 2."],
+            "performance_observations": ["Observación factual."],
+            "recommendations": [{
+                "text": "Texto intacto de recomendación.",
+                "recommendation_type": "CONTINUE_COLLECTING_DATA",
+                "strength": "OBSERVE",
+                "evidence_refs": ["SIG-2"]
+            }],
+            "limitations": ["Limitación intacta."]
+        }
+        enriched = enrich_narrative_with_derived_confidence(draft, context)
+
+        # Prose immutability assertions
+        self.assertEqual(enriched["executive_summary"], draft["executive_summary"])
+        self.assertEqual(enriched["performance_observations"], draft["performance_observations"])
+        self.assertEqual(enriched["limitations"], draft["limitations"])
+
+        # Recommendation fields immutability
+        self.assertEqual(enriched["recommendations"][0]["text"], draft["recommendations"][0]["text"])
+        self.assertEqual(enriched["recommendations"][0]["recommendation_type"], draft["recommendations"][0]["recommendation_type"])
+        self.assertEqual(enriched["recommendations"][0]["strength"], draft["recommendations"][0]["strength"])
+        self.assertEqual(enriched["recommendations"][0]["evidence_refs"], draft["recommendations"][0]["evidence_refs"])
+
+        # Confidence correctly added
+        self.assertNotIn("confidence", draft["recommendations"][0])
+        self.assertEqual(enriched["recommendations"][0]["confidence"], "NONE")
+
 
 

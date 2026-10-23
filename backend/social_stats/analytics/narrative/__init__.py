@@ -18,7 +18,16 @@ from .schemas import (
     RECOMMENDATION_STRENGTHS,
     CONFIDENCE_LEVELS,
     EXECUTIVE_NARRATIVE_JSON_SCHEMA,
+    CANONICAL_EXECUTIVE_NARRATIVE_JSON_SCHEMA,
+    LLM_EXECUTIVE_NARRATIVE_JSON_SCHEMA,
     get_executive_narrative_json_schema,
+    get_provider_narrative_json_schema,
+    get_canonical_narrative_json_schema,
+)
+from .confidence import (
+    derive_recommendation_confidence,
+    enrich_narrative_with_derived_confidence,
+    CONFIDENCE_RANK,
 )
 
 __all__ = [
@@ -34,5 +43,12 @@ __all__ = [
     "RECOMMENDATION_STRENGTHS",
     "CONFIDENCE_LEVELS",
     "EXECUTIVE_NARRATIVE_JSON_SCHEMA",
+    "CANONICAL_EXECUTIVE_NARRATIVE_JSON_SCHEMA",
+    "LLM_EXECUTIVE_NARRATIVE_JSON_SCHEMA",
     "get_executive_narrative_json_schema",
+    "get_provider_narrative_json_schema",
+    "get_canonical_narrative_json_schema",
+    "derive_recommendation_confidence",
+    "enrich_narrative_with_derived_confidence",
+    "CONFIDENCE_RANK",
 ]

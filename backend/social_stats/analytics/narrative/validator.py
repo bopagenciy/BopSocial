@@ -7,6 +7,7 @@ from __future__ import annotations
 import re
 from typing import Any, Dict, List, Set, Tuple
 
+from .confidence import derive_recommendation_confidence
 from .schemas import (
     RECOMMENDATION_TAXONOMY,
     RECOMMENDATION_STRENGTHS,
@@ -478,40 +479,24 @@ class NarrativeValidator:
         if not any("Insufficient sample lock failed" in e for e in errors):
             checks["insufficient_sample_preserved"] = True
 
-        # 5. Confidence Lock: Deterministic conservative evidence propagation
+        # 5. Confidence Lock: Verify canonical confidence matches deterministic derivation
         evidence_registry = context.get("evidence_registry", {})
         for idx, rec in enumerate(recs):
             rec_conf = rec.get("confidence")
             rec_refs = rec.get("evidence_refs", [])
-            if rec_conf not in CONFIDENCE_RANK:
+            if not rec_refs:
                 continue
 
-            evidence_confidences = []
-            for ref in rec_refs:
-                ev = evidence_registry.get(ref)
-                if not ev:
-                    continue
-                ev_type = ev.get("type")
-                if ev_type == "DATA_LIMITATION":
-                    evidence_confidences.append("HIGH")
-                elif ev_type == "BUSINESS_SIGNAL":
-                    sig_conf = ev.get("confidence") or ev.get("confidence_level") or "NONE"
-                    evidence_confidences.append(sig_conf)
-                else:
-                    sig_conf = ev.get("confidence") or "NONE"
-                    evidence_confidences.append(sig_conf)
-
-            if evidence_confidences:
-                # Conservative rule: recommendation confidence cannot exceed lowest material evidence confidence
-                min_evidence_rank = min(CONFIDENCE_RANK.get(c, 0) for c in evidence_confidences)
-                rec_rank = CONFIDENCE_RANK[rec_conf]
-                if rec_rank > min_evidence_rank:
-                    allowed_conf_str = [k for k, v in CONFIDENCE_RANK.items() if v == min_evidence_rank][0]
+            try:
+                expected_conf = derive_recommendation_confidence(rec_refs, evidence_registry)
+                if rec_conf != expected_conf:
                     refs_str = ", ".join(rec_refs)
                     errors.append(
                         f"Confidence lock failed: Recommendation #{idx + 1} confidence '{rec_conf}' "
-                        f"exceeds allowed '{allowed_conf_str}' from evidence refs [{refs_str}]."
+                        f"exceeds allowed '{expected_conf}' from evidence refs [{refs_str}]."
                     )
+            except ValueError as e:
+                errors.append(f"Confidence lock failed: Recommendation #{idx + 1} evidence resolution failed: {e}")
 
         if not any("Confidence lock failed" in e for e in errors):
             checks["confidence_preserved"] = True

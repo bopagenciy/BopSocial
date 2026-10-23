@@ -188,6 +188,10 @@ class FakeNarrativeProvider(BaseNarrativeProvider):
         else:
             payload = valid_payload
 
+        if mode == "VALID":
+            from ..confidence import enrich_narrative_with_derived_confidence
+            payload = enrich_narrative_with_derived_confidence(payload, context)
+
         raw_json_str = json.dumps(payload, indent=2, ensure_ascii=False)
         return NarrativeProviderResult(
             raw_response=raw_json_str,

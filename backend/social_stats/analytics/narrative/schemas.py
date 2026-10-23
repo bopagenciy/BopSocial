@@ -5,7 +5,7 @@ import copy
 from typing import Dict, List, Any
 
 CONTEXT_SCHEMA_VERSION = "bs4h-context-v1"
-PROMPT_VERSION = "bs4h-prompt-v3"
+PROMPT_VERSION = "bs4h-prompt-v4"
 
 RECOMMENDATION_TAXONOMY = [
     "CONTINUE_COLLECTING_DATA",
@@ -66,8 +66,8 @@ MAX_CONTENT_EXAMPLES = 5
 MAX_LIMITATIONS_IN_CONTEXT = 10
 
 
-# Canonical JSON Schema for Executive Narrative Output (Single Source of Truth)
-EXECUTIVE_NARRATIVE_JSON_SCHEMA: Dict[str, Any] = {
+# Canonical JSON Schema for Executive Narrative Output (Internal Domain & Persistence)
+CANONICAL_EXECUTIVE_NARRATIVE_JSON_SCHEMA: Dict[str, Any] = {
     "type": "object",
     "properties": {
         "executive_summary": {
@@ -145,11 +145,39 @@ EXECUTIVE_NARRATIVE_JSON_SCHEMA: Dict[str, Any] = {
     "additionalProperties": False,
 }
 
+# Alias for backwards compatibility
+EXECUTIVE_NARRATIVE_JSON_SCHEMA: Dict[str, Any] = CANONICAL_EXECUTIVE_NARRATIVE_JSON_SCHEMA
 
-def get_executive_narrative_json_schema() -> Dict[str, Any]:
+
+# Provider/LLM JSON Schema for Executive Narrative Output (BS-4H.1D)
+# Relieves the model of confidence authoring; additionalProperties: False strictly rejects confidence.
+LLM_EXECUTIVE_NARRATIVE_JSON_SCHEMA: Dict[str, Any] = copy.deepcopy(CANONICAL_EXECUTIVE_NARRATIVE_JSON_SCHEMA)
+# Remove confidence from provider recommendation item schema
+_llm_rec_props = LLM_EXECUTIVE_NARRATIVE_JSON_SCHEMA["properties"]["recommendations"]["items"]["properties"]
+if "confidence" in _llm_rec_props:
+    del _llm_rec_props["confidence"]
+
+_llm_rec_req = LLM_EXECUTIVE_NARRATIVE_JSON_SCHEMA["properties"]["recommendations"]["items"]["required"]
+if "confidence" in _llm_rec_req:
+    _llm_rec_req.remove("confidence")
+
+
+def get_executive_narrative_json_schema(for_provider: bool = False) -> Dict[str, Any]:
     """
-    Returns a deep copy of the canonical ExecutiveNarrative JSON Schema.
-    Ensures callers cannot mutate the shared global definition.
+    Returns a deep copy of the ExecutiveNarrative JSON Schema.
+    If for_provider=True, returns LLM_EXECUTIVE_NARRATIVE_JSON_SCHEMA (without confidence).
+    Otherwise returns CANONICAL_EXECUTIVE_NARRATIVE_JSON_SCHEMA (with confidence).
     """
-    return copy.deepcopy(EXECUTIVE_NARRATIVE_JSON_SCHEMA)
+    schema = LLM_EXECUTIVE_NARRATIVE_JSON_SCHEMA if for_provider else CANONICAL_EXECUTIVE_NARRATIVE_JSON_SCHEMA
+    return copy.deepcopy(schema)
+
+
+def get_provider_narrative_json_schema() -> Dict[str, Any]:
+    """Returns a deep copy of LLM_EXECUTIVE_NARRATIVE_JSON_SCHEMA for provider dispatch."""
+    return copy.deepcopy(LLM_EXECUTIVE_NARRATIVE_JSON_SCHEMA)
+
+
+def get_canonical_narrative_json_schema() -> Dict[str, Any]:
+    """Returns a deep copy of CANONICAL_EXECUTIVE_NARRATIVE_JSON_SCHEMA for domain validation."""
+    return copy.deepcopy(CANONICAL_EXECUTIVE_NARRATIVE_JSON_SCHEMA)
 
