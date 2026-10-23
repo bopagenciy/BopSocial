@@ -538,41 +538,8 @@ class OllamaNarrativeProviderTests(TestCase):
                 result = provider.generate(self.context)
                 self.assertEqual(result.parsed_json["executive_summary"], ["Texto limpio."])
 
-    def test_ollama_provider_non_200_raises(self):
-        """Verify non-200 HTTP response raises RuntimeError without retry."""
-        from unittest.mock import patch, MagicMock
-        from django.test import override_settings
-        from social_stats.analytics.narrative.providers.ollama import OllamaNarrativeProvider
-
-        mock_resp = MagicMock()
-        mock_resp.status_code = 500
-        mock_resp.text = "Internal Server Error"
-
-        with override_settings(ENABLE_LIVE_AI_NARRATIVE=True):
-            with patch("social_stats.analytics.narrative.providers.ollama.requests.post", return_value=mock_resp) as mock_post:
-                provider = OllamaNarrativeProvider()
-                with self.assertRaises(RuntimeError) as ctx:
-                    provider.generate(self.context)
-                self.assertIn("Ollama returned HTTP 500", str(ctx.exception))
-                self.assertEqual(mock_post.call_count, 1)
-
-    def test_ollama_provider_timeout_raises(self):
-        """Verify request timeout raises RuntimeError without retry."""
-        import requests
-        from unittest.mock import patch
-        from django.test import override_settings
-        from social_stats.analytics.narrative.providers.ollama import OllamaNarrativeProvider
-
-        with override_settings(ENABLE_LIVE_AI_NARRATIVE=True):
-            with patch("social_stats.analytics.narrative.providers.ollama.requests.post", side_effect=requests.exceptions.Timeout("Connection timed out")) as mock_post:
-                provider = OllamaNarrativeProvider()
-                with self.assertRaises(RuntimeError) as ctx:
-                    provider.generate(self.context)
-                self.assertIn("Ollama request timed out", str(ctx.exception))
-                self.assertEqual(mock_post.call_count, 1)
-
-    def test_ollama_provider_malformed_json_raises(self):
-        """Verify unparseable response JSON raises RuntimeError without retry."""
+    def test_ollama_payload_think_false(self):
+        """Verify outgoing Ollama payload explicitly includes think=False, format=json, and model=qwen3.5:9b (BS-4H.1A)."""
         from unittest.mock import patch, MagicMock
         from django.test import override_settings
         from social_stats.analytics.narrative.providers.ollama import OllamaNarrativeProvider
@@ -581,7 +548,67 @@ class OllamaNarrativeProviderTests(TestCase):
         mock_resp.status_code = 200
         mock_resp.json.return_value = {
             "model": "qwen3.5:9b",
-            "response": "This is plain text, not JSON at all.",
+            "response": '{"executive_summary": ["Prueba."], "performance_observations": [], "recommendations": [], "limitations": []}',
+            "thinking": "",
+        }
+
+        with override_settings(ENABLE_LIVE_AI_NARRATIVE=True):
+            with patch("social_stats.analytics.narrative.providers.ollama.requests.post", return_value=mock_resp) as mock_post:
+                provider = OllamaNarrativeProvider(model_name="qwen3.5:9b")
+                provider.generate(self.context, language="es", style="EXECUTIVE")
+
+                self.assertEqual(mock_post.call_count, 1)
+                sent_payload = mock_post.call_args[1]["json"]
+                self.assertFalse(sent_payload.get("think"))
+                self.assertIn("think", sent_payload)
+                self.assertEqual(sent_payload["think"], False)
+                self.assertEqual(sent_payload["model"], "qwen3.5:9b")
+                self.assertEqual(sent_payload["format"], "json")
+                self.assertEqual(sent_payload["stream"], False)
+                self.assertEqual(sent_payload["options"]["temperature"], 0.0)
+
+    def test_ollama_response_with_thinking_ignores_thinking(self):
+        """Verify thinking channel is completely ignored and only response is parsed (BS-4H.1A)."""
+        from unittest.mock import patch, MagicMock
+        from django.test import override_settings
+        from social_stats.analytics.narrative.providers.ollama import OllamaNarrativeProvider
+
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {
+            "model": "qwen3.5:9b",
+            "response": '{"executive_summary": ["Contenido verificado."], "performance_observations": [], "recommendations": [], "limitations": []}',
+            "thinking": "Este es un razonamiento interno confidencial que NUNCA debe filtrarse.",
+            "prompt_eval_count": 2000,
+            "eval_count": 400,
+        }
+
+        with override_settings(ENABLE_LIVE_AI_NARRATIVE=True):
+            with patch("social_stats.analytics.narrative.providers.ollama.requests.post", return_value=mock_resp) as mock_post:
+                provider = OllamaNarrativeProvider()
+                result = provider.generate(self.context)
+
+                self.assertEqual(result.parsed_json["executive_summary"], ["Contenido verificado."])
+                self.assertTrue(result.metadata.get("thinking_present"))
+                self.assertNotIn("razonamiento interno confidencial", result.raw_response)
+                self.assertNotIn("razonamiento interno confidencial", str(result.metadata))
+                self.assertNotIn("razonamiento interno confidencial", str(result.parsed_json))
+                self.assertEqual(mock_post.call_count, 1)
+
+    def test_ollama_thinking_only_fails_closed_empty_final_response(self):
+        """Verify empty final response with non-empty thinking fails closed with EMPTY_FINAL_RESPONSE (BS-4H.1A)."""
+        from unittest.mock import patch, MagicMock
+        from django.test import override_settings
+        from social_stats.analytics.narrative.providers.ollama import OllamaNarrativeProvider
+
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {
+            "model": "qwen3.5:9b",
+            "response": "",
+            "thinking": "Razonamiento emitido por el modelo pero canal final vacio.",
+            "prompt_eval_count": 2050,
+            "eval_count": 451,
         }
 
         with override_settings(ENABLE_LIVE_AI_NARRATIVE=True):
@@ -589,8 +616,133 @@ class OllamaNarrativeProviderTests(TestCase):
                 provider = OllamaNarrativeProvider()
                 with self.assertRaises(RuntimeError) as ctx:
                     provider.generate(self.context)
-                self.assertIn("Malformed JSON in Ollama narrative response", str(ctx.exception))
+
+                self.assertIn("EMPTY_FINAL_RESPONSE", str(ctx.exception))
+                self.assertNotIn("Razonamiento emitido", str(ctx.exception))
+                # Zero retries
                 self.assertEqual(mock_post.call_count, 1)
+
+    def test_ollama_response_only_empty_thinking(self):
+        """Verify empty thinking with valid response parses successfully (BS-4H.1A)."""
+        from unittest.mock import patch, MagicMock
+        from django.test import override_settings
+        from social_stats.analytics.narrative.providers.ollama import OllamaNarrativeProvider
+
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {
+            "model": "qwen3.5:9b",
+            "response": '{"executive_summary": ["Resumen limpio."], "performance_observations": [], "recommendations": [], "limitations": []}',
+            "thinking": "",
+        }
+
+        with override_settings(ENABLE_LIVE_AI_NARRATIVE=True):
+            with patch("social_stats.analytics.narrative.providers.ollama.requests.post", return_value=mock_resp):
+                provider = OllamaNarrativeProvider()
+                result = provider.generate(self.context)
+                self.assertEqual(result.parsed_json["executive_summary"], ["Resumen limpio."])
+                self.assertFalse(result.metadata.get("thinking_present"))
+
+    def test_ollama_thinking_key_absent(self):
+        """Verify absence of thinking key in payload works normally (BS-4H.1A)."""
+        from unittest.mock import patch, MagicMock
+        from django.test import override_settings
+        from social_stats.analytics.narrative.providers.ollama import OllamaNarrativeProvider
+
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {
+            "model": "qwen3.5:9b",
+            "response": '{"executive_summary": ["Sin thinking key."], "performance_observations": [], "recommendations": [], "limitations": []}',
+        }
+
+        with override_settings(ENABLE_LIVE_AI_NARRATIVE=True):
+            with patch("social_stats.analytics.narrative.providers.ollama.requests.post", return_value=mock_resp):
+                provider = OllamaNarrativeProvider()
+                result = provider.generate(self.context)
+                self.assertEqual(result.parsed_json["executive_summary"], ["Sin thinking key."])
+                self.assertFalse(result.metadata.get("thinking_present"))
+
+    def test_ollama_no_reasoning_leak_across_layers(self):
+        """Verify thinking text never leaks into provider result, preview narrative, or metadata (BS-4H.1A)."""
+        import logging
+        from unittest.mock import patch, MagicMock
+        from django.test import override_settings
+        from social_stats.analytics.narrative.providers.ollama import OllamaNarrativeProvider
+
+        SECRET_REASONING = "SECRET_CHAIN_OF_THOUGHT_REASONING_DO_NOT_EXPOSE"
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {
+            "model": "qwen3.5:9b",
+            "response": '{"executive_summary": ["Narrativa publica."], "performance_observations": [], "recommendations": [], "limitations": []}',
+            "thinking": SECRET_REASONING,
+        }
+
+        with override_settings(ENABLE_LIVE_AI_NARRATIVE=True):
+            with self.assertLogs("social_stats.analytics.narrative.providers.ollama", level="INFO") as log_capture:
+                with patch("social_stats.analytics.narrative.providers.ollama.requests.post", return_value=mock_resp):
+                    provider = OllamaNarrativeProvider()
+                    result = provider.generate(self.context)
+
+                    # 1. raw_response check
+                    self.assertNotIn(SECRET_REASONING, result.raw_response)
+                    # 2. parsed_json check
+                    self.assertNotIn(SECRET_REASONING, str(result.parsed_json))
+                    # 3. metadata check
+                    self.assertNotIn(SECRET_REASONING, str(result.metadata))
+                    # 4. logs check
+                    for log_entry in log_capture.output:
+                        self.assertNotIn(SECRET_REASONING, log_entry)
+
+    def test_ollama_invalid_final_json_with_thinking_fails_closed(self):
+        """Verify invalid final JSON with thinking fails closed without using thinking as recovery (BS-4H.1A)."""
+        from unittest.mock import patch, MagicMock
+        from django.test import override_settings
+        from social_stats.analytics.narrative.providers.ollama import OllamaNarrativeProvider
+
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {
+            "model": "qwen3.5:9b",
+            "response": "This is non-JSON garbage text.",
+            "thinking": '{"executive_summary": ["JSON in thinking should NOT be used"]}',
+        }
+
+        with override_settings(ENABLE_LIVE_AI_NARRATIVE=True):
+            with patch("social_stats.analytics.narrative.providers.ollama.requests.post", return_value=mock_resp) as mock_post:
+                provider = OllamaNarrativeProvider()
+                with self.assertRaises(RuntimeError) as ctx:
+                    provider.generate(self.context)
+
+                self.assertIn("Malformed JSON", str(ctx.exception))
+                self.assertEqual(mock_post.call_count, 1)
+
+    def test_ollama_no_retry_on_all_error_modes(self):
+        """Verify strict single-call zero-retry behavior across timeout, HTTP error, empty response, and bad JSON."""
+        import requests
+        from unittest.mock import patch, MagicMock
+        from django.test import override_settings
+        from social_stats.analytics.narrative.providers.ollama import OllamaNarrativeProvider
+
+        error_scenarios = [
+            # 1. Timeout
+            ("timeout", {"side_effect": requests.exceptions.Timeout("Connection timed out")}),
+            # 2. HTTP 500
+            ("http_500", {"return_value": MagicMock(status_code=500, text="Internal Server Error")}),
+            # 3. Empty final response
+            ("empty_response", {"return_value": MagicMock(status_code=200, json=lambda: {"response": "", "thinking": "some thinking"})}),
+            # 4. Malformed JSON
+            ("malformed_json", {"return_value": MagicMock(status_code=200, json=lambda: {"response": "invalid json", "thinking": ""})}),
+        ]
+
+        with override_settings(ENABLE_LIVE_AI_NARRATIVE=True):
+            for name, patch_kwargs in error_scenarios:
+                with patch("social_stats.analytics.narrative.providers.ollama.requests.post", **patch_kwargs) as mock_post:
+                    provider = OllamaNarrativeProvider()
+                    with self.assertRaises(RuntimeError):
+                        provider.generate(self.context)
+                    self.assertEqual(mock_post.call_count, 1, f"Scenario '{name}' executed {mock_post.call_count} calls, expected exactly 1.")
 
 
 class GroundedContextSchemaMappingTests(TestCase):

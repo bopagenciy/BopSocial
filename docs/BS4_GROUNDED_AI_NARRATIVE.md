@@ -129,3 +129,24 @@ The Reports & PDF Export workspace (Tab 7) includes an **AI Executive Narrative*
 - **Validated**: Displays fact-locked Executive Summary, Key Observations, Recommendations (with interactive "Why this recommendation?" evidence drawer), and Limitations.
 - **Rejected**: Displays explicit safety alert ("AI draft did not pass evidence validation") along with specific validation failure reasons, ensuring ungrounded drafts are never delivered to clients.
 - **Stale Banner**: Displays warning if the underlying report data has changed since narrative generation.
+
+---
+
+### 10. Ollama Thinking-Mode Handling (Phase BS-4H.1A Hardening)
+When executing against modern local models that support chain-of-thought or reasoning channels (e.g., `qwen3.5:9b`), the adapter applies strict thinking-mode separation:
+
+1. **Final Response vs Thinking Channel Distinction**:
+   - The Ollama daemon returns distinct channels: the final content channel (`payload["response"]`) and an optional reasoning channel (`payload["thinking"]`).
+   - Only the final `response` channel represents authorized, client-facing narrative output.
+2. **Explicit `think=false` Strategy**:
+   - The generation payload dispatched to `/api/generate` explicitly specifies `"think": false` alongside `"format": "json"`, `"stream": false`, and `"options": {"temperature": 0.0}` to request thinking-suppressed execution on supported models.
+3. **Never Persisting or Exposing Reasoning**:
+   - The raw contents of the `thinking` field are never copied into `raw_response`, `parsed_json`, `rendered_text`, client-facing APIs, application logs, or database records.
+   - Only an internal diagnostic boolean `thinking_present: bool` is retained in metadata.
+4. **Empty Final Response Behavior (`EMPTY_FINAL_RESPONSE`)**:
+   - If `payload["response"]` is missing, null, or empty string (even if `payload["thinking"]` contains hundreds of tokens of reasoning), the adapter fails closed immediately with an `EMPTY_FINAL_RESPONSE` error.
+5. **Strict No-Fallback Policy**:
+   - The adapter strictly prohibits fallback logic such as `if not response: response = thinking`. Internal reasoning tokens must never substitute for structured narrative JSON.
+   - No fallback to alternative models or external cloud providers is permitted.
+6. **Zero-Retry Semantic Architecture**:
+   - Across all error conditions (HTTP errors, timeouts, empty responses, malformed JSON), exactly 1 request is dispatched. No automatic retry is attempted.

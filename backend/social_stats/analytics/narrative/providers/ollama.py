@@ -67,6 +67,7 @@ class OllamaNarrativeProvider(BaseNarrativeProvider):
             "prompt": user_prompt,
             "format": "json",
             "stream": False,
+            "think": False,
             "options": {
                 "temperature": 0.0,
             },
@@ -99,12 +100,29 @@ class OllamaNarrativeProvider(BaseNarrativeProvider):
             logger.error("Failed to decode Ollama response JSON: %s", e)
             raise RuntimeError(f"Failed to decode Ollama response JSON: {e}")
 
-        raw_response_text = data.get("response", "")
-        if not raw_response_text:
-            logger.error("Ollama response contained empty 'response' field: %s", data)
-            raise RuntimeError("Ollama returned empty response content.")
+        thinking_val = data.get("thinking")
+        thinking_present = bool(thinking_val and str(thinking_val).strip())
 
-        cleaned_text = _clean_ollama_response_text(raw_response_text)
+        raw_response_text = data.get("response")
+        if raw_response_text is None or not str(raw_response_text).strip():
+            logger.error(
+                "Ollama response contained missing or empty 'response' field (thinking_present=%s)",
+                thinking_present,
+            )
+            raise RuntimeError(
+                f"EMPTY_FINAL_RESPONSE: Ollama returned empty response content (thinking_present={thinking_present})."
+            )
+
+        cleaned_text = _clean_ollama_response_text(str(raw_response_text))
+        if not cleaned_text or not cleaned_text.strip():
+            logger.error(
+                "Ollama response content was empty after stripping reasoning tags (thinking_present=%s)",
+                thinking_present,
+            )
+            raise RuntimeError(
+                f"EMPTY_FINAL_RESPONSE: Ollama response content is empty after stripping reasoning tags (thinking_present={thinking_present})."
+            )
+
         try:
             parsed_json = parse_json_response(cleaned_text)
         except Exception as e:
@@ -125,14 +143,15 @@ class OllamaNarrativeProvider(BaseNarrativeProvider):
         metadata = {
             "done": data.get("done", True),
             "done_reason": data.get("done_reason", "stop"),
-            "model": data.get("model", self.model_name),
+            "model": data.get("model", self.model_name or "qwen3.5:9b"),
             "total_duration_ns": data.get("total_duration", 0),
             "load_duration_ns": data.get("load_duration", 0),
             "eval_duration_ns": data.get("eval_duration", 0),
+            "thinking_present": thinking_present,
         }
 
         return NarrativeProviderResult(
-            raw_response=raw_response_text,
+            raw_response=cleaned_text,
             parsed_json=parsed_json,
             provider_name="ollama",
             model_name=self.model_name or "qwen3.5:9b",
