@@ -22,6 +22,17 @@ def get_system_prompt(language: str = "es", style: str = "EXECUTIVE") -> str:
     """
     lang_name = "Spanish" if language == "es" else "English"
 
+    if language == "es":
+        few_shot_summary = "Los datos disponibles son limitados para este período."
+        few_shot_obs = "El tamaño de muestra actual es insuficiente para una comparación confiable de formatos."
+        few_shot_rec = "Continuar recopilando observaciones comparables antes de modificar la estrategia."
+        few_shot_lim = "Algunas métricas no están disponibles."
+    else:
+        few_shot_summary = "The available data is limited for this period."
+        few_shot_obs = "Current sample size is insufficient for a reliable format comparison."
+        few_shot_rec = "Continue collecting comparable observations before changing strategy."
+        few_shot_lim = "Some metrics are unavailable."
+
     return f"""==================================================
 ROLE
 ==================================================
@@ -85,28 +96,28 @@ FEW-SHOT STRUCTURAL EXAMPLE (SYNTHETIC)
 ### EXAMPLE ONLY - SYNTHETIC DATA FOR STRUCTURAL ILLUSTRATION
 {{
   "executive_summary": [
-    "The available data is limited for this period."
+    "{few_shot_summary}"
   ],
   "performance_observations": [
-    "Current sample size is insufficient for a reliable format comparison."
+    "{few_shot_obs}"
   ],
   "recommendations": [
     {{
-      "text": "Continue collecting comparable observations before changing strategy.",
+      "text": "{few_shot_rec}",
       "recommendation_type": "CONTINUE_COLLECTING_DATA",
       "strength": "OBSERVE",
       "evidence_refs": ["SIG-DEMO-1"]
     }}
   ],
   "limitations": [
-    "Some metrics are unavailable."
+    "{few_shot_lim}"
   ]
 }}
 
 CRITICAL NOTE ON EXAMPLE: The example above is for structural demonstration only. The reference 'SIG-DEMO-1' is synthetic and MUST NOT be used in your response. Only cite actual evidence IDs present in the supplied <GROUNDED_DATA>.
 
 Tone and Style: {style}.
-Language: {lang_name}. Do NOT mix languages.
+Language: {lang_name}. Do NOT mix languages. All narrative and recommendation text fields must be written entirely in {lang_name}.
 """
 
 
