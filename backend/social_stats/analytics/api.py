@@ -1020,6 +1020,7 @@ class ReportNarrativeView(AnalyticsBaseView):
         style = request.data.get('style', 'EXECUTIVE')
         provider = request.data.get('provider', 'fake')
         mock_mode = request.data.get('mock_mode', 'VALID')
+        force_regenerate = bool(request.data.get('force_regenerate', False))
 
         try:
             narrative = generate_and_save_narrative(
@@ -1029,6 +1030,7 @@ class ReportNarrativeView(AnalyticsBaseView):
                 style=style,
                 provider_name=provider,
                 mock_mode=mock_mode,
+                force_regenerate=force_regenerate,
             )
             return Response({
                 'id': narrative.id,

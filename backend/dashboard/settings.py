@@ -491,3 +491,10 @@ PINBOT_BASE_URL              = os.environ.get('PINBOT_BASE_URL', 'https://partne
 WHATSAPP_ENCRYPTION_KEY      = os.environ.get('WHATSAPP_ENCRYPTION_KEY', '')
 WHATSAPP_WEBHOOK_SECRET      = os.environ.get('WHATSAPP_WEBHOOK_SECRET', '')
 WHATSAPP_RATE_LIMIT_PER_SEC  = int(os.environ.get('WHATSAPP_RATE_LIMIT_PER_SEC', '20'))
+
+# ── Grounded AI Executive Narrative (BS-4H) ─────────────
+ENABLE_LIVE_AI_NARRATIVE = os.environ.get('ENABLE_LIVE_AI_NARRATIVE', 'False').lower() in ('true', '1', 'yes')
+OLLAMA_HOST              = os.environ.get('OLLAMA_HOST', 'http://host.docker.internal:11434')
+OLLAMA_MODEL             = os.environ.get('OLLAMA_MODEL', 'qwen3.5:9b')
+OLLAMA_TIMEOUT_SECONDS   = int(os.environ.get('OLLAMA_TIMEOUT_SECONDS', '90'))
+

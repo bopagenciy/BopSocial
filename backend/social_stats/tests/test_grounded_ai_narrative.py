@@ -462,6 +462,38 @@ class GroundedAINarrativeTests(TestCase):
         self.assertEqual(res.data["status"], "REJECTED")
         self.assertEqual(res.data["validation_status"], "FAIL")
 
+    def test_duplicate_narrative_prevention_idempotency(self):
+        """Verify that saving a narrative twice for identical context returns existing row with 0 duplicate rows."""
+        initial_count = ExecutiveNarrative.objects.count()
+        url = f"/api/analytics/reports/{self.report1.id}/narrative/"
+
+        # First call creates a VALIDATED narrative
+        res1 = self.api_client1.post(url, {"mock_mode": "VALID"}, format="json")
+        self.assertEqual(res1.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(res1.data["status"], "VALIDATED")
+        first_id = res1.data["id"]
+        self.assertEqual(ExecutiveNarrative.objects.count(), initial_count + 1)
+
+        # Second call with identical context returns existing row
+        res2 = self.api_client1.post(url, {"mock_mode": "VALID"}, format="json")
+        self.assertEqual(res2.data["id"], first_id)
+        self.assertEqual(res2.data["status"], "VALIDATED")
+        self.assertEqual(ExecutiveNarrative.objects.count(), initial_count + 1)
+
+    def test_force_regenerate_allows_new_narrative(self):
+        """Verify that passing force_regenerate=True creates a new narrative record."""
+        initial_count = ExecutiveNarrative.objects.count()
+        url = f"/api/analytics/reports/{self.report1.id}/narrative/"
+
+        res1 = self.api_client1.post(url, {"mock_mode": "VALID"}, format="json")
+        first_id = res1.data["id"]
+
+        res2 = self.api_client1.post(url, {"mock_mode": "VALID", "force_regenerate": True}, format="json")
+        second_id = res2.data["id"]
+
+        self.assertNotEqual(first_id, second_id)
+        self.assertEqual(ExecutiveNarrative.objects.count(), initial_count + 2)
+
 
 class OllamaNarrativeProviderTests(TestCase):
     def setUp(self):
@@ -485,6 +517,16 @@ class OllamaNarrativeProviderTests(TestCase):
         )
         self.assertEqual(provider.model_name, "qwen3.5:9b")
         self.assertEqual(provider.mock_mode, "VALID")
+
+    def test_ollama_provider_configurable_defaults(self):
+        """Verify OllamaNarrativeProvider reads model and host from settings when not provided."""
+        from django.test import override_settings
+        from social_stats.analytics.narrative.providers.ollama import OllamaNarrativeProvider
+
+        with override_settings(OLLAMA_MODEL="custom-qwen:14b", OLLAMA_HOST="http://localhost:11434"):
+            prov = OllamaNarrativeProvider()
+            self.assertEqual(prov.model_name, "custom-qwen:14b")
+            self.assertEqual(prov.host, "http://localhost:11434")
 
     def test_ollama_provider_raises_when_live_disabled(self):
         """Verify RuntimeError is raised when ENABLE_LIVE_AI_NARRATIVE is False."""
@@ -1241,6 +1283,20 @@ class GroundedContextSchemaMappingTests(TestCase):
         self.assertIn("INPUT EVIDENCE — READ ONLY", user_prompt)
         self.assertIn("FINAL INSTRUCTION", user_prompt)
         self.assertIn("Do NOT echo SIG-* objects as the root response", user_prompt)
+
+    def test_system_prompt_language_localization(self):
+        """Verify get_system_prompt localizes few-shot example and output rules for Spanish vs English."""
+        # Spanish prompt
+        prompt_es = get_system_prompt(language="es")
+        self.assertIn("Los datos disponibles son limitados", prompt_es)
+        self.assertIn("Language: Spanish. Do NOT mix languages.", prompt_es)
+        self.assertIn("array of 1 to 5 strings in Spanish", prompt_es)
+
+        # English prompt
+        prompt_en = get_system_prompt(language="en")
+        self.assertIn("The available data is limited", prompt_en)
+        self.assertIn("Language: English. Do NOT mix languages.", prompt_en)
+        self.assertIn("array of 1 to 5 strings in English", prompt_en)
 
     def test_grounded_context_hash_unchanged(self):
         """Verify context hash remains strictly deterministic and signals/limitations preserved."""

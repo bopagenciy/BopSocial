@@ -78,15 +78,37 @@ def generate_and_save_narrative(
     style: str = "EXECUTIVE",
     provider_name: str = "fake",
     mock_mode: str = "VALID",
+    force_regenerate: bool = False,
     **kwargs
-) -> ExecutiveReport:
+) -> ExecutiveNarrative:
     """
     Generates and persists an ExecutiveNarrative instance.
     Sets status to VALIDATED only if all validation gates pass; otherwise REJECTED or FAILED.
+    Deduplication Policy:
+      If force_regenerate is False and an identical VALIDATED narrative already exists for this report
+      (matching executive_report, source_hash, context_hash, prompt_version, and provider),
+      the existing narrative is returned without creating duplicate database rows.
     """
     lang = language or getattr(report, "language", "es") or "es"
     context = build_grounded_narrative_context(report)
     context_hash = compute_context_hash(context)
+
+    if not force_regenerate:
+        existing = ExecutiveNarrative.objects.filter(
+            executive_report=report,
+            status="VALIDATED",
+            source_hash=report.source_hash,
+            context_hash=context_hash,
+            prompt_version=PROMPT_VERSION,
+            provider=provider_name,
+        ).order_by("-created_at").first()
+        if existing:
+            logger.info(
+                "Returning existing VALIDATED ExecutiveNarrative #%d for Report #%d (deduplication active)",
+                existing.id,
+                report.id,
+            )
+            return existing
 
     provider = get_narrative_provider(provider_name, mock_mode=mock_mode)
     result = provider.generate(

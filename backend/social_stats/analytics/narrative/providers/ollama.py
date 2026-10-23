@@ -36,11 +36,12 @@ class OllamaNarrativeProvider(BaseNarrativeProvider):
 
     def __init__(
         self,
-        model_name: str = "qwen3.5:9b",
+        model_name: Optional[str] = None,
         host: Optional[str] = None,
         **kwargs,
     ):
-        super().__init__(model_name=model_name)
+        configured_model = model_name or getattr(settings, "OLLAMA_MODEL", "qwen3.5:9b")
+        super().__init__(model_name=configured_model)
         configured_host = host or getattr(
             settings,
             "OLLAMA_HOST",
