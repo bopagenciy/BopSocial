@@ -14,6 +14,7 @@ from django.conf import settings
 
 from social_stats.ai_helpers import parse_json_response
 from ..prompts import build_user_prompt, get_system_prompt
+from ..schemas import EXECUTIVE_NARRATIVE_JSON_SCHEMA
 from .base import BaseNarrativeProvider, NarrativeProviderResult
 
 logger = logging.getLogger(__name__)
@@ -65,7 +66,7 @@ class OllamaNarrativeProvider(BaseNarrativeProvider):
             "model": self.model_name or "qwen3.5:9b",
             "system": system_prompt,
             "prompt": user_prompt,
-            "format": "json",
+            "format": EXECUTIVE_NARRATIVE_JSON_SCHEMA,
             "stream": False,
             "think": False,
             "options": {

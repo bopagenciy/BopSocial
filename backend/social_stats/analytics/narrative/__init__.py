@@ -17,6 +17,8 @@ from .schemas import (
     RECOMMENDATION_TAXONOMY,
     RECOMMENDATION_STRENGTHS,
     CONFIDENCE_LEVELS,
+    EXECUTIVE_NARRATIVE_JSON_SCHEMA,
+    get_executive_narrative_json_schema,
 )
 
 __all__ = [
@@ -31,4 +33,6 @@ __all__ = [
     "RECOMMENDATION_TAXONOMY",
     "RECOMMENDATION_STRENGTHS",
     "CONFIDENCE_LEVELS",
+    "EXECUTIVE_NARRATIVE_JSON_SCHEMA",
+    "get_executive_narrative_json_schema",
 ]

@@ -150,3 +150,26 @@ When executing against modern local models that support chain-of-thought or reas
    - No fallback to alternative models or external cloud providers is permitted.
 6. **Zero-Retry Semantic Architecture**:
    - Across all error conditions (HTTP errors, timeouts, empty responses, malformed JSON), exactly 1 request is dispatched. No automatic retry is attempted.
+
+---
+
+### 11. Small-Model Prompt & Schema Alignment (Phase BS-4H.1B Hardening)
+When executing local parameter-efficient models (e.g., `qwen3.5:9b`), suppression of thinking mode reduces inference-time chain-of-thought, requiring stronger external structural constraints to guarantee schema adherence:
+
+1. **API-Level JSON Schema Structured Output**:
+   - Rather than passing `"format": "json"` (which only enforces valid JSON syntax), the Ollama provider now passes the complete machine-readable `EXECUTIVE_NARRATIVE_JSON_SCHEMA` dictionary directly in the `format` parameter.
+   - Ollama's grammar engine (GBNF) constrains token sampling at the decoder level, preventing unallowlisted root keys and enforcing required fields.
+2. **Root Contract & `additionalProperties: false` Enforcement**:
+   - The root object is strictly bound to four mandatory keys: `executive_summary`, `performance_observations`, `recommendations`, and `limitations`.
+   - `additionalProperties: false` is enforced both in the API schema and in `NarrativeValidator`, rejecting extra root keys (such as `ref_id` or `signal_type`).
+3. **BusinessSignal Echo Prevention**:
+   - Explicit instructions in the system and user prompts forbid echoing input `BusinessSignal` objects as the root response.
+   - Clear sectioning separates read-only `<GROUNDED_DATA>` from the required `ExecutiveNarrative` output contract.
+4. **Few-Shot Structural Example with Isolation**:
+   - A single synthetic few-shot example demonstrates the 4-section hierarchy using a clearly distinguished fake reference (`SIG-DEMO-1`).
+   - The prompt and deterministic validator guarantee that `SIG-DEMO-1` cannot pass runtime evidence checks, preventing example leakage.
+5. **Schema & Validator Single Source of Truth**:
+   - `EXECUTIVE_NARRATIVE_JSON_SCHEMA` defined in `schemas.py` serves as the authoritative definition for both the provider payload and validator checks.
+6. **Prompt Versioning**:
+   - Prompt version is updated to `bs4h-prompt-v2` reflecting the updated sectioning and root-object anchoring, while maintaining `bs4h-context-v1`.
+

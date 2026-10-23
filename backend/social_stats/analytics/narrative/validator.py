@@ -88,17 +88,58 @@ class NarrativeValidator:
             errors.append(f"Missing required keys in output: {', '.join(missing_keys)}")
             return False, {"status": "FAIL", "results": checks, "errors": errors}
 
+        # Root-level additionalProperties: false enforcement
+        allowed_root_keys = set(required_keys)
+        extra_root_keys = set(output.keys()) - allowed_root_keys
+        if extra_root_keys:
+            errors.append(f"Unexpected extra root keys in output: {', '.join(sorted(extra_root_keys))}")
+            return False, {"status": "FAIL", "results": checks, "errors": errors}
+
         if not all(isinstance(output[k], list) for k in required_keys):
             errors.append("All top-level sections must be lists.")
             return False, {"status": "FAIL", "results": checks, "errors": errors}
 
-        # Validate recommendations schema
+        # Validate executive_summary bounds (minItems: 1, maxItems: 5)
+        exec_summary = output["executive_summary"]
+        if len(exec_summary) < 1:
+            errors.append("executive_summary must contain at least 1 item.")
+        elif len(exec_summary) > 5:
+            errors.append("executive_summary exceeds maximum limit of 5 items.")
+        if not all(isinstance(item, str) and item.strip() for item in exec_summary):
+            errors.append("All items in executive_summary must be non-empty strings.")
+
+        # Validate performance_observations bounds (minItems: 1, maxItems: 6)
+        perf_obs = output["performance_observations"]
+        if len(perf_obs) < 1:
+            errors.append("performance_observations must contain at least 1 item.")
+        elif len(perf_obs) > 6:
+            errors.append("performance_observations exceeds maximum limit of 6 items.")
+        if not all(isinstance(item, str) and item.strip() for item in perf_obs):
+            errors.append("All items in performance_observations must be non-empty strings.")
+
+        # Validate limitations bounds (minItems: 1, maxItems: 5)
+        limitations = output["limitations"]
+        if len(limitations) < 1:
+            errors.append("limitations must contain at least 1 item.")
+        elif len(limitations) > 5:
+            errors.append("limitations exceeds maximum limit of 5 items.")
+        if not all(isinstance(item, str) and item.strip() for item in limitations):
+            errors.append("All items in limitations must be non-empty strings.")
+
+        # Validate recommendations schema (minItems: 0, maxItems: 5)
         recs = output.get("recommendations", [])
+        if len(recs) > 5:
+            errors.append("recommendations exceeds maximum limit of 5 items.")
+
+        allowed_rec_keys = {"text", "recommendation_type", "strength", "confidence", "evidence_refs"}
         for idx, rec in enumerate(recs):
             if not isinstance(rec, dict):
                 errors.append(f"Recommendation #{idx + 1} is not an object.")
                 continue
-            if not rec.get("text"):
+            extra_rec_keys = set(rec.keys()) - allowed_rec_keys
+            if extra_rec_keys:
+                errors.append(f"Recommendation #{idx + 1} has unexpected extra keys: {', '.join(sorted(extra_rec_keys))}.")
+            if not rec.get("text") or not isinstance(rec.get("text"), str):
                 errors.append(f"Recommendation #{idx + 1} has missing or empty text.")
             if rec.get("recommendation_type") not in RECOMMENDATION_TAXONOMY:
                 errors.append(f"Recommendation #{idx + 1} has invalid taxonomy: '{rec.get('recommendation_type')}'.")
@@ -108,6 +149,8 @@ class NarrativeValidator:
                 errors.append(f"Recommendation #{idx + 1} has invalid confidence: '{rec.get('confidence')}'.")
             if not isinstance(rec.get("evidence_refs"), list) or len(rec.get("evidence_refs", [])) == 0:
                 errors.append(f"Recommendation #{idx + 1} must include a non-empty evidence_refs list.")
+            elif not all(isinstance(ref, str) and ref.strip() for ref in rec.get("evidence_refs", [])):
+                errors.append(f"Recommendation #{idx + 1} evidence_refs must all be non-empty strings.")
 
         if errors:
             return False, {"status": "FAIL", "results": checks, "errors": errors}

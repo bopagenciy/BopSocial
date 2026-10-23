@@ -5,6 +5,7 @@ causality defense, schema integrity, tenant isolation, context hashes, and stale
 """
 import json
 from datetime import date, timedelta
+from unittest.mock import patch, MagicMock
 from django.contrib.auth.models import User
 from django.test import TestCase
 from rest_framework import status
@@ -25,6 +26,11 @@ from social_stats.analytics.narrative.schemas import (
     CONTEXT_SCHEMA_VERSION,
     PROMPT_VERSION,
     FORBIDDEN_KEYS,
+    EXECUTIVE_NARRATIVE_JSON_SCHEMA,
+    get_executive_narrative_json_schema,
+    RECOMMENDATION_TAXONOMY,
+    RECOMMENDATION_STRENGTHS,
+    CONFIDENCE_LEVELS,
 )
 from social_stats.analytics.narrative.prompts import (
     get_system_prompt,
@@ -563,7 +569,7 @@ class OllamaNarrativeProviderTests(TestCase):
                 self.assertIn("think", sent_payload)
                 self.assertEqual(sent_payload["think"], False)
                 self.assertEqual(sent_payload["model"], "qwen3.5:9b")
-                self.assertEqual(sent_payload["format"], "json")
+                self.assertEqual(sent_payload["format"], EXECUTIVE_NARRATIVE_JSON_SCHEMA)
                 self.assertEqual(sent_payload["stream"], False)
                 self.assertEqual(sent_payload["options"]["temperature"], 0.0)
 
@@ -986,3 +992,277 @@ class GroundedContextSchemaMappingTests(TestCase):
         raw_json = json.dumps(context).lower()
         for forbidden in FORBIDDEN_KEYS:
             self.assertNotIn(forbidden.lower(), raw_json)
+
+    # ── BS-4H.1B Schema & Alignment Tests ────────────────────────────────────
+
+    def test_prompt_version_is_v2(self):
+        """Verify PROMPT_VERSION is incremented to bs4h-prompt-v2."""
+        self.assertEqual(PROMPT_VERSION, "bs4h-prompt-v2")
+        self.assertEqual(CONTEXT_SCHEMA_VERSION, "bs4h-context-v1")
+
+    @patch("requests.post")
+    def test_ollama_payload_uses_json_schema(self, mock_post):
+        """Verify Ollama provider formats payload with EXECUTIVE_NARRATIVE_JSON_SCHEMA, not 'json'."""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "model": "qwen3.5:9b",
+            "created_at": "2026-10-23T11:00:00Z",
+            "response": json.dumps({
+                "executive_summary": ["Resumen válido."],
+                "performance_observations": ["Observación válida."],
+                "recommendations": [],
+                "limitations": ["Limitación válida."]
+            }),
+            "done": True,
+            "done_reason": "stop",
+        }
+        mock_post.return_value = mock_response
+
+        from social_stats.analytics.narrative.providers.ollama import OllamaNarrativeProvider
+        provider = OllamaNarrativeProvider(model_name="qwen3.5:9b")
+        context = build_grounded_narrative_context(self.canonical_report)
+
+        with self.settings(ENABLE_LIVE_AI_NARRATIVE=True):
+            result = provider.generate(context=context)
+
+        self.assertTrue(mock_post.called)
+        call_kwargs = mock_post.call_args[1]
+        payload = call_kwargs["json"]
+
+        # format must be a dict (JSON Schema), NOT the string "json"
+        self.assertIsInstance(payload["format"], dict)
+        self.assertEqual(payload["format"]["type"], "object")
+        self.assertFalse(payload["format"]["additionalProperties"])
+        self.assertEqual(
+            payload["format"]["required"],
+            ["executive_summary", "performance_observations", "recommendations", "limitations"]
+        )
+        self.assertFalse(payload["think"])
+        self.assertEqual(payload["options"]["temperature"], 0.0)
+
+    def test_schema_rejects_extra_root_properties(self):
+        """Verify validator rejects unexpected extra root keys (additionalProperties: false)."""
+        context = build_grounded_narrative_context(self.canonical_report)
+        payload = {
+            "executive_summary": ["Resumen válido."],
+            "performance_observations": ["Observación válida."],
+            "recommendations": [],
+            "limitations": ["Limitación válida."],
+            "signal_type": "PROVIDER_PARTIAL",  # Extra key
+        }
+        is_valid, summary = NarrativeValidator.validate(payload, context)
+        self.assertFalse(is_valid)
+        self.assertEqual(summary["status"], "FAIL")
+        self.assertTrue(any("Unexpected extra root keys" in e for e in summary["errors"]))
+
+    def test_valid_full_root_narrative(self):
+        """Verify valid full ExecutiveNarrative root object passes all gates."""
+        context = build_grounded_narrative_context(self.canonical_report)
+        payload = {
+            "executive_summary": [
+                "Resumen ejecutivo del período para Bop Agencia.",
+                "Se registraron 50 seguidores totales y 6 reacciones."
+            ],
+            "performance_observations": [
+                "Las interacciones se mantuvieron en niveles base con 6 reacciones registradas.",
+                "La analítica de Instagram permanece en modo parcial."
+            ],
+            "recommendations": [
+                {
+                    "text": "Continuar recopilando datos de publicaciones comparables.",
+                    "recommendation_type": "CONTINUE_COLLECTING_DATA",
+                    "strength": "OBSERVE",
+                    "confidence": "NONE",
+                    "evidence_refs": ["SIG-1"]
+                }
+            ],
+            "limitations": [
+                "Instagram opera en capacidad parcial; alcance y vistas de video no están disponibles."
+            ]
+        }
+        is_valid, summary = NarrativeValidator.validate(payload, context)
+        self.assertTrue(is_valid, f"Validation failed with: {summary['errors']}")
+        self.assertEqual(summary["status"], "PASS")
+        for gate, res in summary["results"].items():
+            self.assertTrue(res, f"Gate {gate} failed")
+
+    def test_echoed_signal_fails_schema_validation(self):
+        """Verify exact R2 observed model output (echoed SIG-1 BusinessSignal) fails schema validation."""
+        context = build_grounded_narrative_context(self.canonical_report)
+        r2_observed_output = {
+            "ref_id": "SIG-1",
+            "signal_type": "PROVIDER_PARTIAL",
+            "metric": "",
+            "platform": "instagram",
+            "confidence": "HIGH",
+            "sample_size": 0,
+            "is_actionable": False,
+            "summary": "Instagram analytics is operating in PARTIAL capability mode.",
+            "explanation": "Instagram analytics is operating in PARTIAL capability mode.",
+            "evidence": {
+                "reason": "Requires instagram_manage_insights Meta permission",
+                "platform": "instagram",
+                "support_level": "PARTIAL",
+                "available_metrics": ["FOLLOWERS_TOTAL", "REACTIONS", "COMMENTS"],
+                "unavailable_metrics": ["REACH", "SAVES", "SHARES", "VIDEO_VIEWS", "ENGAGEMENT_TOTAL"]
+            }
+        }
+        is_valid, summary = NarrativeValidator.validate(r2_observed_output, context)
+        self.assertFalse(is_valid)
+        self.assertEqual(summary["status"], "FAIL")
+        self.assertFalse(summary["results"]["json_schema"])
+        self.assertTrue(any("Missing required keys" in e for e in summary["errors"]))
+
+    def test_few_shot_demo_ref_fails_evidence_validation(self):
+        """Verify SIG-DEMO-1 from synthetic example cannot validate against real context."""
+        context = build_grounded_narrative_context(self.canonical_report)
+        payload = {
+            "executive_summary": ["Resumen válido."],
+            "performance_observations": ["Observación válida."],
+            "recommendations": [
+                {
+                    "text": "Recomendación con referencia sintética del ejemplo.",
+                    "recommendation_type": "CONTINUE_COLLECTING_DATA",
+                    "strength": "OBSERVE",
+                    "confidence": "NONE",
+                    "evidence_refs": ["SIG-DEMO-1"]
+                }
+            ],
+            "limitations": ["Limitación válida."]
+        }
+        is_valid, summary = NarrativeValidator.validate(payload, context)
+        self.assertFalse(is_valid)
+        self.assertFalse(summary["results"]["recommendations_grounded"])
+        self.assertTrue(any("SIG-DEMO-1" in e for e in summary["errors"]))
+
+    def test_unknown_recommendation_type_fails(self):
+        """Verify unallowlisted recommendation type fails schema validation."""
+        context = build_grounded_narrative_context(self.canonical_report)
+        payload = {
+            "executive_summary": ["Resumen válido."],
+            "performance_observations": ["Observación válida."],
+            "recommendations": [
+                {
+                    "text": "Publicar más reels.",
+                    "recommendation_type": "POST_MORE_REELS",
+                    "strength": "RECOMMEND",
+                    "confidence": "HIGH",
+                    "evidence_refs": ["SIG-1"]
+                }
+            ],
+            "limitations": ["Limitación válida."]
+        }
+        is_valid, summary = NarrativeValidator.validate(payload, context)
+        self.assertFalse(is_valid)
+        self.assertFalse(summary["results"]["json_schema"])
+        self.assertTrue(any("invalid taxonomy: 'POST_MORE_REELS'" in e for e in summary["errors"]))
+
+    def test_structural_minimum_accepted(self):
+        """Verify minimal valid narrative with 1 summary, 1 observation, 1 rec, 1 limitation is accepted."""
+        context = build_grounded_narrative_context(self.canonical_report)
+        payload = {
+            "executive_summary": ["Resumen mínimo con 50 seguidores."],
+            "performance_observations": ["Observación mínima con 6 reacciones."],
+            "recommendations": [
+                {
+                    "text": "Recomendación mínima válida.",
+                    "recommendation_type": "CONTINUE_COLLECTING_DATA",
+                    "strength": "OBSERVE",
+                    "confidence": "NONE",
+                    "evidence_refs": ["SIG-1"]
+                }
+            ],
+            "limitations": ["Limitación mínima válida."]
+        }
+        is_valid, summary = NarrativeValidator.validate(payload, context)
+        self.assertTrue(is_valid, f"Minimal structure should pass: {summary['errors']}")
+        self.assertEqual(summary["status"], "PASS")
+
+    def test_empty_recommendations_allowed_by_schema(self):
+        """Verify empty recommendations list is permitted by schema when no safe recommendation exists."""
+        context = build_grounded_narrative_context(self.canonical_report)
+        payload = {
+            "executive_summary": ["Resumen sin recomendaciones."],
+            "performance_observations": ["Observación sin recomendaciones."],
+            "recommendations": [],
+            "limitations": ["Limitación válida."]
+        }
+        is_valid, summary = NarrativeValidator.validate(payload, context)
+        self.assertTrue(is_valid, f"Empty recommendations should be permitted: {summary['errors']}")
+        self.assertTrue(summary["results"]["json_schema"])
+
+    def test_empty_summary_or_observations_rejected(self):
+        """Verify empty executive_summary or performance_observations is rejected."""
+        context = build_grounded_narrative_context(self.canonical_report)
+        payload_no_summary = {
+            "executive_summary": [],
+            "performance_observations": ["Observación válida."],
+            "recommendations": [],
+            "limitations": ["Limitación válida."]
+        }
+        is_valid, summary = NarrativeValidator.validate(payload_no_summary, context)
+        self.assertFalse(is_valid)
+        self.assertTrue(any("executive_summary must contain at least 1 item" in e for e in summary["errors"]))
+
+        payload_no_obs = {
+            "executive_summary": ["Resumen válido."],
+            "performance_observations": [],
+            "recommendations": [],
+            "limitations": ["Limitación válida."]
+        }
+        is_valid, summary = NarrativeValidator.validate(payload_no_obs, context)
+        self.assertFalse(is_valid)
+        self.assertTrue(any("performance_observations must contain at least 1 item" in e for e in summary["errors"]))
+
+    def test_prompt_contains_root_object_anchors(self):
+        """Verify prompt explicitly instructs model on root ExecutiveNarrative and forbids BusinessSignal."""
+        context = build_grounded_narrative_context(self.canonical_report)
+        system_prompt = get_system_prompt(language="es")
+        user_prompt = build_user_prompt(context)
+
+        # Assertions on system prompt
+        self.assertIn("The root JSON object is ExecutiveNarrative", system_prompt)
+        self.assertIn("Do not return a BusinessSignal", system_prompt)
+        self.assertIn("THE ROOT OBJECT MUST CONTAIN EXACTLY THESE FOUR KEYS", system_prompt)
+        self.assertIn("SIG-DEMO-1", system_prompt)
+        self.assertIn("EXAMPLE ONLY", system_prompt)
+
+        # Assertions on user prompt
+        self.assertIn("INPUT EVIDENCE — READ ONLY", user_prompt)
+        self.assertIn("FINAL INSTRUCTION", user_prompt)
+        self.assertIn("Do NOT echo SIG-* objects as the root response", user_prompt)
+
+    def test_grounded_context_hash_unchanged(self):
+        """Verify context hash remains strictly deterministic and signals/limitations preserved."""
+        context = build_grounded_narrative_context(self.canonical_report)
+        c_hash = compute_context_hash(context)
+        self.assertIsInstance(c_hash, str)
+        self.assertEqual(len(c_hash), 64)
+        self.assertEqual(len(context["signals"]), 5)
+        self.assertEqual(len(context["limitations"]), 1)
+        self.assertEqual(len(context["evidence_registry"]), 6)
+
+    def test_validator_consistency_with_json_schema(self):
+        """Verify NarrativeValidator requirements stay synchronized with EXECUTIVE_NARRATIVE_JSON_SCHEMA."""
+        schema = get_executive_narrative_json_schema()
+        self.assertEqual(
+            schema["required"],
+            ["executive_summary", "performance_observations", "recommendations", "limitations"]
+        )
+        self.assertFalse(schema["additionalProperties"])
+
+        rec_schema = schema["properties"]["recommendations"]["items"]
+        self.assertEqual(
+            rec_schema["properties"]["recommendation_type"]["enum"],
+            RECOMMENDATION_TAXONOMY
+        )
+        self.assertEqual(
+            rec_schema["properties"]["strength"]["enum"],
+            RECOMMENDATION_STRENGTHS
+        )
+        self.assertEqual(
+            rec_schema["properties"]["confidence"]["enum"],
+            CONFIDENCE_LEVELS
+        )
+
