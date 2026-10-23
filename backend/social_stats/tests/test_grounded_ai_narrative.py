@@ -995,9 +995,9 @@ class GroundedContextSchemaMappingTests(TestCase):
 
     # ── BS-4H.1B Schema & Alignment Tests ────────────────────────────────────
 
-    def test_prompt_version_is_v2(self):
-        """Verify PROMPT_VERSION is incremented to bs4h-prompt-v2."""
-        self.assertEqual(PROMPT_VERSION, "bs4h-prompt-v2")
+    def test_prompt_version_is_v3(self):
+        """Verify PROMPT_VERSION is incremented to bs4h-prompt-v3."""
+        self.assertEqual(PROMPT_VERSION, "bs4h-prompt-v3")
         self.assertEqual(CONTEXT_SCHEMA_VERSION, "bs4h-context-v1")
 
     @patch("requests.post")
@@ -1265,4 +1265,322 @@ class GroundedContextSchemaMappingTests(TestCase):
             rec_schema["properties"]["confidence"]["enum"],
             CONFIDENCE_LEVELS
         )
+
+    # ── BS-4H.1C Semantic Validation Alignment Tests ─────────────────────────
+
+    def test_r3_exact_output_regression_fixture(self):
+        """Verify exact R3 observed output passes metrics allowlist and fails ONLY confidence lock."""
+        context = build_grounded_narrative_context(self.canonical_report)
+        r3_exact = {
+            "executive_summary": [
+                "Instagram analytics is currently operating in PARTIAL capability mode due to missing Meta permissions for advanced metrics.",
+                "Core source-backed metrics (Reactions, Comments, Total Followers) are active and reliable.",
+                "Advanced metrics including Reach, Saves, Video Views, Shares, and Engagement Total remain unavailable under current provider constraints.",
+                "Statistical baselines for new content formats (Carousel Albums, Videos) are currently inactive due to insufficient historical sample sizes."
+            ],
+            "performance_observations": [
+                "The data pipeline successfully ingests core engagement metrics from Instagram despite partial API access.",
+                "Analysis of Carousel Album posts is limited by a sample size of 2, falling short of the minimum required threshold of 3 for baseline activation.",
+                "Analysis of Video content is significantly constrained with a sample size of 1, well below the required minimum of 3.",
+                "No actionable insights can be generated for Reach or Saves until either provider permissions are upgraded or sufficient historical data accumulates."
+            ],
+            "recommendations": [
+                {
+                    "text": "Continue collecting data on existing content formats to accumulate the necessary sample sizes (n=3) required to activate statistical baselines for Carousel Albums and Videos.",
+                    "recommendation_type": "CONTINUE_COLLECTING_DATA",
+                    "strength": "OBSERVE",
+                    "confidence": "HIGH",
+                    "evidence_refs": ["SIG-2", "SIG-3", "SIG-4", "SIG-5"]
+                },
+                {
+                    "text": "Review and request additional Meta permissions (specifically instagram_manage_insights) to unlock unavailable metrics such as Reach, Saves, Video Views, and Engagement Total.",
+                    "recommendation_type": "REVIEW_PROVIDER_PERMISSIONS",
+                    "strength": "CONSIDER",
+                    "confidence": "HIGH",
+                    "evidence_refs": ["LIMITATION-IG-PARTIAL"]
+                }
+            ],
+            "limitations": [
+                "Instagram capability is PARTIAL. Reach, Shares, Saves, Video Views, and Engagement Total are unavailable from provider."
+            ]
+        }
+        is_valid, summary = NarrativeValidator.validate(r3_exact, context)
+        self.assertFalse(is_valid)
+        self.assertEqual(summary["status"], "FAIL")
+        self.assertTrue(summary["results"]["json_schema"])
+        self.assertTrue(summary["results"]["facts_supported"])
+        self.assertTrue(summary["results"]["metrics_supported"])
+        self.assertTrue(summary["results"]["insufficient_sample_preserved"])
+        self.assertFalse(summary["results"]["confidence_preserved"])
+        self.assertTrue(summary["results"]["causality_safe"])
+        self.assertTrue(summary["results"]["recommendations_grounded"])
+        self.assertTrue(any("Confidence lock failed" in e for e in summary["errors"]))
+
+    def test_r3_corrected_fixture_passes_all_gates(self):
+        """Verify corrected R3 output (confidence: NONE for Rec 1) passes 100% of validation gates."""
+        context = build_grounded_narrative_context(self.canonical_report)
+        r3_corrected = {
+            "executive_summary": [
+                "Instagram analytics is currently operating in PARTIAL capability mode due to missing Meta permissions for advanced metrics.",
+                "Core source-backed metrics (Reactions, Comments, Total Followers) are active and reliable.",
+                "Advanced metrics including Reach, Saves, Video Views, Shares, and Engagement Total remain unavailable under current provider constraints.",
+                "Statistical baselines for new content formats (Carousel Albums, Videos) are currently inactive due to insufficient historical sample sizes."
+            ],
+            "performance_observations": [
+                "The data pipeline successfully ingests core engagement metrics from Instagram despite partial API access.",
+                "Analysis of Carousel Album posts is limited by a sample size of 2, falling short of the minimum required threshold of 3 for baseline activation.",
+                "Analysis of Video content is significantly constrained with a sample size of 1, well below the required minimum of 3.",
+                "No actionable insights can be generated for Reach or Saves until either provider permissions are upgraded or sufficient historical data accumulates."
+            ],
+            "recommendations": [
+                {
+                    "text": "Continue collecting data on existing content formats to accumulate the necessary sample sizes (n=3) required to activate statistical baselines for Carousel Albums and Videos.",
+                    "recommendation_type": "CONTINUE_COLLECTING_DATA",
+                    "strength": "OBSERVE",
+                    "confidence": "NONE",
+                    "evidence_refs": ["SIG-2", "SIG-3", "SIG-4", "SIG-5"]
+                },
+                {
+                    "text": "Review and request additional Meta permissions (specifically instagram_manage_insights) to unlock unavailable metrics such as Reach, Saves, Video Views, and Engagement Total.",
+                    "recommendation_type": "REVIEW_PROVIDER_PERMISSIONS",
+                    "strength": "CONSIDER",
+                    "confidence": "HIGH",
+                    "evidence_refs": ["LIMITATION-IG-PARTIAL"]
+                }
+            ],
+            "limitations": [
+                "Instagram capability is PARTIAL. Reach, Shares, Saves, Video Views, and Engagement Total are unavailable from provider."
+            ]
+        }
+        is_valid, summary = NarrativeValidator.validate(r3_corrected, context)
+        self.assertTrue(is_valid, f"Corrected R3 fixture must pass: {summary['errors']}")
+        self.assertEqual(summary["status"], "PASS")
+        for gate, res in summary["results"].items():
+            self.assertTrue(res, f"Gate {gate} failed")
+
+    def test_unavailable_metric_negative_statement(self):
+        """Section S: Explicit statement that unavailable metric is unavailable passes Gate 3."""
+        context = build_grounded_narrative_context(self.canonical_report)
+        payload = {
+            "executive_summary": ["Instagram Reach is unavailable under current permissions."],
+            "performance_observations": ["Core metrics remain active."],
+            "recommendations": [],
+            "limitations": ["Instagram Reach is unavailable."]
+        }
+        is_valid, summary = NarrativeValidator.validate(payload, context)
+        self.assertTrue(summary["results"]["metrics_supported"], f"Should pass: {summary['errors']}")
+
+    def test_unavailable_metric_numeric_claim(self):
+        """Section T: Numeric value assigned to unavailable metric fails Gate 3."""
+        context = build_grounded_narrative_context(self.canonical_report)
+        payload = {
+            "executive_summary": ["Instagram Reach was 1,250."],
+            "performance_observations": ["Observación de rendimiento."],
+            "recommendations": [],
+            "limitations": ["Limitación."]
+        }
+        is_valid, summary = NarrativeValidator.validate(payload, context)
+        self.assertFalse(summary["results"]["metrics_supported"])
+        self.assertTrue(any("Metric allowlist failed" in e for e in summary["errors"]))
+
+    def test_unavailable_metric_trend_claim(self):
+        """Section U: Trend verb applied to unavailable metric fails Gate 3."""
+        context = build_grounded_narrative_context(self.canonical_report)
+        payload = {
+            "executive_summary": ["Instagram Reach increased."],
+            "performance_observations": ["Observación de rendimiento."],
+            "recommendations": [],
+            "limitations": ["Limitación."]
+        }
+        is_valid, summary = NarrativeValidator.validate(payload, context)
+        self.assertFalse(summary["results"]["metrics_supported"])
+        self.assertTrue(any("Metric allowlist failed" in e for e in summary["errors"]))
+
+    def test_mixed_negation_plus_trend(self):
+        """Section V: Ambiguous mixed availability + trend statement fails Gate 3."""
+        context = build_grounded_narrative_context(self.canonical_report)
+        payload = {
+            "executive_summary": ["Reach is unavailable, but appears to be improving."],
+            "performance_observations": ["Observación."],
+            "recommendations": [],
+            "limitations": ["Limitación."]
+        }
+        is_valid, summary = NarrativeValidator.validate(payload, context)
+        self.assertFalse(summary["results"]["metrics_supported"])
+        self.assertTrue(any("Metric allowlist failed" in e for e in summary["errors"]))
+
+    def test_available_metric_factual_statement(self):
+        """Section W: Available metric described factually passes Gate 3."""
+        context = build_grounded_narrative_context(self.canonical_report)
+        payload = {
+            "executive_summary": ["Total reactions was 6."],
+            "performance_observations": ["Observación válida."],
+            "recommendations": [],
+            "limitations": ["Limitación válida."]
+        }
+        is_valid, summary = NarrativeValidator.validate(payload, context)
+        self.assertTrue(summary["results"]["metrics_supported"])
+
+    def test_contradicted_unavailable_claim(self):
+        """Section X: Claiming supported/available metric is unavailable fails Gate 3."""
+        context = build_grounded_narrative_context(self.canonical_report)
+        payload = {
+            "executive_summary": ["Instagram Reactions are unavailable."],
+            "performance_observations": ["Observación."],
+            "recommendations": [],
+            "limitations": ["Limitación."]
+        }
+        is_valid, summary = NarrativeValidator.validate(payload, context)
+        self.assertFalse(summary["results"]["metrics_supported"])
+        self.assertTrue(any("Contradicted capability" in e for e in summary["errors"]))
+
+    def test_confidence_none_propagation(self):
+        """Section Y: Evidence with NONE confidence permits only NONE in recommendation."""
+        context = build_grounded_narrative_context(self.canonical_report)
+        # Recommendation with confidence NONE
+        payload_pass = {
+            "executive_summary": ["Resumen válido."],
+            "performance_observations": ["Observación válida."],
+            "recommendations": [{
+                "text": "Continuar observando.",
+                "recommendation_type": "CONTINUE_COLLECTING_DATA",
+                "strength": "OBSERVE",
+                "confidence": "NONE",
+                "evidence_refs": ["SIG-2"]
+            }],
+            "limitations": ["Limitación válida."]
+        }
+        is_valid_pass, sum_pass = NarrativeValidator.validate(payload_pass, context)
+        self.assertTrue(sum_pass["results"]["confidence_preserved"])
+
+        # Recommendation with upgraded confidence HIGH
+        payload_fail = {
+            "executive_summary": ["Resumen válido."],
+            "performance_observations": ["Observación válida."],
+            "recommendations": [{
+                "text": "Continuar observando.",
+                "recommendation_type": "CONTINUE_COLLECTING_DATA",
+                "strength": "OBSERVE",
+                "confidence": "HIGH",
+                "evidence_refs": ["SIG-2"]
+            }],
+            "limitations": ["Limitación válida."]
+        }
+        is_valid_fail, sum_fail = NarrativeValidator.validate(payload_fail, context)
+        self.assertFalse(sum_fail["results"]["confidence_preserved"])
+        self.assertTrue(any("Confidence lock failed" in e for e in sum_fail["errors"]))
+
+    def test_confidence_low_propagation(self):
+        """Section Z: Evidence with LOW confidence permits up to LOW, rejects MEDIUM/HIGH."""
+        context = build_grounded_narrative_context(self.canonical_report)
+        # Inject synthetic LOW confidence signal into evidence_registry for test
+        context["evidence_registry"]["SIG-LOW"] = {
+            "type": "BUSINESS_SIGNAL",
+            "confidence": "LOW",
+            "description": "Synthetic LOW confidence signal."
+        }
+        # LOW -> PASS
+        p_low = {
+            "executive_summary": ["Resumen."],
+            "performance_observations": ["Observación."],
+            "recommendations": [{
+                "text": "Texto válido.",
+                "recommendation_type": "MAINTAIN_CURRENT_STRATEGY",
+                "strength": "CONSIDER",
+                "confidence": "LOW",
+                "evidence_refs": ["SIG-LOW"]
+            }],
+            "limitations": ["Limitación."]
+        }
+        _, sum_low = NarrativeValidator.validate(p_low, context)
+        self.assertTrue(sum_low["results"]["confidence_preserved"])
+
+        # HIGH -> FAIL
+        p_high = {
+            "executive_summary": ["Resumen."],
+            "performance_observations": ["Observación."],
+            "recommendations": [{
+                "text": "Texto válido.",
+                "recommendation_type": "MAINTAIN_CURRENT_STRATEGY",
+                "strength": "CONSIDER",
+                "confidence": "HIGH",
+                "evidence_refs": ["SIG-LOW"]
+            }],
+            "limitations": ["Limitación."]
+        }
+        _, sum_high = NarrativeValidator.validate(p_high, context)
+        self.assertFalse(sum_high["results"]["confidence_preserved"])
+
+    def test_multiple_none_signals_confidence(self):
+        """Section AA: Multiple evidence refs all NONE permit only NONE."""
+        context = build_grounded_narrative_context(self.canonical_report)
+        for conf, should_pass in [("NONE", True), ("LOW", False), ("MEDIUM", False), ("HIGH", False)]:
+            payload = {
+                "executive_summary": ["Resumen."],
+                "performance_observations": ["Observación."],
+                "recommendations": [{
+                    "text": "Rec.",
+                    "recommendation_type": "CONTINUE_COLLECTING_DATA",
+                    "strength": "OBSERVE",
+                    "confidence": conf,
+                    "evidence_refs": ["SIG-2", "SIG-3", "SIG-4", "SIG-5"]
+                }],
+                "limitations": ["Limitación."]
+            }
+            _, s = NarrativeValidator.validate(payload, context)
+            self.assertEqual(s["results"]["confidence_preserved"], should_pass, f"Failed for conf={conf}")
+
+    def test_mixed_confidence_conservative_rule(self):
+        """Section AB: Mixed evidence confidence (HIGH + NONE) strictly restricts recommendation to NONE."""
+        context = build_grounded_narrative_context(self.canonical_report)
+        # SIG-1 is HIGH, SIG-2 is NONE -> min is NONE
+        p_none = {
+            "executive_summary": ["Resumen."],
+            "performance_observations": ["Observación."],
+            "recommendations": [{
+                "text": "Rec.",
+                "recommendation_type": "CONTINUE_COLLECTING_DATA",
+                "strength": "OBSERVE",
+                "confidence": "NONE",
+                "evidence_refs": ["SIG-1", "SIG-2"]
+            }],
+            "limitations": ["Limitación."]
+        }
+        _, s_none = NarrativeValidator.validate(p_none, context)
+        self.assertTrue(s_none["results"]["confidence_preserved"])
+
+        p_high = {
+            "executive_summary": ["Resumen."],
+            "performance_observations": ["Observación."],
+            "recommendations": [{
+                "text": "Rec.",
+                "recommendation_type": "CONTINUE_COLLECTING_DATA",
+                "strength": "OBSERVE",
+                "confidence": "HIGH",
+                "evidence_refs": ["SIG-1", "SIG-2"]
+            }],
+            "limitations": ["Limitación."]
+        }
+        _, s_high = NarrativeValidator.validate(p_high, context)
+        self.assertFalse(s_high["results"]["confidence_preserved"])
+
+    def test_provider_limitation_confidence(self):
+        """Section AC: DATA_LIMITATION carries deterministic HIGH confidence."""
+        context = build_grounded_narrative_context(self.canonical_report)
+        payload = {
+            "executive_summary": ["Resumen."],
+            "performance_observations": ["Observación."],
+            "recommendations": [{
+                "text": "Revisar permisos con Meta.",
+                "recommendation_type": "REVIEW_PROVIDER_PERMISSIONS",
+                "strength": "CONSIDER",
+                "confidence": "HIGH",
+                "evidence_refs": ["LIMITATION-IG-PARTIAL"]
+            }],
+            "limitations": ["Limitación."]
+        }
+        is_valid, summary = NarrativeValidator.validate(payload, context)
+        self.assertTrue(summary["results"]["confidence_preserved"], f"DATA_LIMITATION allows HIGH: {summary['errors']}")
+        self.assertTrue(is_valid, f"Should be valid: {summary['errors']}")
+
 

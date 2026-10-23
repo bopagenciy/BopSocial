@@ -173,3 +173,35 @@ When executing local parameter-efficient models (e.g., `qwen3.5:9b`), suppressio
 6. **Prompt Versioning**:
    - Prompt version is updated to `bs4h-prompt-v2` reflecting the updated sectioning and root-object anchoring, while maintaining `bs4h-context-v1`.
 
+---
+
+### 12. Semantic Validation Alignment (Phase BS-4H.1C Hardening)
+Phase BS-4H.1-R3 demonstrated successful root-level JSON schema adherence under `qwen3.5:9b`. However, semantic validation revealed two false positives and alignment gaps that are resolved in BS-4H.1C:
+
+1. **Context-Aware Metric Availability vs Performance Claims**:
+   - **Availability Descriptions**: Statements that describe the unavailable status of provider metrics (e.g., *"Instagram Reach is unavailable under current provider permissions."*, *"Advanced metrics such as Reach and Saves are unavailable."*, *"Shares are unavailable from the current provider."*) are valid grounded observations and are accepted by Gate 3 (`metrics_supported`).
+   - **Metric Performance Claims**: Statements assigning values, trends, rates, or performance to unavailable metrics (e.g., *"Instagram Reach was 1,250."*, *"Reach increased."*, *"Reach is performing well."*, *"Shares improved."*) are strictly rejected.
+   - **Negation-Safe Guard & Ambiguous Rejection**: If a sentence mentions an unavailable metric alongside availability phrasing but also includes digits, percentages, comparison language (`higher`, `lower`, `more`, `than`), trend verbs (`increased`, `declined`, `improved`), or performance adjectives (`strong`, `performing well`), the validator rejects it (fail-closed against negation tricks).
+   - **Provider Capability Grounding**: Availability statements are validated against context capabilities. Claiming an available/supported metric is unavailable (e.g., *"Instagram Reactions are unavailable."*) is rejected as a capability contradiction.
+
+2. **Deterministic Confidence Propagation Rule**:
+   - A recommendation cannot exceed the level of confidence supported by its cited evidence.
+   - For any recommendation citing multiple evidence references (`evidence_refs`), the maximum permissible recommendation confidence is the **minimum** confidence among the supporting items:
+     $$\text{confidence}(\text{rec}) \le \min_{e \in \text{evidence\_refs}} \text{confidence}(e)$$
+   - **Evidence Confidence Levels**:
+     - Signals with `confidence = "NONE"` (e.g. `INSUFFICIENT_SAMPLE` signals `SIG-2`..`SIG-5`) strictly limit recommendation confidence to `"NONE"`.
+     - Signals with `confidence = "LOW"` limit recommendation confidence to `"LOW"`.
+     - Verified system limitations (`DATA_LIMITATION` such as `LIMITATION-IG-PARTIAL`) carry deterministic `"HIGH"` confidence.
+     - Mixed evidence (e.g., `HIGH` limitation + `NONE` signal) conservative rule restricts recommendation confidence to `"NONE"`, strictly preventing the upgrade of statistical uncertainty.
+
+3. **Prompt Contract v3 (`bs4h-prompt-v3`)**:
+   - Prompt updated from `bs4h-prompt-v2` to `bs4h-prompt-v3` with explicit non-negotiable instructions:
+     - Metric Availability Rule: Unavailable metrics may be named ONLY to explain that they are unavailable; never assign values, describe trends, or evaluate performance.
+     - Confidence Propagation Rule: Recommendation confidence must NOT exceed confidence supported by evidence_refs.
+   - Few-shot structural example refined to demonstrate `CONTINUE_COLLECTING_DATA` with `strength: "OBSERVE"` and `confidence: "NONE"`.
+
+4. **Regression Fixtures**:
+   - The exact raw output from R3 is preserved as a deterministic regression fixture, verifying that it passes Gates 1, 2, 3, 4, 6, and 7, and fails exclusively Gate 5 (`confidence_preserved`).
+   - The corrected R3 fixture (confidence adjusted to `NONE` for recommendation #1) passes 100% of validation gates.
+
+

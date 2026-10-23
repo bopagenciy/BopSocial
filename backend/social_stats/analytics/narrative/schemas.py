@@ -5,7 +5,7 @@ import copy
 from typing import Dict, List, Any
 
 CONTEXT_SCHEMA_VERSION = "bs4h-context-v1"
-PROMPT_VERSION = "bs4h-prompt-v2"
+PROMPT_VERSION = "bs4h-prompt-v3"
 
 RECOMMENDATION_TAXONOMY = [
     "CONTINUE_COLLECTING_DATA",
