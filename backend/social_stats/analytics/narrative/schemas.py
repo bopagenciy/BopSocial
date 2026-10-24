@@ -23,6 +23,42 @@ RECOMMENDATION_TAXONOMY = [
     "REVIEW_PROVIDER_PERMISSIONS",
 ]
 
+# BS-5E Multichannel Claim Classification & Action Mappings
+CLAIM_CATEGORIES = [
+    "AUDIENCE_CONTEXT",
+    "METRIC_COMPARISON",
+    "DATA_LIMITATION",
+    "SEMANTIC_LIMITATION",
+    "RECOMMENDATION",
+]
+
+CLAIM_EVIDENCE_MAPPING = {
+    "AUDIENCE_CONTEXT": ["MC-SIG-6"],
+    "METRIC_COMPARISON": ["MC-SIG-7"],
+    "DATA_LIMITATION": [
+        "MC-SIG-8",
+        "LIMITATION-CROSS-PLATFORM-PARTIAL",
+        "LIMITATION-IG-PARTIAL",
+    ],
+    "SEMANTIC_LIMITATION": ["MC-SIG-9"],
+    "RECOMMENDATION": [
+        "MC-SIG-7",
+        "MC-SIG-8",
+        "SIG-1",
+        "SIG-2",
+        "SIG-3",
+        "SIG-4",
+        "SIG-5",
+    ],
+}
+
+CROSS_PLATFORM_ACTION_MAPPING = {
+    "MC-SIG-7": "REVIEW_PLATFORM_PERFORMANCE",
+    "MC-SIG-8": "REVIEW_PROVIDER_PERMISSIONS",
+    "MC-SIG-6": None,  # Informational only
+    "MC-SIG-9": "CONTINUE_COLLECTING_DATA",  # Informational semantic limitation
+}
+
 RECOMMENDATION_STRENGTHS = [
     "OBSERVE",
     "CONSIDER",

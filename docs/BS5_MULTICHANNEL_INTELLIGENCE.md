@@ -673,3 +673,140 @@ The machine payload schema in `report_data["multichannel_intelligence"]["coverag
   - `QueuedItem` = 3
   - `PeriodicTask` = 17
 - Zero database writes. Zero external provider calls. Zero LLM calls.
+
+
+---
+
+## BS-5E ? Grounded Multichannel Narrative Safeties & Deterministic Preview
+
+### 1. Overview & Architectural Role
+Phase **BS-5E** extends Bop Social's Grounded AI Narrative system to safely consume multichannel executive intelligence (`ExecutiveReport #2`), single-platform signals (IDs 1?5), and multichannel signals (IDs 6?9) under canonical benchmark binding (`14bb7652b4247a6b98f2265796f1b320987684634a2d3ec27608faf671083012`).
+
+BS-5E operates strictly as an implementation, contract definition, safeguard enforcement, and deterministic preview phase:
+- **Zero Live LLM Calls**: No calls to Ollama, OpenAI, Gemini, Anthropic, or Meta.
+- **Zero Database Persistence**: `ExecutiveNarrative` count remains strictly 1; `ExecutiveReport` remains 2; `BusinessSignal` remains 9.
+- **Fail-Closed Gate Architecture**: All claims, observations, and recommendations must be grounded strictly in allowlisted evidence.
+
+---
+
+### 2. Grounded Context Contract (`bs4h-context-v2`)
+The narrative context is constructed via `build_grounded_narrative_context` adhering to approved schema version `bs4h-context-v2`:
+
+```json
+{
+  "context_schema_version": "bs4h-context-v2",
+  "report": {
+    "id": 2,
+    "title": "Informe Ejecutivo Multicanal",
+    "period_start": "2026-09-22",
+    "period_end": "2026-10-22",
+    "language": "es",
+    "report_type": "EXECUTIVE",
+    "client_name": "Bop Agencia"
+  },
+  "kpis": { ... },
+  "kpi_details": [ ... ],
+  "platforms": { ... },
+  "signals": [ ... ],
+  "limitations": [ ... ],
+  "supported_recommendations": [ ... ],
+  "evidence_registry": { ... },
+  "has_sufficient_data": false,
+  "multichannel_intelligence": {
+    "benchmark_hash": "14bb7652b4247a6b98f2265796f1b320987684634a2d3ec27608faf671083012",
+    "coverage_summary": {
+      "status": "LIMITED",
+      "coverage_ratio": "3/15",
+      "total_metrics": 15,
+      "comparable_metrics": 3,
+      "unavailable_metrics": 10,
+      "non_comparable_metrics": 2
+    },
+    "platform_comparisons": [ ... ],
+    "limitations": [ ... ],
+    "executive_takeaways": [ ... ]
+  }
+}
+```
+
+---
+
+### 3. Evidence Registry & Stable Reference Resolution
+The `evidence_registry` indexes all valid factual sources:
+- **Multichannel Signals**: `MC-SIG-6`, `MC-SIG-7`, `MC-SIG-8`, `MC-SIG-9` resolve directly to corresponding persisted `BusinessSignal` rows.
+- **Single-Platform Signals**: `SIG-1` through `SIG-5` maintain backwards compatibility.
+- **Platform Limitations**: `LIMITATION-IG-PARTIAL`, `LIMITATION-CROSS-PLATFORM-PARTIAL`.
+- **Fail-Closed Rule**: Any citation to an unregistered ID (e.g. `MC-SIG-999`) immediately raises a `ValueError` during confidence derivation and fails validation.
+
+---
+
+### 4. Claim Classification & Taxonomy Mapping
+Deterministic claim categories allow validators to verify recommendation grounding:
+- `AUDIENCE_CONTEXT` -> supported by `MC-SIG-6` (`FOLLOWERS_TOTAL`, action: `None`, informational only).
+- `METRIC_COMPARISON` -> supported by `MC-SIG-7` (`REACTIONS`, action: `REVIEW_PLATFORM_PERFORMANCE`).
+- `DATA_LIMITATION` -> supported by `MC-SIG-8` (`CROSS_PLATFORM_DATA_LIMITATION`, action: `REVIEW_PROVIDER_PERMISSIONS`).
+- `SEMANTIC_LIMITATION` -> supported by `MC-SIG-9` (`CROSS_PLATFORM_METRIC_NON_COMPARABLE`, action: `CONTINUE_COLLECTING_DATA`).
+- `RECOMMENDATION` -> supported by `MC-SIG-7`, `MC-SIG-8`, `SIG-1..5`.
+
+---
+
+### 5. Deterministic Validator Locks
+
+`NarrativeValidator` enforces 10 strict verification gates:
+
+1. **Overall Winner Lock**: Rejects phrases such as *"Instagram es la mejor plataforma en general"*, *"ganador general"*, *"canal m?s fuerte"*, *"peor plataforma"*, or *"should replace"*.
+2. **Cross-Metric Aggregation Lock**: Forbids synthetic composite platform performance scores, weighted sums, or combined channel rankings.
+3. **Zero-Baseline Percentage Lock**: When baseline platform is 0 (Facebook reactions = 0, Instagram reactions = 6), percentage language (`+600%`, `600 percent`, `seiscientos por ciento`) is strictly rejected.
+4. **Metric Availability Lock**: Forbids performance, trend, or numeric claims on unavailable metrics (`REACH`, `IMPRESSIONS`, `ENGAGEMENT_TOTAL`, `PROFILE_VIEWS`, `CLICKS_TOTAL`, `SHARES`). Only availability/limitation statements are permitted.
+5. **Non-Comparable Metric Lock**: Forbids ranking or superiority comparisons for `SAVES` and `VIDEO_VIEWS`. Only semantic divergence callouts are allowed.
+6. **Audience Non-Performance Lock**: Follower counts (`FOLLOWERS_TOTAL`) represent point-in-time audience volume only. Any claim linking follower volume to strategic superiority, efficiency, quality, or competitive performance is rejected.
+7. **Causality Guard**: Rejects unsupported causal assertions (*"porque"*, *"caused"*, *"drove"*, *"debido a que su contenido fue mejor"*, *"tu audiencia prefiere"*). Mathematical explanations of zero baselines are exempt.
+8. **Budget Reallocation Prohibition**: Forbids recommendations suggesting budget shifts across channels (*"Move budget to Instagram"*, *"Reasignar presupuesto de Facebook a Instagram"*) based on limited 3/15 coverage.
+9. **Limitation Preservation Lock**: When cross-platform comparisons are made under limited coverage (3/15), the limitations section must explicitly acknowledge the limited data coverage constraint.
+10. **Language Contract Lock**: When report language is `es` (Spanish), any English sentences or function words are strictly rejected.
+
+---
+
+### 6. Confidence Authority & Derivation Architecture
+- **No Model-Authored Confidence**: The generative model never defines recommendation confidence. Schema for providers strictly omits confidence properties.
+- **Deterministic Confidence Calculation**: `derive_recommendation_confidence` derives canonical confidence as the minimum confidence among all cited evidence references.
+- **Multichannel Authority**: Signals `MC-SIG-6`, `MC-SIG-7`, `MC-SIG-8`, and `MC-SIG-9` carry deterministic `HIGH` confidence.
+
+---
+
+### 7. Context Hash Determinism & Staleness Rules
+- **Context Hash**: SHA-256 digest calculated over the canonically sorted JSON context string:
+  `a7fb12cb84fdf4e17a11c14f0fbc9a31690b640af53a59ee6d0d7fa6a03db87c`
+- **Hash Sensitivity**: Any change to `benchmark_hash`, coverage numbers, or underlying signals alters the context hash.
+- **Staleness Rule**: If `ExecutiveReport.source_hash` or `benchmark_hash` shifts, any existing narrative is flagged as stale.
+
+---
+
+### 8. Future BS-5E.1 Live-Call Policy & Idempotency Design
+- **Single Authorized Call**: Exactly one model generation call is permitted per user authorization. Automatic retries are strictly prohibited.
+- **Validation Failure Policy**: If validation fails after generation, the draft is marked `REJECTED` and no second generation call is attempted without operator intervention.
+- **Idempotency Identity**: Future persistence binds to:
+  `client_id` : `executive_report_id` : `source_hash` : `context_hash` : `prompt_version` : `provider_name`
+  Guarantees 0 duplicate records on repeated requests.
+
+---
+
+### 9. Test Suite & Verification Results
+- **BS-5E Dedicated Tests**: 25 tests passing (`test_grounded_multichannel_narrative.py`).
+- **Targeted Multichannel Regression**: 190 tests passing (BS-4H: 78, BS-5A: 20, BS-5B: 20, BS-5C: 17, BS-5D: 24, BS-5D.0A: 6, BS-5E: 25).
+- **Full Backend Regression**: 1,039 tests passing (0 failures, 0 errors, ran in 101.9s).
+- **Database Safety Invariants**:
+  - `SocialMetricSnapshot` = 312
+  - `SocialMetricRollup` = 551
+  - `BusinessSignal` = 9
+  - `ExecutiveReport` = 2
+  - `ExecutiveNarrative` = 1
+  - `DailyMetric` = 33
+  - `PostMetric` = 38
+  - `SyncLog` = 8
+  - `UnifiedPost` = 14
+  - `PlatformPublishLog` = 15
+  - `PostQueue` = 2
+  - `QueuedItem` = 3
+  - `PeriodicTask` = 17
+- **Provider Call Invariants**: Ollama = 0, OpenAI = 0, Gemini = 0, Anthropic = 0, Meta = 0, Facebook = 0, Instagram = 0.

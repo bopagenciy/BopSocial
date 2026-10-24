@@ -41,8 +41,77 @@ class FakeNarrativeProvider(BaseNarrativeProvider):
         sig_ref = "SIG-1" if "SIG-1" in evidence_registry else (list(evidence_registry.keys())[0] if evidence_registry else "SIG-1")
         lim_ref = "LIMITATION-IG-PARTIAL" if "LIMITATION-IG-PARTIAL" in evidence_registry else sig_ref
 
+        has_mc = bool(context.get("multichannel_intelligence"))
+        mc_sig_7 = "MC-SIG-7" if "MC-SIG-7" in evidence_registry else sig_ref
+        mc_sig_8 = "MC-SIG-8" if "MC-SIG-8" in evidence_registry else lim_ref
+
         # Default Valid JSON
-        if language == "es":
+        if has_mc:
+            if language == "es":
+                valid_payload = {
+                    "executive_summary": [
+                        "Durante el periodo analizado, Instagram registr? 50 seguidores frente a 20 en Facebook; esta diferencia corresponde al tama?o de audiencia y no implica superioridad general de rendimiento.",
+                        "La comparaci?n entre plataformas permanece limitada: solo 3 de 15 m?tricas son comparables debido a restricciones de proveedor en Instagram."
+                    ],
+                    "performance_observations": [
+                        "Instagram registr? 6 reacciones frente a 0 en Facebook durante el per?odo analizado.",
+                        "Dado que la l?nea base de Facebook es cero en reacciones, no se expresa una variaci?n porcentual.",
+                        "SAVES y VIDEO_VIEWS no se comparan directamente entre ambas plataformas por diferencias sem?nticas de proveedor."
+                    ],
+                    "recommendations": [
+                        {
+                            "text": "Revisar los permisos del proveedor en Instagram para ampliar la disponibilidad de m?tricas comparables entre plataformas.",
+                            "recommendation_type": "REVIEW_PROVIDER_PERMISSIONS",
+                            "strength": "CONSIDER",
+                            "confidence": "HIGH",
+                            "evidence_refs": [mc_sig_8]
+                        },
+                        {
+                            "text": "Revisar el rendimiento espec?fico en reacciones observadas en cada plataforma manteniendo la estrategia actual.",
+                            "recommendation_type": "REVIEW_PLATFORM_PERFORMANCE",
+                            "strength": "CONSIDER",
+                            "confidence": "HIGH",
+                            "evidence_refs": [mc_sig_7]
+                        }
+                    ],
+                    "limitations": [
+                        "La cobertura de datos entre plataformas es limitada: solo 3 de 15 m?tricas son comparables en este periodo.",
+                        "SAVES y VIDEO_VIEWS no admiten una comparaci?n directa por divergencia sem?ntica entre Facebook e Instagram."
+                    ]
+                }
+            else:
+                valid_payload = {
+                    "executive_summary": [
+                        "During the analyzed period, Instagram recorded 50 followers compared to 20 on Facebook; this reflects audience size only and does not imply superior performance.",
+                        "Cross-platform comparison remains limited: only 3 of 15 metrics are comparable due to provider restrictions on Instagram."
+                    ],
+                    "performance_observations": [
+                        "Instagram recorded 6 reactions compared to 0 on Facebook during the analyzed period.",
+                        "Given that Facebook baseline is zero for reactions, no percentage variation is stated.",
+                        "SAVES and VIDEO_VIEWS are not directly comparable between platforms due to provider semantic differences."
+                    ],
+                    "recommendations": [
+                        {
+                            "text": "Review provider permissions on Instagram to increase comparable metric availability.",
+                            "recommendation_type": "REVIEW_PROVIDER_PERMISSIONS",
+                            "strength": "CONSIDER",
+                            "confidence": "HIGH",
+                            "evidence_refs": [mc_sig_8]
+                        },
+                        {
+                            "text": "Review specific reaction performance observed across platforms maintaining current strategy.",
+                            "recommendation_type": "REVIEW_PLATFORM_PERFORMANCE",
+                            "strength": "CONSIDER",
+                            "confidence": "HIGH",
+                            "evidence_refs": [mc_sig_7]
+                        }
+                    ],
+                    "limitations": [
+                        "Cross-platform data coverage is limited: only 3 of 15 metrics are comparable in this period.",
+                        "SAVES and VIDEO_VIEWS are not directly comparable between Facebook and Instagram."
+                    ]
+                }
+        elif language == "es":
             valid_payload = {
                 "executive_summary": [
                     f"Resumen ejecutivo del período {period_start} al {period_end} para {client_name}.",
@@ -172,6 +241,94 @@ class FakeNarrativeProvider(BaseNarrativeProvider):
                     "confidence": "LOW",
                     "evidence_refs": [sig_ref]
                 }
+            ]
+
+        elif mode == "OVERALL_WINNER_ATTACK":
+            payload = dict(valid_payload)
+            payload["performance_observations"] = [
+                "Instagram es la mejor plataforma en general."
+            ]
+
+        elif mode == "FAKE_PERCENTAGE_ATTACK":
+            payload = dict(valid_payload)
+            payload["performance_observations"] = [
+                "Instagram tuvo 600% m?s reacciones."
+            ]
+
+        elif mode == "ENGAGEMENT_HALLUCINATION_ATTACK":
+            payload = dict(valid_payload)
+            payload["performance_observations"] = [
+                "Instagram tuvo mayor engagement total."
+            ]
+
+        elif mode == "NON_COMPARABLE_ATTACK":
+            payload = dict(valid_payload)
+            payload["performance_observations"] = [
+                "Instagram tuvo mejores VIDEO_VIEWS."
+            ]
+
+        elif mode == "AUDIENCE_PERFORMANCE_ATTACK":
+            payload = dict(valid_payload)
+            payload["performance_observations"] = [
+                "Instagram rinde mejor porque tiene m?s seguidores."
+            ]
+
+        elif mode == "CAUSALITY_ATTACK":
+            payload = dict(valid_payload)
+            payload["performance_observations"] = [
+                "Instagram obtuvo m?s reacciones porque su contenido fue mejor."
+            ]
+
+        elif mode == "UNSUPPORTED_BUDGET_ACTION":
+            payload = dict(valid_payload)
+            payload["recommendations"] = [
+                {
+                    "text": "Debemos mover el presupuesto de Facebook a Instagram.",
+                    "recommendation_type": "REVIEW_PLATFORM_PERFORMANCE",
+                    "strength": "RECOMMEND",
+                    "confidence": "HIGH",
+                    "evidence_refs": [sig_ref]
+                }
+            ]
+
+        elif mode == "BAD_EVIDENCE_REF":
+            payload = dict(valid_payload)
+            payload["recommendations"] = [
+                {
+                    "text": "Revisar los permisos de conexi?n.",
+                    "recommendation_type": "REVIEW_PROVIDER_PERMISSIONS",
+                    "strength": "CONSIDER",
+                    "confidence": "HIGH",
+                    "evidence_refs": ["MC-SIG-999"]
+                }
+            ]
+
+        elif mode == "CONFIDENCE_MISMATCH":
+            payload = dict(valid_payload)
+            payload["recommendations"] = [
+                {
+                    "text": "Revisar los permisos del proveedor en Instagram.",
+                    "recommendation_type": "REVIEW_PROVIDER_PERMISSIONS",
+                    "strength": "CONSIDER",
+                    "confidence": "LOW",  # Mismatch: MC-SIG-8 is HIGH!
+                    "evidence_refs": [mc_sig_8]
+                }
+            ]
+
+        elif mode == "LIMITATION_OMISSION":
+            payload = dict(valid_payload)
+            payload["limitations"] = [
+                "Instagram opera en modo parcial con m?tricas de interacci?n registradas."
+            ]
+
+        elif mode == "LANGUAGE_MISMATCH":
+            payload = dict(valid_payload)
+            payload["executive_summary"] = [
+                "During the analyzed period, Instagram recorded 50 followers compared to 20 on Facebook.",
+                "Cross-platform comparisons show limited data coverage with 3 comparable metrics."
+            ]
+            payload["performance_observations"] = [
+                "Instagram recorded 6 reactions compared to 0 on Facebook."
             ]
 
         elif mode == "MALFORMED_JSON":

@@ -661,7 +661,8 @@ class MultichannelExecutiveIntelligenceTests(TestCase):
                 }
             ],
             "limitations": [
-                "Instagram opera bajo capacidad analítica parcial en métricas avanzadas."
+                "La cobertura de m?tricas entre plataformas es limitada: solo 3 de 15 m?tricas son comparables.",
+                "Instagram opera bajo capacidad anal?tica parcial en m?tricas avanzadas."
             ],
         }
         is_valid, report = NarrativeValidator.validate(clean_output, context)

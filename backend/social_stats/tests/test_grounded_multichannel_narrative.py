@@ -1,0 +1,590 @@
+"""
+BS-5E Dedicated Test Suite: Grounded Multichannel Narrative Safeties & Deterministic Preview.
+
+Validates:
+- Approved context schema (bs4h-context-v2) and prompt version (bs5d-prompt-v1)
+- Deterministic evidence registry resolution for MC-SIG-6..9 and SIG-1..5
+- Unknown evidence refs fail closed (e.g. MC-SIG-999)
+- Canonical coverage limitation evidence (3/15 comparable, status LIMITED)
+- Audience volume vs performance lock (FOLLOWERS_TOTAL)
+- Zero-baseline percentage lock (REACTIONS FB=0, IG=6)
+- Metric availability lock (REACH, ENGAGEMENT_TOTAL under partial mode)
+- Non-comparable metric lock (SAVES, VIDEO_VIEWS)
+- Overall winner lock (forbids best platform, winner claims)
+- Cross-metric synthetic aggregation prohibition
+- Causality guard (rejects "porque", "caused", etc.)
+- Budget reallocation prohibition ("Move budget to Instagram")
+- Deterministic confidence authority (derived from evidence refs, model cannot override)
+- Context hash determinism and sensitivity
+- Source hash binding and staleness detection
+- Prompt input minimization (no secrets/tokens leaked)
+- Language contract (Spanish vs English mismatch)
+- Zero database writes during preview
+- Tenant isolation
+"""
+from datetime import date
+from decimal import Decimal
+import json
+
+from django.contrib.auth.models import User
+from django.test import TestCase
+
+from social_stats.models import (
+    Client,
+    PlatformCredential,
+    SocialMetricRollup,
+    BusinessSignal,
+    ExecutiveReport,
+    ExecutiveNarrative,
+)
+from social_stats.analytics.reporting.builder import (
+    build_executive_report_data,
+    compute_source_hash,
+)
+from social_stats.analytics.narrative.schemas import (
+    CONTEXT_SCHEMA_VERSION,
+    PROMPT_VERSION,
+    FORBIDDEN_KEYS,
+    CLAIM_CATEGORIES,
+    CLAIM_EVIDENCE_MAPPING,
+    CROSS_PLATFORM_ACTION_MAPPING,
+)
+from social_stats.analytics.narrative.context import (
+    build_grounded_narrative_context,
+    compute_context_hash,
+)
+from social_stats.analytics.narrative.confidence import (
+    derive_recommendation_confidence,
+    enrich_narrative_with_derived_confidence,
+)
+from social_stats.analytics.narrative.prompts import (
+    get_system_prompt,
+    build_user_prompt,
+)
+from social_stats.analytics.narrative.validator import NarrativeValidator
+from social_stats.analytics.narrative.service import preview_narrative
+
+
+class GroundedMultichannelNarrativeSafetiesTests(TestCase):
+    """Exhaustive BS-5E safeguards and deterministic preview test suite."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username="narrative_bs5e_user", password="password123")
+        self.client_obj = Client.objects.create(
+            name="Test Agency Client",
+            company="Bop Agencia Pilot",
+            email="test_agency_bs5e@example.com",
+            owner_user=self.user,
+            is_active=True,
+        )
+        self.other_user = User.objects.create_user(username="narrative_other_user", password="password123")
+        self.other_client = Client.objects.create(
+            name="Other Client",
+            company="Other Org",
+            email="other_bs5e@example.com",
+            owner_user=self.other_user,
+            is_active=True,
+        )
+
+        self.start_date = date(2026, 9, 22)
+        self.end_date = date(2026, 10, 22)
+        self.canonical_benchmark_hash = "14bb7652b4247a6b98f2265796f1b320987684634a2d3ec27608faf671083012"
+
+        # Platform Credentials with secret tokens to test minimization
+        PlatformCredential.objects.create(
+            client=self.client_obj,
+            platform="facebook",
+            page_id="fb_page_123",
+            access_token="EAA_SECRET_TOKEN_DO_NOT_LEAK",
+            refresh_token="REFRESH_SECRET_KEY",
+            is_active=True,
+        )
+        PlatformCredential.objects.create(
+            client=self.client_obj,
+            platform="instagram",
+            instagram_account_id="ig_biz_456",
+            access_token="IG_SECRET_TOKEN_DO_NOT_LEAK",
+            is_active=True,
+        )
+
+        # FB Rollups
+        SocialMetricRollup.objects.create(
+            client=self.client_obj,
+            platform="facebook",
+            metric_scope="account",
+            period="day",
+            period_start=self.end_date,
+            normalized_metric="FOLLOWERS_TOTAL",
+            metric_value=Decimal("20.0"),
+            sample_count=3,
+        )
+        SocialMetricRollup.objects.create(
+            client=self.client_obj,
+            platform="facebook",
+            metric_scope="account",
+            period="day",
+            period_start=self.start_date,
+            normalized_metric="REACTIONS",
+            metric_value=Decimal("0.0"),
+            sample_count=50,
+        )
+        SocialMetricRollup.objects.create(
+            client=self.client_obj,
+            platform="facebook",
+            metric_scope="account",
+            period="day",
+            period_start=self.start_date,
+            normalized_metric="COMMENTS",
+            metric_value=Decimal("0.0"),
+            sample_count=50,
+        )
+        # IG Rollups
+        SocialMetricRollup.objects.create(
+            client=self.client_obj,
+            platform="instagram",
+            metric_scope="account",
+            period="day",
+            period_start=self.end_date,
+            normalized_metric="FOLLOWERS_TOTAL",
+            metric_value=Decimal("50.0"),
+            sample_count=3,
+        )
+        SocialMetricRollup.objects.create(
+            client=self.client_obj,
+            platform="instagram",
+            metric_scope="account",
+            period="day",
+            period_start=self.start_date,
+            normalized_metric="REACTIONS",
+            metric_value=Decimal("6.0"),
+            sample_count=21,
+        )
+        SocialMetricRollup.objects.create(
+            client=self.client_obj,
+            platform="instagram",
+            metric_scope="account",
+            period="day",
+            period_start=self.start_date,
+            normalized_metric="COMMENTS",
+            metric_value=Decimal("0.0"),
+            sample_count=21,
+        )
+
+        # Single platform signal 1 (SIG-1)
+        self.sig1 = BusinessSignal.objects.create(
+            id=1,
+            client=self.client_obj,
+            platform="instagram",
+            signal_type="PROVIDER_PARTIAL",
+            metric="MULTIPLE",
+            scope="account",
+            period_start=self.start_date,
+            period_end=self.end_date,
+            sample_size=10,
+            confidence_level="HIGH",
+            severity="WARNING",
+            is_actionable=True,
+            signal_identity="sig1_identity",
+            explanation_template="Instagram opera en modo parcial con métricas de interacción registradas.",
+            evidence={"type": "PROVIDER_PARTIAL"},
+        )
+
+        # Multichannel BusinessSignals (IDs 6-9)
+        self.sig6 = BusinessSignal.objects.create(
+            id=6,
+            client=self.client_obj,
+            platform="facebook:instagram",
+            signal_type="AUDIENCE_SIZE_DIFFERENCE",
+            metric="FOLLOWERS_TOTAL",
+            scope="multichannel",
+            period_start=self.start_date,
+            period_end=self.end_date,
+            observed_value=Decimal("50.0"),
+            baseline_value=Decimal("20.0"),
+            absolute_delta=Decimal("-30.0"),
+            relative_delta=Decimal("-60.0"),
+            sample_size=6,
+            confidence_level="HIGH",
+            severity="INFO",
+            is_actionable=False,
+            signal_identity="4ec63b2d694607643cc58ade2db37d04afc998db88072fd8c05c9d8e997a4a0d",
+            explanation_template="Instagram cuenta con 50.0 seguidores frente a 20.0 en Facebook (métrica de volumen de audiencia, no de rendimiento).",
+            evidence={
+                "metric": "FOLLOWERS_TOTAL",
+                "winner": "NO_WINNER",
+                "category": "AUDIENCE",
+                "platform_a": "facebook",
+                "platform_b": "instagram",
+                "reason_code": "NON_RANKABLE_METRIC",
+                "benchmark_hash": self.canonical_benchmark_hash,
+                "delta_absolute": -30.0,
+                "delta_relative": -60.0,
+                "platform_values": {"facebook": 20.0, "instagram": 50.0},
+            },
+        )
+
+        self.sig7 = BusinessSignal.objects.create(
+            id=7,
+            client=self.client_obj,
+            platform="instagram",
+            signal_type="PLATFORM_METRIC_OUTPERFORMANCE",
+            metric="REACTIONS",
+            scope="multichannel",
+            period_start=self.start_date,
+            period_end=self.end_date,
+            observed_value=Decimal("6.0"),
+            baseline_value=Decimal("0.0"),
+            absolute_delta=Decimal("-6.0"),
+            relative_delta=None,  # Zero baseline
+            sample_size=71,
+            confidence_level="HIGH",
+            severity="POSITIVE",
+            is_actionable=True,
+            signal_identity="3fbc828c4354c7630e9a627ab21327bcded2e8aa0ac80bd542e7661402b1c14d",
+            explanation_template="Instagram registró 6.0 reacciones frente a 0 en Facebook durante el período.",
+            evidence={
+                "metric": "REACTIONS",
+                "winner": "PLATFORM_B",
+                "category": "PERFORMANCE",
+                "platform_a": "facebook",
+                "platform_b": "instagram",
+                "reason_code": "DIRECTLY_COMPARABLE",
+                "zero_baseline": True,
+                "benchmark_hash": self.canonical_benchmark_hash,
+                "delta_absolute": -6.0,
+                "delta_relative": None,
+                "platform_values": {"facebook": 0.0, "instagram": 6.0},
+                "winner_platform": "instagram",
+                "baseline_platform": "facebook",
+            },
+        )
+
+        self.sig8 = BusinessSignal.objects.create(
+            id=8,
+            client=self.client_obj,
+            platform="facebook:instagram",
+            signal_type="CROSS_PLATFORM_DATA_LIMITATION",
+            metric="MULTIPLE",
+            scope="multichannel",
+            period_start=self.start_date,
+            period_end=self.end_date,
+            sample_size=15,
+            confidence_level="HIGH",
+            severity="WARNING",
+            is_actionable=True,
+            signal_identity="57c995a6aeb519ee26e7015a87c2e7d4377a1bbe584071d4a1ce5ec46e7ffe32",
+            explanation_template="Limitación de datos entre plataformas: 12 de 15 métricas no están disponibles debido a capacidades parciales del proveedor (Instagram).",
+            evidence={
+                "category": "CAPABILITY",
+                "total_metrics": 15,
+                "comparable_metrics": 3,
+                "coverage_ratio": "3/15",
+                "benchmark_hash": self.canonical_benchmark_hash,
+                "affected_metrics_count": 12,
+            },
+        )
+
+        self.sig9 = BusinessSignal.objects.create(
+            id=9,
+            client=self.client_obj,
+            platform="facebook:instagram",
+            signal_type="CROSS_PLATFORM_METRIC_NON_COMPARABLE",
+            metric="MULTIPLE",
+            scope="multichannel",
+            period_start=self.start_date,
+            period_end=self.end_date,
+            sample_size=2,
+            confidence_level="HIGH",
+            severity="INFO",
+            is_actionable=False,
+            signal_identity="f6e5e9965419ddac12d4a043e1092c61352dac207883bf9af0a9cd0d926e2d29",
+            explanation_template="Métricas no comparables entre plataformas: SAVES, VIDEO_VIEWS tienen definiciones semánticas o de agregación estructuralmente dispares.",
+            evidence={
+                "count": 2,
+                "category": "DATA_QUALITY",
+                "benchmark_hash": self.canonical_benchmark_hash,
+                "affected_metrics": ["SAVES", "VIDEO_VIEWS"],
+            },
+        )
+
+        self.source_hash = "cb79885ade504aeac72f1bf2854b155be31c33b0c9ce3f0c168c7fc0a38ad148"
+        # Build canonical BS-5D executive report data
+        self.report_data = build_executive_report_data(
+            client_id=self.client_obj.id,
+            date_from=self.start_date,
+            date_to=self.end_date,
+            language="es",
+        )
+
+        self.report = ExecutiveReport.objects.create(
+            client=self.client_obj,
+            title="Informe Ejecutivo Multicanal",
+            period_start=self.start_date,
+            period_end=self.end_date,
+            report_type="EXECUTIVE",
+            language="es",
+            source_hash=self.source_hash,
+            report_data=self.report_data,
+        )
+
+    # 1. Context Schema & Prompt Version
+    def test_context_schema_and_prompt_version(self):
+        context = build_grounded_narrative_context(self.report)
+        self.assertEqual(context["context_schema_version"], "bs4h-context-v2")
+        self.assertEqual(CONTEXT_SCHEMA_VERSION, "bs4h-context-v2")
+        self.assertEqual(PROMPT_VERSION, "bs5d-prompt-v1")
+
+    # 2. Multichannel Evidence Registry Resolution (MC-SIG-6..9)
+    def test_multichannel_evidence_registry_resolution(self):
+        context = build_grounded_narrative_context(self.report)
+        reg = context["evidence_registry"]
+        for expected_ref in ["MC-SIG-6", "MC-SIG-7", "MC-SIG-8", "MC-SIG-9"]:
+            self.assertIn(expected_ref, reg)
+            ev = reg[expected_ref]
+            self.assertEqual(ev["type"], "MULTICHANNEL_SIGNAL")
+            self.assertEqual(ev["confidence"], "HIGH")
+
+    # 3. Single Platform Evidence Backward Compatibility (SIG-1..5)
+    def test_single_platform_evidence_backward_compatibility(self):
+        context = build_grounded_narrative_context(self.report)
+        reg = context["evidence_registry"]
+        self.assertIn("SIG-1", reg)
+        self.assertIn("LIMITATION-IG-PARTIAL", reg)
+
+    # 4. Unknown Evidence Ref Fails Closed
+    def test_unknown_evidence_ref_fails_closed(self):
+        context = build_grounded_narrative_context(self.report)
+        reg = context["evidence_registry"]
+        self.assertNotIn("MC-SIG-999", reg)
+        with self.assertRaises(ValueError) as cm:
+            derive_recommendation_confidence(["MC-SIG-999"], reg)
+        self.assertIn("Unknown evidence reference 'MC-SIG-999'", str(cm.exception))
+
+    # 5. Coverage Limitation Evidence
+    def test_coverage_limitation_registered(self):
+        context = build_grounded_narrative_context(self.report)
+        mc_intel = context.get("multichannel_intelligence", {})
+        cov = mc_intel.get("coverage_summary", {})
+        self.assertEqual(cov.get("status"), "LIMITED")
+        self.assertEqual(cov.get("coverage_ratio"), "3/15")
+        self.assertEqual(cov.get("total_metrics"), 15)
+        self.assertEqual(cov.get("comparable_metrics"), 3)
+        self.assertEqual(cov.get("unavailable_metrics"), 10)
+        self.assertEqual(cov.get("non_comparable_metrics"), 2)
+
+    # 6. Context Hash Determinism
+    def test_context_hash_determinism(self):
+        ctx1 = build_grounded_narrative_context(self.report)
+        ctx2 = build_grounded_narrative_context(self.report)
+        h1 = compute_context_hash(ctx1)
+        h2 = compute_context_hash(ctx2)
+        self.assertEqual(h1, h2)
+        self.assertIsInstance(h1, str)
+        self.assertEqual(len(h1), 64)
+
+    # 7. Context Hash Sensitivity
+    def test_context_hash_sensitivity(self):
+        import copy
+        ctx = build_grounded_narrative_context(self.report)
+        base_hash = compute_context_hash(ctx)
+
+        # Modify benchmark hash
+        ctx_mod = copy.deepcopy(ctx)
+        ctx_mod["multichannel_intelligence"]["benchmark_hash"] = "0000000000000000000000000000000000000000000000000000000000000000"
+        self.assertNotEqual(base_hash, compute_context_hash(ctx_mod))
+
+        # Modify coverage
+        ctx_mod2 = copy.deepcopy(ctx)
+        ctx_mod2["multichannel_intelligence"]["coverage_summary"]["total_metrics"] = 16
+        self.assertNotEqual(base_hash, compute_context_hash(ctx_mod2))
+
+    # 8. Report Source Binding
+    def test_report_source_binding(self):
+        context = build_grounded_narrative_context(self.report)
+        self.assertEqual(context["report"]["id"], self.report.id)
+        self.assertEqual(self.report.source_hash, self.source_hash)
+
+    # 9. Prompt Input Minimization (No Secrets Exposed)
+    def test_prompt_input_minimization_and_forbidden_keys(self):
+        context = build_grounded_narrative_context(self.report)
+        user_prompt = build_user_prompt(context)
+
+        # Verify no token leaks
+        self.assertNotIn("EAA_SECRET_TOKEN_DO_NOT_LEAK", user_prompt)
+        self.assertNotIn("REFRESH_SECRET_KEY", user_prompt)
+        self.assertNotIn("IG_SECRET_TOKEN_DO_NOT_LEAK", user_prompt)
+
+        # Audit forbidden keys
+        forbidden_found = []
+        def _walk(obj):
+            if isinstance(obj, dict):
+                for k, v in obj.items():
+                    if str(k).lower() in FORBIDDEN_KEYS:
+                        forbidden_found.append(k)
+                    _walk(v)
+            elif isinstance(obj, list):
+                for item in obj:
+                    _walk(item)
+
+        _walk(context)
+        self.assertEqual(forbidden_found, [])
+
+    # 10. Clean Validator Pass (Section AO & AN)
+    def test_clean_validator_pass(self):
+        preview = preview_narrative(self.report, provider_name="fake", mock_mode="VALID")
+        self.assertTrue(preview["is_valid"])
+        self.assertEqual(preview["validation_status"], "PASS")
+        self.assertEqual(preview["validation_errors"], [])
+
+    # 11. Overall Winner Attack Rejected (Section AP)
+    def test_overall_winner_attack_rejected(self):
+        preview = preview_narrative(self.report, provider_name="fake", mock_mode="OVERALL_WINNER_ATTACK")
+        self.assertFalse(preview["is_valid"])
+        self.assertEqual(preview["validation_status"], "FAIL")
+        self.assertTrue(any("Multichannel lock failed" in e for e in preview["validation_errors"]))
+
+    # 12. Fake Percentage Attack Rejected (Section AQ)
+    def test_fake_percentage_attack_rejected(self):
+        preview = preview_narrative(self.report, provider_name="fake", mock_mode="FAKE_PERCENTAGE_ATTACK")
+        self.assertFalse(preview["is_valid"])
+        self.assertEqual(preview["validation_status"], "FAIL")
+        self.assertTrue(any("Fact lock failed" in e or "Zero-baseline lock failed" in e for e in preview["validation_errors"]))
+
+    # 13. Engagement Hallucination Attack Rejected (Section AR)
+    def test_engagement_hallucination_attack_rejected(self):
+        preview = preview_narrative(self.report, provider_name="fake", mock_mode="ENGAGEMENT_HALLUCINATION_ATTACK")
+        self.assertFalse(preview["is_valid"])
+        self.assertEqual(preview["validation_status"], "FAIL")
+        self.assertTrue(any("Metric allowlist failed" in e for e in preview["validation_errors"]))
+
+    # 14. Non-Comparable Attack Rejected (Section AS)
+    def test_non_comparable_attack_rejected(self):
+        preview = preview_narrative(self.report, provider_name="fake", mock_mode="NON_COMPARABLE_ATTACK")
+        self.assertFalse(preview["is_valid"])
+        self.assertEqual(preview["validation_status"], "FAIL")
+        self.assertTrue(any("Comparability lock failed" in e for e in preview["validation_errors"]))
+
+    # 15. Audience Performance Attack Rejected (Section AT)
+    def test_audience_performance_attack_rejected(self):
+        preview = preview_narrative(self.report, provider_name="fake", mock_mode="AUDIENCE_PERFORMANCE_ATTACK")
+        self.assertFalse(preview["is_valid"])
+        self.assertEqual(preview["validation_status"], "FAIL")
+        self.assertTrue(any("Audience non-performance lock failed" in e or "Causality guard failed" in e for e in preview["validation_errors"]))
+
+    # 16. Causality Attack Rejected (Section AU)
+    def test_causality_attack_rejected(self):
+        preview = preview_narrative(self.report, provider_name="fake", mock_mode="CAUSALITY_ATTACK")
+        self.assertFalse(preview["is_valid"])
+        self.assertEqual(preview["validation_status"], "FAIL")
+        self.assertTrue(any("Causality guard failed" in e for e in preview["validation_errors"]))
+
+    # 17. Unsupported Budget Action Rejected (Section AV)
+    def test_unsupported_budget_action_rejected(self):
+        preview = preview_narrative(self.report, provider_name="fake", mock_mode="UNSUPPORTED_BUDGET_ACTION")
+        self.assertFalse(preview["is_valid"])
+        self.assertEqual(preview["validation_status"], "FAIL")
+        self.assertTrue(any("Budget reallocation lock failed" in e for e in preview["validation_errors"]))
+
+    # 18. Bad Evidence Ref Rejected (Section AW)
+    def test_bad_evidence_ref_rejected(self):
+        preview = preview_narrative(self.report, provider_name="fake", mock_mode="BAD_EVIDENCE_REF")
+        self.assertFalse(preview["is_valid"])
+        self.assertEqual(preview["validation_status"], "FAIL")
+        self.assertTrue(any("Confidence lock failed" in e or "Recommendation evidence failed" in e for e in preview["validation_errors"]))
+
+    # 19. Confidence Authority & Derivation (Section AA & AB)
+    def test_confidence_authority_and_derivation(self):
+        context = build_grounded_narrative_context(self.report)
+        reg = context["evidence_registry"]
+        # Multichannel signals carry deterministic HIGH confidence
+        self.assertEqual(derive_recommendation_confidence(["MC-SIG-7"], reg), "HIGH")
+        self.assertEqual(derive_recommendation_confidence(["MC-SIG-8"], reg), "HIGH")
+        # Mixed with lower signal resolves to minimum
+        self.assertEqual(derive_recommendation_confidence(["MC-SIG-7", "SIG-1"], reg), "HIGH")
+
+    # 20. Confidence Mismatch Rejected by Direct Validator Call (Section AX)
+    def test_confidence_mismatch_rejected_by_validator(self):
+        context = build_grounded_narrative_context(self.report)
+        mismatched_payload = {
+            "executive_summary": ["Resumen válido del periodo."],
+            "performance_observations": ["Instagram registró 6 reacciones frente a 0 en Facebook."],
+            "recommendations": [
+                {
+                    "text": "Revisar rendimiento de la plataforma.",
+                    "recommendation_type": "REVIEW_PLATFORM_PERFORMANCE",
+                    "strength": "CONSIDER",
+                    "confidence": "LOW",  # Mismatch! MC-SIG-7 is HIGH!
+                    "evidence_refs": ["MC-SIG-7"]
+                }
+            ],
+            "limitations": [
+                "La cobertura de datos entre plataformas es limitada: solo 3 de 15 métricas son comparables."
+            ]
+        }
+        is_valid, report = NarrativeValidator.validate(mismatched_payload, context)
+        self.assertFalse(is_valid)
+        self.assertTrue(any("Confidence lock failed" in e for e in report["errors"]))
+
+    # 21. Limitation Preservation Test (Section AY)
+    def test_limitation_preservation_lock(self):
+        preview = preview_narrative(self.report, provider_name="fake", mock_mode="LIMITATION_OMISSION")
+        self.assertFalse(preview["is_valid"])
+        self.assertEqual(preview["validation_status"], "FAIL")
+        self.assertTrue(any("Limitation preservation lock failed" in e for e in preview["validation_errors"]))
+
+    # 22. Language Contract Enforcement (Section AZ)
+    def test_language_contract_enforcement(self):
+        preview = preview_narrative(self.report, provider_name="fake", mock_mode="LANGUAGE_MISMATCH")
+        self.assertFalse(preview["is_valid"])
+        self.assertEqual(preview["validation_status"], "FAIL")
+        self.assertTrue(any("Language contract failed" in e for e in preview["validation_errors"]))
+
+    # 23. Cross-Metric Synthetic Aggregation Attack Rejected (Section S)
+    def test_synthetic_aggregation_attack_rejected(self):
+        context = build_grounded_narrative_context(self.report)
+        bad_payload = {
+            "executive_summary": ["Resumen ejecutivo."],
+            "performance_observations": [
+                "Instagram obtuvo una puntuación compuesta superior a Facebook combinando seguidores y reacciones."
+            ],
+            "recommendations": [
+                {
+                    "text": "Revisar rendimiento.",
+                    "recommendation_type": "REVIEW_PLATFORM_PERFORMANCE",
+                    "strength": "CONSIDER",
+                    "confidence": "HIGH",
+                    "evidence_refs": ["MC-SIG-7"]
+                }
+            ],
+            "limitations": [
+                "La cobertura de datos entre plataformas es limitada: 3 de 15 métricas."
+            ]
+        }
+        is_valid, report = NarrativeValidator.validate(bad_payload, context)
+        self.assertFalse(is_valid)
+        self.assertTrue(any("synthetic aggregation" in e for e in report["errors"]))
+
+    # 24. Preview Guarantees Zero DB Writes (Section BD)
+    def test_preview_guarantees_zero_writes(self):
+        initial_narratives = ExecutiveNarrative.objects.count()
+        initial_reports = ExecutiveReport.objects.count()
+        initial_signals = BusinessSignal.objects.count()
+
+        preview = preview_narrative(self.report, provider_name="fake", mock_mode="VALID")
+        self.assertIsNotNone(preview)
+
+        self.assertEqual(ExecutiveNarrative.objects.count(), initial_narratives)
+        self.assertEqual(ExecutiveReport.objects.count(), initial_reports)
+        self.assertEqual(BusinessSignal.objects.count(), initial_signals)
+
+    # 25. Claim Categories and Taxonomy Mappings (Section AD & Y)
+    def test_claim_categories_and_taxonomy_mappings(self):
+        self.assertIn("AUDIENCE_CONTEXT", CLAIM_CATEGORIES)
+        self.assertIn("METRIC_COMPARISON", CLAIM_CATEGORIES)
+        self.assertIn("DATA_LIMITATION", CLAIM_CATEGORIES)
+        self.assertIn("SEMANTIC_LIMITATION", CLAIM_CATEGORIES)
+        self.assertIn("RECOMMENDATION", CLAIM_CATEGORIES)
+
+        self.assertEqual(CROSS_PLATFORM_ACTION_MAPPING["MC-SIG-7"], "REVIEW_PLATFORM_PERFORMANCE")
+        self.assertEqual(CROSS_PLATFORM_ACTION_MAPPING["MC-SIG-8"], "REVIEW_PROVIDER_PERMISSIONS")
+        self.assertIsNone(CROSS_PLATFORM_ACTION_MAPPING["MC-SIG-6"])

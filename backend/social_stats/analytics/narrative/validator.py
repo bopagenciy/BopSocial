@@ -108,6 +108,21 @@ METRIC_ALIASES: Dict[str, List[str]] = {
         r"\binteracciones totales\b",
         r"\binteracción total\b",
     ],
+    "impressions": [
+        r"\bimpressions\b",
+        r"\bimpresiones\b",
+    ],
+    "profile_views": [
+        r"\bprofile views\b",
+        r"\bvisitas al perfil\b",
+        r"\bvistas al perfil\b",
+    ],
+    "clicks_total": [
+        r"\bclicks total\b",
+        r"\btotal clicks\b",
+        r"\bclics totales\b",
+        r"\bclics\b",
+    ],
 }
 
 AVAILABLE_METRIC_ALIASES: Dict[str, List[str]] = {
@@ -150,9 +165,38 @@ AVAILABILITY_PATTERNS: List[str] = [
     r"\bpermisos faltantes\b",
     r"\bfaltante debido a permisos\b",
     r"\bdesbloquear métricas no disponibles\b",
+    r"\bnot\s+(?:\w+\s+)?comparable\b",
+    r"\bnot\s+directly\s+comparable\b",
+    r"\bno\s+(?:\w+\s+)?comparable(?:s)?\b",
+    r"\bno\s+directamente\s+comparable(?:s)?\b",
+    r"\bno\s+(?:se\s+)?comparan?\b",
+    r"\bno\s+admiten\s+(?:una\s+)?comparaci.n\b",
+    r"\bdiferencias\s+sem.nticas\b",
+    r"\bdivergencia\s+sem.ntica\b",
+    r"\bdefiniciones\s+sem.nticas\b",
+]
+
+NON_COMPARABLE_PATTERNS: List[str] = [
+    r"\bnot\s+(?:\w+\s+)?comparable\b",
+    r"\bnot\s+directly\s+comparable\b",
+    r"\bno\s+(?:\w+\s+)?comparable(?:s)?\b",
+    r"\bno\s+directamente\s+comparable(?:s)?\b",
+    r"\bno\s+(?:se\s+)?comparan?\b",
+    r"\bno\s+admiten\s+(?:una\s+)?comparaci.n\b",
+    r"\bdiferencias\s+sem.nticas\b",
+    r"\bdivergencia\s+sem.ntica\b",
+    r"\bdefiniciones\s+sem.nticas\b",
 ]
 
 OVERALL_WINNER_PATTERNS: List[str] = [
+    r"\bpeor plataforma\b",
+    r"\bworst platform\b",
+    r"\b(?:canal|plataforma)\s+m[aá]s\s+fuerte\b",
+    r"\bstrongest\s+(?:channel|platform)\b",
+    r"\breplace\s+(?:facebook|instagram|fb|ig)\b",
+    r"\breemplaz(?:ar|e)\s+a?\s*(?:facebook|instagram|fb|ig)\b",
+    r"\b(?:wins|loses|gan[oó]|perdi[oó])\s+(?:overall|en general)\b",
+    r"\b(?:instagram|facebook|ig|fb)\s+(?:es la mejor plataforma|es la peor plataforma|es el canal m[aá]s fuerte|es el mejor canal|wins overall|loses overall|should replace)\b",
     r"\bganador general\b",
     r"\bganadora general\b",
     r"\bplataforma ganadora\b",
@@ -165,6 +209,19 @@ OVERALL_WINNER_PATTERNS: List[str] = [
     r"\bsuperó en general\b",
     r"\bmejor plataforma\b",
     r"\bwinning platform\b",
+]
+
+SYNTHETIC_AGGREGATION_PATTERNS: List[str] = [
+    r"\bpuntuaci[oó]n compuesta\b",
+    r"\bcomposite score\b",
+    r"\brank(?:ing)? general\b",
+    r"\boverall rank(?:ing)?\b",
+    r"\bpuntaje ponderado\b",
+    r"\bweighted score\b",
+    r"\bdesempeño sintetizado\b",
+    r"\bsynthetic performance\b",
+    r"\brendimiento combinado\b",
+    r"\bcombined performance\b",
 ]
 
 CLAIM_FORBIDDEN_PATTERNS: List[str] = [
@@ -412,6 +469,8 @@ class NarrativeValidator:
                 # 2. Claiming an unavailable metric is unavailable on a platform where it IS available
                 for m_key, patterns in METRIC_ALIASES.items():
                     if any(re.search(pat, sent_lower) for pat in patterns):
+                        if any(re.search(p, sent_lower) for p in NON_COMPARABLE_PATTERNS):
+                            continue
                         for p_name, cap in platform_capabilities.items():
                             if p_name in sent_lower and m_key in cap["available"]:
                                 errors.append(
@@ -526,11 +585,12 @@ class NarrativeValidator:
             r"\bthis strategy drove\b",
             r"\bcausó\b",
             r"\bprovocó\b",
-            r"\bdebido a que\b",
+            r"\bdebido a que\s+(?!la\s+l[ií]nea\s+base)",
             r"\btu audiencia prefiere\b",
             r"\besto demuestra\b",
             r"\besta estrategia impulsó\b",
-            r"\bporque la audiencia\b",
+            r"\bporque\b",
+            r"\bya que\b",
         ]
         for pattern in causal_forbidden:
             if re.search(pattern, full_text_lower):
@@ -540,7 +600,7 @@ class NarrativeValidator:
         if not any("Causality guard failed" in e for e in errors):
             checks["causality_safe"] = True
 
-        # 6B. Multichannel Safety Locks (BS-5D)
+        # 6B. Multichannel Safety Locks (BS-5D, BS-5E)
         # Gate A: Overall Winner Lock
         for ow_pat in OVERALL_WINNER_PATTERNS:
             m = re.search(ow_pat, full_text_lower)
@@ -551,10 +611,10 @@ class NarrativeValidator:
                 break
 
         # Gate B: Comparability Lock on Non-Comparable Metrics (SAVES, VIDEO_VIEWS)
-        for non_comp_name in ["saves", "guardados", "video views", "reproducciones de video"]:
+        for non_comp_name in ["saves", "guardados", "video views", "reproducciones de video", "video_views"]:
             if non_comp_name in full_text_lower:
                 comp_claim_patterns = [
-                    r"\b(superó|outperformed|ganó|won|mayor rendimiento|mejor desempeño|aumentó frente a)\b"
+                    r"\b(superó|supero|outperformed|ganó|gano|won|mayor rendimiento|mejor desempeño|mejores|mejor|better|fewer|less|más|mas|menos|aumentó frente a)\b"
                 ]
                 for c_pat in comp_claim_patterns:
                     if re.search(c_pat, full_text_lower):
@@ -567,7 +627,15 @@ class NarrativeValidator:
         for sent in all_sentences:
             s_low = sent.lower()
             if any(term in s_low for term in ["reaccion", "reacciones", "reaction", "reactions"]):
-                if re.search(r"\b\d+%", s_low) or re.search(r"\bpor ciento\b", s_low) or re.search(r"\bpercent\b", s_low):
+                has_pct = (
+                    re.search(r"[-+]?\d+\s*%", s_low)
+                    or re.search(r"\b\d+\s*(?:percent|por ciento)\b", s_low)
+                    or re.search(r"\b(?:six\s+hundred|seiscientos)\s+(?:percent|por ciento)\b", s_low)
+                    or re.search(r"\b\d+%", s_low)
+                    or re.search(r"\bpor ciento\b", s_low)
+                    or re.search(r"\bpercent\b", s_low)
+                )
+                if has_pct:
                     # Check if zero baseline is present in context for reactions
                     mc_intel = context.get("multichannel_intelligence", {})
                     comparisons = mc_intel.get("platform_comparisons", [])
@@ -578,7 +646,121 @@ class NarrativeValidator:
                         )
                         break
 
-        if not any("Multichannel lock failed" in e or "Comparability lock failed" in e or "Zero-baseline lock failed" in e for e in errors):
+        # Gate D: Cross-Metric Synthetic Aggregation Lock (Section S)
+        for agg_pat in SYNTHETIC_AGGREGATION_PATTERNS:
+            m = re.search(agg_pat, full_text_lower)
+            if m:
+                errors.append(
+                    f"Multichannel lock failed: Cross-metric synthetic aggregation or scoring is forbidden ('{m.group(0)}')."
+                )
+                break
+
+        # Gate E: Audience Non-Performance Lock (Section W & AT)
+        for sent in all_sentences:
+            s_low = sent.lower()
+            if any(term in s_low for term in ["seguidores", "followers", "audience", "audiencia", "followers_total"]):
+                if "no implica superioridad" in s_low or "no representa superioridad" in s_low or "no significa superioridad" in s_low or "does not imply superior" in s_low:
+                    continue
+                aud_perf_patterns = [
+                    r"\b(?:rinde mejor|mejor rendimiento|desempeño superior|superioridad|gana|ganó|superior|eficiencia|calidad superior)\b",
+                    r"\b(?:performs better|better performance|outperformed|superior|wins|won)\b",
+                ]
+                for ap_pat in aud_perf_patterns:
+                    m = re.search(ap_pat, s_low)
+                    if m:
+                        errors.append(
+                            f"Audience non-performance lock failed: Audience volume (followers) cannot be claimed as performance superiority ('{m.group(0)}')."
+                        )
+                        break
+
+        # Gate F: Budget Reallocation Lock (Section Z & AV)
+        budget_patterns = [
+            r"\bmover\s+(?:el\s+)?presupuesto\b",
+            r"\breasignar\s+(?:el\s+)?presupuesto\b",
+            r"\bshift\s+budget\b",
+            r"\breallocate\s+budget\b",
+            r"\bmove\s+budget\b",
+            r"\bpresupuesto\s+de\s+facebook\s+a\s+instagram\b",
+        ]
+        for b_pat in budget_patterns:
+            m = re.search(b_pat, full_text_lower)
+            if m:
+                errors.append(
+                    f"Budget reallocation lock failed: Budget reallocation across platforms is forbidden based on limited coverage ('{m.group(0)}')."
+                )
+                break
+
+        # Gate G: Limitation Preservation Lock (Section AY)
+        mc_intel = context.get("multichannel_intelligence", {})
+        cov_summary = mc_intel.get("coverage_summary") or mc_intel.get("coverage", {})
+        is_limited_coverage = cov_summary.get("status") == "LIMITED" or (cov_summary.get("coverage_ratio") == "3/15")
+        has_cross_platform_claim = False
+        cross_platform_claim_terms = [
+            r"\bfrente\s+a\b",
+            r"\bcompared\s+to\b",
+            r"\bsuper[oó]\b",
+            r"\boutperformed\b",
+            r"\breacciones\b.*(?:frente|comparad|vs)",
+            r"\breactions\b.*(?:frente|compared|vs)",
+            r"\b6(?:\.0)?\s+reacciones\b",
+        ]
+        for term in cross_platform_claim_terms:
+            if re.search(term, full_text_lower):
+                has_cross_platform_claim = True
+                break
+        if not has_cross_platform_claim:
+            for r in recs:
+                if "MC-SIG-7" in r.get("evidence_refs", []):
+                    has_cross_platform_claim = True
+                    break
+
+        if is_limited_coverage and has_cross_platform_claim:
+            lim_texts = " ".join(output.get("limitations", [])).lower()
+            preserves_limitation = (
+                ("limitad" in lim_texts or "cobertura" in lim_texts)
+                and (
+                    "3/15" in lim_texts
+                    or "3 de 15" in lim_texts
+                    or "cobertura" in lim_texts
+                    or "m?trica" in lim_texts
+                    or "metrica" in lim_texts
+                    or "datos" in lim_texts
+                )
+            )
+            if not preserves_limitation:
+                errors.append(
+                    "Limitation preservation lock failed: Cross-platform performance claim made without preserving the limited data coverage limitation (3/15 comparable metrics)."
+                )
+        # Gate H: Language Contract Lock (Section AZ, AL)
+        report_lang = context.get("report", {}).get("language") or "es"
+        has_mc = bool(context.get("multichannel_intelligence"))
+        if report_lang == "es" and has_mc:
+            english_markers = [
+                r"\bthe\b",
+                r"\bduring the\b",
+                r"\bwith\b",
+                r"\bwere\b",
+                r"\bthis\b",
+                r"\bthese\b",
+            ]
+            for sent in all_sentences:
+                s_low = sent.lower()
+                if any(re.search(pat, s_low) for pat in english_markers):
+                    errors.append(
+                        "Language contract failed: Output contains English text while report language contract requires Spanish ('es')."
+                    )
+                    break
+
+        if not any(
+            "Multichannel lock failed" in e
+            or "Comparability lock failed" in e
+            or "Zero-baseline lock failed" in e
+            or "Audience non-performance lock failed" in e
+            or "Budget reallocation lock failed" in e
+            or "Limitation preservation lock failed" in e
+            or "Language contract failed" in e
+            for e in errors
+        ):
             checks["multichannel_safety"] = True
 
         # 7. Recommendations Grounding & Evidence Refs
