@@ -1060,3 +1060,107 @@ ReportNarrativeSaveView = ReportNarrativeView
 ReportNarrativeDetailView = ReportNarrativeView
 
 
+
+
+# ==============================================================================
+# BS-5A MULTICHANNEL METRIC COMPATIBILITY & COMPARISON VIEWS
+# ==============================================================================
+
+class MultichannelCompatibilityView(AnalyticsBaseView):
+    """
+    GET /api/analytics/multichannel/compatibility/
+    Read-only view exposing cross-platform metric compatibility matrix and rules.
+    Tenant-safe: requires authentication; optional client_id parameter is validated.
+    """
+    def get(self, request):
+        client_id_raw = request.query_params.get("client_id")
+        if client_id_raw:
+            client = self.validate_client(request, client_id_raw)
+            if not client:
+                return Response({"error": "Client not found or unauthorized"}, status=status.HTTP_404_NOT_FOUND)
+
+        platform_a = request.query_params.get("platform_a", "facebook")
+        platform_b = request.query_params.get("platform_b", "instagram")
+        metric_filter = request.query_params.get("metric")
+
+        from .multichannel import get_metric_comparison_rule, FB_IG_RULES, get_reason_labels
+
+        if metric_filter:
+            rule = get_metric_comparison_rule(metric_filter, platform_a, platform_b)
+            if not rule:
+                return Response({"error": f"Rule not found for metric '{metric_filter}' on pair {platform_a} <-> {platform_b}"}, status=status.HTTP_404_NOT_FOUND)
+            return Response({
+                "metric": rule.metric,
+                "platform_a": rule.platform_a,
+                "platform_b": rule.platform_b,
+                "compatibility": rule.compatibility.value,
+                "normalization": rule.normalization.value,
+                "direction": rule.direction.value,
+                "rankable": rule.rankable,
+                "required_metrics": rule.required_metrics,
+                "minimum_sample": rule.minimum_sample,
+                "notes": rule.notes,
+                "default_reason_code": rule.default_reason_code.value,
+                "reason_labels": get_reason_labels(rule.default_reason_code),
+            })
+
+        rules_data = []
+        for rule in FB_IG_RULES.values():
+            oriented_rule = get_metric_comparison_rule(rule.metric, platform_a, platform_b) or rule
+            rules_data.append({
+                "metric": oriented_rule.metric,
+                "platform_a": oriented_rule.platform_a,
+                "platform_b": oriented_rule.platform_b,
+                "compatibility": oriented_rule.compatibility.value,
+                "normalization": oriented_rule.normalization.value,
+                "direction": oriented_rule.direction.value,
+                "rankable": oriented_rule.rankable,
+                "required_metrics": oriented_rule.required_metrics,
+                "minimum_sample": oriented_rule.minimum_sample,
+                "notes": oriented_rule.notes,
+                "default_reason_code": oriented_rule.default_reason_code.value,
+                "reason_labels": get_reason_labels(oriented_rule.default_reason_code),
+            })
+
+        return Response({
+            "platform_a": platform_a,
+            "platform_b": platform_b,
+            "rules_count": len(rules_data),
+            "rules": rules_data,
+        })
+
+
+class MultichannelCompareView(AnalyticsBaseView):
+    """
+    GET /api/analytics/multichannel/compare/
+    Deterministic, read-only cross-platform metric comparison.
+    Enforces strict tenant isolation: requires authenticated user possessing access to client.
+    """
+    def get(self, request):
+        client = self.validate_client(request, request.query_params.get("client_id"))
+        if not client:
+            return Response({"error": "Client not found or unauthorized"}, status=status.HTTP_404_NOT_FOUND)
+
+        metric = request.query_params.get("metric")
+        if not metric:
+            return Response({"error": "metric query parameter is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        platform_a = request.query_params.get("platform_a", "facebook")
+        platform_b = request.query_params.get("platform_b", "instagram")
+        period = request.query_params.get("period", "day")
+        start_date = _parse_date(request.query_params.get("start_date"))
+        end_date = _parse_date(request.query_params.get("end_date"))
+
+        from .multichannel import compare_metric_across_platforms
+
+        result = compare_metric_across_platforms(
+            client=client,
+            metric=metric,
+            platform_a=platform_a,
+            platform_b=platform_b,
+            start_date=start_date,
+            end_date=end_date,
+            period=period,
+        )
+
+        return Response(result.to_dict())

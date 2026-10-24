@@ -24,6 +24,8 @@ from .analytics.api import (
     ExecutiveReportDownloadPDFView,
     ReportNarrativePreviewView,
     ReportNarrativeView,
+    MultichannelCompatibilityView,
+    MultichannelCompareView,
 )
 from .views import (
     LoginView, me, ClientViewSet, CredentialViewSet,
@@ -692,6 +694,10 @@ urlpatterns = [
     # ── BS-4H Grounded AI Executive Narrative API ─────────────────────────────
     path('analytics/reports/<int:pk>/narrative/preview/', ReportNarrativePreviewView.as_view(), name='analytics_report_narrative_preview'),
     path('analytics/reports/<int:pk>/narrative/',         ReportNarrativeView.as_view(),        name='analytics_report_narrative'),
+
+    # ── BS-5A Multichannel Metric Compatibility & Comparison API ─────────────
+    path('analytics/multichannel/compatibility/', MultichannelCompatibilityView.as_view(), name='analytics_multichannel_compatibility'),
+    path('analytics/multichannel/compare/',       MultichannelCompareView.as_view(),       name='analytics_multichannel_compare'),
     # REST API
     path('', include(router.urls)),
 ]
