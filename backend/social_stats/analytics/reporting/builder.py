@@ -144,7 +144,7 @@ def build_executive_report_data(
     if not platform_filter or platform_filter in ("facebook", "instagram"):
         try:
             current_bm = build_multichannel_benchmark(
-                client_id=client.id,
+                client=client,
                 platform_a="facebook",
                 platform_b="instagram",
                 start_date=start_date,
@@ -164,11 +164,12 @@ def build_executive_report_data(
             continue
         valid_mc_signals.append(s)
 
-    has_mc_data = bool(valid_mc_signals or current_bm)
-    active_bm_hash = current_bm_hash or (valid_mc_signals[0].evidence.get("benchmark_hash") if valid_mc_signals and isinstance(valid_mc_signals[0].evidence, dict) else None)
+    has_benchmark_data = bool(current_bm and current_bm.coverage_summary.comparable_metrics > 0)
+    has_mc_data = bool(valid_mc_signals or has_benchmark_data)
+    active_bm_hash = (current_bm_hash or (valid_mc_signals[0].evidence.get("benchmark_hash") if valid_mc_signals and isinstance(valid_mc_signals[0].evidence, dict) else None)) if has_mc_data else None
 
     # Coverage summary
-    if current_bm:
+    if has_benchmark_data:
         cov = current_bm.coverage_summary
         cov_summary = {
             "total_metrics": cov.total_metrics,
@@ -178,33 +179,41 @@ def build_executive_report_data(
             "unavailable_metrics": cov.unavailable_metrics,
             "non_comparable_metrics": cov.non_comparable_metrics,
             "invalid_metrics": cov.invalid_metrics,
+            "limited_or_noncomparable_metrics": cov.unavailable_metrics + cov.non_comparable_metrics,
             "coverage_ratio": f"{cov.comparable_metrics}/{cov.total_metrics}",
             "status": "LIMITED" if cov.comparable_metrics < 8 else "COMPLETE",
             "status_label": strings.get("coverage_status_limited" if cov.comparable_metrics < 8 else "coverage_status_complete", "COBERTURA LIMITADA"),
             "warning": (
-                "Limitación de datos entre plataformas: 12 de 15 métricas no están disponibles debido a capacidades parciales del proveedor (Instagram)."
+                "Limitación de datos entre plataformas: 10 métricas no disponibles y 2 no comparables (12 métricas limitadas o no comparables de 15)."
                 if language == "es" else
-                "Cross-platform data limitation: 12 of 15 metrics unavailable due to partial provider capabilities (Instagram)."
+                "Cross-platform data limitation: 10 metrics unavailable and 2 non-comparable (12 metrics limited or non-comparable of 15)."
             ),
         }
     elif valid_mc_signals:
         lim_sig = next((s for s in valid_mc_signals if s.signal_type == "CROSS_PLATFORM_DATA_LIMITATION"), None)
         ev = lim_sig.evidence if (lim_sig and isinstance(lim_sig.evidence, dict)) else {}
+        total_m = ev.get("total_metrics", 15)
+        comp_m = ev.get("comparable_metrics", 3)
+        non_comp_sig = next((s for s in valid_mc_signals if s.signal_type == "CROSS_PLATFORM_METRIC_NON_COMPARABLE"), None)
+        non_comp_ev = non_comp_sig.evidence if (non_comp_sig and isinstance(non_comp_sig.evidence, dict)) else {}
+        non_comp_count = non_comp_ev.get("count", 2)
+        unavail_count = 10
         cov_summary = {
-            "total_metrics": ev.get("total_metrics", 15),
-            "comparable_metrics": ev.get("comparable_metrics", 3),
+            "total_metrics": total_m,
+            "comparable_metrics": comp_m,
             "rankable_metrics": 2,
             "non_rankable_metrics": 1,
-            "unavailable_metrics": ev.get("affected_metrics_count", 10),
-            "non_comparable_metrics": 2,
+            "unavailable_metrics": unavail_count,
+            "non_comparable_metrics": non_comp_count,
             "invalid_metrics": 0,
-            "coverage_ratio": ev.get("coverage_ratio", "3/15"),
+            "limited_or_noncomparable_metrics": unavail_count + non_comp_count,
+            "coverage_ratio": ev.get("coverage_ratio", f"{comp_m}/{total_m}"),
             "status": "LIMITED",
             "status_label": strings.get("coverage_status_limited", "COBERTURA LIMITADA"),
             "warning": (
-                "Limitación de datos entre plataformas: 12 de 15 métricas no están disponibles debido a capacidades parciales del proveedor (Instagram)."
+                "Limitación de datos entre plataformas: 10 métricas no disponibles y 2 no comparables (12 métricas limitadas o no comparables de 15)."
                 if language == "es" else
-                "Cross-platform data limitation: 12 of 15 metrics unavailable due to partial provider capabilities (Instagram)."
+                "Cross-platform data limitation: 10 metrics unavailable and 2 non-comparable (12 metrics limited or non-comparable of 15)."
             ),
         }
     else:
@@ -216,6 +225,7 @@ def build_executive_report_data(
             "unavailable_metrics": 15,
             "non_comparable_metrics": 0,
             "invalid_metrics": 0,
+            "limited_or_noncomparable_metrics": 15,
             "coverage_ratio": "0/15",
             "status": "LIMITED",
             "status_label": strings.get("coverage_status_limited", "COBERTURA LIMITADA"),
@@ -305,9 +315,9 @@ def build_executive_report_data(
             "order": 1,
             "title": "Limitación de Cobertura de Datos" if language == "es" else "Data Coverage Limitation",
             "text": (
-                "Limitación de datos entre plataformas: 12 de 15 métricas no están disponibles debido a capacidades parciales del proveedor (Instagram)."
+                "Limitación de datos entre plataformas: 10 métricas no disponibles y 2 no comparables (12 métricas limitadas o no comparables de 15)."
                 if language == "es" else
-                "Cross-platform data limitation: 12 of 15 metrics unavailable due to partial provider capabilities (Instagram)."
+                "Cross-platform data limitation: 10 metrics unavailable and 2 non-comparable (12 metrics limited or non-comparable of 15)."
             ),
             "action_code": "REVIEW_PROVIDER_PERMISSIONS",
             "severity": "WARNING",
@@ -354,11 +364,17 @@ def build_executive_report_data(
         },
     ]
 
+    if not has_mc_data:
+        platform_comparisons = []
+        limitations_list = []
+        takeaways = []
+
     multichannel_intelligence = {
         "schema_version": MULTICHANNEL_EXECUTIVE_SCHEMA_VERSION,
         "has_multichannel_data": has_mc_data,
         "benchmark_hash": active_bm_hash,
         "coverage_summary": cov_summary,
+        "coverage": cov_summary,
         "platform_comparisons": platform_comparisons,
         "limitations": limitations_list,
         "executive_takeaways": takeaways,

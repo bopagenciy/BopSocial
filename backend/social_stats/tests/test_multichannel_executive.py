@@ -355,6 +355,12 @@ class MultichannelExecutiveIntelligenceTests(TestCase):
         self.assertEqual(cov["comparable_metrics"], 3)
         self.assertEqual(cov["coverage_ratio"], "3/15")
         self.assertEqual(cov["status"], "LIMITED")
+        self.assertEqual(cov["unavailable_metrics"], 10)
+        self.assertEqual(cov["non_comparable_metrics"], 2)
+        self.assertEqual(cov["limited_or_noncomparable_metrics"], 12)
+        self.assertEqual(mc["coverage"]["unavailable_metrics"], 10)
+        self.assertEqual(mc["coverage"]["non_comparable_metrics"], 2)
+        self.assertEqual(mc["coverage"]["limited_or_noncomparable_metrics"], 12)
         # Check takeaway
         t1 = mc["executive_takeaways"][0]
         self.assertEqual(t1["takeaway_type"], "DATA_COVERAGE_WARNING")

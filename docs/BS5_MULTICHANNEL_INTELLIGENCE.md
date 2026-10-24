@@ -562,3 +562,114 @@ Multichannel takeaways are ordered deterministically to ensure critical data cav
     - `QueuedItem` = 3
     - `PeriodicTask` = 17
   - Provider API calls: 0. LLM generation calls: 0. Database writes: 0.
+
+
+---
+
+## BS-5D.0A — Benchmark Identity & Coverage Semantics Audit
+
+### 1. Architectural Scope & Audit Resolution
+Phase **BS-5D.0A** resolves two semantic inconsistencies identified during operator review of BS-5D prior to authorizing BS-5D.1:
+1. Reconciling the granularity identity between the canonical pilot benchmark (`14bb7652b4247a6b98f2265796f1b320987684634a2d3ec27608faf671083012`) and persisted `BusinessSignal` records (IDs 6–9).
+2. Preserving strict machine-level semantic distinction between `unavailable_metrics` (10) and `non_comparable_metrics` (2), eliminating presentation collapsing in the machine payload.
+
+---
+
+### 2. Issue 1: Benchmark Granularity & Hash Identity
+
+#### A. Hash Identity Verification (`generate_benchmark_hash`)
+Verification of `social_stats.analytics.multichannel.benchmarks.generate_benchmark_hash` confirmed that granularity is an active, deterministic participant in the SHA-256 identity calculation.
+
+Canonical serialized identity payload fields:
+```json
+{
+  "schema_version": "bs5b-benchmark-v1",
+  "client_id": 3,
+  "platform_a": "facebook",
+  "platform_b": "instagram",
+  "period_start": "2026-09-22",
+  "period_end": "2026-10-22",
+  "granularity": "day",
+  "metrics": [ ... 15 canonical metric evaluation dicts ... ]
+}
+```
+
+#### B. Granularity Sensitivity
+- Evaluated with `granularity = "day"`:
+  `benchmark_hash = "14bb7652b4247a6b98f2265796f1b320987684634a2d3ec27608faf671083012"`
+- Evaluated with `granularity = "period"`:
+  `benchmark_hash = "ce70369e8cd91de13974584a09e95dce45e4322aab9bf9bb96dd78ef9bed365a"`
+- Granularity sensitivity is guaranteed: altering granularity directly alters the benchmark hash digest. A period benchmark cannot masquerade as a day benchmark.
+
+#### C. Persisted Signal Binding (IDs 6–9)
+Database inspection of canonical `BusinessSignal` rows 6–9 confirmed:
+- `metadata["granularity"]` = `"day"`
+- `metadata["benchmark_hash"]` = `"14bb7652b4247a6b98f2265796f1b320987684634a2d3ec27608faf671083012"`
+- `evidence["benchmark_hash"]` = `"14bb7652b4247a6b98f2265796f1b320987684634a2d3ec27608faf671083012"`
+- `cohort_hash` = `None`
+- `period_start` = `2026-09-22`
+- `period_end` = `2026-10-22`
+
+#### D. Root Cause & Decision
+- **Root Cause**: The underlying code, benchmark generation, and persisted signals (IDs 6–9) all deterministically used and stored `granularity = "day"`. The canonical hash `14bb7652...` was generated under `granularity = "day"`. The reference to `granularity = "period"` in earlier review text was a documentation discrepancy.
+- **Decision (Case 1)**: Documentation and reporting defect. The canonical benchmark hash did not change. Persisted `BusinessSignal` rows 6–9 required zero mutations and remain 100% untouched.
+
+---
+
+### 3. Issue 2: Coverage Semantics & Machine Payload
+
+#### A. Canonical Diagnostic Representation
+The machine payload schema in `report_data["multichannel_intelligence"]["coverage_summary"]` and canonical alias `report_data["multichannel_intelligence"]["coverage"]` strictly preserves separate diagnostic counts:
+
+```json
+{
+  "total_metrics": 15,
+  "comparable_metrics": 3,
+  "rankable_metrics": 2,
+  "non_rankable_metrics": 1,
+  "unavailable_metrics": 10,
+  "non_comparable_metrics": 2,
+  "invalid_metrics": 0,
+  "limited_or_noncomparable_metrics": 12,
+  "coverage_ratio": "3/15",
+  "status": "LIMITED",
+  "status_label": "COBERTURA LIMITADA",
+  "warning": "Limitación de datos entre plataformas: 10 métricas no disponibles y 2 no comparables (12 métricas limitadas o no comparables de 15)."
+}
+```
+
+#### B. Semantic Invariants Preserved
+- `unavailable_metrics = 10`: Represents metrics unqueried or unpermitted on Instagram (`PROVIDER_PARTIAL` 9 + `COMPONENT_UNAVAILABLE` 1).
+- `non_comparable_metrics = 2`: Represents structurally non-comparable metrics (`SAVES` and `VIDEO_VIEWS` under `METRIC_NOT_EQUIVALENT`).
+- `limited_or_noncomparable_metrics = 12`: Optional derived combined count representing total limitation footprint (10 + 2 = 12).
+- `SAVES` and `VIDEO_VIEWS` strictly retain `compatibility = NON_COMPARABLE`, `status = UNAVAILABLE`, and `winner = NO_WINNER`.
+
+---
+
+### 4. BS-5D Preview Invocation & Tenant Safety
+
+- In `backend/social_stats/analytics/reporting/builder.py`, `build_multichannel_benchmark` invocation was corrected to pass `client=client` (resolving keyword mismatch).
+- Tenant isolation guard added: clients without comparable metrics (`comparable_metrics == 0`) and without persisted signals evaluate `has_mc_data = False`, ensuring empty comparison tables and zero cross-tenant signal leakage.
+
+---
+
+### 5. Deterministic Verification & Invariants
+
+- **Django Check**: `python manage.py check` → System check identified no issues (0 silenced).
+- **Targeted Test Suites**: 87 passing tests (BS-5A: 19, BS-5B: 17, BS-5C: 21, BS-5D: 19, BS-5D.0A: 11).
+- **Full Backend Regression**: 1,014 passing tests (0 failures, 0 errors, ran in 99.3s).
+- **Database Safety Invariants**:
+  - `SocialMetricSnapshot` = 312
+  - `SocialMetricRollup` = 551
+  - `BusinessSignal` = 9
+  - `ExecutiveReport` = 1
+  - `ExecutiveNarrative` = 1
+  - `DailyMetric` = 33
+  - `PostMetric` = 38
+  - `SyncLog` = 8
+  - `UnifiedPost` = 14
+  - `PlatformPublishLog` = 15
+  - `PostQueue` = 2
+  - `QueuedItem` = 3
+  - `PeriodicTask` = 17
+- Zero database writes. Zero external provider calls. Zero LLM calls.
