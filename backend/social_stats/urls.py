@@ -26,6 +26,7 @@ from .analytics.api import (
     ReportNarrativeView,
     MultichannelCompatibilityView,
     MultichannelCompareView,
+    MultichannelBenchmarkView,
 )
 from .views import (
     LoginView, me, ClientViewSet, CredentialViewSet,
@@ -698,6 +699,9 @@ urlpatterns = [
     # ── BS-5A Multichannel Metric Compatibility & Comparison API ─────────────
     path('analytics/multichannel/compatibility/', MultichannelCompatibilityView.as_view(), name='analytics_multichannel_compatibility'),
     path('analytics/multichannel/compare/',       MultichannelCompareView.as_view(),       name='analytics_multichannel_compare'),
+
+    # ── BS-5B Multichannel Benchmark Engine API ──────────────────────────────
+    path('analytics/multichannel/benchmark/',     MultichannelBenchmarkView.as_view(),     name='analytics_multichannel_benchmark'),
     # REST API
     path('', include(router.urls)),
 ]

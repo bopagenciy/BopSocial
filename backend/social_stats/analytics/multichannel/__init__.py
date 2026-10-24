@@ -1,9 +1,9 @@
 """
 Multichannel Metric Compatibility & Comparison Package.
-Phase BS-5A: Multichannel Metric Compatibility & Comparison Model.
+Phase BS-5A & BS-5B: Multichannel Metric Compatibility, Comparison & Benchmark Engine.
 
 Exports the core taxonomies, rules, matrix, pure calculation utilities,
-and comparison service.
+comparison service, and benchmark build service.
 """
 from .taxonomies import (
     ComparisonCompatibility,
@@ -37,6 +37,16 @@ from .comparison import (
     ComparisonResult,
     compare_metric_across_platforms,
 )
+from .benchmarks import (
+    BENCHMARK_SCHEMA_VERSION,
+    CANONICAL_METRIC_ORDER,
+    CoverageSummary,
+    WinnerSummary,
+    MultichannelBenchmarkResult,
+    generate_benchmark_hash,
+    evaluate_content_cohorts,
+    build_multichannel_benchmark,
+)
 
 __all__ = [
     # Taxonomies
@@ -65,4 +75,13 @@ __all__ = [
     "determine_winner",
     "ComparisonResult",
     "compare_metric_across_platforms",
+    # Benchmark Engine
+    "BENCHMARK_SCHEMA_VERSION",
+    "CANONICAL_METRIC_ORDER",
+    "CoverageSummary",
+    "WinnerSummary",
+    "MultichannelBenchmarkResult",
+    "generate_benchmark_hash",
+    "evaluate_content_cohorts",
+    "build_multichannel_benchmark",
 ]

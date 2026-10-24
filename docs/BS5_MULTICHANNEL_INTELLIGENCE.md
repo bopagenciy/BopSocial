@@ -167,3 +167,128 @@ Adding future platforms (e.g. LinkedIn, TikTok, YouTube, Threads, X) follows a s
 3. **Register in Master Registry**: Call `register_rule(rule)`. Symmetric pair lookup handles reciprocal ordering automatically (`get_metric_comparison_rule`).
 
 No schema migrations or database writes are required to register new comparison rules.
+
+
+---
+
+## BS-5B — Cross-Platform Benchmark & Comparison Engine
+
+### 1. Overview & Architectural Role
+Phase BS-5B builds directly upon the BS-5A compatibility layer by orchestrating multi-metric cross-platform benchmark evaluations for a client across an aligned calendar window.
+It serves as the deterministic source-of-truth engine that future BS-5 phases (such as BS-5C Multichannel Business Signals) will consume.
+
+**Fundamental Invariant:**
+$$\text{BS-5B executes BS-5A pure comparison rules} \quad \wedge \quad \text{No N+1 queries} \quad \wedge \quad \text{No overall winner}$$
+
+---
+
+### 2. Benchmark Domain Model & Schema
+
+#### A. Schema Version
+Canonical schema version constant:
+`BENCHMARK_SCHEMA_VERSION = "bs5b-benchmark-v1"`
+
+#### B. Domain Dataclasses
+- `CoverageSummary`: Tallies `total_metrics`, `comparable_metrics`, `rankable_metrics`, `non_rankable_metrics`, `unavailable_metrics`, `non_comparable_metrics`, and `invalid_metrics`.
+- `WinnerSummary`: Tallies per-metric platform wins (`platform_a_wins`, `platform_b_wins`, `ties`, `no_winner`, `unavailable`).
+- `MultichannelBenchmarkResult`: Complete benchmark envelope encapsulating client ID, platform pair, period, granularity, deterministic `benchmark_hash`, coverage summary, winner summary, canonical 15-metric results list, optional cohort evaluations, and machine evidence provenance.
+
+---
+
+### 3. Deterministic Identity Hash (`benchmark_hash`)
+
+The benchmark identity hash is a deterministic SHA256 digest calculated strictly from canonical inputs without volatile runtime parameters:
+- `schema_version`
+- `client_id`
+- `platform_a`, `platform_b` (normalized lowercase)
+- `period_start`, `period_end` (ISO 8601 strings)
+- `granularity`
+- Canonical list of metric results sorted strictly by the 15-metric canonical order (`REACH` through `VIDEO_AVG_WATCH_TIME`). Each entry includes `metric`, `status`, `values`, `deltas`, `winner`, `reason_code`, and `sample counts`.
+
+**Properties:**
+1. **Idempotence**: Identical client, platforms, period, and telemetry yield the exact same hash.
+2. **Provenance Tracking**: Modifying or backfilling any single underlying data observation alters the benchmark hash.
+3. **Orientation Sensitivity**: Swapping platform orientation (`FB <-> IG` vs `IG <-> FB`) produces an orientation-specific identity while preserving semantic parity.
+
+---
+
+### 4. Source Resolution & Query Plan Optimization
+
+To eliminate N+1 query loops across the 15 evaluated metrics, `build_multichannel_benchmark` implements a bounded bulk-loading query plan:
+1. **Query 1 (Credentials)**: Bulk-loads `PlatformCredential` records for `[platform_a, platform_b]`.
+2. **Query 2 (Rollups)**: Bulk-loads all `SocialMetricRollup` observations in the window `[start_date, end_date]`.
+3. **Query 3 (Snapshots fallback)**: Bulk-loads `SocialMetricSnapshot` observations within the window.
+4. **Query 4 (Cohorts optional)**: Queries published content cohorts if `include_cohorts=True`.
+
+Total query count for the entire 15-metric benchmark evaluation is strictly bounded to $\le 4$ queries.
+
+---
+
+### 5. Semantic Enforcements & Safety Invariants
+
+#### A. Reach Handling
+- Multi-day `REACH` summation is strictly rejected: if only daily reach observations exist across multiple dates, the metric evaluates to status `UNAVAILABLE` with reason `NON_AGGREGATABLE_SUMMATION_REJECTED`.
+- `AVERAGE_DAILY_REACH` evaluates daily average reach and is never relabeled as total reach.
+
+#### B. Engagement Total Handling
+- Requires complete canonical components: `REACTIONS`, `COMMENTS`, and `SHARES`.
+- If Instagram operates in `PARTIAL` mode without `SHARES`, `ENGAGEMENT_TOTAL` evaluates to `UNAVAILABLE` with reason `COMPONENT_UNAVAILABLE`. Partial sums are strictly forbidden.
+
+#### C. Followers Total (Audience Gauge)
+- Follower count is evaluated as a point-in-time gauge (`LATEST_VALUE`).
+- Direction is strictly `NEUTRAL` and `rankable=False`; winner is strictly `NO_WINNER` (volume does not imply competitive superiority).
+
+#### D. The No-Overall-Platform-Winner Rule
+BS-5B strictly forbids declaring an "overall platform winner" (e.g. "Facebook won overall" or "Instagram outperformed Facebook"). Because social media metrics exhibit fundamentally disparate scales, units, and aggregation semantics, aggregating heterogeneous metrics into a synthetic score is statistically invalid. BS-5B emits per-metric winners only.
+
+---
+
+### 6. Content Cohort Benchmarking (Format Analysis)
+- Formats evaluated: `IMAGE`, `VIDEO`, `CAROUSEL`.
+- Minimum sample size requirement: $n \ge 3$ posts per platform per format.
+- Cohorts below threshold return status `UNAVAILABLE`, reason `INSUFFICIENT_SAMPLE`, and winner `NO_WINNER`.
+
+---
+
+### 7. REST API Layer
+
+#### Endpoint
+`GET /api/analytics/multichannel/benchmark/`
+
+#### Query Parameters
+- `client_id` (required, int): Validated against authenticated user's organization.
+- `platform_a` (default `facebook`): First platform key.
+- `platform_b` (default `instagram`): Second platform key.
+- `start_date` (required, `YYYY-MM-DD`): Beginning of evaluation window.
+- `end_date` (required, `YYYY-MM-DD`): End of evaluation window.
+- `granularity` (default `day`): Granularity boundary (`day`, `week`, `month`, `period`).
+- `metrics` (optional): Comma-separated list of canonical metrics. Defaults to all 15.
+- `include_cohorts` (optional, bool): Whether to execute format cohort benchmarking.
+
+#### Security & Tenant Isolation
+- Protected by `AnalyticsBaseView` (requires JWT authentication).
+- Validates tenant access via `validate_client`. Cross-tenant requests return `404 Not Found`.
+- 100% read-only: performs 0 database writes and 0 provider calls.
+
+---
+
+### 8. Real Pilot Verification (Client #3 Bop Agencia)
+
+Executed read-only benchmark for Client #3 (`Bop Agencia`) across window `2026-09-22` to `2026-10-22`:
+- **Benchmark Hash**: `14bb7652b4247a6b98f2265796f1b320987684634a2d3ec27608faf671083012`
+- **Coverage Summary**:
+  - `total_metrics`: 15
+  - `comparable_metrics`: 3 (`FOLLOWERS_TOTAL`, `REACTIONS`, `COMMENTS`)
+  - `rankable_metrics`: 2 (`REACTIONS`, `COMMENTS`)
+  - `non_rankable_metrics`: 1 (`FOLLOWERS_TOTAL`)
+  - `unavailable_metrics`: 10 (metrics unqueried or unpermitted on IG)
+  - `non_comparable_metrics`: 2 (`SAVES`, `VIDEO_VIEWS`)
+  - `invalid_metrics`: 0
+- **Winner Summary**:
+  - `platform_a_wins` (Facebook): 0
+  - `platform_b_wins` (Instagram): 1 (`REACTIONS`: IG 6 vs FB 0)
+  - `ties`: 1 (`COMMENTS`: FB 0 vs IG 0, reason `ZERO_BASELINE`)
+  - `no_winner`: 3 (`FOLLOWERS_TOTAL`, `SAVES`, `VIDEO_VIEWS`)
+  - `unavailable`: 10
+- **Capability State**: Accurately respected Instagram Basic `PARTIAL` mode permissions.
+- **Database Safety**: Initial vs post-execution table row counts remained 100% identical.

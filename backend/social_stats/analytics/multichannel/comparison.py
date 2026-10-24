@@ -221,6 +221,9 @@ def compare_metric_across_platforms(
     period_start_b: Optional[date] = None,
     period_end_b: Optional[date] = None,
     allow_reach_daily_sum: bool = False,
+    preloaded_rollups: Optional[Dict[Tuple[str, str], List[Any]]] = None,
+    preloaded_snapshots: Optional[Dict[Tuple[str, str], List[Any]]] = None,
+    preloaded_credentials: Optional[Dict[str, Any]] = None,
 ) -> ComparisonResult:
     """
     Authoritative, deterministic cross-platform metric comparison service.
@@ -445,12 +448,16 @@ def compare_metric_across_platforms(
             )
 
         # Metric-level provider capability gating
-        cred_a = PlatformCredential.objects.defer("access_token", "refresh_token").filter(
-            client=resolved_client, platform=plat_a, is_active=True
-        ).first()
-        cred_b = PlatformCredential.objects.defer("access_token", "refresh_token").filter(
-            client=resolved_client, platform=plat_b, is_active=True
-        ).first()
+        if preloaded_credentials is not None:
+            cred_a = preloaded_credentials.get(plat_a)
+            cred_b = preloaded_credentials.get(plat_b)
+        else:
+            cred_a = PlatformCredential.objects.defer("access_token", "refresh_token").filter(
+                client=resolved_client, platform=plat_a, is_active=True
+            ).first()
+            cred_b = PlatformCredential.objects.defer("access_token", "refresh_token").filter(
+                client=resolved_client, platform=plat_b, is_active=True
+            ).first()
 
         cap_a = get_provider_capability(plat_a, cred_a)
         cap_b = get_provider_capability(plat_b, cred_b)
@@ -525,14 +532,21 @@ def compare_metric_across_platforms(
         if m_clean == "REACH":
             if start_date and end_date and start_date != end_date and not allow_reach_daily_sum:
                 # Check if a single period-level rollup exists covering the range
-                period_match_rollups = SocialMetricRollup.objects.filter(
-                    client=resolved_client,
-                    platform__in=[plat_a, plat_b],
-                    normalized_metric="REACH",
-                    period__in=["month", "week", "custom"],
-                    period_start=start_date,
-                )
-                if period_match_rollups.count() < 2:
+                if preloaded_rollups is not None:
+                    p_rollups_a = [r for r in preloaded_rollups.get((plat_a, "REACH"), []) if getattr(r, 'period', '') in ("month", "week", "custom") and getattr(r, 'period_start', None) == start_date]
+                    p_rollups_b = [r for r in preloaded_rollups.get((plat_b, "REACH"), []) if getattr(r, 'period', '') in ("month", "week", "custom") and getattr(r, 'period_start', None) == start_date]
+                    has_period_match = len(p_rollups_a) >= 1 and len(p_rollups_b) >= 1
+                else:
+                    period_match_rollups = SocialMetricRollup.objects.filter(
+                        client=resolved_client,
+                        platform__in=[plat_a, plat_b],
+                        normalized_metric="REACH",
+                        period__in=["month", "week", "custom"],
+                        period_start=start_date,
+                    )
+                    has_period_match = period_match_rollups.count() >= 2
+
+                if not has_period_match:
                     rc = ComparisonReasonCode.NON_AGGREGATABLE_SUMMATION_REJECTED
                     return ComparisonResult(
                         metric=m_clean,
@@ -565,29 +579,42 @@ def compare_metric_across_platforms(
         # Extract values for Platform A and Platform B from DB
         def _fetch_platform_metric(plat: str) -> Tuple[Optional[Decimal], bool, int]:
             source_metric = "REACH" if m_clean == "AVERAGE_DAILY_REACH" else m_clean
-            qs = SocialMetricRollup.objects.filter(
-                client=resolved_client,
-                platform=plat,
-                normalized_metric=source_metric,
-            )
-            if start_date:
-                qs = qs.filter(period_start__gte=start_date)
-            if end_date:
-                qs = qs.filter(period_start__lte=end_date)
-
-            rollups = list(qs)
-            if not rollups:
-                # Check snapshots as fallback
-                s_qs = SocialMetricSnapshot.objects.filter(
+            if preloaded_rollups is not None:
+                rollups = list(preloaded_rollups.get((plat, source_metric), []))
+                if start_date:
+                    rollups = [r for r in rollups if getattr(r, 'period_start', start_date) >= start_date]
+                if end_date:
+                    rollups = [r for r in rollups if getattr(r, 'period_start', end_date) <= end_date]
+            else:
+                qs = SocialMetricRollup.objects.filter(
                     client=resolved_client,
                     platform=plat,
                     normalized_metric=source_metric,
                 )
                 if start_date:
-                    s_qs = s_qs.filter(bucket_timestamp__date__gte=start_date)
+                    qs = qs.filter(period_start__gte=start_date)
                 if end_date:
-                    s_qs = s_qs.filter(bucket_timestamp__date__lte=end_date)
-                snaps = list(s_qs)
+                    qs = qs.filter(period_start__lte=end_date)
+                rollups = list(qs)
+            if not rollups:
+                # Check snapshots as fallback
+                if preloaded_snapshots is not None:
+                    snaps = list(preloaded_snapshots.get((plat, source_metric), []))
+                    if start_date:
+                        snaps = [s for s in snaps if getattr(s, 'bucket_timestamp', None) and s.bucket_timestamp.date() >= start_date]
+                    if end_date:
+                        snaps = [s for s in snaps if getattr(s, 'bucket_timestamp', None) and s.bucket_timestamp.date() <= end_date]
+                else:
+                    s_qs = SocialMetricSnapshot.objects.filter(
+                        client=resolved_client,
+                        platform=plat,
+                        normalized_metric=source_metric,
+                    )
+                    if start_date:
+                        s_qs = s_qs.filter(bucket_timestamp__date__gte=start_date)
+                    if end_date:
+                        s_qs = s_qs.filter(bucket_timestamp__date__lte=end_date)
+                    snaps = list(s_qs)
                 if not snaps:
                     return None, False, 0
                 total_val = sum((s.metric_value for s in snaps), Decimal("0"))

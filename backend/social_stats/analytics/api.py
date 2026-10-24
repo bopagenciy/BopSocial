@@ -1164,3 +1164,59 @@ class MultichannelCompareView(AnalyticsBaseView):
         )
 
         return Response(result.to_dict())
+
+
+
+class MultichannelBenchmarkView(AnalyticsBaseView):
+    """
+    GET /api/analytics/multichannel/benchmark/
+    Deterministic, read-only multi-metric cross-platform benchmark engine.
+    Enforces strict tenant isolation, no provider calls, and zero database writes.
+    """
+    def get(self, request):
+        client = self.validate_client(request, request.query_params.get("client_id"))
+        if not client:
+            return Response({"error": "Client not found or unauthorized"}, status=status.HTTP_404_NOT_FOUND)
+
+        platform_a = request.query_params.get("platform_a", "facebook")
+        platform_b = request.query_params.get("platform_b", "instagram")
+        start_date = _parse_date(request.query_params.get("start_date"))
+        end_date = _parse_date(request.query_params.get("end_date"))
+        granularity = request.query_params.get("granularity", "day")
+        metrics_param = request.query_params.get("metrics")
+        include_cohorts = request.query_params.get("include_cohorts", "false").lower() in ("true", "1")
+
+        if not start_date or not end_date:
+            return Response({"error": "start_date and end_date are required in YYYY-MM-DD format"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if start_date > end_date:
+            return Response({"error": "start_date cannot be after end_date"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if platform_a.strip().lower() == platform_b.strip().lower():
+            return Response({"error": f"Cannot compare platform '{platform_a}' to itself"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if granularity not in ("day", "week", "month", "period"):
+            return Response({"error": f"Invalid granularity '{granularity}'. Must be one of: day, week, month, period"}, status=status.HTTP_400_BAD_REQUEST)
+
+        metrics_list = None
+        if metrics_param:
+            metrics_list = [m.strip().upper() for m in metrics_param.split(",") if m.strip()]
+
+        from .multichannel import build_multichannel_benchmark
+        try:
+            benchmark = build_multichannel_benchmark(
+                client=client,
+                platform_a=platform_a,
+                platform_b=platform_b,
+                start_date=start_date,
+                end_date=end_date,
+                granularity=granularity,
+                metrics=metrics_list,
+                include_cohorts=include_cohorts,
+            )
+            return Response(benchmark.to_dict())
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.exception(f"Error building multichannel benchmark: {e}")
+            return Response({"error": "Internal error generating multichannel benchmark"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
