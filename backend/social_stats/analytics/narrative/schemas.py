@@ -4,8 +4,12 @@ BS-4H Grounded AI Executive Narrative Schemas & Constants.
 import copy
 from typing import Dict, List, Any
 
-CONTEXT_SCHEMA_VERSION = "bs4h-context-v1"
-PROMPT_VERSION = "bs4h-prompt-v4"
+CONTEXT_SCHEMA_VERSION = "bs4h-context-v2"
+PROMPT_VERSION = "bs5d-prompt-v1"
+
+# Legacy aliases for backward compatibility
+BS4H_CONTEXT_SCHEMA_VERSION = "bs4h-context-v1"
+BS4H_PROMPT_VERSION = "bs4h-prompt-v4"
 
 RECOMMENDATION_TAXONOMY = [
     "CONTINUE_COLLECTING_DATA",

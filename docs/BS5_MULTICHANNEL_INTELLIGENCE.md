@@ -457,3 +457,108 @@ Executed read-only signal preview against verified pilot benchmark `14bb7652b424
 - **Database Safety**:
   - `BusinessSignal` rows before preview: 5
   - `BusinessSignal` rows after preview: 5 (0 rows persisted)
+
+
+---
+
+## BS-5D — Multichannel Executive Intelligence & Cross-Platform Narrative Integration
+
+### 1. Overview & Architectural Role
+Phase BS-5D completes the analytical pipeline by allowing client-facing `ExecutiveReport` structures and Grounded AI Executive Narrative engines to safely consume cross-platform business signals (IDs 6–9) and benchmark evidence (`14bb7652b4247a6b98f2265796f1b320987684634a2d3ec27608faf671083012`) without weakening deterministic safeguards established in BS-4H, BS-5A, BS-5B, and BS-5C.
+
+**Core Principles:**
+$$\text{Executive Reporting} \leftarrow \text{Authoritative Benchmark} + \text{Multichannel Signals} \quad \wedge \quad \text{Zero Hallucination} \quad \wedge \quad \text{Strict Non-Performance Rules}$$
+
+---
+
+### 2. Multichannel Executive Reporting Schema (`bs5d-multichannel-executive-v1`)
+
+The executive report data payload incorporates a dedicated `multichannel_intelligence` section governed by schema `bs5d-multichannel-executive-v1`:
+
+1. **Benchmark Binding**:
+   - Strictly binds to verified `benchmark_hash` (`14bb7652...`).
+   - Evaluates signal freshness against current benchmark window; stale signals from divergent periods are filtered.
+2. **Coverage Summary**:
+   - `total_metrics`: 15
+   - `comparable_metrics`: 3 (`FOLLOWERS_TOTAL`, `REACTIONS`, `COMMENTS`)
+   - `status`: `LIMITED` (highlighted when coverage ratio < 50%)
+   - Explicit warning citing partial provider capability mode (`Instagram`).
+3. **Platform Comparisons (Strict Non-Performance & Non-Summation Rules)**:
+   - `FOLLOWERS_TOTAL`: Evaluated as audience volume gauge only (FB=20.0, IG=50.0). Winner is strictly `NO_WINNER` and `is_rankable = False`. Volume difference is never described as performance superiority.
+   - `REACTIONS`: Direct outperformance (FB=0.0, IG=6.0, delta=-6.0). Because baseline platform is 0, `relative_delta = None` (zero baseline). Fabricating fake percentages (e.g. "+600%") is mathematically and semantically forbidden.
+   - `COMMENTS`: Non-actionable tie (FB=0.0, IG=0.0, delta=0.0, winner=`TIE`).
+4. **Non-Comparable Metrics & Disparity Callouts**:
+   - `SAVES` and `VIDEO_VIEWS` are registered as structural semantic limitations (`METRIC_NOT_EQUIVALENT`), never relabeled as ties, zeros, or competitive losses.
+5. **The No-Overall-Platform-Winner Invariant**:
+   - `overall_winner` is strictly `None`.
+   - Governance disclaimer explicitly declares that Bop Social evaluates individual metric dimensions only and refuses to manufacture synthetic cross-metric platform scores.
+
+---
+
+### 3. Deterministic Executive Takeaways Engine
+
+Multichannel takeaways are ordered deterministically to ensure critical data caveats precede operational insights:
+
+1. **`DATA_COVERAGE_WARNING`** (Severity: `WARNING`, Action: `REVIEW_PROVIDER_PERMISSIONS`, Ref: `MC-SIG-8`):
+   - Informs stakeholders of partial capability mode and 12/15 unavailable metrics.
+2. **`METRIC_ADVANTAGE`** (Severity: `POSITIVE`, Action: `REVIEW_PLATFORM_PERFORMANCE`, Ref: `MC-SIG-7`):
+   - Highlights factual outperformance in directly comparable interactions (Instagram 6 reactions vs Facebook 0).
+3. **`AUDIENCE_CONTEXT`** (Severity: `INFO`, Action: `None`, Ref: `MC-SIG-6`):
+   - Clarifies audience volume difference (Instagram 50 vs Facebook 20) without performance superiority claims.
+4. **`SEMANTIC_COMPARISON_LIMITATION`** (Severity: `INFO`, Action: `CONTINUE_COLLECTING_DATA`, Ref: `MC-SIG-9`):
+   - Details measurement discrepancies for `SAVES` and `VIDEO_VIEWS`.
+
+---
+
+### 4. Grounded AI Narrative Context Integration (`bs4h-context-v2`)
+
+1. **Context Schema Increment**:
+   - Schema version incremented to `bs4h-context-v2`.
+   - Embeds structured `multichannel_intelligence` envelope into grounded context.
+2. **Stable Evidence References (`MC-SIG-*`)**:
+   - Multichannel signals receive deterministic evidence registry keys: `MC-SIG-6`, `MC-SIG-7`, `MC-SIG-8`, `MC-SIG-9`.
+   - Guarantees bidirectional resolution between narrative citations and machine-readable evidence payloads.
+3. **Context Hash & Source Hash Determinism**:
+   - `compute_context_hash` and `compute_source_hash` incorporate multichannel evidence and `benchmark_hash`.
+   - Modifying any cross-platform observation or benchmark shifts hashes predictably.
+
+---
+
+### 5. Multichannel Narrative Validator Gates
+
+`NarrativeValidator` enforces four strict deterministic locks:
+
+1. **Overall-Winner Lock**:
+   - Rejects phrases like *"plataforma ganadora"*, *"ganador general"*, *"overall winner"*, or *"best platform"*.
+2. **Comparability Lock**:
+   - Rejects competitive performance claims on structurally non-comparable metrics (`SAVES`, `VIDEO_VIEWS`).
+3. **Zero-Baseline Lock**:
+   - Rejects percentage variation claims on zero baseline interactions.
+4. **Metric Lock**:
+   - Rejects claims evaluating unavailable cross-platform metrics (`ENGAGEMENT_TOTAL`, `REACH`).
+5. **Evidence Grounding**:
+   - Ensures all `MC-SIG-*` evidence citations in recommendations resolve against the verified evidence registry.
+
+---
+
+### 6. Verification & Invariant Proof
+
+- **Backend Test Suite**: 1,003 tests passing (100% OK in 97.2s).
+- **Targeted BS-5 Suites**: 76 tests passing (BS-5A: 19, BS-5B: 17, BS-5C: 21, BS-5D: 19).
+- **Frontend Suites**: 32 test suites, 282 tests passing. Production build succeeded.
+- **Canonical Pilot Runtime Verification**:
+  - Live PostgreSQL database row counts remained 100% identical before and after Client #3 multichannel executive preview:
+    - `SocialMetricSnapshot` = 312
+    - `SocialMetricRollup` = 551
+    - `BusinessSignal` = 9
+    - `ExecutiveReport` = 1
+    - `ExecutiveNarrative` = 1
+    - `DailyMetric` = 33
+    - `PostMetric` = 38
+    - `SyncLog` = 8
+    - `UnifiedPost` = 14
+    - `PlatformPublishLog` = 15
+    - `PostQueue` = 2
+    - `QueuedItem` = 3
+    - `PeriodicTask` = 17
+  - Provider API calls: 0. LLM generation calls: 0. Database writes: 0.

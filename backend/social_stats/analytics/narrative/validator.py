@@ -152,6 +152,21 @@ AVAILABILITY_PATTERNS: List[str] = [
     r"\bdesbloquear métricas no disponibles\b",
 ]
 
+OVERALL_WINNER_PATTERNS: List[str] = [
+    r"\bganador general\b",
+    r"\bganadora general\b",
+    r"\bplataforma ganadora\b",
+    r"\bganó en general\b",
+    r"\boverall winner\b",
+    r"\bbest platform\b",
+    r"\boverall platform winner\b",
+    r"\bplataforma superior en general\b",
+    r"\bganador entre plataformas\b",
+    r"\bsuperó en general\b",
+    r"\bmejor plataforma\b",
+    r"\bwinning platform\b",
+]
+
 CLAIM_FORBIDDEN_PATTERNS: List[str] = [
     # Numeric values and percentages
     r"\d",
@@ -237,6 +252,7 @@ class NarrativeValidator:
             "confidence_preserved": False,
             "causality_safe": False,
             "recommendations_grounded": False,
+            "multichannel_safety": False,
         }
 
         # 1. JSON Schema validation
@@ -523,6 +539,47 @@ class NarrativeValidator:
 
         if not any("Causality guard failed" in e for e in errors):
             checks["causality_safe"] = True
+
+        # 6B. Multichannel Safety Locks (BS-5D)
+        # Gate A: Overall Winner Lock
+        for ow_pat in OVERALL_WINNER_PATTERNS:
+            m = re.search(ow_pat, full_text_lower)
+            if m:
+                errors.append(
+                    f"Multichannel lock failed: Overall cross-platform winner claim is strictly forbidden ('{m.group(0)}')."
+                )
+                break
+
+        # Gate B: Comparability Lock on Non-Comparable Metrics (SAVES, VIDEO_VIEWS)
+        for non_comp_name in ["saves", "guardados", "video views", "reproducciones de video"]:
+            if non_comp_name in full_text_lower:
+                comp_claim_patterns = [
+                    r"\b(superó|outperformed|ganó|won|mayor rendimiento|mejor desempeño|aumentó frente a)\b"
+                ]
+                for c_pat in comp_claim_patterns:
+                    if re.search(c_pat, full_text_lower):
+                        errors.append(
+                            f"Comparability lock failed: Non-comparable metric '{non_comp_name}' cannot be ranked competitively across platforms."
+                        )
+                        break
+
+        # Gate C: Zero-Baseline Lock (Forbid fabricated percentage when baseline is zero)
+        for sent in all_sentences:
+            s_low = sent.lower()
+            if any(term in s_low for term in ["reaccion", "reacciones", "reaction", "reactions"]):
+                if re.search(r"\b\d+%", s_low) or re.search(r"\bpor ciento\b", s_low) or re.search(r"\bpercent\b", s_low):
+                    # Check if zero baseline is present in context for reactions
+                    mc_intel = context.get("multichannel_intelligence", {})
+                    comparisons = mc_intel.get("platform_comparisons", [])
+                    has_zero_baseline = any(c.get("metric") == "REACTIONS" and c.get("delta_relative") is None for c in comparisons)
+                    if has_zero_baseline:
+                        errors.append(
+                            "Zero-baseline lock failed: Cannot claim percentage variation for reactions when baseline platform is zero."
+                        )
+                        break
+
+        if not any("Multichannel lock failed" in e or "Comparability lock failed" in e or "Zero-baseline lock failed" in e for e in errors):
+            checks["multichannel_safety"] = True
 
         # 7. Recommendations Grounding & Evidence Refs
         for idx, rec in enumerate(recs):

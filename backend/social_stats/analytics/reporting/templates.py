@@ -41,6 +41,7 @@ REPORT_STRINGS = {
         # Sections
         "section_exec_summary": "Resumen Ejecutivo",
         "section_kpis": "Indicadores Clave de Rendimiento (KPIs)",
+        "section_multichannel_intelligence": "Inteligencia Multicanal y Comparativa de Plataformas",
         "section_trends": "Tendencias de Rendimiento",
         "section_content": "Rendimiento de Contenido",
         "section_platforms": "Desglose por Plataforma",
@@ -96,6 +97,20 @@ REPORT_STRINGS = {
         "bop_authored": "Publicado por Bop Social",
         "organic_external": "Orgánico / Externo",
         
+        # Multichannel Intelligence (BS-5D)
+        "coverage_title": "Cobertura de Métricas Comparables",
+        "coverage_status_limited": "COBERTURA LIMITADA",
+        "coverage_status_complete": "COBERTURA COMPLETA",
+        "multichannel_disclaimer_no_overall_winner": "Bop Social evalúa métricas individuales directamente comparables. No se declaran ganadores globales entre plataformas para evitar sesgos analíticos por métricas heterogéneas.",
+        "audience_size_note": "Métrica de volumen de audiencia; no representa superioridad de rendimiento.",
+        "zero_baseline_note": "Línea base cero; variación porcentual no aplicable.",
+        "semantic_disparity_note": "Definición semántica dispar; no comparable directamente.",
+        "table_winner": "Ganador",
+        "table_baseline": "Línea Base",
+        "table_outperformance": "Diferencia",
+        "no_winner_volume": "Sin ganador (métrica de volumen)",
+        "tie_label": "Empate",
+        
         # Confidence
         "conf_high": "Alta",
         "conf_medium": "Media",
@@ -132,6 +147,7 @@ REPORT_STRINGS = {
         # Sections
         "section_exec_summary": "Executive Summary",
         "section_kpis": "Key Performance Indicators (KPIs)",
+        "section_multichannel_intelligence": "Multichannel Intelligence & Cross-Platform Benchmarks",
         "section_trends": "Performance Trends",
         "section_content": "Content Performance",
         "section_platforms": "Platform Breakdown",
@@ -186,6 +202,20 @@ REPORT_STRINGS = {
         "no_posting_time": "Requires at least 5 posts across multiple time buckets to determine optimal hours.",
         "bop_authored": "Published by Bop Social",
         "organic_external": "Organic / External",
+        
+        # Multichannel Intelligence (BS-5D)
+        "coverage_title": "Comparable Metrics Coverage",
+        "coverage_status_limited": "LIMITED COVERAGE",
+        "coverage_status_complete": "COMPLETE COVERAGE",
+        "multichannel_disclaimer_no_overall_winner": "Bop Social evaluates directly comparable individual metrics. Overall platform winners are strictly not declared to prevent analytical bias across heterogeneous metrics.",
+        "audience_size_note": "Audience volume metric; does not represent performance superiority.",
+        "zero_baseline_note": "Zero baseline; percentage change not applicable.",
+        "semantic_disparity_note": "Disparate semantic definition; not directly comparable.",
+        "table_winner": "Winner",
+        "table_baseline": "Baseline",
+        "table_outperformance": "Difference",
+        "no_winner_volume": "No winner (volume metric)",
+        "tie_label": "Tie",
         
         # Confidence
         "conf_high": "High",

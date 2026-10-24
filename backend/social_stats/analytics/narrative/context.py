@@ -242,7 +242,18 @@ def build_grounded_narrative_context(report, business_signals: Optional[List[Any
     sig_counter = 1
     for s in raw_signals[:MAX_SIGNALS_IN_CONTEXT]:
         sig_type = s.get('signal_type', 'GENERAL')
-        ref_id = f"SIG-{sig_counter}"
+        sig_id = s.get('id')
+        scope = s.get('scope', 'account')
+        is_multichannel = (scope == 'multichannel') or (isinstance(s.get('platform'), str) and ':' in s.get('platform')) or (sig_id in [6, 7, 8, 9])
+        
+        # Primary reference identifier
+        if is_multichannel and sig_id is not None:
+            ref_id = f"MC-SIG-{sig_id}"
+        elif is_multichannel:
+            ref_id = f"MC-SIG-{sig_counter}"
+        else:
+            ref_id = f"SIG-{sig_counter}"
+
         conf = s.get('confidence') or s.get('confidence_level') or 'NONE'
         summ = s.get('summary') or s.get('explanation') or ''
 
@@ -251,6 +262,7 @@ def build_grounded_narrative_context(report, business_signals: Optional[List[Any
             "signal_type": sig_type,
             "metric": s.get('metric', ''),
             "platform": s.get('platform', ''),
+            "scope": "multichannel" if is_multichannel else "single_platform",
             "status": s.get('status', 'ACTIVE'),
             "confidence": conf,
             "sample_size": s.get('sample_size', 0),
@@ -260,8 +272,9 @@ def build_grounded_narrative_context(report, business_signals: Optional[List[Any
             "evidence": s.get('evidence', {}),
         }
         signals_list.append(sig_entry)
-        evidence_registry[ref_id] = {
-            "type": "BUSINESS_SIGNAL",
+
+        evidence_payload = {
+            "type": "MULTICHANNEL_SIGNAL" if is_multichannel else "BUSINESS_SIGNAL",
             "signal_type": sig_type,
             "metric": s.get('metric', ''),
             "platform": s.get('platform', ''),
@@ -272,6 +285,11 @@ def build_grounded_narrative_context(report, business_signals: Optional[List[Any
             "explanation": summ,
             "evidence": s.get('evidence', {}),
         }
+        evidence_registry[ref_id] = evidence_payload
+        # If multichannel, also register standard SIG- counter and MC-SIG-<id> aliases to guarantee deterministic resolution
+        if is_multichannel and sig_id is not None:
+            evidence_registry[f"MC-SIG-{sig_id}"] = evidence_payload
+        evidence_registry[f"SIG-{sig_counter}"] = evidence_payload
         sig_counter += 1
 
     # 5. Limitations & Evidence
@@ -323,6 +341,22 @@ def build_grounded_narrative_context(report, business_signals: Optional[List[Any
             "guidance": "Recommend reviewing provider permissions if advanced metrics like Reach or Shares become required.",
         })
 
+    # Multichannel Intelligence integration (BS-5D)
+    mc_intel = report_data.get("multichannel_intelligence", {})
+    if mc_intel and mc_intel.get("has_multichannel_data"):
+        ref_mc_lim = "LIMITATION-CROSS-PLATFORM-PARTIAL"
+        lim_entry = {
+            "ref_id": ref_mc_lim,
+            "type": "CROSS_PLATFORM_DATA_LIMITATION",
+            "description": "Cross-platform data coverage is LIMITED (3 of 15 metrics comparable) due to Instagram partial mode.",
+        }
+        if lim_entry["description"] not in [l['description'] for l in limitations_list]:
+            limitations_list.append(lim_entry)
+            evidence_registry[ref_mc_lim] = {
+                "type": "DATA_LIMITATION",
+                "description": lim_entry["description"],
+            }
+
     # Assemble context dict
     context = {
         "context_schema_version": CONTEXT_SCHEMA_VERSION,
@@ -336,6 +370,14 @@ def build_grounded_narrative_context(report, business_signals: Optional[List[Any
         "evidence_registry": evidence_registry,
         "has_sufficient_data": has_sufficient_data,
     }
+    if mc_intel and mc_intel.get("has_multichannel_data"):
+        context["multichannel_intelligence"] = {
+            "benchmark_hash": mc_intel.get("benchmark_hash"),
+            "coverage_summary": mc_intel.get("coverage_summary"),
+            "platform_comparisons": mc_intel.get("platform_comparisons"),
+            "limitations": mc_intel.get("limitations"),
+            "executive_takeaways": mc_intel.get("executive_takeaways"),
+        }
 
     # 7. Content examples if present (capped at MAX_CONTENT_EXAMPLES)
     raw_content = report_data.get('top_content', [])

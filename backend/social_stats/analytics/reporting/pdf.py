@@ -52,6 +52,7 @@ def render_report_html(report_data: Dict[str, Any], language: str = "es") -> str
     post_time = report_data.get("posting_time_insights", {})
     health = report_data.get("data_health", {})
     methodology = report_data.get("methodology", {}).get("points", [])
+    mc = report_data.get("multichannel_intelligence", {})
 
     colors = BRANDING["colors"]
 
@@ -464,6 +465,87 @@ def render_report_html(report_data: Dict[str, Any], language: str = "es") -> str
 
 <div class="page-break"></div>
 
+<!-- ════════════ MULTICHANNEL INTELLIGENCE (BS-5D) ════════════ -->
+"""
+    if mc.get("has_multichannel_data"):
+        cov = mc.get("coverage_summary", {})
+        comparisons = mc.get("platform_comparisons", [])
+        takeaways = mc.get("executive_takeaways", [])
+        disclaimer = mc.get("disclaimer", "")
+
+        html += f"""
+<div class="page-break"></div>
+<div>
+  <div class="section-header">
+    <h2 class="section-title">{escape(strings.get('section_multichannel_intelligence', 'Inteligencia Multicanal'))}</h2>
+  </div>
+
+  <div class="note-box" style="margin-bottom: 16px; border-left: 4px solid {colors['accent_gold']}; background: #FFFBEB;">
+    <strong>Nota de Gobernanza de Datos:</strong> {escape(disclaimer)}
+  </div>
+
+  <div style="margin-bottom: 14px; display: flex; align-items: center; gap: 10px;">
+    <span class="badge badge-warn" style="font-size: 8pt; font-weight: 700;">{escape(cov.get('status_label', 'COBERTURA LIMITADA'))}</span>
+    <span style="font-size: 8.5pt; color: {colors['text_secondary']};">({cov.get('coverage_ratio', '3/15')} métricas comparables)</span>
+  </div>
+
+  <table class="kpi-table" style="margin-bottom: 20px;">
+    <thead>
+      <tr>
+        <th style="width: 25%;">{escape(strings.get('table_metric', 'Métrica'))}</th>
+        <th style="width: 18%;">Facebook</th>
+        <th style="width: 18%;">Instagram</th>
+        <th style="width: 24%;">Observación Técnica</th>
+        <th style="width: 15%;">{escape(strings.get('table_winner', 'Ganador'))}</th>
+      </tr>
+    </thead>
+    <tbody>
+"""
+        for item in comparisons:
+            m_lbl = escape(item.get("metric_label", item.get("metric", "")))
+            p_vals = item.get("platform_values", {})
+            fb_v = f"{float(p_vals.get('facebook', 0)):,.1f}".rstrip('0').rstrip('.')
+            ig_v = f"{float(p_vals.get('instagram', 0)):,.1f}".rstrip('0').rstrip('.')
+            w_lbl = escape(item.get("winner_label", item.get("winner", "—")))
+            note = escape(item.get("note", "—"))
+
+            html += f"""      <tr>
+        <td><strong>{m_lbl}</strong></td>
+        <td class="val-strong">{fb_v}</td>
+        <td class="val-strong">{ig_v}</td>
+        <td style="font-size: 8pt; color: {colors['text_secondary']};">{note}</td>
+        <td><span class="badge badge-info">{w_lbl}</span></td>
+      </tr>
+"""
+
+        html += f"""    </tbody>
+  </table>
+
+  <div class="section-header" style="margin-top: 18px;">
+    <h3 style="font-size: 10pt; font-weight: 700; color: {colors['primary_dark']}; margin: 0 0 10px 0;">Conclusiones Ejecutivas Multicanal</h3>
+  </div>
+  <div style="display: flex; flex-direction: column; gap: 8px;">
+"""
+        for t in takeaways:
+            t_title = escape(t.get("title", ""))
+            t_text = escape(t.get("text", ""))
+            t_sev = t.get("severity", "INFO")
+            badge_class = "badge-pos" if t_sev == "POSITIVE" else ("badge-warn" if t_sev == "WARNING" else "badge-info")
+
+            html += f"""    <div class="signal-card" style="padding: 10px 14px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+        <span style="font-weight: 700; font-size: 9pt; color: {colors['primary_dark']};">{t_title}</span>
+        <span class="badge {badge_class}">{t_sev}</span>
+      </div>
+      <div style="font-size: 8.5pt; color: {colors['text_secondary']}; line-height: 1.4;">{t_text}</div>
+    </div>
+"""
+
+        html += f"""  </div>
+</div>
+"""
+
+    html += f"""
 <!-- ════════════ BUSINESS SIGNALS & METHODOLOGY ════════════ -->
 <div>
   <div class="section-header">

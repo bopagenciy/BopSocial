@@ -207,6 +207,7 @@ export default function AnalyticsWorkspace({ clientId, clientName, allClients = 
   const [reportType, setReportType] = useState('EXECUTIVE');
   const [reportTitle, setReportTitle] = useState('');
   const [reportPreviewData, setReportPreviewData] = useState(null);
+  const [showExplainModal, setShowExplainModal] = useState(false);
   const [reportLoading, setReportLoading] = useState(false);
   const [reportError, setReportError] = useState(null);
   const [savedReports, setSavedReports] = useState([]);
@@ -1723,6 +1724,124 @@ export default function AnalyticsWorkspace({ clientId, clientName, allClients = 
                   </tbody>
                 </table>
               </div>
+
+              {/* Multichannel Intelligence & Cross-Platform Benchmarks (BS-5D) */}
+              {reportPreviewData.multichannel_intelligence && reportPreviewData.multichannel_intelligence.has_multichannel_data && (
+                <div style={{ marginBottom: 28, background: 'var(--surface-sunken)', borderRadius: 12, padding: '20px 24px', border: '1px solid var(--border-default)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                    <div>
+                      <h3 style={{ fontSize: 15, fontWeight: 800, textTransform: 'uppercase', margin: 0, color: 'var(--text-primary)' }}>
+                        Cross-Platform Intelligence & Benchmarks
+                      </h3>
+                      <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginTop: 2 }}>
+                        Schema: <code>{reportPreviewData.multichannel_intelligence.schema_version}</code> &nbsp;•&nbsp;
+                        Benchmark Hash: <code>{reportPreviewData.multichannel_intelligence.benchmark_hash ? reportPreviewData.multichannel_intelligence.benchmark_hash.slice(0, 16) + '...' : 'N/A'}</code>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{
+                        padding: '4px 8px', borderRadius: 6, fontSize: 11, fontWeight: 800,
+                        background: reportPreviewData.multichannel_intelligence.coverage_summary?.status === 'LIMITED' ? '#fef3c7' : '#dcfce7',
+                        color: reportPreviewData.multichannel_intelligence.coverage_summary?.status === 'LIMITED' ? '#b45309' : '#166534',
+                      }}>
+                        {reportPreviewData.multichannel_intelligence.coverage_summary?.status_label || 'LIMITED COVERAGE'} ({reportPreviewData.multichannel_intelligence.coverage_summary?.coverage_ratio})
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setShowExplainModal(prev => !prev)}
+                        style={{
+                          padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border-default)',
+                          background: 'var(--surface-card)', fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                        }}
+                      >
+                        Explainability
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Governance disclaimer */}
+                  <div style={{
+                    background: '#fffbeb', borderLeft: '4px solid #f5a623', padding: '10px 14px',
+                    borderRadius: '0 8px 8px 0', fontSize: 11.5, color: '#92400e', marginBottom: 16, lineHeight: 1.45,
+                  }}>
+                    <strong>Data Governance:</strong> {reportPreviewData.multichannel_intelligence.disclaimer}
+                  </div>
+
+                  {/* Platform comparison table */}
+                  {reportPreviewData.multichannel_intelligence.platform_comparisons?.length > 0 && (
+                    <div style={{ marginBottom: 18 }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                        <thead>
+                          <tr style={{ background: 'var(--surface-card)', borderBottom: '1px solid var(--border-default)' }}>
+                            <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 800 }}>Metric</th>
+                            <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 800 }}>Facebook</th>
+                            <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 800 }}>Instagram</th>
+                            <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 800 }}>Technical Observation</th>
+                            <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 800 }}>Winner</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {reportPreviewData.multichannel_intelligence.platform_comparisons.map((c, idx) => (
+                            <tr key={idx} style={{ borderBottom: '1px solid var(--border-default)', background: idx % 2 === 0 ? 'transparent' : 'rgba(0,0,0,0.015)' }}>
+                              <td style={{ padding: '8px 10px', fontWeight: 700 }}>{c.metric_label || c.metric}</td>
+                              <td style={{ padding: '8px 10px', fontWeight: 800 }}>{c.platform_values?.facebook ?? '—'}</td>
+                              <td style={{ padding: '8px 10px', fontWeight: 800 }}>{c.platform_values?.instagram ?? '—'}</td>
+                              <td style={{ padding: '8px 10px', fontSize: 11, color: 'var(--text-secondary)' }}>{c.note}</td>
+                              <td style={{ padding: '8px 10px' }}>
+                                <span style={{
+                                  padding: '2px 6px', borderRadius: 4, fontSize: 11, fontWeight: 700,
+                                  background: c.winner === 'NO_WINNER' ? 'var(--surface-sunken)' : (c.winner === 'TIE' ? '#e0f2fe' : '#dcfce7'),
+                                  color: c.winner === 'NO_WINNER' ? 'var(--text-secondary)' : (c.winner === 'TIE' ? '#0369a1' : '#15803d'),
+                                }}>
+                                  {c.winner_label || c.winner}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+
+                  {/* Executive takeaways */}
+                  {reportPreviewData.multichannel_intelligence.executive_takeaways?.length > 0 && (
+                    <div>
+                      <h4 style={{ fontSize: 12.5, fontWeight: 800, textTransform: 'uppercase', margin: '0 0 10px 0', color: 'var(--text-primary)' }}>
+                        Cross-Platform Takeaways
+                      </h4>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {reportPreviewData.multichannel_intelligence.executive_takeaways.map((t, idx) => {
+                          const badgeColor = t.severity === 'POSITIVE' ? '#059669' : (t.severity === 'WARNING' ? '#d97706' : '#0284c7');
+                          return (
+                            <div key={idx} style={{ background: 'var(--surface-card)', borderLeft: `3px solid ${badgeColor}`, padding: '10px 14px', borderRadius: '0 6px 6px 0' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
+                                <span style={{ fontSize: 12, fontWeight: 700 }}>{t.title}</span>
+                                <span style={{ fontSize: 10, fontWeight: 800, color: badgeColor, textTransform: 'uppercase' }}>{t.severity}</span>
+                              </div>
+                              <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', lineHeight: 1.4 }}>{t.text}</div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Explainability drawer / modal */}
+                  {showExplainModal && (
+                    <div style={{ marginTop: 14, background: 'var(--surface-card)', border: '1px dashed var(--border-default)', borderRadius: 8, padding: '12px 16px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                        <span style={{ fontSize: 12, fontWeight: 800 }}>Explainability & Audit Provenance</span>
+                        <button type="button" onClick={() => setShowExplainModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: 'var(--text-secondary)' }}>×</button>
+                      </div>
+                      <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', lineHeight: 1.45 }}>
+                        This cross-platform intelligence is deterministically derived from verified normalized rollups in compliance with BS-5A compatibility rules.
+                        Bop Social strictly enforces the No-Overall-Winner invariant, preventing synthetic weighting biases.
+                        Zero baselines omit percentage variations to prevent division by zero.
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Business Intelligence Signals */}
               <div style={{ marginBottom: 24 }}>

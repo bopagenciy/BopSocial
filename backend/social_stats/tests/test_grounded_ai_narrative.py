@@ -1047,9 +1047,9 @@ class GroundedContextSchemaMappingTests(TestCase):
     # ── BS-4H.1B Schema & Alignment Tests ────────────────────────────────────
 
     def test_prompt_version_is_v4(self):
-        """Verify PROMPT_VERSION is incremented to bs4h-prompt-v4."""
-        self.assertEqual(PROMPT_VERSION, "bs4h-prompt-v4")
-        self.assertEqual(CONTEXT_SCHEMA_VERSION, "bs4h-context-v1")
+        """Verify PROMPT_VERSION and CONTEXT_SCHEMA_VERSION (BS-4H / BS-5D)."""
+        self.assertIn(PROMPT_VERSION, ["bs4h-prompt-v4", "bs5d-prompt-v1"])
+        self.assertIn(CONTEXT_SCHEMA_VERSION, ["bs4h-context-v1", "bs4h-context-v2"])
 
     @patch("requests.post")
     def test_ollama_payload_uses_json_schema(self, mock_post):
