@@ -48,6 +48,9 @@ from social_stats.analytics.narrative.schemas import (
     CLAIM_CATEGORIES,
     CLAIM_EVIDENCE_MAPPING,
     CROSS_PLATFORM_ACTION_MAPPING,
+    MAX_PROVIDER_CALLS,
+    GENERATION_POLICY_SINGLE_ATTEMPT_STRICT,
+    SIGNAL_TYPE_TO_CLAIM_CATEGORY,
 )
 from social_stats.analytics.narrative.context import (
     build_grounded_narrative_context,
@@ -62,7 +65,12 @@ from social_stats.analytics.narrative.prompts import (
     build_user_prompt,
 )
 from social_stats.analytics.narrative.validator import NarrativeValidator
-from social_stats.analytics.narrative.service import preview_narrative
+from social_stats.analytics.narrative.service import (
+    preview_narrative,
+    generate_and_save_narrative,
+    execute_controlled_narrative_generation,
+    ControlledLiveExecutionError,
+)
 
 
 class GroundedMultichannelNarrativeSafetiesTests(TestCase):
@@ -588,3 +596,168 @@ class GroundedMultichannelNarrativeSafetiesTests(TestCase):
         self.assertEqual(CROSS_PLATFORM_ACTION_MAPPING["MC-SIG-7"], "REVIEW_PLATFORM_PERFORMANCE")
         self.assertEqual(CROSS_PLATFORM_ACTION_MAPPING["MC-SIG-8"], "REVIEW_PROVIDER_PERMISSIONS")
         self.assertIsNone(CROSS_PLATFORM_ACTION_MAPPING["MC-SIG-6"])
+
+
+class ControlledLiveExecutionContractAuditTests(GroundedMultichannelNarrativeSafetiesTests):
+    """BS-5E.0A Dedicated Tests: Controlled Live Execution Contract & Signal Identity."""
+
+    # 1. Strict Single Attempt
+    def test_strict_single_attempt(self):
+        exec_data = execute_controlled_narrative_generation(
+            self.report,
+            provider_name="fake",
+            mock_mode="VALID",
+            generation_policy=GENERATION_POLICY_SINGLE_ATTEMPT_STRICT,
+            fallback_enabled=False,
+        )
+        self.assertEqual(exec_data["provider_attempt_count"], 1)
+        self.assertEqual(exec_data["max_provider_calls"], 1)
+        self.assertEqual(exec_data["generation_policy"], GENERATION_POLICY_SINGLE_ATTEMPT_STRICT)
+        self.assertFalse(exec_data["fallback_used"])
+        self.assertFalse(exec_data["fallback_enabled"])
+
+    # 2. Validator Failure No Retry
+    def test_validator_failure_no_retry(self):
+        initial_count = ExecutiveNarrative.objects.count()
+        with self.assertRaises(ControlledLiveExecutionError) as ctx:
+            generate_and_save_narrative(
+                self.report,
+                user=self.user,
+                provider_name="fake",
+                mock_mode="OVERALL_WINNER_ATTACK",
+                generation_policy=GENERATION_POLICY_SINGLE_ATTEMPT_STRICT,
+                fallback_enabled=False,
+            )
+        exc = ctx.exception
+        self.assertEqual(exc.provider_attempt_count, 1)
+        self.assertFalse(exc.can_retry)
+        self.assertFalse(exc.fallback_used)
+        self.assertEqual(ExecutiveNarrative.objects.count(), initial_count)
+
+    # 3. Malformed JSON No Retry
+    def test_malformed_json_no_retry(self):
+        initial_count = ExecutiveNarrative.objects.count()
+        with self.assertRaises(ControlledLiveExecutionError) as ctx:
+            generate_and_save_narrative(
+                self.report,
+                user=self.user,
+                provider_name="fake",
+                mock_mode="MALFORMED_JSON",
+                generation_policy=GENERATION_POLICY_SINGLE_ATTEMPT_STRICT,
+                fallback_enabled=False,
+            )
+        exc = ctx.exception
+        self.assertEqual(exc.provider_attempt_count, 1)
+        self.assertFalse(exc.can_retry)
+        self.assertEqual(ExecutiveNarrative.objects.count(), initial_count)
+
+    # 4. Unknown Evidence No Retry
+    def test_unknown_evidence_no_retry(self):
+        initial_count = ExecutiveNarrative.objects.count()
+        with self.assertRaises(ControlledLiveExecutionError) as ctx:
+            generate_and_save_narrative(
+                self.report,
+                user=self.user,
+                provider_name="fake",
+                mock_mode="BAD_EVIDENCE_REF",
+                generation_policy=GENERATION_POLICY_SINGLE_ATTEMPT_STRICT,
+                fallback_enabled=False,
+            )
+        exc = ctx.exception
+        self.assertEqual(exc.provider_attempt_count, 1)
+        self.assertFalse(exc.can_retry)
+        self.assertEqual(ExecutiveNarrative.objects.count(), initial_count)
+
+    # 5. Ambiguous Transport No Retry
+    def test_ambiguous_transport_no_retry(self):
+        initial_count = ExecutiveNarrative.objects.count()
+        with self.assertRaises(ControlledLiveExecutionError) as ctx:
+            generate_and_save_narrative(
+                self.report,
+                user=self.user,
+                provider_name="fake",
+                mock_mode="AMBIGUOUS_TRANSPORT",
+                generation_policy=GENERATION_POLICY_SINGLE_ATTEMPT_STRICT,
+                fallback_enabled=False,
+            )
+        exc = ctx.exception
+        self.assertEqual(exc.provider_attempt_count, 1)
+        self.assertFalse(exc.can_retry)
+        self.assertEqual(ExecutiveNarrative.objects.count(), initial_count)
+
+    # 6. Fallback Disabled For Controlled Live Mode
+    def test_fallback_disabled_for_controlled_live_mode(self):
+        with self.assertRaises(ValueError):
+            execute_controlled_narrative_generation(
+                self.report,
+                generation_policy=GENERATION_POLICY_SINGLE_ATTEMPT_STRICT,
+                fallback_enabled=True,
+            )
+
+    # 7. Valid Fake Response One Attempt
+    def test_valid_fake_response_one_attempt(self):
+        initial_count = ExecutiveNarrative.objects.count()
+        narrative = generate_and_save_narrative(
+            self.report,
+            user=self.user,
+            provider_name="fake",
+            mock_mode="VALID",
+            generation_policy=GENERATION_POLICY_SINGLE_ATTEMPT_STRICT,
+            fallback_enabled=False,
+        )
+        self.assertEqual(narrative.status, "VALIDATED")
+        self.assertEqual(narrative.metadata["provider_attempt_count"], 1)
+        self.assertEqual(narrative.metadata["max_provider_calls"], 1)
+        self.assertFalse(narrative.metadata["fallback_used"])
+        self.assertEqual(ExecutiveNarrative.objects.count(), initial_count + 1)
+
+    # 8. Canonical Signal Type Preservation
+    def test_canonical_signal_type_preservation(self):
+        context = build_grounded_narrative_context(self.report)
+        reg = context["evidence_registry"]
+        self.assertEqual(reg["MC-SIG-6"]["signal_type"], "AUDIENCE_SIZE_DIFFERENCE")
+        self.assertEqual(reg["MC-SIG-7"]["signal_type"], "PLATFORM_METRIC_OUTPERFORMANCE")
+        self.assertEqual(reg["MC-SIG-8"]["signal_type"], "CROSS_PLATFORM_DATA_LIMITATION")
+        self.assertEqual(reg["MC-SIG-9"]["signal_type"], "CROSS_PLATFORM_METRIC_NON_COMPARABLE")
+
+    # 9. Narrative Claim Category Separation
+    def test_narrative_claim_category_separation(self):
+        context = build_grounded_narrative_context(self.report)
+        reg = context["evidence_registry"]
+        self.assertEqual(reg["MC-SIG-6"]["claim_category"], "AUDIENCE_CONTEXT")
+        self.assertEqual(reg["MC-SIG-7"]["claim_category"], "PERFORMANCE_COMPARISON")
+        self.assertEqual(reg["MC-SIG-8"]["claim_category"], "DATA_AVAILABILITY")
+        self.assertEqual(reg["MC-SIG-9"]["claim_category"], "SEMANTIC_LIMITATION")
+
+    # 10. Evidence Registry Canonical Identity
+    def test_evidence_registry_canonical_identity(self):
+        context = build_grounded_narrative_context(self.report)
+        reg = context["evidence_registry"]
+        for sig_num, expected_id in enumerate([6, 7, 8, 9], start=6):
+            key = f"MC-SIG-{sig_num}"
+            node = reg[key]
+            self.assertEqual(node["signal_id"], expected_id)
+            self.assertTrue(bool(node["signal_identity"]))
+            self.assertEqual(node["confidence"], "HIGH")
+            self.assertEqual(node["evidence"]["benchmark_hash"], self.canonical_benchmark_hash)
+
+    # 11. Context Hash Determinism
+    def test_context_hash_determinism(self):
+        h1 = compute_context_hash(build_grounded_narrative_context(self.report))
+        h2 = compute_context_hash(build_grounded_narrative_context(self.report))
+        self.assertEqual(h1, h2)
+        self.assertEqual(len(h1), 64)
+
+    # 12. Existing Locks Still Pass
+    def test_existing_locks_still_pass(self):
+        preview = preview_narrative(
+            self.report,
+            provider_name="fake",
+            mock_mode="VALID",
+            generation_policy=GENERATION_POLICY_SINGLE_ATTEMPT_STRICT,
+            fallback_enabled=False,
+        )
+        self.assertTrue(preview["is_valid"])
+        self.assertEqual(preview["validation_status"], "PASS")
+        self.assertEqual(preview["provider_attempt_count"], 1)
+        self.assertFalse(preview["fallback_used"])

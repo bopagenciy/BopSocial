@@ -19,6 +19,7 @@ class FakeNarrativeProvider(BaseNarrativeProvider):
     def __init__(self, model_name: str = "fake-grounded-v1", mock_mode: str = "VALID"):
         super().__init__(model_name=model_name)
         self.mock_mode = mock_mode
+        self.call_count = 0
 
     def generate(
         self,
@@ -28,7 +29,10 @@ class FakeNarrativeProvider(BaseNarrativeProvider):
         mock_mode: Optional[str] = None,
         **kwargs
     ) -> NarrativeProviderResult:
+        self.call_count += 1
         mode = mock_mode or self.mock_mode
+        if mode == "AMBIGUOUS_TRANSPORT":
+            raise RuntimeError("AMBIGUOUS_TRANSPORT: Connection reset or delivery status ambiguous while contacting provider.")
 
         report_info = context.get("report", {})
         client_name = report_info.get("client_name", "Cliente")

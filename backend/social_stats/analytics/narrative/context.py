@@ -14,6 +14,7 @@ from .schemas import (
     MAX_SIGNALS_IN_CONTEXT,
     MAX_LIMITATIONS_IN_CONTEXT,
     MAX_CONTENT_EXAMPLES,
+    SIGNAL_TYPE_TO_CLAIM_CATEGORY,
 )
 
 
@@ -180,6 +181,7 @@ def build_grounded_narrative_context(report, business_signals: Optional[List[Any
                 summ = getattr(s, 'explanation_template', getattr(s, 'summary', getattr(s, 'explanation', '')))
                 raw_signals.append({
                     "id": getattr(s, 'id', None),
+                    "signal_identity": getattr(s, 'signal_identity', ''),
                     "signal_type": s.signal_type,
                     "metric": getattr(s, 'metric', ''),
                     "platform": getattr(s, 'platform', ''),
@@ -197,6 +199,7 @@ def build_grounded_narrative_context(report, business_signals: Optional[List[Any
                 summ = s.get('explanation') or s.get('explanation_template') or s.get('summary') or ''
                 raw_signals.append({
                     "id": s.get('id'),
+                    "signal_identity": s.get('signal_identity', ''),
                     "signal_type": s.get('signal_type', 'GENERAL'),
                     "metric": s.get('metric', ''),
                     "platform": s.get('platform', ''),
@@ -226,6 +229,7 @@ def build_grounded_narrative_context(report, business_signals: Optional[List[Any
                 summ = s.get('explanation') or s.get('explanation_template') or s.get('summary') or ''
                 raw_signals.append({
                     "id": s.get('id'),
+                    "signal_identity": s.get('signal_identity', ''),
                     "signal_type": s.get('signal_type', 'GENERAL'),
                     "metric": s.get('metric', ''),
                     "platform": s.get('platform', ''),
@@ -256,10 +260,14 @@ def build_grounded_narrative_context(report, business_signals: Optional[List[Any
 
         conf = s.get('confidence') or s.get('confidence_level') or 'NONE'
         summ = s.get('summary') or s.get('explanation') or ''
+        claim_cat = SIGNAL_TYPE_TO_CLAIM_CATEGORY.get(sig_type, "GENERAL_OBSERVATION")
 
         sig_entry = {
             "ref_id": ref_id,
+            "signal_id": sig_id,
+            "signal_identity": s.get('signal_identity', ''),
             "signal_type": sig_type,
+            "claim_category": claim_cat,
             "metric": s.get('metric', ''),
             "platform": s.get('platform', ''),
             "scope": "multichannel" if is_multichannel else "single_platform",
@@ -275,7 +283,10 @@ def build_grounded_narrative_context(report, business_signals: Optional[List[Any
 
         evidence_payload = {
             "type": "MULTICHANNEL_SIGNAL" if is_multichannel else "BUSINESS_SIGNAL",
+            "signal_id": sig_id,
+            "signal_identity": s.get('signal_identity', ''),
             "signal_type": sig_type,
+            "claim_category": claim_cat,
             "metric": s.get('metric', ''),
             "platform": s.get('platform', ''),
             "confidence": conf,

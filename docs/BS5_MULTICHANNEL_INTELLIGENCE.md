@@ -810,3 +810,77 @@ Deterministic claim categories allow validators to verify recommendation groundi
   - `QueuedItem` = 3
   - `PeriodicTask` = 17
 - **Provider Call Invariants**: Ollama = 0, OpenAI = 0, Gemini = 0, Anthropic = 0, Meta = 0, Facebook = 0, Instagram = 0.
+
+
+---
+
+## BS-5E.0A — Live Execution Safety Contract Audit & Single-Attempt Policy Enforcement
+
+### 1. Executive Summary & Objective
+Following operator review of phase BS-5E, Phase BS-5E.0A audits and resolves two critical safety contract requirements prior to authorizing live LLM generation in BS-5E.1:
+1. **Enforce Strict Single-Attempt Execution Policy**:
+   - `MAX_PROVIDER_CALLS = 1` enforced at application runtime.
+   - 0 automatic retries under any circumstance.
+   - 0 validation-feedback retry loops.
+   - 0 deterministic fallback substitutions persisted as live results (`fallback_enabled = False`).
+   - If transport fails, response is ambiguous, JSON is malformed, or any validator gate fails -> immediate STOP, 0 database writes (`ExecutiveNarrative` persistence = 0), operator audit required.
+2. **Canonical Signal Identity vs. Additive Narrative Classification**:
+   - Persisted `BusinessSignal.signal_type` values for signals IDs 6–9 are strictly canonical:
+     - ID 6: `AUDIENCE_SIZE_DIFFERENCE`
+     - ID 7: `PLATFORM_METRIC_OUTPERFORMANCE`
+     - ID 8: `CROSS_PLATFORM_DATA_LIMITATION`
+     - ID 9: `CROSS_PLATFORM_METRIC_NON_COMPARABLE`
+   - Presentation / narrative claim categories are cleanly separated into additive `claim_category` fields:
+     - `MC-SIG-6`: `signal_type="AUDIENCE_SIZE_DIFFERENCE"`, `claim_category="AUDIENCE_CONTEXT"`
+     - `MC-SIG-7`: `signal_type="PLATFORM_METRIC_OUTPERFORMANCE"`, `claim_category="PERFORMANCE_COMPARISON"`
+     - `MC-SIG-8`: `signal_type="CROSS_PLATFORM_DATA_LIMITATION"`, `claim_category="DATA_AVAILABILITY"`
+     - `MC-SIG-9`: `signal_type="CROSS_PLATFORM_METRIC_NON_COMPARABLE"`, `claim_category="SEMANTIC_LIMITATION"`
+   - Full retention of `signal_id`, `signal_identity`, `metric`, `confidence`, and `benchmark_hash`.
+
+---
+
+### 2. Context Hash Recomputation
+- **Previous Context Hash (BS-5E baseline)**:
+  `a7fb12cb84fdf4e17a11c14f0fbc9a31690b640af53a59ee6d0d7fa6a03db87c`
+- **Final Approved Context Hash (BS-5E.0A with canonical signal identity & additive claim_category)**:
+  `722dc6422a6bc7869f05d1d6c6cf0c352cbbcd060ec01f2b1c47a27d0f738628`
+- **Context Hash Changed**: **YES** (Authorized: `ExecutiveNarrative #2` does not yet exist; ensures complete fidelity to persisted DB identity).
+- **Context Schema Version**: `bs4h-context-v2` (retained).
+- **Prompt Version**: `bs5d-prompt-v1` (retained).
+
+---
+
+### 3. Policy Comparison Matrix
+
+| Dimension | Previous Default Behavior | Controlled Live Policy (`single_attempt_strict`) |
+| :--- | :--- | :--- |
+| **Max Provider Calls** | 1 (untracked) | **1 (Hard Enforced & Audited)** |
+| **Transport Failure** | Unhandled / Generic Exception | **Immediate STOP; 0 Retries; 0 Persisted Rows** |
+| **Ambiguous Transport** | Unhandled | **Immediate STOP; Operator Audit Mandated** |
+| **Malformed JSON** | Provider Exception | **Immediate STOP; 0 Retries; 0 Persisted Rows** |
+| **Validation Gate Failure** | Persisted row with `status='REJECTED'` | **Immediate STOP; 0 DB Persistence (`ControlledLiveExecutionError`)** |
+| **Validation Retry Feedback** | Not active | **Strictly Forbidden** |
+| **Deterministic Fallback** | Allowed in auxiliary routines | **Strictly Disabled (`fallback_enabled=False`)** |
+| **Persistence Authorization** | Allowed on failure (`REJECTED`) | **Strictly Conditional on 100% Gates Passing (`VALIDATED`)** |
+| **Attempt Accounting** | Untracked | **Persisted in narrative metadata (`provider_attempt_count: 1`)** |
+
+---
+
+### 4. Test Suite & Verification Results
+- **BS-5E Dedicated Tests**: 61 tests passing (`test_grounded_multichannel_narrative.py`).
+- **Targeted Multichannel Regression**: 226 tests passing (BS-4H: 78, BS-5A: 20, BS-5B: 20, BS-5C: 17, BS-5D: 24, BS-5D.0A: 6, BS-5E & BS-5E.0A: 61).
+- **Database Safety Invariants**:
+  - `SocialMetricSnapshot` = 312
+  - `SocialMetricRollup` = 551
+  - `BusinessSignal` = 9
+  - `ExecutiveReport` = 2
+  - `ExecutiveNarrative` = 1
+  - `DailyMetric` = 33
+  - `PostMetric` = 38
+  - `SyncLog` = 8
+  - `UnifiedPost` = 14
+  - `PlatformPublishLog` = 15
+  - `PostQueue` = 2
+  - `QueuedItem` = 3
+  - `PeriodicTask` = 17
+- **Provider Call Invariants**: Ollama = 0, OpenAI = 0, Gemini = 0, Anthropic = 0, Meta = 0, Facebook = 0, Instagram = 0.
