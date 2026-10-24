@@ -1220,3 +1220,177 @@ class MultichannelBenchmarkView(AnalyticsBaseView):
         except Exception as e:
             logger.exception(f"Error building multichannel benchmark: {e}")
             return Response({"error": "Internal error generating multichannel benchmark"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# ==============================================================================
+# BS-5C MULTICHANNEL BUSINESS SIGNAL ENGINE VIEWS
+# ==============================================================================
+
+class MultichannelSignalPreviewView(AnalyticsBaseView):
+    """
+    GET / POST /api/analytics/multichannel/signals/preview/
+    Deterministic, read-only preview of multichannel business signals.
+    Consumes BS-5B benchmark result as authoritative evidence.
+    Enforces strict tenant isolation, 0 database writes, and 0 provider calls.
+    """
+    def _handle_request(self, request):
+        params = request.query_params if request.method == "GET" else request.data
+        client = self.validate_client(request, params.get("client_id"))
+        if not client:
+            return Response({"error": "Client not found or unauthorized"}, status=status.HTTP_404_NOT_FOUND)
+
+        platform_a = params.get("platform_a", "facebook")
+        platform_b = params.get("platform_b", "instagram")
+        start_date = _parse_date(params.get("start_date"))
+        end_date = _parse_date(params.get("end_date"))
+        granularity = params.get("granularity", "period")
+        metrics_param = params.get("metrics")
+        include_cohorts = str(params.get("include_cohorts", "false")).lower() in ("true", "1")
+        language = params.get("language", "en")
+
+        if not start_date or not end_date:
+            return Response({"error": "start_date and end_date are required in YYYY-MM-DD format"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if start_date > end_date:
+            return Response({"error": "start_date cannot be after end_date"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if platform_a.strip().lower() == platform_b.strip().lower():
+            return Response({"error": f"Cannot compare platform '{platform_a}' to itself"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if granularity not in ("day", "week", "month", "period"):
+            return Response({"error": f"Invalid granularity '{granularity}'. Must be one of: day, week, month, period"}, status=status.HTTP_400_BAD_REQUEST)
+
+        metrics_list = None
+        if metrics_param:
+            if isinstance(metrics_param, list):
+                metrics_list = [str(m).strip().upper() for m in metrics_param if str(m).strip()]
+            else:
+                metrics_list = [m.strip().upper() for m in metrics_param.split(",") if m.strip()]
+
+        from .multichannel import build_multichannel_benchmark, generate_multichannel_signals
+        try:
+            benchmark = build_multichannel_benchmark(
+                client=client,
+                platform_a=platform_a,
+                platform_b=platform_b,
+                start_date=start_date,
+                end_date=end_date,
+                granularity=granularity,
+                metrics=metrics_list,
+                include_cohorts=include_cohorts,
+            )
+            result = generate_multichannel_signals(
+                benchmark,
+                persist=False,
+                allow_persistence=False,
+                language=language,
+            )
+            # Serialize for JSON response
+            candidate_serialized = []
+            for s in result["candidate_signals"]:
+                s_copy = dict(s)
+                if isinstance(s_copy.get("period_start"), (date, datetime)):
+                    s_copy["period_start"] = s_copy["period_start"].isoformat()
+                if isinstance(s_copy.get("period_end"), (date, datetime)):
+                    s_copy["period_end"] = s_copy["period_end"].isoformat()
+                if isinstance(s_copy.get("observed_value"), Decimal):
+                    s_copy["observed_value"] = float(s_copy["observed_value"])
+                if isinstance(s_copy.get("baseline_value"), Decimal):
+                    s_copy["baseline_value"] = float(s_copy["baseline_value"])
+                if isinstance(s_copy.get("absolute_delta"), Decimal):
+                    s_copy["absolute_delta"] = float(s_copy["absolute_delta"])
+                if isinstance(s_copy.get("relative_delta"), Decimal):
+                    s_copy["relative_delta"] = float(s_copy["relative_delta"])
+                candidate_serialized.append(s_copy)
+
+            return Response({
+                "benchmark_hash": result["benchmark_hash"],
+                "candidate_count": result["candidate_count"],
+                "candidate_signals": candidate_serialized,
+                "suppressed_count": result["suppressed_count"],
+                "suppressed_candidates": result["suppressed_candidates"],
+                "persisted_count": 0,
+            })
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.exception(f"Error generating multichannel signal preview: {e}")
+            return Response({"error": "Internal error generating multichannel signals"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def get(self, request):
+        return self._handle_request(request)
+
+    def post(self, request):
+        return self._handle_request(request)
+
+
+class MultichannelSignalPersistView(AnalyticsBaseView):
+    """
+    POST /api/analytics/multichannel/signals/
+    Persistence endpoint for multichannel business signals.
+    Protected boundary: defaults to fail-closed (403 Forbidden) unless allow_persistence=True
+    is explicitly supplied with operator authorization.
+    """
+    def post(self, request):
+        allow_persistence = request.data.get("allow_persistence", False)
+        if not allow_persistence:
+            return Response(
+                {"error": "Persistence of multichannel business signals is prohibited in this phase without explicit operator authorization (allow_persistence=true)."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        client = self.validate_client(request, request.data.get("client_id"))
+        if not client:
+            return Response({"error": "Client not found or unauthorized"}, status=status.HTTP_404_NOT_FOUND)
+
+        platform_a = request.data.get("platform_a", "facebook")
+        platform_b = request.data.get("platform_b", "instagram")
+        start_date = _parse_date(request.data.get("start_date"))
+        end_date = _parse_date(request.data.get("end_date"))
+        granularity = request.data.get("granularity", "period")
+        metrics_param = request.data.get("metrics")
+        include_cohorts = str(request.data.get("include_cohorts", "false")).lower() in ("true", "1")
+        language = request.data.get("language", "en")
+
+        if not start_date or not end_date:
+            return Response({"error": "start_date and end_date are required in YYYY-MM-DD format"}, status=status.HTTP_400_BAD_REQUEST)
+
+        metrics_list = None
+        if metrics_param:
+            if isinstance(metrics_param, list):
+                metrics_list = [str(m).strip().upper() for m in metrics_param if str(m).strip()]
+            else:
+                metrics_list = [m.strip().upper() for m in metrics_param.split(",") if m.strip()]
+
+        from .multichannel import build_multichannel_benchmark, generate_multichannel_signals
+        try:
+            benchmark = build_multichannel_benchmark(
+                client=client,
+                platform_a=platform_a,
+                platform_b=platform_b,
+                start_date=start_date,
+                end_date=end_date,
+                granularity=granularity,
+                metrics=metrics_list,
+                include_cohorts=include_cohorts,
+            )
+            result = generate_multichannel_signals(
+                benchmark,
+                persist=True,
+                allow_persistence=True,
+                language=language,
+            )
+            persisted_identities = [s.signal_identity for s in result["persisted_signals"]]
+            return Response({
+                "benchmark_hash": result["benchmark_hash"],
+                "persisted_count": result["persisted_count"],
+                "persisted_signal_identities": persisted_identities,
+            }, status=status.HTTP_201_CREATED)
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except PermissionError as e:
+            return Response({"error": str(e)}, status=status.HTTP_403_FORBIDDEN)
+        except Exception as e:
+            logger.exception(f"Error persisting multichannel signals: {e}")
+            return Response({"error": "Internal error persisting multichannel signals"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+

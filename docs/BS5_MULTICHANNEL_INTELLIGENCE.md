@@ -292,3 +292,168 @@ Executed read-only benchmark for Client #3 (`Bop Agencia`) across window `2026-0
   - `unavailable`: 10
 - **Capability State**: Accurately respected Instagram Basic `PARTIAL` mode permissions.
 - **Database Safety**: Initial vs post-execution table row counts remained 100% identical.
+
+
+---
+
+## BS-5C — Multichannel Business Signal Engine
+
+### 1. Overview & Architectural Role
+Phase BS-5C establishes a deterministic business signal generation engine that consumes the authoritative `MultichannelBenchmarkResult` from BS-5B and derives grounded, actionable, cross-platform business intelligence signals.
+
+**Core Architectural Rule:**
+$$\text{BS-5C consumes MultichannelBenchmarkResult} \quad \wedge \quad \text{Zero Metric Recalculation} \quad \wedge \quad \text{Zero Overall Platform Winner}$$
+
+BS-5C does NOT recalculate underlying rollups, snapshots, winner determinations, or deltas. All signals bind strictly to an immutable `benchmark_hash` and canonical schema version `bs5b-benchmark-v1`.
+
+---
+
+### 2. Signal Taxonomy & Categories
+
+BS-5C defines a canonical set of multichannel signal types extending the deterministic `BusinessSignal` model:
+
+| Signal Type | Category | Default Severity | Confidence | Actionable | Description |
+|---|---|---|---|---|---|
+| `PLATFORM_METRIC_OUTPERFORMANCE` | `PERFORMANCE` | `POSITIVE` | `HIGH` / `MEDIUM` | True | Direct rankable metric where one platform demonstrates material superiority over another. |
+| `CROSS_PLATFORM_TIE` | `PERFORMANCE` | `INFO` | `HIGH` | False | Non-zero tie where both platforms record identical positive interaction volumes. |
+| `AUDIENCE_SIZE_DIFFERENCE` | `AUDIENCE` | `INFO` | `HIGH` | False | Point-in-time audience gauge difference (`FOLLOWERS_TOTAL`). Never declares an outperformance winner. |
+| `CROSS_PLATFORM_DATA_LIMITATION` | `CAPABILITY` | `WARNING` / `INFO` | `HIGH` | True (if fixable) | Consolidated signal surfacing provider permission or telemetry limitations with coverage ratio. |
+| `CROSS_PLATFORM_METRIC_NON_COMPARABLE` | `DATA_QUALITY` | `INFO` | `HIGH` | False | Consolidated informational signal identifying metrics with disparate platform semantics (`SAVES`, `VIDEO_VIEWS`). |
+| `FORMAT_PLATFORM_ADVANTAGE` | `FORMAT` | `POSITIVE` | `HIGH` / `MEDIUM` | True | Content cohort format superiority verified with adequate sample size ($n \ge 3$ on both sides). |
+| `INSUFFICIENT_CROSS_PLATFORM_SAMPLE` | `FORMAT` | `INFO` | `NONE` | True | Content cohort format comparison gated by inadequate sample ($n < 3$ on either platform). |
+
+---
+
+### 3. Materiality Thresholds & Zero-Baseline Handling
+
+1. **Volume Materiality Threshold**:
+   - For discrete volume metrics (`REACTIONS`, `COMMENTS`, `CLICKS_TOTAL`), absolute delta $\ge 1$ is required to generate an outperformance signal when the baseline platform is 0.
+   - When baseline value $> 0$, relative delta $\ge 20\%$ or absolute delta $\ge 5$ is required.
+2. **Zero-Baseline Integrity**:
+   - When the baseline platform records 0 interactions (e.g. FB=0 vs IG=6), the mathematical relative percentage is undefined.
+   - BS-5C strictly sets `relative_delta = None` and forbids inventing synthetic percentage claims (e.g. "Instagram performed 600% better"). Signals cite factual observed values and absolute deltas only.
+
+---
+
+### 4. Audience Volume & Noise Suppression Rules
+
+1. **Followers Total (Audience Gauge)**:
+   - `FOLLOWERS_TOTAL` is evaluated as an audience volume gauge (`rankable = False`, `direction = NEUTRAL`).
+   - Generates `AUDIENCE_SIZE_DIFFERENCE`. It NEVER emits an outperformance winner or competitive superiority claim.
+2. **Zero-Zero Tie Suppression**:
+   - When both platforms record 0 interactions on a metric (e.g. `COMMENTS` FB=0 vs IG=0), the comparison yields zero actionable business intelligence.
+   - BS-5C automatically suppresses zero-zero ties from candidate signals to prevent signal spam. Suppressed observations are recorded in diagnostic metadata with reason `LOW_INFORMATION_ZERO_TIE`.
+
+---
+
+### 5. Consolidation Architecture
+
+Rather than generating 10 duplicate signals for unavailable metrics or individual signals for non-comparable metrics, BS-5C consolidates them intelligently:
+
+1. **Consolidated Data Limitation Signal (`CROSS_PLATFORM_DATA_LIMITATION`)**:
+   - Gathers all metrics with status `UNAVAILABLE`.
+   - Groups affected metrics by root cause: `PROVIDER_PARTIAL`, `COMPONENT_UNAVAILABLE`, `SOURCE_UNAVAILABLE`.
+   - Computes deterministic coverage ratio (e.g. $3 / 15$).
+   - Flags `is_actionable = True` if the limitation stems from fixable provider permissions (e.g. Instagram Basic missing insights permissions).
+2. **Consolidated Non-Comparable Signal (`CROSS_PLATFORM_METRIC_NON_COMPARABLE`)**:
+   - Gathers all metrics with compatibility `NON_COMPARABLE` (`SAVES`, `VIDEO_VIEWS`).
+   - Surfaces semantic disparity as a single informational note without performance claims.
+
+---
+
+### 6. Format Cohort Advantage & Sample Gating
+
+1. **Minimum Sample Size Requirement**:
+   - Validating format cohorts requires $n \ge 3$ published posts on BOTH platforms within the period.
+2. **Gating Enforcement**:
+   - If $n < 3$ on either platform: emits `INSUFFICIENT_CROSS_PLATFORM_SAMPLE` with `confidence_level = "NONE"` and recommended action `CONTINUE_COLLECTING_DATA`. No winner is declared.
+   - If $n \ge 3$ on both platforms and a material difference exists: emits `FORMAT_PLATFORM_ADVANTAGE` with `is_actionable = True`.
+
+---
+
+### 7. Deterministic Confidence & Actionability Framework
+
+Confidence and actionability are derived purely from source evidence without heuristics or LLMs:
+
+- **Confidence Tiers**:
+  - `HIGH`: Direct metrics with full source telemetry, verified limitations, or sample sizes $n \ge 10$.
+  - `MEDIUM`: Conditional metrics with runtime prerequisites satisfied or sample sizes $3 \le n < 10$.
+  - `LOW`: Limited observation sample or narrow evidence window.
+  - `NONE`: Inadequate cohort sample ($n < 3$) or structurally non-comparable claims.
+- **Actionability Rules**:
+  - Outperformance signals: `True` (review and allocate budget / focus).
+  - Audience size difference: `False` (informational gauge).
+  - Provider data limitation: `True` if permissions can be upgraded, else `False`.
+  - Non-comparable metrics: `False`.
+  - Insufficient sample: `True` in the operational sense of continuing data collection.
+
+---
+
+### 8. Stable SHA256 Signal Identity & Deduplication
+
+Signals compute a deterministic 64-character SHA256 digest:
+
+$$\text{signal\_identity} = \text{SHA256}(\text{client\_id} : \text{signal\_type} : \text{benchmark\_hash} : \text{metric} : \text{platform\_a} : \text{platform\_b} : \text{cohort\_key})$$
+
+**Properties:**
+1. Zero timestamps or volatile counters in key derivation.
+2. Guaranteed idempotency: repeated execution against the same benchmark creates 0 duplicate rows (`update_or_create`).
+3. Benchmark Binding: if the underlying telemetry or benchmark period changes, `benchmark_hash` shifts, generating fresh distinct signal identities and marking former signals stale.
+
+---
+
+### 9. The No-Overall-Platform-Winner Invariant
+
+BS-5C strictly forbids declaring an overall platform winner or aggregating disparate metric victories into a composite platform score:
+- Signal candidates with types matching `OVERALL_PLATFORM_WINNER`, `CROSS_PLATFORM_OVERALL_WINNER`, or containing `OVERALL` fail closed at Gate 2 of the deterministic validator.
+- Comparisons evaluate specific metric dimensions only.
+
+---
+
+### 10. Bilingual Natural-Language Templates
+
+Signal explanations are generated via deterministic parameterized templates without generative AI or external LLM APIs:
+- **Spanish (`es`)**:
+  - *"Instagram registró 6 reacciones frente a 0 en Facebook durante el período."*
+  - *"Instagram cuenta con 50 seguidores frente a 20 en Facebook (métrica de volumen de audiencia, no de rendimiento)."*
+  - *"Limitación de datos entre plataformas: 10 de 15 métricas no están disponibles debido a capacidades parciales del proveedor (Instagram)."*
+- **English (`en`)**:
+  - *"Instagram recorded 6 reactions compared with 0 on Facebook during the period."*
+  - *"Instagram has 50 followers compared with 20 on Facebook (audience volume metric, not performance)."*
+  - *"Cross-platform data limitation: 10 of 15 metrics unavailable due to partial provider capabilities (Instagram)."*
+
+---
+
+### 11. REST API Layer
+
+#### Endpoints
+1. `GET` / `POST /api/analytics/multichannel/signals/preview/`
+   - Read-only preview endpoint.
+   - Consumes or builds benchmark, validates evidence, generates signal candidates.
+   - Guaranteed 100% read-only: performs 0 database writes and 0 provider calls.
+2. `POST /api/analytics/multichannel/signals/`
+   - Protected persistence endpoint.
+   - Fails closed with `403 Forbidden` unless operator authorization `allow_persistence=true` is explicitly provided.
+   - Real pilot persistence is strictly disabled in this phase.
+
+#### Tenant Security
+- Enforces strict tenant isolation via `validate_client`. Cross-tenant requests return `404 Not Found`.
+
+---
+
+### 12. Real Pilot Verification (Client #3 Bop Agencia)
+
+Executed read-only signal preview against verified pilot benchmark `14bb7652b4247a6b98f2265796f1b320987684634a2d3ec27608faf671083012`:
+
+- **Target Tenant**: Client #3 (`Bop Agencia`)
+- **Pair & Window**: Facebook vs Instagram (`2026-09-22` to `2026-10-22`, granularity `period`)
+- **Candidate Signal Count**: 4
+  1. `FOLLOWERS_TOTAL`: `AUDIENCE_SIZE_DIFFERENCE` (FB=20, IG=50, non-rankable, `is_actionable=False`, confidence `HIGH`)
+  2. `REACTIONS`: `PLATFORM_METRIC_OUTPERFORMANCE` (winner=Instagram, IG=6 vs FB=0, `zero_baseline=True`, `is_actionable=True`, confidence `HIGH`, action `REVIEW_PLATFORM_PERFORMANCE`)
+  3. Consolidated Limitations: `CROSS_PLATFORM_DATA_LIMITATION` (10 unavailable metrics, coverage ratio `3/15`, provider `Instagram`, `is_actionable=True`, action `REVIEW_PROVIDER_PERMISSIONS`)
+  4. Consolidated Non-Comparable: `CROSS_PLATFORM_METRIC_NON_COMPARABLE` (`SAVES`, `VIDEO_VIEWS`, `is_actionable=False`, confidence `HIGH`)
+- **Suppressed Candidates**: 1
+  - `COMMENTS`: Suppressed under low-information rule (FB=0 vs IG=0 tie).
+- **Database Safety**:
+  - `BusinessSignal` rows before preview: 5
+  - `BusinessSignal` rows after preview: 5 (0 rows persisted)

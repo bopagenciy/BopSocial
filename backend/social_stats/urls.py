@@ -27,6 +27,8 @@ from .analytics.api import (
     MultichannelCompatibilityView,
     MultichannelCompareView,
     MultichannelBenchmarkView,
+    MultichannelSignalPreviewView,
+    MultichannelSignalPersistView,
 )
 from .views import (
     LoginView, me, ClientViewSet, CredentialViewSet,
@@ -702,6 +704,10 @@ urlpatterns = [
 
     # ── BS-5B Multichannel Benchmark Engine API ──────────────────────────────
     path('analytics/multichannel/benchmark/',     MultichannelBenchmarkView.as_view(),     name='analytics_multichannel_benchmark'),
+
+    # ── BS-5C Multichannel Business Signal Engine API ─────────────────────────
+    path('analytics/multichannel/signals/preview/', MultichannelSignalPreviewView.as_view(), name='analytics_multichannel_signals_preview'),
+    path('analytics/multichannel/signals/',         MultichannelSignalPersistView.as_view(), name='analytics_multichannel_signals_persist'),
     # REST API
     path('', include(router.urls)),
 ]

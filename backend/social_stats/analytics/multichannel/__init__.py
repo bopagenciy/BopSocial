@@ -47,6 +47,20 @@ from .benchmarks import (
     evaluate_content_cohorts,
     build_multichannel_benchmark,
 )
+from .signals import (
+    MultichannelSignalType,
+    SignalCategory,
+    SignalSeverity,
+    ConfidenceTier,
+    RecommendedActionCode,
+    MATERIALITY_THRESHOLDS,
+    FORBIDDEN_SIGNAL_TYPES,
+    compute_multichannel_signal_identity,
+    format_signal_description,
+    validate_signal_candidate,
+    MultichannelSignalValidationError,
+    generate_multichannel_signals,
+)
 
 __all__ = [
     # Taxonomies
@@ -84,4 +98,18 @@ __all__ = [
     "generate_benchmark_hash",
     "evaluate_content_cohorts",
     "build_multichannel_benchmark",
+    # Multichannel Signal Engine (BS-5C)
+    "MultichannelSignalType",
+    "SignalCategory",
+    "SignalSeverity",
+    "ConfidenceTier",
+    "RecommendedActionCode",
+    "MATERIALITY_THRESHOLDS",
+    "FORBIDDEN_SIGNAL_TYPES",
+    "compute_multichannel_signal_identity",
+    "format_signal_description",
+    "validate_signal_candidate",
+    "MultichannelSignalValidationError",
+    "generate_multichannel_signals",
 ]
+
