@@ -599,26 +599,59 @@ class NarrativeValidator:
         if not any("Confidence lock failed" in e for e in errors):
             checks["confidence_preserved"] = True
 
-        # 6. Causality Guard
-        causal_forbidden = [
+        # 6. Causality Guard (Precision-scoped in BS-5E.1C)
+        unsupported_causal_tokens = [
             r"\bcaused\b",
-            r"\bbecause\b",
             r"\byour audience prefers\b",
             r"\bthis proves\b",
             r"\bthis strategy drove\b",
             r"\bcausó\b",
             r"\bprovocó\b",
-            r"\bdebido a que\s+(?!la\s+l[ií]nea\s+base)",
             r"\btu audiencia prefiere\b",
             r"\besto demuestra\b",
             r"\besta estrategia impulsó\b",
-            r"\bporque\b",
-            r"\bya que\b",
+            r"\bdebido a su contenido\b",
+            r"\bdebido a la calidad\b",
+            r"\bdebido a la creatividad\b",
+            r"\bdebido a las publicaciones\b",
+            r"\bdebido al contenido\b",
+            r"\bdebido a que su contenido\b",
+            r"\bdebido a que la calidad\b",
+            r"\bdebido a que la estrategia\b",
         ]
-        for pattern in causal_forbidden:
+        for pattern in unsupported_causal_tokens:
             if re.search(pattern, full_text_lower):
                 errors.append(f"Causality guard failed: Found unsupported causal phrase matching '{pattern}'.")
                 break
+
+        # Check connectives: allow definitional/mathematical explanations, reject performance attribution
+        approved_definitional_causal_patterns = [
+            r"(?:debido a que|porque|ya que|because)\s+(?:la\s+)?l[ií]nea\s+base(?:\s+observada)?(?:\s+en\s+\w+)?\s+es\s+cero",
+            r"(?:debido a que|porque|ya que|because)\s+la\s+línea\s+base\s+observada\s+es\s+cero",
+            r"(?:debido a que|porque|ya que|because)\s+(?:se\s+trata\s+de\s+|es\s+)?(?:una\s+)?m[eé]trica\s+de\s+(?:escala|volumen|audiencia)",
+            r"(?:debido a que|porque|ya que|because)\s+followers_total\s+es\s+(?:una\s+)?m[eé]trica\s+de\s+volumen",
+            r"(?:debido a que|porque|ya que|because)\s+se\s+trata\s+de\s+una\s+m[eé]trica\s+de\s+escala\s+absoluta",
+            r"(?:debido a que|porque|ya que|because)\s+(?:existen\s+|se\s+observan\s+)?(?:las\s+)?diferencias\s+en\s+las\s+definiciones",
+            r"(?:debido a que|porque|ya que|because)\s+(?:existen\s+|se\s+observan\s+)?diferencias\s+(?:sem[aá]nticas|de\s+definici[oó]n)",
+            r"(?:debido a que|porque|ya que|because)\s+restricciones\s+de\s+api",
+            r"(?:debido a que|porque|ya que|because)\s+la\s+configuraci[oó]n\s+actual\s+del\s+proveedor",
+        ]
+
+        connective_patterns = [
+            r"\bya que\b",
+            r"\bporque\b",
+            r"\bbecause\b",
+            r"\bdebido a que\b",
+        ]
+        for sent in all_sentences:
+            s_low = sent.lower()
+            for conn_pat in connective_patterns:
+                if re.search(conn_pat, s_low):
+                    # Must match at least one approved definitional/mathematical explanation
+                    matches_approved = any(re.search(ad_pat, s_low) for ad_pat in approved_definitional_causal_patterns)
+                    if not matches_approved:
+                        errors.append(f"Causality guard failed: Found unsupported causal phrase matching '{conn_pat}'.")
+                        break
 
         if not any("Causality guard failed" in e for e in errors):
             checks["causality_safe"] = True
@@ -680,18 +713,30 @@ class NarrativeValidator:
                 )
                 break
 
-        # Gate E: Audience Non-Performance Lock (Section W & AT)
+        # Gate E: Audience Non-Performance Lock (Section W & AT, BS-5E.1C Negation-Aware)
+        audience_disclaimer_patterns = [
+            r"no\s+(?:necesariamente\s+)?(?:implica|representa|significa|conlleva|supone|equivale\s+a|es)?\s*(?:superioridad|mejor\s+(?:rendimiento|desempe[nñ]o)|ventaja)",
+            r"no\s+(?:se\s+utiliza|se\s+interpreta|debe\s+interpretarse)\s+para\s+(?:evaluar\s+)?(?:desempe[nñ]o|rendimiento|superioridad)",
+            r"no\s+debe\s+interpretarse\s+como\s+(?:mejor\s+(?:rendimiento|desempe[nñ]o)|superioridad)",
+            r"sin\s+(?:implicar|representar|significar)\s+superioridad",
+            r"does\s+not\s+(?:necessarily\s+)?(?:imply|represent|mean|indicate)\s+(?:superior|better\s+performance)",
+            r"not\s+used\s+to\s+evaluate\s+(?:cross-platform\s+)?performance",
+        ]
+        audience_affirmative_perf_patterns = [
+            r"\b(?:rinde\s+mejor|mejor\s+rendimiento|desempe[nñ]o\s+superior|superioridad|gana|gan[oó]|superior|eficiencia|calidad\s+superior|m[aá]s\s+fuerte|mas\s+fuerte|domina|dominante|mejor|m[aá]s\s+efectivo|mas\s+efectivo)\b",
+            r"\b(?:performs\s+better|better\s+performance|outperformed|superior|wins|won|stronger|dominant|best)\b",
+        ]
+
         for sent in all_sentences:
             s_low = sent.lower()
             if any(term in s_low for term in ["seguidores", "followers", "audience", "audiencia", "followers_total"]):
-                if "no implica superioridad" in s_low or "no representa superioridad" in s_low or "no significa superioridad" in s_low or "does not imply superior" in s_low:
-                    continue
-                aud_perf_patterns = [
-                    r"\b(?:rinde mejor|mejor rendimiento|desempeño superior|superioridad|gana|ganó|superior|eficiencia|calidad superior|más fuerte|mas fuerte|domina|dominante|mejor|más efectivo|mas efectivo)\b",
-                    r"\b(?:performs better|better performance|outperformed|superior|wins|won|stronger|dominant|best)\b",
-                ]
-                for ap_pat in aud_perf_patterns:
-                    m = re.search(ap_pat, s_low)
+                cleaned_sent = s_low
+                for disc_pat in audience_disclaimer_patterns:
+                    if re.search(disc_pat, cleaned_sent):
+                        cleaned_sent = re.sub(disc_pat, " ", cleaned_sent)
+
+                for ap_pat in audience_affirmative_perf_patterns:
+                    m = re.search(ap_pat, cleaned_sent)
                     if m:
                         errors.append(
                             f"Audience non-performance lock failed: Audience volume (followers) cannot be claimed as performance superiority ('{m.group(0)}')."
@@ -715,7 +760,7 @@ class NarrativeValidator:
                 )
                 break
 
-        # Gate G: Limitation Preservation Lock (Section AY)
+        # Gate G: Limitation Preservation Lock (Section AY, BS-5E.1C Numeric Semantic Recognition)
         mc_intel = context.get("multichannel_intelligence", {})
         cov_summary = mc_intel.get("coverage_summary") or mc_intel.get("coverage", {})
         is_limited_coverage = cov_summary.get("status") == "LIMITED" or (cov_summary.get("coverage_ratio") == "3/15")
@@ -740,28 +785,32 @@ class NarrativeValidator:
                     break
 
         if is_limited_coverage and has_cross_platform_claim:
-            lim_texts_list = list(output.get("limitations", []))
+            # Check coverage disclosure across limitations, executive_summary, and structured disclosure
+            coverage_search_texts = list(output.get("limitations", [])) + list(output.get("executive_summary", []))
             if "cross_platform_coverage_disclosure" in output and isinstance(output["cross_platform_coverage_disclosure"], dict):
                 stmt = output["cross_platform_coverage_disclosure"].get("statement")
                 if isinstance(stmt, str):
-                    lim_texts_list.append(stmt)
-            lim_texts = " ".join(lim_texts_list).lower()
+                    coverage_search_texts.append(stmt)
+            coverage_text = " ".join(coverage_search_texts).lower()
 
-            has_explicit_ratio = (
-                "3/15" in lim_texts
-                or "3 de 15" in lim_texts
-                or "tres de quince" in lim_texts
-                or "3 of 15" in lim_texts
-                or "three of fifteen" in lim_texts
+            coverage_ratio_semantic_regex = re.compile(
+                r"(?:"
+                r"3\s*/\s*15"
+                r"|(?:solo\s+)?(?:3|tres)\s+de\s+(?:las\s+|un\s+total\s+de\s+)?(?:15|quince)(?:\s+m[eé]tricas)?"
+                r"|(?:only\s+)?(?:3|three)\s+of\s+(?:the\s+)?(?:15|fifteen)(?:\s+metrics)?"
+                r")",
+                re.IGNORECASE
             )
-            preserves_limitation = (
-                ("limitad" in lim_texts or "cobertura" in lim_texts or "limited" in lim_texts or "coverage" in lim_texts)
-                and has_explicit_ratio
-            )
+
+            has_explicit_ratio = bool(coverage_ratio_semantic_regex.search(coverage_text))
+            has_coverage_keyword = any(kw in coverage_text for kw in ["limitad", "cobertura", "limited", "coverage"])
+            preserves_limitation = has_explicit_ratio and has_coverage_keyword
+
             if not preserves_limitation:
                 errors.append(
                     "Limitation preservation lock failed: Cross-platform performance claim made without preserving the limited data coverage limitation (3/15 comparable metrics)."
                 )
+
         # Gate H: Language Contract Lock (Section AZ, AL)
         report_lang = context.get("report", {}).get("language") or "es"
         has_mc = bool(context.get("multichannel_intelligence"))
@@ -782,6 +831,36 @@ class NarrativeValidator:
                     )
                     break
 
+        # Gate I: Competitive-Language & Claim-Scope Lock (BS-5E.1C Sections F, G, H)
+        broad_competitive_patterns = [
+            r"\bventaja\s+competitiva\b",
+            r"\blidera\s+en\s+interacciones\b",
+            r"\blidera\s+en\s+engagement\b",
+            r"\blidera\s+en\b",
+            r"\bliderazgo\s+general\b",
+            r"\bliderazgo\s+en\s+interacciones\b",
+            r"\bdominancia\b",
+            r"\bmejor\s+canal\b",
+            r"\bplataforma\s+superior\b",
+            r"\bm[eé]tricas\s+de\s+rendimiento\s+clave\b",
+            r"\bm[eé]tricas\s+clave\b",
+            r"\brendimiento\s+clave\s+superior\b",
+            r"\bdesempe[nñ]o\s+general\b",
+            r"\binteracciones\s+totales\b",
+            r"\bcompetitive\s+advantage\b",
+            r"\bleads\s+in\s+interactions\b",
+            r"\bleads\s+in\s+engagement\b",
+            r"\boverall\s+leadership\b",
+            r"\bkey\s+performance\s+metrics\b",
+        ]
+        for bcp in broad_competitive_patterns:
+            m = re.search(bcp, full_text_lower)
+            if m:
+                errors.append(
+                    f"Claim-scope lock failed: Broad competitive terminology or ungrounded metric generalization is forbidden under limited coverage pilot ('{m.group(0)}')."
+                )
+                break
+
         if not any(
             "Multichannel lock failed" in e
             or "Comparability lock failed" in e
@@ -790,6 +869,7 @@ class NarrativeValidator:
             or "Budget reallocation lock failed" in e
             or "Limitation preservation lock failed" in e
             or "Language contract failed" in e
+            or "Claim-scope lock failed" in e
             for e in errors
         ):
             checks["multichannel_safety"] = True

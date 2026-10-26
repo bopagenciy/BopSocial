@@ -1011,3 +1011,115 @@ Authorization Status: PENDING OPERATOR REVIEW (DO NOT EXECUTE)
   - `QueuedItem` = 3
   - `PeriodicTask` = 17
 - **Provider Call Invariants**: Ollama = 0, OpenAI = 0, Gemini = 0, Anthropic = 0, Meta = 0, Facebook = 0, Instagram = 0.
+
+
+---
+
+## BS-5E.1B & BS-5E.1C — Controlled Live Execution Audit & Semantic Precision Hardening
+
+### 1. BS-5E.1B Live Execution Outcome (Attempt 2)
+
+On October 26, 2026, an operator-authorized controlled live execution of `ExecutiveReport #2` was performed using:
+- **Provider**: `ollama`
+- **Model**: `qwen3.5:9b`
+- **Prompt Version**: `bs5e-prompt-v2`
+- **Output Schema Version**: `bs5e-output-v2`
+- **Context Hash**: `e4d615700de831ce81c968480226686010b2b38a2b61073ca8bda8588b982905`
+- **Policy**: `single_attempt_strict` (`MAX_PROVIDER_CALLS = 1`, `fallback_enabled = False`)
+
+#### Telemetry & Transport Results
+- **Provider Attempt Count**: 1 (0 -> 1)
+- **Transport Status**: `SUCCESS` (HTTP 200, latency: 9.17s)
+- **Input Tokens**: 2,050
+- **Output Tokens**: 514
+- **Total Tokens**: 2,564
+- **Response Size**: 2,062 characters (2,067 bytes)
+- **Response SHA-256**: `bc5c0ff15a87ce4909ee84fec1216de7ba37f2b9476327e11f2df48d2f84c4d4`
+- **JSON Parse**: `PASS`
+- **Derived Confidence Enrichment**: `PASS`
+
+#### Gate Results & Fail-Closed Enforcement
+The live response triggered three deterministic validator rejections:
+1. `causality_safe`: Tripped by `"ya que"` in `"ya que se trata de una métrica de escala absoluta"`.
+2. `Audience non-performance lock`: Tripped by the presence of the word `"superioridad"` within a disclaimer clause (`"no necesariamente superioridad de rendimiento"`).
+3. `Limitation preservation lock`: Tripped because the coverage statement `"solo 3 de las 15 métricas"` included the article `"las"`, which did not match literal regex `"3/15"` or `"3 de 15"`.
+
+Pursuant to the hard runtime policy:
+- **Persistence Executed**: **NO** (0 rows written, `ExecutiveNarrative` count remains strictly 1).
+- **Retries**: **0**.
+- **Fallback**: **0**.
+- **Database Baseline**: Verified 100% unchanged.
+
+---
+
+### 2. Critical Issue 0 Audit — Authoritative HEAD Verification
+
+An identity discrepancy between the reported BS-5E.1A HEAD (`df3f9bc0f60c70e7eef4627d4999f848beceb7b5`) and the BS-5E.1B runtime HEAD (`df3f9bc03882e428825cfcc3ac871c84eed327fb`) was audited against git reflog and commit tree:
+- **Authoritative Commit SHA**: `df3f9bc03882e428825cfcc3ac871c84eed327fb` (`git rev-parse HEAD`).
+- **Commit Details**: `df3f9bc fix(bopsocial): harden multichannel narrative generation contract`.
+- **Reflog Analysis**: `HEAD@{0}` is `df3f9bc`. There were 0 intermediate commits between BS-5E.1A and BS-5E.1B.
+- **Root Cause**: The assistant in BS-5E.1A generated an unverified 40-character SHA string from the 7-character prefix `df3f9bc` instead of executing `git rev-parse HEAD`.
+- **Conclusion**: BS-5E.1B executed 100% against the authoritative, intended BS-5E.1A hardened code.
+
+---
+
+### 3. BS-5E.1C Semantic Precision & Claim-Scope Hardening
+
+Audit of the Attempt 2 generation revealed two distinct failure types:
+1. **Validator False Positives**:
+   - Disclaimers containing negated superiority words (`"...no necesariamente superioridad de rendimiento"`).
+   - Definitional connectives (`"...ya que se trata de una métrica de escala absoluta"`).
+   - Natural Spanish coverage phrasing (`"...solo 3 de las 15 métricas canónicas..."`).
+2. **True Model Generalizations (Risk)**:
+   - Generalizing 6 raw reactions into `"ventaja competitiva en métricas de rendimiento clave"`.
+   - Generalizing reactions into `"Instagram lidera en interacciones"`.
+
+#### Precision Remediations Implemented:
+1. **Coverage Semantic Parser (Gate G)**:
+   - Deterministic numeric semantic parser accepting Spanish variants:
+     `3/15`, `3 de 15`, `3 de las 15`, `3 de un total de 15`, `solo tres de quince`, `solo tres de las quince`, `solo 3 de las 15 métricas`, `3 of 15`, `three of fifteen`.
+   - Rejects vague assertions lacking explicit 3/15 numeric disclosure.
+2. **Negation-Aware Audience Lock (Gate E)**:
+   - Identifies explicit disclaimer structures (`no implica superioridad`, `no necesariamente superioridad`, `no se utiliza para evaluar desempeño`, `no debe interpretarse como mejor rendimiento`).
+   - Strips disclaimer clauses from sentence context, then verifies that no affirmative superiority assertions remain.
+3. **Causality Precision (Guard 6)**:
+   - Permits approved mathematical zero-baseline explanations and metric-scale definitional clarifications.
+   - Strictly prohibits ungrounded causal performance attributions (`caused`, `causó`, `provocó`, `debido a la calidad`, `debido al contenido`, `tu audiencia prefiere`, `esto demuestra`).
+4. **Competitive-Language & Claim-Scope Lock (Gate I)**:
+   - Forbids broad competitive terminology under limited coverage pilot:
+     `ventaja competitiva`, `lidera en interacciones`, `lidera en engagement`, `liderazgo general`, `dominancia`, `mejor canal`, `plataforma superior`, `métricas de rendimiento clave`.
+   - Enforces that reactions evidence (`MC-SIG-7`) remains strictly scoped to raw reactions.
+
+---
+
+### 4. Regression & Replay Matrix Results
+
+| Test Target | Expected Result | Actual Result |
+| :--- | :--- | :--- |
+| **Attempt 1 Fixture Replay** | FAIL (3 locks) | **FAIL** (Preserved) |
+| **Attempt 2 False Positives (Isolated)** | PASS (Coverage, Disclaimer, Definition) | **PASS** |
+| **Attempt 2 Full Replay** | **FAIL** (on Broad Claims: `ventaja competitiva`, `lidera en interacciones`) | **FAIL** (`Claim-scope lock failed`) |
+| **Section K Test Matrix (18 Scenarios)** | All 6 PASS cases PASS, all 12 FAIL cases FAIL | **PASS** (18 / 18 Verified) |
+| **Golden Spanish Output V2** | PASS with 0 errors | **PASS** (0 errors) |
+| **Targeted Multichannel Tests** | 225 passing | **225 PASSING** (in 22.9s) |
+| **Full Backend Regression** | >= 1,083 passing | **1,085 PASSING** (in 109.6s, 0 failures, 0 errors) |
+
+---
+
+### 5. Final Identity Freeze for Future Live Execution
+
+```text
+Client ID: 3 (Bop Agencia)
+ExecutiveReport ID: 2
+Report Source Hash: cb79885ade504aeac72f1bf2854b155be31c33b0c9ce3f0c168c7fc0a38ad148
+Benchmark Hash: 14bb7652b4247a6b98f2265796f1b320987684634a2d3ec27608faf671083012
+Context Hash: e4d615700de831ce81c968480226686010b2b38a2b61073ca8bda8588b982905 (UNCHANGED)
+Prompt Version: bs5e-prompt-v3
+Output Schema Version: bs5e-output-v2
+Context Schema Version: bs4h-context-v2
+Language: es
+Provider: ollama
+Model: qwen3.5:9b
+Policy: single_attempt_strict (MAX_PROVIDER_CALLS = 1, fallback_enabled = False)
+Authorization Status: PENDING OPERATOR REVIEW (DO NOT EXECUTE)
+```

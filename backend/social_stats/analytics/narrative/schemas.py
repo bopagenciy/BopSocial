@@ -7,7 +7,8 @@ from typing import Dict, List, Any
 CONTEXT_SCHEMA_VERSION = "bs4h-context-v2"
 PROMPT_VERSION_V1 = "bs5d-prompt-v1"
 PROMPT_VERSION_V2 = "bs5e-prompt-v2"
-PROMPT_VERSION = PROMPT_VERSION_V2
+PROMPT_VERSION_V3 = "bs5e-prompt-v3"
+PROMPT_VERSION = PROMPT_VERSION_V3
 OUTPUT_SCHEMA_VERSION = "bs5e-output-v2"
 
 # Legacy aliases for backward compatibility

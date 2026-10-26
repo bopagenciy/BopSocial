@@ -54,7 +54,7 @@ class FakeNarrativeProvider(BaseNarrativeProvider):
             if language == "es":
                 valid_payload = {
                     "executive_summary": [
-                        "Instagram registró una audiencia de 50 seguidores frente a 20 en Facebook. Esta diferencia describe tamaño de audiencia y no implica superioridad de rendimiento entre plataformas."
+                        "Instagram registró 50 seguidores frente a 20 en Facebook. FOLLOWERS_TOTAL describe tamaño de audiencia y no se utiliza para evaluar desempeño entre plataformas."
                     ],
                     "performance_observations": [
                         "Instagram registró 6 reacciones frente a 0 en Facebook durante el periodo analizado.",

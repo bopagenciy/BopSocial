@@ -341,7 +341,7 @@ class GroundedMultichannelNarrativeSafetiesTests(TestCase):
         context = build_grounded_narrative_context(self.report)
         self.assertEqual(context["context_schema_version"], "bs4h-context-v2")
         self.assertEqual(CONTEXT_SCHEMA_VERSION, "bs4h-context-v2")
-        self.assertEqual(PROMPT_VERSION, "bs5e-prompt-v2")
+        self.assertEqual(PROMPT_VERSION, "bs5e-prompt-v3")
 
     # 2. Multichannel Evidence Registry Resolution (MC-SIG-6..9)
     def test_multichannel_evidence_registry_resolution(self):
@@ -945,7 +945,7 @@ class MultichannelPromptHardeningTests(TestCase):
     def test_audience_safe_wording_passes(self):
         doc = {
             "executive_summary": [
-                "Instagram registró una audiencia de 50 seguidores frente a 20 en Facebook. Esta diferencia describe tamaño de audiencia y no implica superioridad de rendimiento entre plataformas."
+                "Instagram registró 50 seguidores frente a 20 en Facebook. FOLLOWERS_TOTAL describe tamaño de audiencia y no se utiliza para evaluar desempeño entre plataformas."
             ],
             "performance_observations": [
                 "Instagram registró 6 reacciones frente a 0 en Facebook durante el periodo analizado.",
@@ -1138,3 +1138,376 @@ class MultichannelPromptHardeningTests(TestCase):
         )
         self.assertTrue(preview["is_valid"], f"Fake mock VALID failed: {preview.get('validation_errors')}")
         self.assertEqual(preview["validation_status"], "PASS")
+
+
+# ============================================================================
+#  BS-5E.1C — Validator Semantic Precision & Claim-Scope Tests
+# ============================================================================
+class MultichannelValidatorPrecisionTests(TestCase):
+    """
+    Dedicated test suite for BS-5E.1C validator semantic precision,
+    negation-aware audience handling, definitional causality scoping,
+    coverage semantic parsing, and claim-scope locks.
+    """
+
+    def setUp(self):
+        self.user = User.objects.create_user(username="test_bs5e1c_user", email="test1c@bop.com", password="password")
+        self.client_obj = Client.objects.create(name="Precision Client", company="Precision Co", is_active=True)
+        self.report = ExecutiveReport.objects.create(
+            client=self.client_obj,
+            title="BS-5E.1C Precision Pilot Report",
+            report_type="EXECUTIVE",
+            period_start=datetime.date(2026, 9, 22),
+            period_end=datetime.date(2026, 10, 22),
+            language="es",
+            status="PUBLISHED",
+            report_data={
+                "has_sufficient_data": False,
+                "summary": {
+                    "followers_total": 70,
+                    "reactions": 6,
+                    "comments": 0,
+                    "shares": 0,
+                    "saves": None,
+                    "video_views": None,
+                    "average_daily_reach": None,
+                    "engagement_total": None,
+                },
+                "platforms": {
+                    "facebook": {
+                        "platform": "facebook",
+                        "capability": "COMPLETE",
+                        "status": "FULL",
+                        "supported_metrics": ["FOLLOWERS_TOTAL", "REACTIONS", "COMMENTS", "SHARES", "SAVES", "VIDEO_VIEWS", "REACH"],
+                        "unsupported_metrics": [],
+                    },
+                    "instagram": {
+                        "platform": "instagram",
+                        "capability": "PARTIAL",
+                        "status": "PARTIAL",
+                        "supported_metrics": ["FOLLOWERS_TOTAL", "REACTIONS", "COMMENTS"],
+                        "unsupported_metrics": ["REACH", "IMPRESSIONS", "SHARES", "SAVES", "VIDEO_VIEWS", "ENGAGEMENT_TOTAL"],
+                    },
+                },
+                "multichannel_intelligence": {
+                    "has_multichannel_data": True,
+                    "benchmark_hash": "14bb7652b4247a6b98f2265796f1b320987684634a2d3ec27608faf671083012",
+                    "coverage_summary": {
+                        "status": "LIMITED",
+                        "comparable_metric_count": 3,
+                        "canonical_metric_count": 15,
+                        "coverage_ratio": "3/15",
+                    },
+                    "platform_comparisons": [
+                        {
+                            "metric": "FOLLOWERS_TOTAL",
+                            "status": "DIRECT",
+                            "winner": "NO_WINNER",
+                            "direction": "NEUTRAL",
+                            "delta_absolute": 30.0,
+                            "delta_relative": 150.0,
+                            "platform_a_value": 20.0,
+                            "platform_b_value": 50.0,
+                        },
+                        {
+                            "metric": "REACTIONS",
+                            "status": "DIRECT",
+                            "winner": "PLATFORM_B",
+                            "direction": "HIGHER_IS_BETTER",
+                            "delta_absolute": 6.0,
+                            "delta_relative": None,
+                            "reason_code": "ZERO_BASELINE",
+                            "platform_a_value": 0.0,
+                            "platform_b_value": 6.0,
+                        },
+                        {
+                            "metric": "COMMENTS",
+                            "status": "DIRECT",
+                            "winner": "TIE",
+                            "direction": "NEUTRAL",
+                            "delta_absolute": 0.0,
+                            "delta_relative": None,
+                            "platform_a_value": 0.0,
+                            "platform_b_value": 0.0,
+                        },
+                    ],
+                    "limitations": [
+                        "Coverage is LIMITED (3 of 15 metrics comparable) due to Instagram partial mode.",
+                        "SAVES and VIDEO_VIEWS are non-comparable across platforms.",
+                    ],
+                },
+                "business_intelligence_signals": {
+                    "signals": [
+                        {
+                            "id": 6,
+                            "signal_identity": "SIG-MC-FOLLOWERS-202610",
+                            "signal_type": "AUDIENCE_SIZE_DIFFERENCE",
+                            "metric": "FOLLOWERS_TOTAL",
+                            "platform": "facebook:instagram",
+                            "confidence": "HIGH",
+                            "summary": "Instagram audience is 50 followers compared to 20 on Facebook.",
+                            "evidence": {"benchmark_hash": "14bb7652b4247a6b98f2265796f1b320987684634a2d3ec27608faf671083012"},
+                        },
+                        {
+                            "id": 7,
+                            "signal_identity": "SIG-MC-REACTIONS-202610",
+                            "signal_type": "PLATFORM_METRIC_OUTPERFORMANCE",
+                            "metric": "REACTIONS",
+                            "platform": "facebook:instagram",
+                            "confidence": "HIGH",
+                            "summary": "Instagram generated 6 reactions compared to 0 on Facebook.",
+                            "evidence": {"benchmark_hash": "14bb7652b4247a6b98f2265796f1b320987684634a2d3ec27608faf671083012"},
+                        },
+                        {
+                            "id": 8,
+                            "signal_identity": "SIG-MC-COV-202610",
+                            "signal_type": "CROSS_PLATFORM_DATA_LIMITATION",
+                            "metric": "COVERAGE",
+                            "platform": "facebook:instagram",
+                            "confidence": "HIGH",
+                            "summary": "Cross-platform comparison is limited to 3 of 15 metrics.",
+                            "evidence": {"benchmark_hash": "14bb7652b4247a6b98f2265796f1b320987684634a2d3ec27608faf671083012"},
+                        },
+                        {
+                            "id": 9,
+                            "signal_identity": "SIG-MC-NONCOMP-202610",
+                            "signal_type": "CROSS_PLATFORM_METRIC_NON_COMPARABLE",
+                            "metric": "SAVES",
+                            "platform": "facebook:instagram",
+                            "confidence": "HIGH",
+                            "summary": "SAVES and VIDEO_VIEWS are not comparable between platforms.",
+                            "evidence": {"benchmark_hash": "14bb7652b4247a6b98f2265796f1b320987684634a2d3ec27608faf671083012"},
+                        },
+                    ]
+                },
+            },
+        )
+        self.context = build_grounded_narrative_context(self.report)
+
+    # 1. Attempt 2 Sanitized Fixture Replay Test (Section B & L)
+    def test_attempt_2_failure_fixture_replayed_still_fails_on_broad_claims(self):
+        """
+        Verifies that while previous false positives (3 de las 15, no necesariamente superioridad,
+        ya que definitional) now PASS individual checks, the full Attempt 2 response STILL FAILS
+        due to ungrounded competitive broadening ('ventaja competitiva en métricas clave', 'lidera en interacciones').
+        """
+        attempt_2_fixture = {
+            "executive_summary": [
+                "La comparación entre plataformas presenta limitaciones significativas de cobertura: solo 3 de las 15 métricas canónicas son actualmente comparables debido a restricciones de API y diferencias semánticas.",
+                "Instagram muestra una ventaja competitiva en métricas de rendimiento clave, registrando 6 reacciones frente a 0 en Facebook durante el período analizado.",
+                "El contexto de audiencia indica que Instagram posee el doble de seguidores (50 vs 20) que Facebook, aunque esta métrica refleja volumen y no necesariamente superioridad de rendimiento."
+            ],
+            "performance_observations": [
+                "Instagram lidera en interacciones con 6 reacciones, mientras que Facebook reporta 0 para la misma métrica.",
+                "No hay ganador claro en métricas de volumen como 'Total de Seguidores' (50 vs 20), ya que se trata de una métrica de escala absoluta.",
+                "Las métricas de comentarios muestran un empate técnico con 0 interacciones en ambas plataformas."
+            ],
+            "recommendations": [
+                {
+                    "text": "Revisar los permisos y capacidades de integración del proveedor para ampliar la cobertura de métricas comparables y reducir las limitaciones actuales.",
+                    "recommendation_type": "REVIEW_PROVIDER_PERMISSIONS",
+                    "strength": "OBSERVE",
+                    "evidence_refs": ["MC-SIG-8"]
+                },
+                {
+                    "text": "Revisar el desempeño por plataforma con mayor profundidad a medida que se acumule una muestra más amplia de métricas comparables.",
+                    "recommendation_type": "REVIEW_PLATFORM_PERFORMANCE",
+                    "strength": "OBSERVE",
+                    "evidence_refs": ["MC-SIG-7"]
+                }
+            ],
+            "limitations": [
+                "Capacidad Parcial de Proveedor (Instagram): Métricas como Reach, Shares, Saves, Video Views y Engagement Total no están disponibles desde la API de Meta con los permisos actuales.",
+                "Métricas No Comparables: Guardados (SAVES) y Reproducciones de Video (VIDEO_VIEWS) poseen definiciones semánticas y umbrales de medición heterogéneos entre plataformas, impidiendo una comparación directa."
+            ]
+        }
+        enriched = enrich_narrative_with_derived_confidence(attempt_2_fixture, self.context)
+        is_valid, summary = NarrativeValidator.validate(enriched, self.context)
+        self.assertFalse(is_valid, "Attempt 2 must NOT pass wholesale.")
+        self.assertEqual(summary["status"], "FAIL")
+        errors_str = " ".join(summary["errors"])
+        self.assertIn("Claim-scope lock failed", errors_str)
+
+        # Confirm that false-positive errors are gone:
+        self.assertNotIn("Limitation preservation lock failed", errors_str)
+        self.assertNotIn("Audience non-performance lock failed", errors_str)
+        self.assertNotIn("Causality guard failed", errors_str)
+
+    # 2. Section K Test Matrix (18 PASS/FAIL Scenarios)
+    def test_section_k_validator_precision_matrix(self):
+        """
+        Executes the required 18 PASS/FAIL cases from BS-5E.1C Section K.
+        """
+        base_clean_doc = {
+            "executive_summary": [
+                "Instagram registró 50 seguidores frente a 20 en Facebook. FOLLOWERS_TOTAL describe tamaño de audiencia y no se utiliza para evaluar desempeño entre plataformas."
+            ],
+            "performance_observations": [
+                "Instagram registró 6 reacciones frente a 0 en Facebook durante el periodo analizado.",
+                "Debido a que la línea base observada en Facebook es cero, no se expresa una variación porcentual.",
+                "SAVES y VIDEO_VIEWS no se comparan directamente entre Facebook e Instagram debido a diferencias en las definiciones y disponibilidad de proveedor."
+            ],
+            "recommendations": [
+                {
+                    "text": "Revisar los permisos y capacidades de integración del proveedor para ampliar la cobertura de métricas comparables.",
+                    "recommendation_type": "REVIEW_PROVIDER_PERMISSIONS",
+                    "strength": "OBSERVE",
+                    "evidence_refs": ["MC-SIG-8"]
+                }
+            ],
+            "limitations": [
+                "La comparación entre plataformas es limitada: solo 3 de 15 métricas canónicas son actualmente comparables."
+            ]
+        }
+
+        # Case 1: '3 de las 15 métricas' -> PASS
+        doc1 = dict(base_clean_doc)
+        doc1["limitations"] = ["La cobertura entre plataformas es limitada: solo 3 de las 15 métricas canónicas son comparables."]
+        en1 = enrich_narrative_with_derived_confidence(doc1, self.context)
+        v1, s1 = NarrativeValidator.validate(en1, self.context)
+        self.assertTrue(v1, f"Case 1 failed: {s1.get('errors')}")
+
+        # Case 2: 'solo tres de las quince métricas' -> PASS
+        doc2 = dict(base_clean_doc)
+        doc2["limitations"] = ["La comparación entre plataformas es limitada: solo tres de las quince métricas canónicas son actualmente comparables."]
+        en2 = enrich_narrative_with_derived_confidence(doc2, self.context)
+        v2, s2 = NarrativeValidator.validate(en2, self.context)
+        self.assertTrue(v2, f"Case 2 failed: {s2.get('errors')}")
+
+        # Case 3: 'no implica superioridad de rendimiento' -> PASS
+        doc3 = dict(base_clean_doc)
+        doc3["executive_summary"] = ["Instagram registró 50 seguidores frente a 20 en Facebook, lo cual no implica superioridad de rendimiento."]
+        en3 = enrich_narrative_with_derived_confidence(doc3, self.context)
+        v3, s3 = NarrativeValidator.validate(en3, self.context)
+        self.assertTrue(v3, f"Case 3 failed: {s3.get('errors')}")
+
+        # Case 4: definitional explanation of audience metric -> PASS
+        doc4 = dict(base_clean_doc)
+        doc4["performance_observations"] = [
+            "Instagram registró 6 reacciones frente a 0 en Facebook.",
+            "No hay ganador claro en seguidores ya que se trata de una métrica de escala absoluta."
+        ]
+        en4 = enrich_narrative_with_derived_confidence(doc4, self.context)
+        v4, s4 = NarrativeValidator.validate(en4, self.context)
+        self.assertTrue(v4, f"Case 4 failed: {s4.get('errors')}")
+
+        # Case 5: zero-baseline mathematical explanation -> PASS
+        doc5 = dict(base_clean_doc)
+        doc5["performance_observations"] = [
+            "Instagram registró 6 reacciones frente a 0 en Facebook.",
+            "No se expresa variación porcentual porque la línea base observada es cero."
+        ]
+        en5 = enrich_narrative_with_derived_confidence(doc5, self.context)
+        v5, s5 = NarrativeValidator.validate(en5, self.context)
+        self.assertTrue(v5, f"Case 5 failed: {s5.get('errors')}")
+
+        # Case 6: provider-definition explanation -> PASS
+        doc6 = dict(base_clean_doc)
+        doc6["performance_observations"] = [
+            "Instagram registró 6 reacciones frente a 0 en Facebook.",
+            "SAVES no se comparan debido a que existen diferencias en las definiciones de proveedor."
+        ]
+        en6 = enrich_narrative_with_derived_confidence(doc6, self.context)
+        v6, s6 = NarrativeValidator.validate(en6, self.context)
+        self.assertTrue(v6, f"Case 6 failed: {s6.get('errors')}")
+
+        # Case 7: followers => superior performance -> FAIL
+        doc7 = dict(base_clean_doc)
+        doc7["executive_summary"] = ["Instagram tiene superioridad de rendimiento por contar con 50 seguidores frente a 20."]
+        en7 = enrich_narrative_with_derived_confidence(doc7, self.context)
+        v7, s7 = NarrativeValidator.validate(en7, self.context)
+        self.assertFalse(v7)
+        self.assertTrue(any("Audience non-performance lock failed" in e for e in s7["errors"]))
+
+        # Case 8: followers => dominant platform -> FAIL
+        doc8 = dict(base_clean_doc)
+        doc8["executive_summary"] = ["Instagram domina la plataforma con 50 seguidores frente a 20 en Facebook."]
+        en8 = enrich_narrative_with_derived_confidence(doc8, self.context)
+        v8, s8 = NarrativeValidator.validate(en8, self.context)
+        self.assertFalse(v8)
+        self.assertTrue(any("Audience non-performance lock failed" in e for e in s8["errors"]))
+
+        # Case 9: reactions => interactions leadership -> FAIL
+        doc9 = dict(base_clean_doc)
+        doc9["performance_observations"] = ["Instagram lidera en interacciones con 6 reacciones."]
+        en9 = enrich_narrative_with_derived_confidence(doc9, self.context)
+        v9, s9 = NarrativeValidator.validate(en9, self.context)
+        self.assertFalse(v9)
+        self.assertTrue(any("Claim-scope lock failed" in e for e in s9["errors"]))
+
+        # Case 10: reactions => engagement leadership -> FAIL
+        doc10 = dict(base_clean_doc)
+        doc10["performance_observations"] = ["Instagram lidera en engagement con 6 reacciones."]
+        en10 = enrich_narrative_with_derived_confidence(doc10, self.context)
+        v10, s10 = NarrativeValidator.validate(en10, self.context)
+        self.assertFalse(v10)
+        self.assertTrue(any("Claim-scope lock failed" in e for e in s10["errors"]))
+
+        # Case 11: reactions => competitive advantage -> FAIL
+        doc11 = dict(base_clean_doc)
+        doc11["executive_summary"] = ["Instagram muestra una ventaja competitiva en métricas clave."]
+        en11 = enrich_narrative_with_derived_confidence(doc11, self.context)
+        v11, s11 = NarrativeValidator.validate(en11, self.context)
+        self.assertFalse(v11)
+        self.assertTrue(any("Claim-scope lock failed" in e for e in s11["errors"]))
+
+        # Case 12: reactions => overall performance -> FAIL
+        doc12 = dict(base_clean_doc)
+        doc12["executive_summary"] = ["Instagram presenta un mejor desempeño general en la comparativa."]
+        en12 = enrich_narrative_with_derived_confidence(doc12, self.context)
+        v12, s12 = NarrativeValidator.validate(en12, self.context)
+        self.assertFalse(v12)
+        self.assertTrue(any("Claim-scope lock failed" in e or "Multichannel lock failed" in e for e in s12["errors"]))
+
+        # Case 13: unsupported content causality -> FAIL
+        doc13 = dict(base_clean_doc)
+        doc13["performance_observations"] = ["Instagram tuvo más reacciones ya que su contenido fue mejor."]
+        en13 = enrich_narrative_with_derived_confidence(doc13, self.context)
+        v13, s13 = NarrativeValidator.validate(en13, self.context)
+        self.assertFalse(v13)
+        self.assertTrue(any("Causality guard failed" in e for e in s13["errors"]))
+
+        # Case 14: vague coverage without 3/15 -> FAIL
+        doc14 = dict(base_clean_doc)
+        doc14["limitations"] = ["La cobertura entre plataformas es limitada debido a restricciones."]
+        en14 = enrich_narrative_with_derived_confidence(doc14, self.context)
+        v14, s14 = NarrativeValidator.validate(en14, self.context)
+        self.assertFalse(v14)
+        self.assertTrue(any("Limitation preservation lock failed" in e for e in s14["errors"]))
+
+        # Case 15: unavailable metric performance claim -> FAIL
+        doc15 = dict(base_clean_doc)
+        doc15["performance_observations"] = ["El alcance de Instagram superó a Facebook en el periodo."]
+        en15 = enrich_narrative_with_derived_confidence(doc15, self.context)
+        v15, s15 = NarrativeValidator.validate(en15, self.context)
+        self.assertFalse(v15)
+        self.assertTrue(any("Metric allowlist failed" in e for e in s15["errors"]))
+
+        # Case 16: non-comparable ranking -> FAIL
+        doc16 = dict(base_clean_doc)
+        doc16["performance_observations"] = ["Instagram ganó en guardados (SAVES) frente a Facebook."]
+        en16 = enrich_narrative_with_derived_confidence(doc16, self.context)
+        v16, s16 = NarrativeValidator.validate(en16, self.context)
+        self.assertFalse(v16)
+        self.assertTrue(any("Comparability lock failed" in e for e in s16["errors"]))
+
+        # Case 17: budget reallocation -> FAIL
+        doc17 = dict(base_clean_doc)
+        doc17["recommendations"] = [{
+            "text": "Se recomienda mover el presupuesto a Instagram.",
+            "recommendation_type": "REVIEW_PLATFORM_PERFORMANCE",
+            "strength": "OBSERVE",
+            "evidence_refs": ["MC-SIG-7"]
+        }]
+        en17 = enrich_narrative_with_derived_confidence(doc17, self.context)
+        v17, s17 = NarrativeValidator.validate(en17, self.context)
+        self.assertFalse(v17)
+        self.assertTrue(any("Budget reallocation lock failed" in e for e in s17["errors"]))
+
+        # Case 18: overall winner -> FAIL
+        doc18 = dict(base_clean_doc)
+        doc18["executive_summary"] = ["Instagram es el ganador general en este reporte multicanal."]
+        en18 = enrich_narrative_with_derived_confidence(doc18, self.context)
+        v18, s18 = NarrativeValidator.validate(en18, self.context)
+        self.assertFalse(v18)
+        self.assertTrue(any("Multichannel lock failed" in e for e in s18["errors"]))

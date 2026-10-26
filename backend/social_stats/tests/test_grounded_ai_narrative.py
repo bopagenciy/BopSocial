@@ -1048,7 +1048,7 @@ class GroundedContextSchemaMappingTests(TestCase):
 
     def test_prompt_version_is_v4(self):
         """Verify PROMPT_VERSION and CONTEXT_SCHEMA_VERSION (BS-4H / BS-5D)."""
-        self.assertIn(PROMPT_VERSION, ["bs4h-prompt-v4", "bs5d-prompt-v1", "bs5e-prompt-v2"])
+        self.assertIn(PROMPT_VERSION, ["bs4h-prompt-v4", "bs5d-prompt-v1", "bs5e-prompt-v2", "bs5e-prompt-v3"])
         self.assertIn(CONTEXT_SCHEMA_VERSION, ["bs4h-context-v1", "bs4h-context-v2"])
 
     @patch("requests.post")
