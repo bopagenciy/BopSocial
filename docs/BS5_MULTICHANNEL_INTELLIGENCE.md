@@ -884,3 +884,130 @@ Following operator review of phase BS-5E, Phase BS-5E.0A audits and resolves two
   - `QueuedItem` = 3
   - `PeriodicTask` = 17
 - **Provider Call Invariants**: Ollama = 0, OpenAI = 0, Gemini = 0, Anthropic = 0, Meta = 0, Facebook = 0, Instagram = 0.
+
+
+---
+
+## BS-5E.1A — Live Narrative Prompt Hardening & Constrained Generation Contract
+
+### 1. Executive Summary & BS-5E.1 Attempt 1 Audit
+In Phase BS-5E.1, a single controlled live execution attempt was performed using the local small language model (`qwen3.5:9b` via Ollama) targeting `ExecutiveReport #2`. The single call executed under `MAX_PROVIDER_CALLS = 1`:
+- Transport succeeded (HTTP 200).
+- Provider returned valid JSON matching the schema syntax.
+- The output failed deterministic semantic validation across **three** safety trip classes:
+  1. **Metric Availability Framing**: Instagram unavailable metrics (such as `REACH`) were described as active performance observations rather than being strictly restricted to provider limitation statements.
+  2. **Audience-Size Non-Performance Framing**: Follower counts (`FOLLOWERS_TOTAL`: 50 IG vs. 20 FB) were described using comparative performance superiority language (*"superó en rendimiento"*, *"mejor desempeño"*), violating the audience volume vs. performance lock.
+  3. **Mandatory 3/15 Coverage Preservation**: Cross-platform reaction performance claims were asserted without preserving the mandatory explicit coverage disclosure (*"solo 3 de 15 métricas canónicas son actualmente comparables"*).
+- The runtime safety architecture functioned exactly as intended:
+  - **Persistence**: **0 rows** written (`ExecutiveNarrative` count remained strictly 1).
+  - **Retries**: **0 automatic retries** triggered.
+  - **Fallback**: **0 deterministic fallback substitutions** persisted.
+  - The failed attempt remains permanently audited in historical execution logs as Attempt 1 (`FAILED_VALIDATION`).
+
+Phase BS-5E.1A hardens the prompt and context architecture offline so that small local models have substantially less linguistic freedom around governed facts.
+
+---
+
+### 2. Architectural Principle: Constrained Language Compiler
+Instead of relying on abstract negative prohibitions (*"avoid unsupported claims"*), the generation contract moves to **mandatory canonical phrasing patterns**:
+$$	ext{Generative Model Role} = 	ext{Compiler of Approved Facts} \quad (	ext{NOT an Analytics Engine})$$
+
+The LLM is provided with precomputed, evidence-grounded facts and instructed to summarize and organize them using verified linguistic templates.
+
+---
+
+### 3. Core Hardening Contracts
+
+#### A. Approved Facts Architecture
+Seven deterministic, allowlisted facts are injected into `context["approved_facts"]` for multichannel reports:
+1. `FACT-MC-1`: Coverage limitation disclosure (*"La comparación entre plataformas es limitada: solo 3 de 15 métricas canónicas son actualmente comparables."*, refs: `["MC-SIG-8"]`).
+2. `FACT-MC-2`: Audience volume context (*"Instagram registró una audiencia de 50 seguidores frente a 20 en Facebook. Esta diferencia describe tamaño de audiencia y no implica superioridad de rendimiento entre plataformas."*, refs: `["MC-SIG-6"]`).
+3. `FACT-MC-3`: Reactions raw comparison without percentages (*"Instagram registró 6 reacciones frente a 0 en Facebook durante el periodo analizado. Debido a que la línea base observada en Facebook es cero, no se expresa una variación porcentual."*, refs: `["MC-SIG-7"]`).
+4. `FACT-MC-4`: Unavailable metrics limitation statement (*"Diez métricas no están disponibles para una comparación completa con la configuración actual del proveedor, y dos métricas adicionales no son semánticamente comparables entre Facebook e Instagram."*, refs: `["MC-SIG-8"]`).
+5. `FACT-MC-5`: Non-comparable metrics statement (*"SAVES y VIDEO_VIEWS no se comparan directamente entre Facebook e Instagram debido a diferencias en las definiciones y disponibilidad de proveedor."*, refs: `["MC-SIG-9"]`).
+6. `FACT-MC-6`: Provider permissions recommendation (*"Revisar los permisos y capacidades de integración del proveedor para ampliar la cobertura de métricas comparables."*, refs: `["MC-SIG-8"]`).
+7. `FACT-MC-7`: Platform performance review recommendation (*"Revisar el desempeño por plataforma con mayor profundidad a medida que se acumule una muestra más amplia de métricas comparables."*, refs: `["MC-SIG-7"]`).
+
+#### B. Audience Semantic Contract
+`MC-SIG-6` explicitly specifies semantic boundaries in context:
+- `signal_type`: `AUDIENCE_SIZE_DIFFERENCE`
+- `claim_category`: `AUDIENCE_CONTEXT`
+- `allowed_interpretation`: `AUDIENCE_SIZE_ONLY`
+- `forbidden_interpretations`: `["PERFORMANCE_SUPERIORITY", "EFFICIENCY_SUPERIORITY", "OVERALL_WINNER", "CONTENT_QUALITY"]`
+Forbidden terms describing followers include: *superior*, *mejor desempeño*, *mejor rendimiento*, *más efectivo*, *más fuerte*, *ganador*, *dominante*.
+
+#### C. Zero-Baseline Reaction Contract
+When the baseline platform is 0 (Facebook reactions = 0, Instagram reactions = 6), percentage variations (`+600%`, `600%`, `6x better`, `seis veces mejor`) are strictly forbidden. Only raw absolute counts are permitted.
+
+#### D. Unavailable Metric Framing
+Unavailable metrics (`REACH`, `IMPRESSIONS`, `SHARES`, `SAVES`, `VIDEO_VIEWS` under partial permissions) may appear strictly within capability or limitation framing. Any performance or trend verb attached to an unavailable metric triggers immediate validator rejection.
+
+#### E. Mandatory Coverage Disclosure
+Any narrative containing cross-platform comparisons MUST preserve the canonical coverage sentence:
+*"La comparación entre plataformas es limitada: solo 3 de 15 métricas canónicas son actualmente comparables."*
+Enforced via:
+1. Mandatory presence in `limitations`.
+2. Optional structured field `cross_platform_coverage_disclosure` (`comparable_metrics: 3`, `total_metrics: 15`, `status: "LIMITED"`).
+
+#### F. Recommendation Scope Restriction
+Only approved, grounded multichannel recommendations are permitted:
+- `REVIEW_PROVIDER_PERMISSIONS` (refs: `["MC-SIG-8"]`)
+- `REVIEW_PLATFORM_PERFORMANCE` (refs: `["MC-SIG-7"]`)
+- `CONTINUE_COLLECTING_DATA` (refs: `["MC-SIG-9"]` or `["SIG-1"]`)
+Any budget reallocation recommendation (*"move budget"*, *"reasignar presupuesto"*) is strictly forbidden.
+
+---
+
+### 4. Versioning & Context Hash
+
+| Component | Previous Version (BS-5E / BS-5E.0A) | New Version (BS-5E.1A) |
+| :--- | :--- | :--- |
+| **Prompt Version** | `bs5d-prompt-v1` | `bs5e-prompt-v2` |
+| **Output Schema Version** | `bs4h-output-v1` | `bs5e-output-v2` |
+| **Context Schema Version** | `bs4h-context-v2` | `bs4h-context-v2` (retained) |
+| **Approved Facts Count** | 0 (unstructured) | **7 canonical facts** |
+| **Negative Examples** | 0 | **5 explicit FORBIDDEN patterns** |
+| **Context Hash** | `722dc6422a6bc7869f05d1d6c6cf0c352cbbcd060ec01f2b1c47a27d0f738628` | `e4d615700de831ce81c968480226686010b2b38a2b61073ca8bda8588b982905` |
+
+---
+
+### 5. Future Live Execution Identity Freeze
+
+```text
+Client ID: 3
+ExecutiveReport: #2
+Report Source Hash: cb79885ade504aeac72f1bf2854b155be31c33b0c9ce3f0c168c7fc0a38ad148
+Benchmark Hash: 14bb7652b4247a6b98f2265796f1b320987684634a2d3ec27608faf671083012
+Context Hash: e4d615700de831ce81c968480226686010b2b38a2b61073ca8bda8588b982905
+Prompt Version: bs5e-prompt-v2
+Output Schema Version: bs5e-output-v2
+Context Schema Version: bs4h-context-v2
+Language: es
+Provider: ollama
+Model: qwen3.5:9b
+Policy: single_attempt_strict (MAX_PROVIDER_CALLS = 1, fallback_enabled = False)
+Authorization Status: PENDING OPERATOR REVIEW (DO NOT EXECUTE)
+```
+
+---
+
+### 6. Test Suite & Verification Results
+- **First Live Failure Replay**: Tested and **REJECTED** (triggers all 3 original failure classes; validators NOT weakened).
+- **BS-5E.1A Dedicated Tests**: 8 new tests, 69 total tests passing (`test_grounded_multichannel_narrative.py`).
+- **Targeted Multichannel Regression**: 223 tests passing (0 failures, 0 errors, ran in 22.2s).
+- **Full Backend Regression**: 1,083 tests passing (0 failures, 0 errors, ran in 108.2s).
+- **Database Safety Invariants**:
+  - `SocialMetricSnapshot` = 312
+  - `SocialMetricRollup` = 551
+  - `BusinessSignal` = 9
+  - `ExecutiveReport` = 2
+  - `ExecutiveNarrative` = 1
+  - `DailyMetric` = 33
+  - `PostMetric` = 38
+  - `SyncLog` = 8
+  - `UnifiedPost` = 14
+  - `PlatformPublishLog` = 15
+  - `PostQueue` = 2
+  - `QueuedItem` = 3
+  - `PeriodicTask` = 17
+- **Provider Call Invariants**: Ollama = 0, OpenAI = 0, Gemini = 0, Anthropic = 0, Meta = 0, Facebook = 0, Instagram = 0.

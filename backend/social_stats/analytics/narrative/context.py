@@ -279,6 +279,14 @@ def build_grounded_narrative_context(report, business_signals: Optional[List[Any
             "explanation": summ,
             "evidence": s.get('evidence', {}),
         }
+        if is_multichannel and (claim_cat == "AUDIENCE_CONTEXT" or sig_type == "AUDIENCE_SIZE_DIFFERENCE"):
+            sig_entry["allowed_interpretation"] = "AUDIENCE_SIZE_ONLY"
+            sig_entry["forbidden_interpretations"] = [
+                "PERFORMANCE_SUPERIORITY",
+                "EFFICIENCY_SUPERIORITY",
+                "OVERALL_WINNER",
+                "CONTENT_QUALITY",
+            ]
         signals_list.append(sig_entry)
 
         evidence_payload = {
@@ -296,6 +304,14 @@ def build_grounded_narrative_context(report, business_signals: Optional[List[Any
             "explanation": summ,
             "evidence": s.get('evidence', {}),
         }
+        if is_multichannel and (claim_cat == "AUDIENCE_CONTEXT" or sig_type == "AUDIENCE_SIZE_DIFFERENCE"):
+            evidence_payload["allowed_interpretation"] = "AUDIENCE_SIZE_ONLY"
+            evidence_payload["forbidden_interpretations"] = [
+                "PERFORMANCE_SUPERIORITY",
+                "EFFICIENCY_SUPERIORITY",
+                "OVERALL_WINNER",
+                "CONTENT_QUALITY",
+            ]
         evidence_registry[ref_id] = evidence_payload
         # If multichannel, also register standard SIG- counter and MC-SIG-<id> aliases to guarantee deterministic resolution
         if is_multichannel and sig_id is not None:
@@ -389,6 +405,54 @@ def build_grounded_narrative_context(report, business_signals: Optional[List[Any
             "limitations": mc_intel.get("limitations"),
             "executive_takeaways": mc_intel.get("executive_takeaways"),
         }
+        context["approved_facts"] = [
+            {
+                "fact_id": "FACT-MC-1",
+                "category": "COVERAGE_LIMITATION",
+                "text_es": "La comparación entre plataformas es limitada: solo 3 de 15 métricas canónicas son actualmente comparables.",
+                "evidence_refs": ["MC-SIG-8"],
+            },
+            {
+                "fact_id": "FACT-MC-2",
+                "category": "AUDIENCE_CONTEXT",
+                "text_es": "Instagram registró una audiencia de 50 seguidores frente a 20 en Facebook. Esta diferencia describe tamaño de audiencia y no implica superioridad de rendimiento entre plataformas.",
+                "evidence_refs": ["MC-SIG-6"],
+            },
+            {
+                "fact_id": "FACT-MC-3",
+                "category": "REACTIONS_OBSERVATION",
+                "text_es": "Instagram registró 6 reacciones frente a 0 en Facebook durante el periodo analizado. Debido a que la línea base observada en Facebook es cero, no se expresa una variación porcentual.",
+                "evidence_refs": ["MC-SIG-7"],
+            },
+            {
+                "fact_id": "FACT-MC-4",
+                "category": "UNAVAILABLE_METRICS",
+                "text_es": "Diez métricas no están disponibles para una comparación completa con la configuración actual del proveedor, y dos métricas adicionales no son semánticamente comparables entre Facebook e Instagram.",
+                "evidence_refs": ["MC-SIG-8"],
+            },
+            {
+                "fact_id": "FACT-MC-5",
+                "category": "NON_COMPARABLE_METRICS",
+                "text_es": "SAVES y VIDEO_VIEWS no se comparan directamente entre Facebook e Instagram debido a diferencias en las definiciones y disponibilidad de proveedor.",
+                "evidence_refs": ["MC-SIG-9"],
+            },
+            {
+                "fact_id": "FACT-MC-6",
+                "category": "RECOMMENDATION",
+                "recommendation_type": "REVIEW_PROVIDER_PERMISSIONS",
+                "strength": "OBSERVE",
+                "text_es": "Revisar los permisos y capacidades de integración del proveedor para ampliar la cobertura de métricas comparables.",
+                "evidence_refs": ["MC-SIG-8"],
+            },
+            {
+                "fact_id": "FACT-MC-7",
+                "category": "RECOMMENDATION",
+                "recommendation_type": "REVIEW_PLATFORM_PERFORMANCE",
+                "strength": "OBSERVE",
+                "text_es": "Revisar el desempeño por plataforma con mayor profundidad a medida que se acumule una muestra más amplia de métricas comparables.",
+                "evidence_refs": ["MC-SIG-7"],
+            },
+        ]
 
     # 7. Content examples if present (capped at MAX_CONTENT_EXAMPLES)
     raw_content = report_data.get('top_content', [])

@@ -5,7 +5,10 @@ import copy
 from typing import Dict, List, Any
 
 CONTEXT_SCHEMA_VERSION = "bs4h-context-v2"
-PROMPT_VERSION = "bs5d-prompt-v1"
+PROMPT_VERSION_V1 = "bs5d-prompt-v1"
+PROMPT_VERSION_V2 = "bs5e-prompt-v2"
+PROMPT_VERSION = PROMPT_VERSION_V2
+OUTPUT_SCHEMA_VERSION = "bs5e-output-v2"
 
 # Legacy aliases for backward compatibility
 BS4H_CONTEXT_SCHEMA_VERSION = "bs4h-context-v1"
@@ -199,6 +202,23 @@ CANONICAL_EXECUTIVE_NARRATIVE_JSON_SCHEMA: Dict[str, Any] = {
             "minItems": 1,
             "maxItems": 5,
             "description": "Explicit data limitations or permission constraints.",
+        },
+        "cross_platform_coverage_disclosure": {
+            "type": "object",
+            "properties": {
+                "comparable_metrics": {"type": "integer"},
+                "total_metrics": {"type": "integer"},
+                "status": {"type": "string"},
+                "statement": {"type": "string"},
+            },
+            "required": [
+                "comparable_metrics",
+                "total_metrics",
+                "status",
+                "statement",
+            ],
+            "additionalProperties": False,
+            "description": "Optional structured cross-platform coverage disclosure.",
         },
     },
     "required": [

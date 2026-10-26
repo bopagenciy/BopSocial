@@ -324,7 +324,7 @@ class NarrativeValidator:
             return False, {"status": "FAIL", "results": checks, "errors": errors}
 
         # Root-level additionalProperties: false enforcement
-        allowed_root_keys = set(required_keys)
+        allowed_root_keys = set(required_keys) | {"cross_platform_coverage_disclosure"}
         extra_root_keys = set(output.keys()) - allowed_root_keys
         if extra_root_keys:
             errors.append(f"Unexpected extra root keys in output: {', '.join(sorted(extra_root_keys))}")
@@ -333,6 +333,25 @@ class NarrativeValidator:
         if not all(isinstance(output[k], list) for k in required_keys):
             errors.append("All top-level sections must be lists.")
             return False, {"status": "FAIL", "results": checks, "errors": errors}
+
+        # Validate optional structured cross-platform coverage disclosure
+        if "cross_platform_coverage_disclosure" in output:
+            cov_disc = output["cross_platform_coverage_disclosure"]
+            if not isinstance(cov_disc, dict):
+                errors.append("cross_platform_coverage_disclosure must be an object.")
+            else:
+                req_disc_keys = {"comparable_metrics", "total_metrics", "status", "statement"}
+                extra_disc_keys = set(cov_disc.keys()) - req_disc_keys
+                if extra_disc_keys:
+                    errors.append(f"cross_platform_coverage_disclosure has unexpected extra keys: {', '.join(sorted(extra_disc_keys))}.")
+                if not isinstance(cov_disc.get("comparable_metrics"), int):
+                    errors.append("cross_platform_coverage_disclosure.comparable_metrics must be an integer.")
+                if not isinstance(cov_disc.get("total_metrics"), int):
+                    errors.append("cross_platform_coverage_disclosure.total_metrics must be an integer.")
+                if not isinstance(cov_disc.get("status"), str):
+                    errors.append("cross_platform_coverage_disclosure.status must be a string.")
+                if not isinstance(cov_disc.get("statement"), str) or not cov_disc.get("statement").strip():
+                    errors.append("cross_platform_coverage_disclosure.statement must be a non-empty string.")
 
         # Validate executive_summary bounds (minItems: 1, maxItems: 5)
         exec_summary = output["executive_summary"]
@@ -405,6 +424,10 @@ class NarrativeValidator:
         for lim in output.get("limitations", []):
             if isinstance(lim, str):
                 all_text_parts.append(lim)
+        if "cross_platform_coverage_disclosure" in output and isinstance(output["cross_platform_coverage_disclosure"], dict):
+            disc_stmt = output["cross_platform_coverage_disclosure"].get("statement")
+            if isinstance(disc_stmt, str):
+                all_text_parts.append(disc_stmt)
 
         full_text = " ".join(all_text_parts)
         full_text_lower = full_text.lower()
@@ -611,17 +634,19 @@ class NarrativeValidator:
                 break
 
         # Gate B: Comparability Lock on Non-Comparable Metrics (SAVES, VIDEO_VIEWS)
-        for non_comp_name in ["saves", "guardados", "video views", "reproducciones de video", "video_views"]:
-            if non_comp_name in full_text_lower:
-                comp_claim_patterns = [
-                    r"\b(superó|supero|outperformed|ganó|gano|won|mayor rendimiento|mejor desempeño|mejores|mejor|better|fewer|less|más|mas|menos|aumentó frente a)\b"
-                ]
-                for c_pat in comp_claim_patterns:
-                    if re.search(c_pat, full_text_lower):
-                        errors.append(
-                            f"Comparability lock failed: Non-comparable metric '{non_comp_name}' cannot be ranked competitively across platforms."
-                        )
-                        break
+        for sent in all_sentences:
+            s_low = sent.lower()
+            for non_comp_name in ["saves", "guardados", "video views", "reproducciones de video", "video_views"]:
+                if non_comp_name in s_low:
+                    comp_claim_patterns = [
+                        r"\b(superó|supero|outperformed|ganó|gano|won|mayor rendimiento|mejor desempeño|mejores|mejor|better|fewer|less|más|mas|menos|aumentó frente a)\b"
+                    ]
+                    for c_pat in comp_claim_patterns:
+                        if re.search(c_pat, s_low):
+                            errors.append(
+                                f"Comparability lock failed: Non-comparable metric '{non_comp_name}' cannot be ranked competitively across platforms."
+                            )
+                            break
 
         # Gate C: Zero-Baseline Lock (Forbid fabricated percentage when baseline is zero)
         for sent in all_sentences:
@@ -662,8 +687,8 @@ class NarrativeValidator:
                 if "no implica superioridad" in s_low or "no representa superioridad" in s_low or "no significa superioridad" in s_low or "does not imply superior" in s_low:
                     continue
                 aud_perf_patterns = [
-                    r"\b(?:rinde mejor|mejor rendimiento|desempeño superior|superioridad|gana|ganó|superior|eficiencia|calidad superior)\b",
-                    r"\b(?:performs better|better performance|outperformed|superior|wins|won)\b",
+                    r"\b(?:rinde mejor|mejor rendimiento|desempeño superior|superioridad|gana|ganó|superior|eficiencia|calidad superior|más fuerte|mas fuerte|domina|dominante|mejor|más efectivo|mas efectivo)\b",
+                    r"\b(?:performs better|better performance|outperformed|superior|wins|won|stronger|dominant|best)\b",
                 ]
                 for ap_pat in aud_perf_patterns:
                     m = re.search(ap_pat, s_low)
@@ -715,17 +740,23 @@ class NarrativeValidator:
                     break
 
         if is_limited_coverage and has_cross_platform_claim:
-            lim_texts = " ".join(output.get("limitations", [])).lower()
+            lim_texts_list = list(output.get("limitations", []))
+            if "cross_platform_coverage_disclosure" in output and isinstance(output["cross_platform_coverage_disclosure"], dict):
+                stmt = output["cross_platform_coverage_disclosure"].get("statement")
+                if isinstance(stmt, str):
+                    lim_texts_list.append(stmt)
+            lim_texts = " ".join(lim_texts_list).lower()
+
+            has_explicit_ratio = (
+                "3/15" in lim_texts
+                or "3 de 15" in lim_texts
+                or "tres de quince" in lim_texts
+                or "3 of 15" in lim_texts
+                or "three of fifteen" in lim_texts
+            )
             preserves_limitation = (
-                ("limitad" in lim_texts or "cobertura" in lim_texts)
-                and (
-                    "3/15" in lim_texts
-                    or "3 de 15" in lim_texts
-                    or "cobertura" in lim_texts
-                    or "m?trica" in lim_texts
-                    or "metrica" in lim_texts
-                    or "datos" in lim_texts
-                )
+                ("limitad" in lim_texts or "cobertura" in lim_texts or "limited" in lim_texts or "coverage" in lim_texts)
+                and has_explicit_ratio
             )
             if not preserves_limitation:
                 errors.append(

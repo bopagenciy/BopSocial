@@ -54,34 +54,39 @@ class FakeNarrativeProvider(BaseNarrativeProvider):
             if language == "es":
                 valid_payload = {
                     "executive_summary": [
-                        "Durante el periodo analizado, Instagram registr? 50 seguidores frente a 20 en Facebook; esta diferencia corresponde al tama?o de audiencia y no implica superioridad general de rendimiento.",
-                        "La comparaci?n entre plataformas permanece limitada: solo 3 de 15 m?tricas son comparables debido a restricciones de proveedor en Instagram."
+                        "Instagram registró una audiencia de 50 seguidores frente a 20 en Facebook. Esta diferencia describe tamaño de audiencia y no implica superioridad de rendimiento entre plataformas."
                     ],
                     "performance_observations": [
-                        "Instagram registr? 6 reacciones frente a 0 en Facebook durante el per?odo analizado.",
-                        "Dado que la l?nea base de Facebook es cero en reacciones, no se expresa una variaci?n porcentual.",
-                        "SAVES y VIDEO_VIEWS no se comparan directamente entre ambas plataformas por diferencias sem?nticas de proveedor."
+                        "Instagram registró 6 reacciones frente a 0 en Facebook durante el periodo analizado.",
+                        "Debido a que la línea base observada en Facebook es cero, no se expresa una variación porcentual.",
+                        "SAVES y VIDEO_VIEWS no se comparan directamente entre Facebook e Instagram debido a diferencias en las definiciones y disponibilidad de proveedor."
                     ],
                     "recommendations": [
                         {
-                            "text": "Revisar los permisos del proveedor en Instagram para ampliar la disponibilidad de m?tricas comparables entre plataformas.",
+                            "text": "Revisar los permisos y capacidades de integración del proveedor para ampliar la cobertura de métricas comparables.",
                             "recommendation_type": "REVIEW_PROVIDER_PERMISSIONS",
-                            "strength": "CONSIDER",
+                            "strength": "OBSERVE",
                             "confidence": "HIGH",
                             "evidence_refs": [mc_sig_8]
                         },
                         {
-                            "text": "Revisar el rendimiento espec?fico en reacciones observadas en cada plataforma manteniendo la estrategia actual.",
+                            "text": "Revisar el desempeño por plataforma con mayor profundidad a medida que se acumule una muestra más amplia de métricas comparables.",
                             "recommendation_type": "REVIEW_PLATFORM_PERFORMANCE",
-                            "strength": "CONSIDER",
+                            "strength": "OBSERVE",
                             "confidence": "HIGH",
                             "evidence_refs": [mc_sig_7]
                         }
                     ],
                     "limitations": [
-                        "La cobertura de datos entre plataformas es limitada: solo 3 de 15 m?tricas son comparables en este periodo.",
-                        "SAVES y VIDEO_VIEWS no admiten una comparaci?n directa por divergencia sem?ntica entre Facebook e Instagram."
-                    ]
+                        "La comparación entre plataformas es limitada: solo 3 de 15 métricas canónicas son actualmente comparables.",
+                        "Diez métricas no están disponibles para una comparación completa con la configuración actual del proveedor, y dos métricas adicionales no son semánticamente comparables entre Facebook e Instagram."
+                    ],
+                    "cross_platform_coverage_disclosure": {
+                        "comparable_metrics": 3,
+                        "total_metrics": 15,
+                        "status": "LIMITED",
+                        "statement": "La comparación entre plataformas es limitada: solo 3 de 15 métricas canónicas son actualmente comparables."
+                    }
                 }
             else:
                 valid_payload = {
@@ -321,6 +326,7 @@ class FakeNarrativeProvider(BaseNarrativeProvider):
 
         elif mode == "LIMITATION_OMISSION":
             payload = dict(valid_payload)
+            payload.pop("cross_platform_coverage_disclosure", None)
             payload["limitations"] = [
                 "Instagram opera en modo parcial con m?tricas de interacci?n registradas."
             ]
