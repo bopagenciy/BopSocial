@@ -1123,3 +1123,72 @@ Model: qwen3.5:9b
 Policy: single_attempt_strict (MAX_PROVIDER_CALLS = 1, fallback_enabled = False)
 Authorization Status: PENDING OPERATOR REVIEW (DO NOT EXECUTE)
 ```
+
+---
+
+## BS-5E.1F — Ollama System Prompt Delivery Remediation
+
+### 1. Root Cause Analysis (Discovered in BS-5E.1E)
+
+In phases BS-5E.1B (Attempt 2) and BS-5E.1D (Attempt 3), live Ollama executions produced identical model telemetry (`input_tokens: 2,050`, `output_tokens: 514`, SHA256 `bc5c0ff15a87ce4909ee84fec1216de7ba37f2b9476327e11f2df48d2f84c4d4`) and repeated the same forbidden competitive phrases (`"ventaja competitiva..."`, `"lidera en interacciones"`).
+
+Architectural inspection of Ollama model metadata via `/api/show` revealed the definitive root cause:
+- **Model Modelfile Template**: The installed `qwen3.5:9b` (as well as `qwen3.5-32k` and `qwen3.5-64k`) contains:
+  ```text
+  TEMPLATE {{ .Prompt }}
+  ```
+  **There is no `{{ .System }}` variable in the template.**
+- **Ollama Payload Behavior**: When `OllamaNarrativeProvider.generate()` submitted `payload = {"system": system_prompt, "prompt": user_prompt}`, Ollama's Go template renderer interpolated only `{{ .Prompt }}`. The separate `system` payload key was **completely discarded** by the Ollama server runtime.
+- **Resulting Defect**: The LLM evaluated only `user_prompt` (which was 100% identical in Attempt 2 and Attempt 3). At `temperature: 0.0`, identical inputs deterministically generated the identical output to the character. The system prompt instructions and Section J/K negative examples were never visible to the model.
+
+---
+
+### 2. Provider Delivery Fix (`compose_ollama_prompt`)
+
+To guarantee deterministic delivery of system instructions, safety locks, and negative examples across all Ollama models regardless of Modelfile template variations:
+1. **Plaintext Composition**: Implemented `compose_ollama_prompt(system_prompt, user_prompt)`:
+   ```text
+   ===== SYSTEM INSTRUCTIONS =====
+   <system_prompt>
+
+   ===== USER / GROUNDED CONTEXT =====
+   <user_prompt>
+   ```
+2. **Elimination of Duplicate System Risk**: The outgoing request now sets `payload["prompt"] = composed_prompt` and omits `payload["system"]`. This prevents accidental double-delivery on models whose templates do support `{{ .System }}`.
+3. **Context Window Configuration**: Set `options.num_ctx = 32768` (well within the model's native 262,144 context length), providing ~18k tokens of generation headroom for the ~14.6k token composed prompt.
+4. **Preserved Semantics**:
+   - `PROMPT_VERSION = "bs5e-prompt-v3"` (strictly preserved; no prompt v4).
+   - `OUTPUT_SCHEMA_VERSION = "bs5e-output-v2"`.
+   - `temperature = 0.0`.
+   - 0 modifications to validators or approved facts.
+
+---
+
+### 3. Verification & Test Metrics
+
+- **Unit Tests**: `OllamaSystemPromptDeliveryTests` added (7 dedicated tests covering ordering, sentinels, empty handling, v2 vs v3 hash variance, v3 rule visibility, approved facts visibility, and mocked request payload).
+- **Targeted Multichannel Suite**: **78 passing** (including 7 delivery tests).
+- **Full Backend Regression Suite**: **1,092 passing** (100% pass rate, 0 failures, 0 errors).
+- **Database Baseline**: All 13 canonical tables strictly invariant.
+
+---
+
+### 4. Final Identity Freeze for Future Controlled Live Execution
+
+```text
+Client ID: 3 (Bop Agencia)
+ExecutiveReport ID: 2
+Report Source Hash: cb79885ade504aeac72f1bf2854b155be31c33b0c9ce3f0c168c7fc0a38ad148
+Benchmark Hash: 14bb7652b4247a6b98f2265796f1b320987684634a2d3ec27608faf671083012
+Context Hash: e4d615700de831ce81c968480226686010b2b38a2b61073ca8bda8588b982905
+Prompt Version: bs5e-prompt-v3
+Output Schema Version: bs5e-output-v2
+Context Schema Version: bs4h-context-v2
+Provider: ollama
+Model: qwen3.5:9b
+Model-Visible Prompt SHA256: ebca7a24c0eea1b1940bfeb08668c15c238489ebc246945deb288708709657f6
+Configured num_ctx: 32768
+Configured temperature: 0.0
+Policy: single_attempt_strict (MAX_PROVIDER_CALLS = 1, fallback_enabled = False)
+Authorization Status: PENDING OPERATOR REVIEW (DO NOT EXECUTE)
+```

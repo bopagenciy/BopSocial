@@ -1511,3 +1511,154 @@ class MultichannelValidatorPrecisionTests(TestCase):
         v18, s18 = NarrativeValidator.validate(en18, self.context)
         self.assertFalse(v18)
         self.assertTrue(any("Multichannel lock failed" in e for e in s18["errors"]))
+
+class OllamaSystemPromptDeliveryTests(TestCase):
+    """
+    BS-5E.1F Regression & Delivery Integrity Suite.
+    Guarantees that OllamaNarrativeProvider embeds system instructions directly
+    into the model-visible 'prompt' field so that models with 'TEMPLATE {{ .Prompt }}'
+    (such as qwen3.5:9b) never discard system rules or negative constraints.
+    """
+
+    def setUp(self):
+        from social_stats.models import ExecutiveReport
+        self.report = ExecutiveReport.objects.filter(id=2).first()
+        if self.report:
+            from social_stats.analytics.narrative.context import build_grounded_narrative_context
+            self.context = build_grounded_narrative_context(self.report)
+        else:
+            self.context = {}
+
+    def test_compose_ollama_prompt_sentinels_and_ordering(self):
+        from social_stats.analytics.narrative.providers.ollama import compose_ollama_prompt
+        sys_sentinel = "SYSTEM_SENTINEL_ABC"
+        usr_sentinel = "USER_SENTINEL_XYZ"
+
+        composed = compose_ollama_prompt(sys_sentinel, usr_sentinel)
+
+        self.assertIn(sys_sentinel, composed)
+        self.assertIn(usr_sentinel, composed)
+        self.assertIn("===== SYSTEM INSTRUCTIONS =====", composed)
+        self.assertIn("===== USER / GROUNDED CONTEXT =====", composed)
+        self.assertLess(composed.find(sys_sentinel), composed.find(usr_sentinel))
+
+    def test_compose_ollama_prompt_empty_and_none_handling(self):
+        from social_stats.analytics.narrative.providers.ollama import compose_ollama_prompt
+        self.assertEqual(compose_ollama_prompt("", "USER_ONLY"), "USER_ONLY")
+        self.assertEqual(compose_ollama_prompt("SYS_ONLY", ""), "SYS_ONLY")
+        self.assertEqual(compose_ollama_prompt(None, "USER_ONLY"), "USER_ONLY")
+        self.assertEqual(compose_ollama_prompt("SYS_ONLY", None), "SYS_ONLY")
+        self.assertEqual(compose_ollama_prompt("", ""), "")
+
+    def test_system_drop_regression_payload_structure(self):
+        from social_stats.analytics.narrative.providers.ollama import OllamaNarrativeProvider, compose_ollama_prompt
+        provider = OllamaNarrativeProvider()
+        self.assertEqual(provider.num_ctx, 32768)
+
+        sys_p = "MANDATORY_SYSTEM_RULE_NO_COMPETITIVE_CLAIMS"
+        usr_p = "CANONICAL_USER_EVIDENCE"
+        composed = compose_ollama_prompt(sys_p, usr_p)
+
+        self.assertIn(sys_p, composed)
+        self.assertIn(usr_p, composed)
+
+    def test_v2_vs_v3_model_visible_hashes_differ(self):
+        import hashlib
+        from social_stats.analytics.narrative.prompts import get_system_prompt_v2, get_system_prompt_v3, build_user_prompt
+        from social_stats.analytics.narrative.providers.ollama import compose_ollama_prompt
+
+        if not self.context:
+            return
+
+        usr_prompt = build_user_prompt(self.context)
+        sys_v2 = get_system_prompt_v2("es", "EXECUTIVE")
+        sys_v3 = get_system_prompt_v3("es", "EXECUTIVE")
+
+        composed_v2 = compose_ollama_prompt(sys_v2, usr_prompt)
+        composed_v3 = compose_ollama_prompt(sys_v3, usr_prompt)
+
+        hash_v2 = hashlib.sha256(composed_v2.encode("utf-8")).hexdigest()
+        hash_v3 = hashlib.sha256(composed_v3.encode("utf-8")).hexdigest()
+
+        self.assertNotEqual(hash_v2, hash_v3)
+        self.assertIn("ventaja competitiva", composed_v3)
+        self.assertNotIn("ventaja competitiva", composed_v2)
+
+    def test_v3_negative_rules_visible_in_composed_prompt(self):
+        from social_stats.analytics.narrative.prompts import get_system_prompt_v3, build_user_prompt
+        from social_stats.analytics.narrative.providers.ollama import compose_ollama_prompt
+
+        if not self.context:
+            return
+
+        usr_prompt = build_user_prompt(self.context)
+        sys_v3 = get_system_prompt_v3("es", "EXECUTIVE")
+        composed_v3 = compose_ollama_prompt(sys_v3, usr_prompt)
+
+        # Negative rules must be physically present in model-visible prompt
+        self.assertIn("ventaja competitiva", composed_v3)
+        self.assertIn("lidera en interacciones", composed_v3)
+        self.assertIn("lidera en engagement", composed_v3)
+        self.assertIn("dominancia", composed_v3)
+        self.assertIn("ganador general", composed_v3)
+        self.assertIn("mover presupuesto", composed_v3)
+
+    def test_approved_facts_and_coverage_visible_in_composed_prompt(self):
+        from social_stats.analytics.narrative.prompts import get_system_prompt_v3, build_user_prompt
+        from social_stats.analytics.narrative.providers.ollama import compose_ollama_prompt
+
+        if not self.context:
+            return
+
+        usr_prompt = build_user_prompt(self.context)
+        sys_v3 = get_system_prompt_v3("es", "EXECUTIVE")
+        composed_v3 = compose_ollama_prompt(sys_v3, usr_prompt)
+
+        # Grounded context and facts must be present
+        self.assertIn("FACT-MC-1", composed_v3)
+        self.assertIn("FACT-MC-7", composed_v3)
+        self.assertIn("3/15", composed_v3)
+        self.assertIn("FOLLOWERS_TOTAL", composed_v3)
+
+    def test_mocked_ollama_generate_payload_options(self):
+        from unittest.mock import patch, MagicMock
+        from django.conf import settings
+        from social_stats.analytics.narrative.providers.ollama import OllamaNarrativeProvider
+
+        if not self.context:
+            return
+
+        provider = OllamaNarrativeProvider(model_name="qwen3.5:9b")
+        captured_payload = {}
+
+        def mock_post(url, **kwargs):
+            nonlocal captured_payload
+            captured_payload = kwargs.get("json", {})
+            mock_resp = MagicMock()
+            mock_resp.status_code = 200
+            mock_resp.json.return_value = {
+                "response": '{"executive_summary": ["Test"], "performance_observations": ["Test"], "recommendations": [], "limitations": ["Test"]}',
+                "prompt_eval_count": 2500,
+                "eval_count": 100,
+                "total_duration": 1000000000,
+                "done": True,
+            }
+            return mock_resp
+
+        with patch("requests.post", side_effect=mock_post):
+            orig_setting = getattr(settings, "ENABLE_LIVE_AI_NARRATIVE", False)
+            try:
+                settings.ENABLE_LIVE_AI_NARRATIVE = True
+                result = provider.generate(self.context, language="es", style="EXECUTIVE")
+            finally:
+                settings.ENABLE_LIVE_AI_NARRATIVE = orig_setting
+
+        self.assertEqual(captured_payload["model"], "qwen3.5:9b")
+        self.assertNotIn("system", captured_payload, "Ollama payload must NOT include separate 'system' field to avoid double delivery")
+        self.assertIn("prompt", captured_payload)
+        self.assertIn("===== SYSTEM INSTRUCTIONS =====", captured_payload["prompt"])
+        self.assertIn("===== USER / GROUNDED CONTEXT =====", captured_payload["prompt"])
+        self.assertEqual(captured_payload["options"]["temperature"], 0.0)
+        self.assertEqual(captured_payload["options"]["num_ctx"], 32768)
+        self.assertIsNotNone(result)
+        self.assertEqual(result.token_usage["input_tokens"], 2500)

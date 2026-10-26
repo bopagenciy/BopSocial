@@ -29,6 +29,32 @@ def _clean_ollama_response_text(raw_text: str) -> str:
     return s
 
 
+def compose_ollama_prompt(system_prompt: str, user_prompt: str) -> str:
+    """
+    Composes system instructions and grounded user context into a single model-visible
+    prompt string with clear deterministic separators.
+
+    Guarantees that all system instructions, safety locks, and negative examples reach
+    the model even when the Ollama Modelfile template only references '{{ .Prompt }}'.
+    Omits separate payload['system'] in outgoing requests to eliminate duplicate delivery
+    risk on models whose templates do support '{{ .System }}'.
+    """
+    sys_part = (system_prompt or "").strip()
+    usr_part = (user_prompt or "").strip()
+
+    if not sys_part:
+        return usr_part
+    if not usr_part:
+        return sys_part
+
+    return (
+        "===== SYSTEM INSTRUCTIONS =====\n"
+        f"{sys_part}\n\n"
+        "===== USER / GROUNDED CONTEXT =====\n"
+        f"{usr_part}"
+    )
+
+
 class OllamaNarrativeProvider(BaseNarrativeProvider):
     """
     Adapter for local Ollama models.
@@ -50,6 +76,7 @@ class OllamaNarrativeProvider(BaseNarrativeProvider):
         self.host = (configured_host or "http://host.docker.internal:11434").rstrip("/")
         self.mock_mode = kwargs.get("mock_mode")
         self.timeout = getattr(settings, "OLLAMA_TIMEOUT_SECONDS", 90)
+        self.num_ctx = getattr(settings, "OLLAMA_NUM_CTX", 32768)
 
     def generate(
         self,
@@ -63,16 +90,17 @@ class OllamaNarrativeProvider(BaseNarrativeProvider):
 
         system_prompt = get_system_prompt(language=language, style=style)
         user_prompt = build_user_prompt(context=context)
+        composed_prompt = compose_ollama_prompt(system_prompt, user_prompt)
 
         payload = {
             "model": self.model_name or "qwen3.5:9b",
-            "system": system_prompt,
-            "prompt": user_prompt,
+            "prompt": composed_prompt,
             "format": LLM_EXECUTIVE_NARRATIVE_JSON_SCHEMA,
             "stream": False,
             "think": False,
             "options": {
                 "temperature": 0.0,
+                "num_ctx": self.num_ctx,
             },
         }
 
