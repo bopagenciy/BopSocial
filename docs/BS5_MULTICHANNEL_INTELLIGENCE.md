@@ -1216,8 +1216,8 @@ Authorization Status: CLOSED / EXECUTED IN BS-5E.1G
 1. **JSON Parsing & Structural Schema (`bs5e-output-v2`)**: **PASS** (100% compliant JSON object, all required sections present).
 2. **Confidence Enrichment & Calculation**: **PASS** (all 4 recommendation items enriched with derived confidence matching source signal levels: `HIGH`).
 3. **Audience Limitation Compliance**: **PASS** (Follower counts strictly contextualized as audience volume; no superiority/efficiency claims attached).
-4. **Volume vs Efficiency Isolation**: **PASS** (Reactions correctly scoped to exact 6 vs 0 values; zero ungrounded percentage shifts).
-5. **Non-Comparable Metric Safeguards**: **PASS** (Saves, Reach, Video Views, Engagement Total correctly reported as non-comparable or unavailable with zero cross-platform rankings).
+4. **Volume vs Efficiency Isolation**: **PASS** (Reactions correctly scoped to exact IG=6 vs FB=0 values; zero ungrounded percentage shifts).
+5. **Non-Comparable Metric Safeguards**: **PASS** (Saves and Video Views correctly identified as NON_COMPARABLE; Reach and Engagement Total correctly identified as UNAVAILABLE; zero cross-platform rankings emitted).
 6. **Data Limitation Disclosure**: **PASS** (Explicit disclosure of 3 of 15 metrics coverage and Instagram PARTIAL mode).
 7. **Competitive Scope Restriction**: **PASS** (0 ungrounded broad claims; `"ventaja competitiva"` and `"lidera en interacciones"` completely eliminated).
 8. **Causality & Fact Grounding**: **PASS** (0 speculative causality phrases, 100% factual grounding against validated report signals).
@@ -1316,7 +1316,43 @@ Phase BS-5F completes the formal closure of the entire BS-5 Multichannel Intelli
                            [Frontend Dashboard (AnalyticsWorkspace.jsx)]
 ```
 
-### 4. Release-Readiness Matrix
+### 4. Canonical Signal Truth & Semantic Taxonomy Reconciliation (BS-5F.0A)
+
+To prevent factual drift before merge and tagging, the authoritative PostgreSQL database, ExecutiveReport #2, ExecutiveNarrative #2, and benchmark `14bb7652b4247a6b98f2265796f1b320987684634a2d3ec27608faf671083012` were reconciled:
+
+#### A. Authoritative Multichannel Comparison Table
+| Metric | Facebook | Instagram | Compatibility | Status | Winner | Reason Code |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| `FOLLOWERS_TOTAL` | 20.0 | 50.0 | `DIRECT` | `AVAILABLE` | `NO_WINNER` | `NON_RANKABLE_METRIC` (volume gauge only) |
+| `REACTIONS` | 0.0 | 6.0 | `DIRECT` | `AVAILABLE` | `instagram` | `DIRECTLY_COMPARABLE` (`zero_baseline=True`) |
+| `COMMENTS` | 0.0 | 0.0 | `DIRECT` | `AVAILABLE` | `TIE` | `ZERO_BASELINE` (zero tie, non-actionable) |
+| `SAVES` | None | None | `NON_COMPARABLE` | `UNAVAILABLE` | `NO_WINNER` | `METRIC_NOT_EQUIVALENT` (FB has no public post save) |
+| `VIDEO_VIEWS` | None | None | `NON_COMPARABLE` | `UNAVAILABLE` | `NO_WINNER` | `METRIC_NOT_EQUIVALENT` (FB 3s vs IG Reel play/loop) |
+| `REACH` | None | None | `CONDITIONAL` | `UNAVAILABLE` | `UNAVAILABLE` | `PROVIDER_PARTIAL` (unique reach unavailable) |
+| `AVERAGE_DAILY_REACH` | None | None | `DIRECT` | `UNAVAILABLE` | `UNAVAILABLE` | `PROVIDER_PARTIAL` |
+| `IMPRESSIONS` | None | None | `CONDITIONAL` | `UNAVAILABLE` | `UNAVAILABLE` | `PROVIDER_PARTIAL` |
+| `FOLLOWERS_NET_CHANGE` | None | None | `DIRECT` | `UNAVAILABLE` | `UNAVAILABLE` | `PROVIDER_PARTIAL` |
+| `PROFILE_VIEWS` | None | None | `CONDITIONAL` | `UNAVAILABLE` | `UNAVAILABLE` | `PROVIDER_PARTIAL` |
+| `CLICKS_TOTAL` | None | None | `CONDITIONAL` | `UNAVAILABLE` | `UNAVAILABLE` | `PROVIDER_PARTIAL` |
+| `ENGAGEMENT_TOTAL` | None | None | `CONDITIONAL` | `UNAVAILABLE` | `UNAVAILABLE` | `COMPONENT_UNAVAILABLE` (missing `SHARES` component) |
+| `SHARES` | None | None | `CONDITIONAL` | `UNAVAILABLE` | `UNAVAILABLE` | `PROVIDER_PARTIAL` |
+| `VIDEO_WATCH_TIME` | None | None | `DIRECT` | `UNAVAILABLE` | `UNAVAILABLE` | `PROVIDER_PARTIAL` |
+| `VIDEO_AVG_WATCH_TIME` | None | None | `DIRECT` | `UNAVAILABLE` | `UNAVAILABLE` | `PROVIDER_PARTIAL` |
+
+#### B. Canonical BusinessSignals (IDs 6–9)
+- **Signal #6 (`AUDIENCE_SIZE_DIFFERENCE`)**: Metric `FOLLOWERS_TOTAL`, Facebook = 20.0, Instagram = 50.0, Winner = `NO_WINNER`. Audience volume indicator; no outperformance implied.
+- **Signal #7 (`PLATFORM_METRIC_OUTPERFORMANCE`)**: Metric `REACTIONS`, Facebook = 0.0, Instagram = 6.0, Winner = `Instagram`. Direct performance outperformance with zero baseline.
+- **Signal #8 (`CROSS_PLATFORM_DATA_LIMITATION`)**: 3/15 comparable metrics; 12 limited metrics (10 unavailable: 9 `PROVIDER_PARTIAL` + 1 `COMPONENT_UNAVAILABLE`, and 2 non-comparable: `METRIC_NOT_EQUIVALENT`).
+- **Signal #9 (`CROSS_PLATFORM_METRIC_NON_COMPARABLE`)**: 2 non-comparable metrics (`SAVES`, `VIDEO_VIEWS`) due to structural semantic disparity.
+
+#### C. Preservation of BS-5A Semantic Taxonomy
+The distinction between `UNAVAILABLE` and `NON_COMPARABLE` is strictly preserved:
+- `NON_COMPARABLE`: Structural semantic disparity prevents direct mathematical comparison regardless of data availability (`SAVES`, `VIDEO_VIEWS`).
+- `UNAVAILABLE`: Metric has valid or conditional comparison logic in the registry, but required source data or components are absent under current permissions (`REACH`, `ENGAGEMENT_TOTAL`).
+
+---
+
+### 5. Release-Readiness Matrix
 | Component / Dimension | Criteria | Status | Notes |
 | :--- | :--- | :--- | :--- |
 | **Data Integrity** | All 13 canonical tables invariant | **READY** | Snapshot=312, Rollup=551, Signal=9, Report=2, Narrative=2 |
@@ -1331,7 +1367,7 @@ Phase BS-5F completes the formal closure of the entire BS-5 Multichannel Intelli
 | **Security & Privacy** | Multi-tenant isolation & safe logging | **READY** | 0 token/credential leaks, tenant-scoped queries |
 | **Operational Control**| No unmonitored background automation | **READY** | PeriodicTask=17 invariant, narrative generation manual/gated |
 
-### 5. Recommended Release Tag
+### 6. Recommended Release Tag
 - **Tag**: `v0.9.0-bs5`
 - **Release Title**: `Bop Social Milestone BS-5: Multichannel Social Intelligence & Grounded Executive Narrative`
 - **Status**: Ready for operator merge and tagging.

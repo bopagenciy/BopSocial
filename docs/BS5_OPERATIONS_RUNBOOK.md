@@ -10,7 +10,7 @@ The Multichannel Intelligence subsystem of Bop Social delivers deterministic, mu
 2. **Missing vs. Zero**: Missing or unavailable telemetry evaluates to `None` and comparison status `UNAVAILABLE`. It is never converted into an artificial `0.0`.
 3. **Audience Limitation**: Followers and Page Likes represent raw audience capacity. They are strictly volume gauges (`ComparisonDirection.NEUTRAL`) and never imply competitive efficiency or outperformance.
 4. **Volume vs. Efficiency**: Reactions, comments, and shares are volume metrics. Cross-platform comparisons must not fabricate percentage shifts when baseline values are zero or components are unavailable.
-5. **Non-Comparable Metrics**: Metrics with divergent provider semantics (`SAVES`, `REACH`, `VIDEO_VIEWS`, `ENGAGEMENT_TOTAL`) evaluate to `NON_COMPARABLE` or `UNAVAILABLE` under degraded modes (`Instagram PARTIAL`).
+5. **Non-Comparable vs. Unavailable Metrics**: Metrics with divergent platform definitions (`SAVES`, `VIDEO_VIEWS`) are registered as `ComparisonCompatibility.NON_COMPARABLE` and evaluate to `METRIC_NOT_EQUIVALENT` (never competitively ranked). Metrics requiring full component composition (`ENGAGEMENT_TOTAL`) or non-aggregated unique periods (`REACH`) are `ComparisonCompatibility.CONDITIONAL` and evaluate to status `UNAVAILABLE` under degraded modes (`Instagram PARTIAL`).
 6. **Strict Gating**: Live AI narrative generation operates under `single_attempt_strict` (`MAX_PROVIDER_CALLS = 1`, `fallback_enabled = False`). Automatic retries and speculative completions are forbidden.
 7. **Multi-Tenant Isolation**: All operations, queries, and APIs strictly filter by `client_id`. Cross-tenant data access is blocked at the ORM and API middleware layers.
 
@@ -111,9 +111,13 @@ print('PeriodicTasks:', PeriodicTask.objects.count())
 Baseline invariant values:
 - `SocialMetricSnapshot`: 312
 - `SocialMetricRollup`: 551
-- `BusinessSignal`: 9 (4 multichannel signals: IDs 6, 7, 8, 9)
-- `ExecutiveReport`: 2 (Report #2 is multichannel)
-- `ExecutiveNarrative`: 2 (Narrative #2 is multichannel)
+- `BusinessSignal`: 9 (Single-platform IDs 1–5; Multichannel IDs 6–9)
+  - **Signal #6** (`AUDIENCE_SIZE_DIFFERENCE`): `FOLLOWERS_TOTAL` FB=20.0, IG=50.0 (Winner: `NO_WINNER`, volume gauge)
+  - **Signal #7** (`PLATFORM_METRIC_OUTPERFORMANCE`): `REACTIONS` FB=0.0, IG=6.0 (Winner: `Instagram`, outperformance)
+  - **Signal #8** (`CROSS_PLATFORM_DATA_LIMITATION`): Coverage 3/15 metrics (10 unavailable metrics due to `PROVIDER_PARTIAL` / `COMPONENT_UNAVAILABLE`)
+  - **Signal #9** (`CROSS_PLATFORM_METRIC_NON_COMPARABLE`): 2 non-comparable metrics (`SAVES`, `VIDEO_VIEWS`) due to `METRIC_NOT_EQUIVALENT`
+- `ExecutiveReport`: 2 (Report #2 is multichannel; Source Hash: `cb79885a...`, Benchmark Hash: `14bb7652...`)
+- `ExecutiveNarrative`: 2 (Narrative #2 is multichannel; Status: `VALIDATED`, Provider: `ollama`, Model: `qwen3.5:9b`)
 - `PeriodicTask`: 17
 
 ---
