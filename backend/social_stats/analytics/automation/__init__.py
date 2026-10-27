@@ -12,7 +12,7 @@ from .constants import (
 )
 from .eligibility import evaluate_intelligence_automation_eligibility, EligibilityResult
 from .freshness import evaluate_tenant_freshness, FreshnessResult
-from .identity import compute_execution_identity
+from .identity import compute_block_state_hash, compute_execution_identity
 from .locking import ConcurrencyLockError, SingleFlightLock
 from .orchestrator import execute_intelligence_automation, preview_intelligence_automation
 from .period import (
@@ -36,6 +36,7 @@ __all__ = [
     "SingleFlightLock",
     "ConcurrencyLockError",
     "compute_execution_identity",
+    "compute_block_state_hash",
     "calculate_reporting_period",
     "calculate_next_due_datetime",
     "is_tenant_due",

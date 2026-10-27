@@ -213,10 +213,11 @@ If the controlled pilot activation needs to be safely reverted or disabled witho
 2. **Disable Pilot Discovery PeriodicTask**:
    ```python
    from django_celery_beat.models import PeriodicTask
-   PeriodicTask.objects.filter(name="intelligence-automation-daily-discovery").update(enabled=False)
+   PeriodicTask.objects.filter(name="intelligence-automation-discovery").update(enabled=False)
    ```
-3. **Leave Execution History Intact**:
-   - Do NOT delete `IntelligenceAutomationRun` rows. They serve as canonical immutable audit records.
+3. **Historical Run Immutability Invariant (BS-6B.0C)**:
+   - Do NOT delete or modify `IntelligenceAutomationRun` rows (including terminal `BLOCKED` rows). They serve as canonical immutable audit records.
+   - Any future schema evolution or fingerprinting (such as `block_state_hash`) is derived dynamically in memory and does not mutate historical rows.
 4. **Zero Provider Impact**:
    - Rollback operations require zero external network or LLM calls.
 

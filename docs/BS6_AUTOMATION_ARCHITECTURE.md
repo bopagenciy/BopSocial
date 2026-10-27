@@ -261,17 +261,25 @@ python manage.py run_intelligence_automation \
 - `provider_call_budget`: `1`
 - `max_retry_count`: `0`
 
-### 10.4 Approval Model Design & Future Evolution (BS-6C Roadmap)
-In the current baseline, operator approval is enforced at the config level (`require_operator_approval=True`). This produces `OPERATOR_APPROVAL_REQUIRED` on scheduled runs and blocks unapproved narrative generation.
-For BS-6C, the approval model will evolve to support **run-level or stage-level approval**:
-- A scheduled run executes data synthesis (stages 1-6) and transitions to `AWAITING_APPROVAL` at the narrative stage.
-- An operator reviews the generated report in the dashboard and clicks "Approve Narrative Generation", which releases the stage lock for that specific `run_id` without requiring `require_operator_approval` to be permanently disabled on the config.
+### 10.4 Historical Run Immutability & Schema Evolution Contract (BS-6B.0C)
+To safeguard audit trail veracity and regulatory compliance:
+1. **Historical Immutability Invariant**: Historical `IntelligenceAutomationRun` rows (including terminal `BLOCKED`, `COMPLETED`, or `FAILED` runs) represent immutable historical facts. Core attributes—including `id`, `client_id`, `period_start`, `period_end`, `pipeline_version`, `execution_identity`, `trigger_type`, `status`, `current_stage`, `started_at`, `finished_at`, `error_code`, `error_message_safe`, `report_id`, and `narrative_id`—are strictly read-only after creation and must never be mutated or rewritten.
+2. **Schema & Logic Evolution**: As pipeline business logic evolves (e.g. the addition of fingerprint hashes like `block_state_hash`), the discovery scanner and runner must **dynamically derive** missing metadata on-the-fly from existing immutable fields (such as `error_code`, stored freshness details, and config flags) rather than running destructive backfill mutations across historical records.
+3. **Attempt Numbering Monotonicity**: Sequential attempts for a given execution identity record a deterministic, monotonic `attempt_number` in `run.metadata['attempt_number']`. Legacy runs lacking this metadata implicitly represent earlier attempts without retroactively mutating their records.
+
+### 10.5 Approval Model Design & Lock/Resume Invariants (BS-6C Roadmap)
+In the current baseline (BS-6A through BS-6B.0C), operator approval is enforced at the configuration and eligibility boundary (`require_operator_approval=True`). When approval is required for scheduled execution, the run terminates safely with `status='BLOCKED'` and `error_code='OPERATOR_APPROVAL_REQUIRED'`.
+
+For Phase BS-6C, the approval workflow evolves to support explicit approval-pending states with rigorous locking semantics:
+1. **Advisory Lock Release on Pause**: PostgreSQL session advisory locks are session-bound and must NEVER be held while waiting for asynchronous human input. When a run enters an approval-pending state, all session advisory locks are released immediately so worker resources remain unblocked.
+2. **Lock Reacquisition on Resume**: Resuming execution after operator approval requires reacquiring the single-flight advisory lock. If another process is currently running or holds the lock, resume execution fails closed.
+3. **Active State Uniqueness**: If an explicit `AWAITING_APPROVAL` status choice is added to `IntelligenceAutomationRun.status`, it must be incorporated into the database-level partial unique constraint (`unique_active_intelligence_automation_identity`). This guarantees that while a tenant run is awaiting human review, duplicate active runs cannot be scheduled or initiated.
 
 ---
 
 ## 11. Verification Matrix
 
-The test matrix validates all BS-6A, BS-6A.1, BS-6B, BS-6B.0A, and BS-6B.0B invariants across 11 dedicated test modules:
+The test matrix validates all BS-6A, BS-6A.1, BS-6B, BS-6B.0A, BS-6B.0B, and BS-6B.0C invariants across 12 dedicated test modules:
 1. `test_intelligence_automation_models.py` (Models, choices, defaults, active constraints)
 2. `test_intelligence_automation_period.py` (Timezones, calendar boundaries, DST transitions)
 3. `test_intelligence_automation_eligibility.py` (Fail-closed gates, freshness rules, budget limits)
@@ -283,5 +291,6 @@ The test matrix validates all BS-6A, BS-6A.1, BS-6B, BS-6B.0A, and BS-6B.0B inva
 9. `test_intelligence_automation_scheduler_pilot.py` (Discovery scanner, cadence, due calculation, gate blocking)
 10. `test_intelligence_automation_timezone_alignment.py` (Timezone conversion, DST spring/fall, missed-tick recovery, multi-timezone isolation, row-storm prevention)
 11. `test_intelligence_automation_blocked_reactivation.py` (Material block state fingerprint, safe reactivation, attempt sequencing, 96-tick storm prevention)
+12. `test_intelligence_automation_audit_immutability.py` (Row immutability, legacy dynamic derivation, monotonic attempt numbering, lock release/reacquisition on resume)
 
-**Result**: 90 passed in 3.70s. Full backend test suite: **1,182 passed** in 130.9s with zero regressions. Frontend test suite: **32 suites, 282 tests passed** in 34.1s.
+**Result**: 100 passed in 3.33s. Full backend test suite: **1,192 passed** with zero regressions. Frontend test suite: **32 suites, 282 tests passed** in 34.1s.

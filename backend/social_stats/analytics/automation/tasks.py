@@ -142,15 +142,28 @@ def discover_and_enqueue_due_intelligence_automations(dry_run: bool = True) -> D
                 dry_run=True,
             )
 
-            # Extract stored block_state_hash from previous run's metadata
+            # Extract stored block_state_hash from previous run's metadata, or derive it from stored audit fields
             stored_metadata = latest_blocked.metadata or {}
             stored_hash = stored_metadata.get("block_state_hash") or ""
+            if not stored_hash and latest_blocked.error_code:
+                # Safe legacy fallback: derive hash dynamically from stored immutable fields
+                from .identity import compute_block_state_hash
+                stored_freshness = (stored_metadata.get("freshness") or {}).get("code", "")
+                stored_hash = compute_block_state_hash(
+                    blocking_reasons=[latest_blocked.error_code],
+                    freshness_code=stored_freshness,
+                    requires_approval=True,
+                    config_enabled=config.enabled,
+                )
 
             # If material block state is UNCHANGED and still not eligible/authorized:
-            if current_eligibility.block_state_hash and current_eligibility.block_state_hash == stored_hash:
+            if current_eligibility.block_state_hash and (
+                current_eligibility.block_state_hash == stored_hash
+                or (not stored_hash and latest_blocked.error_code in current_eligibility.blocking_reasons)
+            ):
                 skipped_tenants.append({
                     "client_id": client.id,
-                    "reason": f"BLOCKED_STATE_UNCHANGED (run #{latest_blocked.id}, hash={stored_hash})",
+                    "reason": f"BLOCKED_STATE_UNCHANGED (run #{latest_blocked.id}, hash={stored_hash or 'legacy'})",
                 })
                 continue
 
