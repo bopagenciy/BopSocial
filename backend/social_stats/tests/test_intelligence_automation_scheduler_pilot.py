@@ -231,7 +231,7 @@ class IntelligenceAutomationSchedulerPilotTests(TestCase):
         res = discover_and_enqueue_due_intelligence_automations(dry_run=True)
         self.assertNotIn(self.client_3.id, res["due_client_ids"])
         skipped = next((s for s in res["skipped_summary"] if s["client_id"] == self.client_3.id), None)
-        self.assertEqual(skipped["reason"], "RUN_ALREADY_EXISTS_OR_ACTIVE")
+        self.assertIn("RUN_ALREADY_EXISTS_OR_ACTIVE", skipped["reason"])
 
     def test_10_provider_call_count_remains_zero(self):
         """Proves provider_call_count on created scheduled run is 0 and no provider calls are executed."""

@@ -20,7 +20,12 @@ from .constants import (
     PIPELINE_VERSION,
 )
 from .orchestrator import execute_intelligence_automation, preview_intelligence_automation
-from .period import calculate_reporting_period, get_tenant_local_datetime
+from .period import (
+    calculate_next_due_datetime,
+    calculate_reporting_period,
+    get_tenant_local_datetime,
+    is_tenant_due,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -70,11 +75,12 @@ def run_intelligence_automation_task(
 @shared_task
 def discover_and_enqueue_due_intelligence_automations(dry_run: bool = True) -> Dict[str, Any]:
     """
-    Future Periodic Discovery Scanner.
+    Periodic Discovery Scanner.
     Finds explicitly enabled tenant configs, computes due state in tenant timezone,
-    verifies single-flight lock, and enqueues runs without global fan-out.
+    prevents duplicate enqueues for active, completed, or already-evaluated periods,
+    and supports missed-tick recovery across arbitrary tenant timezones.
 
-    REMAINS STRICTLY UNSCHEDULED IN BS-6A.
+    DOES NOT DIRECTLY INVOKE ANY LLM OR THIRD-PARTY PROVIDER.
     """
     now = timezone.now()
     due_tenants: List[int] = []
@@ -89,51 +95,30 @@ def discover_and_enqueue_due_intelligence_automations(dry_run: bool = True) -> D
             skipped_tenants.append({"client_id": client.id, "reason": "CLIENT_INACTIVE"})
             continue
 
-        # Check tenant local time
-        local_dt = get_tenant_local_datetime(now, tz_name=config.timezone)
-        local_date = local_dt.date()
-
-        # Is tenant due on reporting day and hour?
-        # For MONTHLY: e.g. day 1 at 06:00
-        if config.reporting_frequency == "MONTHLY":
-            is_due_day = (local_date.day == config.reporting_day)
-            is_due_hour = (local_dt.hour == config.reporting_hour)
-        elif config.reporting_frequency == "WEEKLY":
-            # weekday: 0=Mon..6=Sun
-            is_due_day = (local_date.weekday() == config.reporting_day)
-            is_due_hour = (local_dt.hour == config.reporting_hour)
-        else:
-            is_due_day = False
-            is_due_hour = False
-
-        if not (is_due_day and is_due_hour):
+        # Evaluate due state using timezone-aware scheduler engine (supports missed ticks)
+        is_due, p_start, p_end, due_reason = is_tenant_due(config, reference_datetime=now)
+        if not is_due:
             skipped_tenants.append({
                 "client_id": client.id,
-                "reason": f"NOT_DUE (day={local_date.day}/{config.reporting_day}, hour={local_dt.hour}/{config.reporting_hour})",
+                "reason": due_reason,
             })
             continue
 
-        p_start, p_end = calculate_reporting_period(
-            tz_name=config.timezone,
-            frequency=config.reporting_frequency,
-            reference_datetime=now,
-            lookback_days=config.lookback_days,
-            period_type="CALENDAR_MONTH",
-        )
-
-        # Check if already executed or active
+        # Check if already executed, active, or evaluated for this target period
+        # Excludes COMPLETED, RUNNING, PENDING, ELIGIBILITY_CHECK, and already-BLOCKED runs
+        # (preventing row storms on repeated scans of an invariant blocked tenant)
         existing_run = IntelligenceAutomationRun.objects.filter(
             client=client,
             period_start=p_start,
             period_end=p_end,
             pipeline_version=PIPELINE_VERSION,
-            status__in=["COMPLETED", "RUNNING", "PENDING", "ELIGIBILITY_CHECK"],
-        ).exists()
+            status__in=["COMPLETED", "RUNNING", "PENDING", "ELIGIBILITY_CHECK", "BLOCKED"],
+        ).order_by("-id").first()
 
         if existing_run:
             skipped_tenants.append({
                 "client_id": client.id,
-                "reason": "RUN_ALREADY_EXISTS_OR_ACTIVE",
+                "reason": f"RUN_ALREADY_EXISTS_OR_ACTIVE (run #{existing_run.id}, status={existing_run.status})",
             })
             continue
 

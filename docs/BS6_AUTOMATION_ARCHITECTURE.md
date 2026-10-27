@@ -225,7 +225,7 @@ All pipeline transitions produce structured audit events logged with structured 
 
 ---
 
-## 10. Operational Interface & Controlled Scheduler Pilot (BS-6B)
+## 10. Operational Interface & Controlled Scheduler Pilot (BS-6B & BS-6B.0A)
 
 ### 10.1 CLI Management Command
 ```bash
@@ -237,13 +237,14 @@ python manage.py run_intelligence_automation \
     --period-end 2026-10-22
 ```
 
-### 10.2 Celery Task Architecture & Pilot Activation (`tasks.py`)
-- `discover_and_enqueue_due_intelligence_automations`: Periodic scanner task that inspects enabled tenant configurations and computes due status in tenant local time.
-- **Pilot PeriodicTask**: `intelligence-automation-daily-discovery` (PeriodicTask ID #18).
-  - Schedule: Daily at 03:00 UTC (`0 3 * * *`).
-  - Function: Calls `discover_and_enqueue_due_intelligence_automations`.
-  - Invariant: Does **not** directly call LLMs, Ollama, or third-party APIs. Only discovers and enqueues due tenant runs.
-- `run_intelligence_automation_task`: Worker task that executes a single tenant's automation unit with advisory locking.
+### 10.2 Celery Task Architecture & Discovery Scanner (`tasks.py`)
+- `discover_and_enqueue_due_intelligence_automations`: Periodic multi-tenant discovery scanner.
+  - **Decoupled Due Engine**: Evaluates `is_tenant_due(config, reference_datetime)` and `calculate_next_due_datetime(config)`. The scanner operates on a global UTC cadence and is completely decoupled from individual tenant local reporting hours.
+  - **Missed-Tick Recovery**: If the scheduler is paused or restarts after downtime, any tenant whose threshold has arrived (`local_now >= due_threshold`) is immediately discovered and processed once for that reporting period, rather than skipped until the following month.
+  - **Cadence**: Configured to run every 15 minutes (`*/15 * * * *`) via PeriodicTask `intelligence-automation-discovery` (ID #18).
+  - **Row-Storm & BLOCKED-Run Idempotency**: Filters against existing runs in `['COMPLETED', 'RUNNING', 'PENDING', 'ELIGIBILITY_CHECK', 'BLOCKED']`. A tenant that evaluates to `BLOCKED` for a given period creates exactly one audit run and is not repeatedly re-enqueued on subsequent 15-minute discovery ticks unless its target reporting period or configuration changes.
+  - **Provider Invariant**: Never calls LLMs, Ollama, or third-party APIs directly. Only verifies due state and enqueues tenant execution tasks.
+- `run_intelligence_automation_task`: Worker task executing tenant automation unit under PostgreSQL single-flight advisory locking.
 
 ### 10.3 Pilot Tenant (Client #3) Configuration
 - `enabled`: `True`
@@ -266,7 +267,7 @@ For BS-6C, the approval model will evolve to support **run-level or stage-level 
 
 ## 11. Verification Matrix
 
-The test matrix validates all BS-6A, BS-6A.1, and BS-6B invariants across 9 dedicated test modules:
+The test matrix validates all BS-6A, BS-6A.1, BS-6B, and BS-6B.0A invariants across 10 dedicated test modules:
 1. `test_intelligence_automation_models.py` (Models, choices, defaults, active constraints)
 2. `test_intelligence_automation_period.py` (Timezones, calendar boundaries, DST transitions)
 3. `test_intelligence_automation_eligibility.py` (Fail-closed gates, freshness rules, budget limits)
@@ -276,5 +277,6 @@ The test matrix validates all BS-6A, BS-6A.1, and BS-6B invariants across 9 dedi
 7. `test_intelligence_automation_security.py` (Tenant isolation, secret redaction)
 8. `test_intelligence_automation_safety_contract.py` (Data eligibility vs authorization, force limits)
 9. `test_intelligence_automation_scheduler_pilot.py` (Discovery scanner, cadence, due calculation, gate blocking)
+10. `test_intelligence_automation_timezone_alignment.py` (Timezone conversion, DST spring/fall, missed-tick recovery, multi-timezone isolation, row-storm prevention)
 
-**Result**: 60 passed in 1.99s. Full backend test suite: **1,152 passed** in 131.8s with zero regressions. Frontend test suite: **32 suites, 282 tests passed** in 34.1s.
+**Result**: 75 passed in 1.93s. Full backend test suite: **1,167 passed** in 129.9s with zero regressions. Frontend test suite: **32 suites, 282 tests passed** in 34.1s.

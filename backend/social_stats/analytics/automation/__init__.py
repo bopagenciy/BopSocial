@@ -15,7 +15,13 @@ from .freshness import evaluate_tenant_freshness, FreshnessResult
 from .identity import compute_execution_identity
 from .locking import ConcurrencyLockError, SingleFlightLock
 from .orchestrator import execute_intelligence_automation, preview_intelligence_automation
-from .period import calculate_reporting_period, get_calendar_month_bounds, get_rolling_window_bounds
+from .period import (
+    calculate_next_due_datetime,
+    calculate_reporting_period,
+    get_calendar_month_bounds,
+    get_rolling_window_bounds,
+    is_tenant_due,
+)
 
 __all__ = [
     "PIPELINE_VERSION",
@@ -31,6 +37,8 @@ __all__ = [
     "ConcurrencyLockError",
     "compute_execution_identity",
     "calculate_reporting_period",
+    "calculate_next_due_datetime",
+    "is_tenant_due",
     "get_calendar_month_bounds",
     "get_rolling_window_bounds",
     "evaluate_tenant_freshness",

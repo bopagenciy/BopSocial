@@ -131,9 +131,15 @@ config, created = IntelligenceAutomationConfig.objects.get_or_create(
 
 ---
 
-## 5. Monitoring & Diagnostics
+## 5. Monitoring, Diagnostics & Scheduler Operations
 
-### 5.1 Querying Recent Automation Runs
+### 5.1 Periodic Discovery Scanner Cadence & Timezone Handling
+The periodic discovery scanner (`discover_and_enqueue_due_intelligence_automations`) runs every 15 minutes (`*/15 * * * *` UTC) via PeriodicTask `intelligence-automation-discovery` (ID #18).
+- **Timezone Independence**: The 15-minute global tick inspects each tenant's local time (`get_tenant_local_datetime`) and threshold (`is_tenant_due`). A tenant configured for 02:00 local time will be detected on the first scanner tick after 02:00 local time arrives, regardless of UTC offset or daylight saving time cutover.
+- **Missed-Tick Recovery**: If Celery Beat or workers experience downtime during a tenant's due window, the next scanner cycle evaluates `local_now >= due_threshold` and processes the due period immediately.
+- **Row-Storm & Duplicate Protection**: The scanner checks for existing runs in `['COMPLETED', 'RUNNING', 'PENDING', 'ELIGIBILITY_CHECK', 'BLOCKED']`. If a tenant is blocked (e.g. `ANALYTICS_DATA_STALE` or `OPERATOR_APPROVAL_REQUIRED`), it records one audit row and skips re-enqueuing on subsequent 15-minute scans until its target reporting period or configuration changes.
+
+### 5.2 Querying Recent Automation Runs
 ```python
 from social_stats.models import IntelligenceAutomationRun
 
