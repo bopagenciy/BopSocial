@@ -986,7 +986,7 @@ Language: es
 Provider: ollama
 Model: qwen3.5:9b
 Policy: single_attempt_strict (MAX_PROVIDER_CALLS = 1, fallback_enabled = False)
-Authorization Status: PENDING OPERATOR REVIEW (DO NOT EXECUTE)
+Authorization Status: CLOSED / EXECUTED IN BS-5E.1G
 ```
 
 ---
@@ -1121,7 +1121,7 @@ Language: es
 Provider: ollama
 Model: qwen3.5:9b
 Policy: single_attempt_strict (MAX_PROVIDER_CALLS = 1, fallback_enabled = False)
-Authorization Status: PENDING OPERATOR REVIEW (DO NOT EXECUTE)
+Authorization Status: CLOSED / EXECUTED IN BS-5E.1G
 ```
 
 ---
@@ -1190,5 +1190,148 @@ Model-Visible Prompt SHA256: ebca7a24c0eea1b1940bfeb08668c15c238489ebc246945deb2
 Configured num_ctx: 32768
 Configured temperature: 0.0
 Policy: single_attempt_strict (MAX_PROVIDER_CALLS = 1, fallback_enabled = False)
-Authorization Status: PENDING OPERATOR REVIEW (DO NOT EXECUTE)
+Authorization Status: CLOSED / EXECUTED IN BS-5E.1G
 ```
+
+
+---
+
+## BS-5E.1G — Model-Visible Prompt Controlled Live Validation
+
+### 1. Executive Summary & Authorization
+- **Phase Purpose**: Execute exactly ONE authorized live Ollama generation attempt with the deterministic delivery fix (`compose_ollama_prompt`) verifying model visibility of `bs5e-prompt-v3` instructions, strict grounding rules, and Section J/K negative examples.
+- **Operator Authorization**: Single attempt strict (`MAX_PROVIDER_CALLS = 1`, `fallback_enabled = False`, `force_regenerate = True`).
+- **Target Report**: `ExecutiveReport #2` (Client #3, `Bop Agencia`, period `2026-09-22` to `2026-10-22`).
+- **Model Visible Prompt Hash**: `ebca7a24c0eea1b1940bfeb08668c15c238489ebc246945deb288708709657f6`.
+
+### 2. Execution Telemetry & Performance
+- **Transport**: SUCCESS (HTTP 200 via Ollama native endpoint).
+- **Prompt Evaluation**: 15,195 tokens evaluated in 16.49s (921.4 prompt tokens/sec).
+- **Generation Evaluation**: 582 tokens generated in 13.92s (41.8 tokens/sec).
+- **Total Duration**: 30.41 seconds.
+- **Provider Attempts**: 1 (within strict single-attempt budget).
+- **Fallbacks Used**: 0 (`fallback_used = False`).
+
+### 3. Validation Results Across All 8 Gates
+1. **JSON Parsing & Structural Schema (`bs5e-output-v2`)**: **PASS** (100% compliant JSON object, all required sections present).
+2. **Confidence Enrichment & Calculation**: **PASS** (all 4 recommendation items enriched with derived confidence matching source signal levels: `HIGH`).
+3. **Audience Limitation Compliance**: **PASS** (Follower counts strictly contextualized as audience volume; no superiority/efficiency claims attached).
+4. **Volume vs Efficiency Isolation**: **PASS** (Reactions correctly scoped to exact 6 vs 0 values; zero ungrounded percentage shifts).
+5. **Non-Comparable Metric Safeguards**: **PASS** (Saves, Reach, Video Views, Engagement Total correctly reported as non-comparable or unavailable with zero cross-platform rankings).
+6. **Data Limitation Disclosure**: **PASS** (Explicit disclosure of 3 of 15 metrics coverage and Instagram PARTIAL mode).
+7. **Competitive Scope Restriction**: **PASS** (0 ungrounded broad claims; `"ventaja competitiva"` and `"lidera en interacciones"` completely eliminated).
+8. **Causality & Fact Grounding**: **PASS** (0 speculative causality phrases, 100% factual grounding against validated report signals).
+
+**Validation Gate Result**: **100% PASS** (0 errors, 0 warnings).
+
+### 4. Canonical Object Created
+- **Model**: `ExecutiveNarrative`
+- **ID**: 2
+- **ExecutiveReport ID**: 2
+- **Status**: `VALIDATED`
+- **Provider**: `ollama`
+- **Model Name**: `qwen3.5:9b`
+- **Prompt Version**: `bs5e-prompt-v3`
+- **Context Schema Version**: `bs4h-context-v2`
+- **Source Hash**: `cb79885ade504aeac72f1bf2854b155be31c33b0c9ce3f0c168c7fc0a38ad148`
+- **Context Hash**: `e4d615700de831ce81c968480226686010b2b38a2b61073ca8bda8588b982905`
+- **Stale Status**: `is_stale = False`
+- **Database Count Impact**: `ExecutiveNarrative: 1 -> 2`. All 12 other canonical database tables strictly invariant.
+
+---
+
+## BS-5F — Multichannel Intelligence Milestone Closure & Controlled Delivery Readiness
+
+### 1. Milestone Overview & Objectives
+Phase BS-5F completes the formal closure of the entire BS-5 Multichannel Intelligence milestone through a comprehensive 60-item audit spanning data modeling, deterministic metrics, business signals, executive reporting, AI grounding, API delivery, tenant security, automated boundaries, and release readiness.
+
+### 2. Milestone Subphase Summary
+| Phase | Title | Scope | Status |
+| :--- | :--- | :--- | :--- |
+| **BS-5A** | Metric Compatibility & Comparison Model | 15-metric registry, pure comparison functions, missing vs zero rules | **PASS / APPROVED** |
+| **BS-5B** | Multichannel Telemetry Rollup | Rollup services, window aggregation, capability gating | **PASS / APPROVED** |
+| **BS-5C** | Multichannel Business Signals | Deterministic signal engine, typed evidence, signal deduplication | **PASS / APPROVED** |
+| **BS-5C.1** | Signal Precision Hardening | False positive elimination, threshold calibration, signal IDs 6–9 | **PASS / APPROVED** |
+| **BS-5D** | Multichannel Executive Reporting | ExecutiveReport #2, benchmark calculations, ReportLab PDF generator | **PASS / APPROVED** |
+| **BS-5D.0A** | Reporting Data Invariants | Daily metric isolation, rollup consistency, idempotent report re-run | **PASS / APPROVED** |
+| **BS-5D.1** | PDF Design & Rendering Hardening | PDF layout styling, metric tables, brand visual compliance | **PASS / APPROVED** |
+| **BS-5E** | Grounded Multichannel Narrative | Context builder, schema v2, prompt v2, validator gates | **PASS / APPROVED** |
+| **BS-5E.0A** | Baseline Integrity Preflight | Ollama environment audit, clean execution harness | **PASS / APPROVED** |
+| **BS-5E.1** | Controlled Live Execution Attempt 1 | Safe stop on claim-scope validator rejection | **PASS / SAFE STOP** |
+| **BS-5E.1A** | Safe Recovery & Failure Forensics | DB invariant preservation, zero pollution confirmation | **PASS / APPROVED** |
+| **BS-5E.1B** | Controlled Live Execution Attempt 2 | Safe stop on validator rejection (coverage/negation audit) | **PASS / SAFE STOP** |
+| **BS-5E.1C** | Validator Semantic Precision | Claim-scope regex tuning, false positive mitigation | **PASS / APPROVED** |
+| **BS-5E.1D** | Controlled Live Execution Attempt 3 | Prompt v3 hardening, identical telemetry discovery | **PASS / SAFE STOP** |
+| **BS-5E.1E** | Prompt Delivery & Template Audit | Discovery of Modelfile `TEMPLATE {{ .Prompt }}` discarding `system` | **PASS / APPROVED** |
+| **BS-5E.1F** | Ollama Delivery Fix | `compose_ollama_prompt`, 32k context, 7 delivery unit tests | **PASS / APPROVED** |
+| **BS-5E.1G** | Controlled Live Execution Attempt 4 | 100% validator pass, ExecutiveNarrative #2 persisted | **PASS / APPROVED** |
+| **BS-5F** | Milestone Closure & Readiness | 60-item audit, regression tests (1,092 passed), runbook, release freeze | **PASS / APPROVED** |
+
+### 3. Architecture & End-to-End Delivery Verification
+```
+[Social Platforms (FB / IG)]
+             │
+             ▼
+[SocialMetricSnapshot (312 rows)] ──▶ [SocialMetricRollup (551 rows)]
+                                                    │
+                                                    ▼
+                                    [Cross-Platform Comparison Registry]
+                                                    │
+                                                    ▼
+                                      [BusinessSignal Engine (9 rows)]
+                                        - Audience Difference (#6)
+                                        - Platform Outperformance (#7)
+                                        - Data Limitation (#8)
+                                        - Metric Non-Comparable (#9)
+                                                    │
+                                                    ▼
+                                      [ExecutiveReport #2 Generator]
+                                        - Period: 2026-09-22 to 2026-10-22
+                                        - Client #3 (Bop Agencia)
+                                        - Multi-Platform Benchmark (3/15 coverage)
+                                        - PDF Generation (ReportLab SHA256 frozen)
+                                                    │
+                                                    ▼
+                                     [Grounded Narrative Context Builder]
+                                        - Context Hash: e4d61570...
+                                        - Source Hash: cb79885a...
+                                                    │
+                                                    ▼
+                                      [Ollama Provider (qwen3.5:9b)]
+                                        - Composed Delivery (32k num_ctx)
+                                        - Temp: 0.0, Deterministic
+                                                    │
+                                                    ▼
+                                       [Deterministic Validator (8 Gates)]
+                                        - Schema, Coverage, Grounding
+                                        - Anti-hallucination & Claim-scope
+                                                    │
+                                                    ▼
+                                      [ExecutiveNarrative #2 (VALIDATED)]
+                                                    │
+                                                    ▼
+                             [REST API (/api/analytics/reports/2/narrative/)]
+                                                    │
+                                                    ▼
+                           [Frontend Dashboard (AnalyticsWorkspace.jsx)]
+```
+
+### 4. Release-Readiness Matrix
+| Component / Dimension | Criteria | Status | Notes |
+| :--- | :--- | :--- | :--- |
+| **Data Integrity** | All 13 canonical tables invariant | **READY** | Snapshot=312, Rollup=551, Signal=9, Report=2, Narrative=2 |
+| **Metric Registry** | 15 metrics mapped, missing vs zero enforced | **READY** | Deterministic mathematical comparison engine |
+| **Signals Engine** | 4 cross-platform signal types validated | **READY** | High confidence, typed evidence, deduplicated |
+| **PDF Reporting** | Pixel-accurate ReportLab generation | **READY** | Checksum verified, multi-page layout compliant |
+| **AI Narrative Service**| Strict single-attempt policy & validation | **READY** | Prompt v3, Schema v2, 8 validator gates |
+| **Ollama Provider** | Composed prompt delivery, 32k window | **READY** | Zero template omission risk |
+| **API Delivery** | REST endpoints with tenant isolation | **READY** | Owner 200, unauthorized 404, 0 secrets leaked |
+| **Frontend UI** | React rendering, staleness alert, error states | **READY** | 282 frontend tests passing |
+| **Regression Suite** | Full backend test execution | **READY** | 1,092 tests passing (0 failures, 0 errors) |
+| **Security & Privacy** | Multi-tenant isolation & safe logging | **READY** | 0 token/credential leaks, tenant-scoped queries |
+| **Operational Control**| No unmonitored background automation | **READY** | PeriodicTask=17 invariant, narrative generation manual/gated |
+
+### 5. Recommended Release Tag
+- **Tag**: `v0.9.0-bs5`
+- **Release Title**: `Bop Social Milestone BS-5: Multichannel Social Intelligence & Grounded Executive Narrative`
+- **Status**: Ready for operator merge and tagging.
