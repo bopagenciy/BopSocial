@@ -225,9 +225,9 @@ All pipeline transitions produce structured audit events logged with structured 
 
 ---
 
-## 10. Operational Interface
+## 10. Operational Interface & Controlled Scheduler Pilot (BS-6B)
 
-### CLI Management Command
+### 10.1 CLI Management Command
 ```bash
 python manage.py run_intelligence_automation \
     --client 3 \
@@ -237,15 +237,36 @@ python manage.py run_intelligence_automation \
     --period-end 2026-10-22
 ```
 
-### Celery Task Architecture (`tasks.py`)
-- `scan_and_queue_tenant_automations`: Periodic scanner task that inspects active tenant configurations (currently **unscheduled/disabled**).
-- `execute_tenant_intelligence_automation`: Worker task that executes a single tenant's automation unit with advisory locking.
+### 10.2 Celery Task Architecture & Pilot Activation (`tasks.py`)
+- `discover_and_enqueue_due_intelligence_automations`: Periodic scanner task that inspects enabled tenant configurations and computes due status in tenant local time.
+- **Pilot PeriodicTask**: `intelligence-automation-daily-discovery` (PeriodicTask ID #18).
+  - Schedule: Daily at 03:00 UTC (`0 3 * * *`).
+  - Function: Calls `discover_and_enqueue_due_intelligence_automations`.
+  - Invariant: Does **not** directly call LLMs, Ollama, or third-party APIs. Only discovers and enqueues due tenant runs.
+- `run_intelligence_automation_task`: Worker task that executes a single tenant's automation unit with advisory locking.
+
+### 10.3 Pilot Tenant (Client #3) Configuration
+- `enabled`: `True`
+- `timezone`: `'America/New_York'`
+- `reporting_frequency`: `'MONTHLY'` (Day 1 at 02:00 local time)
+- `generate_report`: `True`
+- `generate_narrative`: `True` (guarded by approval boundary)
+- `require_operator_approval`: `True` (enforces fail-closed blocking of autonomous LLM generation)
+- `max_data_staleness_hours`: `24`
+- `provider_call_budget`: `1`
+- `max_retry_count`: `0`
+
+### 10.4 Approval Model Design & Future Evolution (BS-6C Roadmap)
+In the current BS-6B baseline, operator approval is enforced at the config level (`require_operator_approval=True`). This produces `OPERATOR_APPROVAL_REQUIRED` on scheduled runs and blocks unapproved narrative generation.
+For BS-6C, the approval model will evolve to support **run-level or stage-level approval**:
+- A scheduled run executes data synthesis (stages 1-6) and transitions to `AWAITING_APPROVAL` at the narrative stage.
+- An operator reviews the generated report in the dashboard and clicks "Approve Narrative Generation", which releases the stage lock for that specific `run_id` without requiring `require_operator_approval` to be permanently disabled on the config.
 
 ---
 
 ## 11. Verification Matrix
 
-The test matrix validates all BS-6A invariants across 7 dedicated test modules:
+The test matrix validates all BS-6A, BS-6A.1, and BS-6B invariants across 9 dedicated test modules:
 1. `test_intelligence_automation_models.py` (Models, choices, defaults, active constraints)
 2. `test_intelligence_automation_period.py` (Timezones, calendar boundaries, DST transitions)
 3. `test_intelligence_automation_eligibility.py` (Fail-closed gates, freshness rules, budget limits)
@@ -253,5 +274,7 @@ The test matrix validates all BS-6A invariants across 7 dedicated test modules:
 5. `test_intelligence_automation_locking.py` (PostgreSQL advisory locking, collision handling)
 6. `test_intelligence_automation_orchestration.py` (Stage progression, dry-run neutrality)
 7. `test_intelligence_automation_security.py` (Tenant isolation, secret redaction)
+8. `test_intelligence_automation_safety_contract.py` (Data eligibility vs authorization, force limits)
+9. `test_intelligence_automation_scheduler_pilot.py` (Discovery scanner, cadence, due calculation, gate blocking)
 
-**Result**: 35 passed in 1.1s. Full backend test suite: **1,127 passed** in 107.8s with zero regressions.
+**Result**: 60 passed in 1.99s. Full backend test suite: **1,152 passed** in 131.8s with zero regressions. Frontend test suite: **32 suites, 282 tests passed** in 34.1s.

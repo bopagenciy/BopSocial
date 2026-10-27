@@ -173,8 +173,9 @@ SELECT pg_terminate_backend(<PID>);
 
 ---
 
-## 7. Emergency Abort Procedure
+## 7. Emergency Abort & Pilot Rollback Procedures
 
+### 7.1 Emergency Abort Procedure
 If an uncoordinated automated execution occurs:
 
 1. **Stop Celery Beat**:
@@ -194,3 +195,22 @@ If an uncoordinated automated execution occurs:
    ).update(status="CANCELLED", error_code="OPERATOR_ABORT", error_message_safe="Aborted by operator")
    ```
 4. **Verify Database Sentinels**: Confirm that baseline table counts remain invariant.
+
+### 7.2 BS-6B Pilot Rollback Procedure
+If the controlled pilot activation needs to be safely reverted or disabled without data loss:
+
+1. **Disable Client #3 Automation Config**:
+   ```python
+   from social_stats.models import IntelligenceAutomationConfig
+   IntelligenceAutomationConfig.objects.filter(client_id=3).update(enabled=False)
+   ```
+2. **Disable Pilot Discovery PeriodicTask**:
+   ```python
+   from django_celery_beat.models import PeriodicTask
+   PeriodicTask.objects.filter(name="intelligence-automation-daily-discovery").update(enabled=False)
+   ```
+3. **Leave Execution History Intact**:
+   - Do NOT delete `IntelligenceAutomationRun` rows. They serve as canonical immutable audit records.
+4. **Zero Provider Impact**:
+   - Rollback operations require zero external network or LLM calls.
+
