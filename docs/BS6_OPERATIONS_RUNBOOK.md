@@ -80,14 +80,11 @@ docker exec -e DJANGO_SETTINGS_MODULE=dashboard.settings agencyos-backend-1 pyth
     --trigger MANUAL
 ```
 
-### 3.3 Force Execution (Bypassing Approval Gate)
-For operator-initiated overrides when `require_operator_approval=True`:
-
-```bash
-docker exec -e DJANGO_SETTINGS_MODULE=dashboard.settings agencyos-backend-1 python manage.py run_intelligence_automation \
-    --client <CLIENT_ID> \
-    --force
-```
+### 3.3 Force Execution Policy (`--force`)
+The `--force` option is strictly an **operator override** for soft operational warnings during manual diagnostic execution:
+- **Allowed**: Permits manual command execution when `IntelligenceAutomationConfig.enabled = False`.
+- **FORBIDDEN (Inviolable Gates)**: `--force` CANNOT bypass tenant isolation, missing platform credentials, PostgreSQL advisory locks, provider call budgets, duplicate VALIDATED narrative reuse, or active run database uniqueness.
+- **Scheduled Prohibition**: The automated Celery scheduler (`run_intelligence_automation_task`) NEVER accepts or utilizes `--force`. Scheduled runs must strictly satisfy `enabled=True` and `require_operator_approval=False`.
 
 ---
 

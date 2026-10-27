@@ -58,7 +58,11 @@ class Command(BaseCommand):
             "--force",
             action="store_true",
             default=False,
-            help="Allow running even if automation config is currently disabled (operator override).",
+            help=(
+                "Operator override for soft operational warnings only (e.g. running MANUAL when config.enabled=False). "
+                "CANNOT bypass structural safety gates: client existence, active credentials, "
+                "freshness thresholds, provider call budgets, locking, or duplicate active runs."
+            ),
         )
 
     def handle(self, *args, **options):
@@ -105,13 +109,17 @@ class Command(BaseCommand):
         )
 
         eligible = preview["eligible"]
+        data_eligible = preview.get("data_eligible", True)
+        execution_authorized = preview.get("execution_authorized", False)
         status_style = self.style.SUCCESS if eligible else self.style.WARNING
 
-        self.stdout.write(f"Execution Identity: {preview['execution_identity']}")
-        self.stdout.write(f"Pipeline Version:   {preview['pipeline_version']}")
-        self.stdout.write(f"Reporting Period:   {preview['period_start']} to {preview['period_end']}")
-        self.stdout.write(f"Eligibility Status: {status_style('ELIGIBLE' if eligible else 'BLOCKED')}")
-        self.stdout.write(f"Provider Budget:    {preview['provider_call_budget']} max call(s)")
+        self.stdout.write(f"Execution Identity:   {preview['execution_identity']}")
+        self.stdout.write(f"Pipeline Version:     {preview['pipeline_version']}")
+        self.stdout.write(f"Reporting Period:     {preview['period_start']} to {preview['period_end']}")
+        self.stdout.write(f"Data Eligible:        {self.style.SUCCESS('YES') if data_eligible else self.style.ERROR('NO')}")
+        self.stdout.write(f"Execution Authorized: {self.style.SUCCESS('YES') if execution_authorized else self.style.WARNING('NO (Operator Review / Scheduled Guard Active)')}")
+        self.stdout.write(f"Eligibility Status:   {status_style('ELIGIBLE' if eligible else 'BLOCKED')}")
+        self.stdout.write(f"Provider Budget:      {preview['provider_call_budget']} max call(s)")
         self.stdout.write("-" * 70)
 
         if preview["blocking_reasons"]:

@@ -63,6 +63,8 @@ def preview_intelligence_automation(
         "dry_run": True,
         "client_id": client_id,
         "eligible": eligibility.eligible,
+        "data_eligible": eligibility.data_eligible,
+        "execution_authorized": eligibility.execution_authorized,
         "period_start": eligibility.period_start.isoformat(),
         "period_end": eligibility.period_end.isoformat(),
         "execution_identity": eligibility.execution_identity,

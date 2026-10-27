@@ -148,22 +148,53 @@ Data freshness evaluates whether upstream platform syncs and snapshots are curre
 
 ---
 
-## 7. Pure Eligibility Engine (`eligibility.py`)
+## 7. Pure Eligibility Engine & Safety Contract (`eligibility.py`)
 
-A pure evaluation function `evaluate_intelligence_automation_eligibility(...)` inspects tenant state and produces an `EligibilityResult`:
-- **Fail-Closed Checks**:
-  1. `CLIENT_INACTIVE`: Client model has `is_active=False`.
-  2. `CONFIG_MISSING`: No `IntelligenceAutomationConfig` exists for client.
-  3. `AUTOMATION_DISABLED`: Config has `enabled=False` (unless manually triggered).
-  4. `APPROVAL_REQUIRED`: Scheduled trigger attempted while `require_operator_approval=True`.
-  5. `NO_CREDENTIALS`: Tenant has 0 active platform credentials.
-  6. `DATA_STALE`: Telemetry age exceeds `minimum_data_freshness_hours`.
-  7. `INSUFFICIENT_DATA`: Zero snapshots found for the requested period.
-  8. `BUDGET_EXCEEDED`: Narrative requested but provider call budget is 0.
-- **Artifact Reuse Logic**:
-  - Checks if `ExecutiveReport` already exists for `(client_id, period_start, period_end)`.
-  - Checks if `ExecutiveNarrative` already exists for `report_id` with `status="VALIDATED"`.
-  - If existing artifacts are found, the planned stages skip generation and flag `REUSE`.
+A pure evaluation function `evaluate_intelligence_automation_eligibility(...)` inspects tenant state and produces an `EligibilityResult`.
+
+### 7.1 Data Eligibility vs. Execution Authorization Semantics
+To prevent ambiguous interpretations where `eligible=True` might be misconstrued as unrestricted execution permission, the engine explicitly distinguishes between:
+1. **`data_eligible`**: Indicates whether upstream telemetry, platform credentials, metric snapshots, and period definitions are complete and sufficient for intelligence calculations.
+2. **`execution_authorized`**: Indicates whether the execution has explicit operational authorization under its trigger context.
+   - For `SCHEDULED` triggers: requires tenant configuration `enabled=True` AND approval satisfied (`require_operator_approval=False` or explicit pre-authorization).
+   - For `MANUAL` / `ADMIN` triggers: requires active tenant and zero structural blockers.
+3. **`status` / `eligible`**: Boolean composite indicator (`len(blocking_reasons) == 0`).
+4. **`blocking_reasons`**: Deterministic list of unfulfilled gate codes.
+
+### 7.2 Fail-Closed Checks
+1. `CLIENT_INACTIVE`: Client model has `is_active=False`.
+2. `CONFIG_MISSING`: No `IntelligenceAutomationConfig` exists for client (blocks `SCHEDULED`).
+3. `AUTOMATION_DISABLED`: Config has `enabled=False` (blocks `SCHEDULED`).
+4. `APPROVAL_REQUIRED`: Scheduled trigger attempted while `require_operator_approval=True`.
+5. `NO_CREDENTIALS`: Tenant has 0 active platform credentials.
+6. `DATA_STALE`: Telemetry age exceeds `minimum_data_freshness_hours` on scheduled runs.
+7. `INSUFFICIENT_DATA`: Zero snapshots found for the requested period.
+8. `BUDGET_EXCEEDED`: Narrative requested but provider call budget is 0.
+
+### 7.3 Artifact Reuse Logic
+- Checks if `ExecutiveReport` already exists for `(client_id, period_start, period_end)`.
+- Checks if `ExecutiveNarrative` already exists for `report_id` with `status="VALIDATED"`.
+- If existing artifacts are found, the planned stages skip generation and flag `REUSE`.
+
+---
+
+## 8. Activation Safety Contract & Force Policy
+
+### 8.1 What `--force` Bypasses (Soft Operational Overrides Only)
+The `--force` option in the management command is strictly an **operator override** for soft operational warnings during manual execution:
+- Allows manual triggering when `IntelligenceAutomationConfig.enabled = False`.
+- Allows manual dry-run evaluation when scheduled configuration is not yet active.
+
+### 8.2 Inviolable Structural Safety Gates (Non-Bypassable by `--force`)
+The following invariants CANNOT be bypassed under any circumstances:
+- **Tenant Existence & Active Check**: Inactive tenants cannot be run.
+- **Platform Credential Validity**: Active platform credentials are required.
+- **Single-Flight Advisory Locking**: Concurrent duplicate executions are rejected.
+- **Provider Call Budget**: Budget is hard-capped (0 in dry-run, strictly $\le$ `provider_call_budget` in live execution).
+- **Duplicate VALIDATED Narrative Reuse**: Validated narratives are reused; no overwrite or second generation.
+- **Database Active Run Constraint**: Database-level partial unique index prevents concurrent active rows.
+- **Scheduled Run Isolation**: `SCHEDULED` Celery triggers cannot invoke `--force` and strictly enforce `enabled=True` and approval gates.
+
 
 ---
 

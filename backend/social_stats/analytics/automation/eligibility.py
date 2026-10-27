@@ -40,6 +40,8 @@ class EligibilityResult:
     period_end: date
     execution_identity: str
     pipeline_version: str
+    data_eligible: bool = True
+    execution_authorized: bool = False
     blocking_reasons: List[str] = field(default_factory=list)
     warnings: List[str] = field(default_factory=list)
     freshness: Dict[str, Any] = field(default_factory=dict)
@@ -54,6 +56,8 @@ class EligibilityResult:
     def to_dict(self) -> Dict[str, Any]:
         return {
             "eligible": self.eligible,
+            "data_eligible": self.data_eligible,
+            "execution_authorized": self.execution_authorized,
             "client_id": self.client_id,
             "period_start": self.period_start.isoformat(),
             "period_end": self.period_end.isoformat(),
@@ -98,6 +102,8 @@ def evaluate_intelligence_automation_eligibility(
     if not client:
         return EligibilityResult(
             eligible=False,
+            data_eligible=False,
+            execution_authorized=False,
             client_id=client_id,
             period_start=period_start or current_time.date(),
             period_end=period_end or current_time.date(),
@@ -308,9 +314,27 @@ def evaluate_intelligence_automation_eligibility(
             reuse_decisions["narrative"] = "SKIPPED (generate_narrative=False in config)"
 
     is_eligible = len(blocking_reasons) == 0
+    # Data eligibility: are snapshots/rollups/creds sufficient to synthesize data?
+    data_blocking = [b for b in blocking_reasons if b in [
+        "CLIENT_NOT_FOUND", "CLIENT_INACTIVE", "INVALID_PERIOD_START_GTE_END",
+        "PERIOD_END_IN_FUTURE", "PROVIDER_DISCONNECTED: no active platform credentials",
+        "PROVIDER_CREDENTIAL_EXPIRED: all platform credentials expired",
+        "ANALYTICS_DATA_MISSING", "ANALYTICS_FRESHNESS_UNKNOWN",
+    ] or b.startswith("ANALYTICS_DATA_STALE")]
+    is_data_eligible = len(data_blocking) == 0
+
+    # Execution authorization: has operator/schedule authorized active generation?
+    # SCHEDULED requires config_enabled AND NOT require_operator_approval (or approved)
+    # MANUAL requires active client and no hard blockers
+    is_execution_authorized = is_eligible and (
+        (trigger_type == "SCHEDULED" and config_enabled and not req_approval)
+        or (trigger_type in ["MANUAL", "ADMIN"])
+    )
 
     return EligibilityResult(
         eligible=is_eligible,
+        data_eligible=is_data_eligible,
+        execution_authorized=is_execution_authorized,
         client_id=client_id,
         period_start=p_start,
         period_end=p_end,
