@@ -2372,6 +2372,130 @@ class ExecutiveNarrative(models.Model):
         return self.source_hash != self.executive_report.source_hash
 
 
+# ============================================================================
+#  BS-6A Intelligence Automation & Scheduling Foundation
+# ============================================================================
+
+INTELLIGENCE_AUTOMATION_FREQUENCY_CHOICES = [
+    ('MONTHLY', 'Monthly'),
+    ('WEEKLY', 'Weekly'),
+]
+
+INTELLIGENCE_AUTOMATION_TRIGGER_CHOICES = [
+    ('MANUAL', 'Manual'),
+    ('SCHEDULED', 'Scheduled'),
+    ('RETRY', 'Retry'),
+    ('ADMIN', 'Admin'),
+]
+
+INTELLIGENCE_AUTOMATION_STATUS_CHOICES = [
+    ('PENDING', 'Pending'),
+    ('ELIGIBILITY_CHECK', 'Eligibility Check'),
+    ('RUNNING', 'Running'),
+    ('BLOCKED', 'Blocked'),
+    ('FAILED', 'Failed'),
+    ('COMPLETED', 'Completed'),
+    ('CANCELLED', 'Cancelled'),
+]
+
+INTELLIGENCE_AUTOMATION_STAGE_CHOICES = [
+    ('ELIGIBILITY', 'Eligibility'),
+    ('SYNC_CHECK', 'Sync Check'),
+    ('SNAPSHOT_CHECK', 'Snapshot Check'),
+    ('ROLLUP_CHECK', 'Rollup Check'),
+    ('SIGNAL_CHECK', 'Signal Check'),
+    ('REPORT_CHECK', 'Report Check'),
+    ('NARRATIVE_CHECK', 'Narrative Check'),
+    ('COMPLETE', 'Complete'),
+]
+
+INTELLIGENCE_AUTOMATION_FRESHNESS_CHOICES = [
+    ('FRESH', 'Fresh (<=24h)'),
+    ('AGING', 'Aging (<=48h)'),
+]
+
+
+class IntelligenceAutomationConfig(models.Model):
+    """
+    Tenant/Client-level configuration governing scheduled intelligence automation,
+    reporting periods, data freshness requirements, provider-call budgets, and approval boundaries.
+    """
+    client                      = models.OneToOneField(Client, on_delete=models.CASCADE, related_name='intelligence_automation_config', db_index=True)
+    enabled                     = models.BooleanField(default=False, db_index=True)
+    timezone                    = models.CharField(max_length=64, default='America/New_York')
+    reporting_frequency         = models.CharField(max_length=20, choices=INTELLIGENCE_AUTOMATION_FREQUENCY_CHOICES, default='MONTHLY', db_index=True)
+    reporting_day               = models.IntegerField(default=1, help_text="Day of month (1-31) or weekday (0=Mon..6=Sun)")
+    reporting_hour              = models.IntegerField(default=6, help_text="Reporting hour in tenant timezone (0-23)")
+    lookback_days               = models.IntegerField(default=30, help_text="Lookback days window for analytics aggregation")
+    minimum_data_freshness      = models.CharField(max_length=20, choices=INTELLIGENCE_AUTOMATION_FRESHNESS_CHOICES, default='FRESH')
+    max_data_staleness_hours    = models.IntegerField(default=24, help_text="Max acceptable staleness in hours")
+    generate_report             = models.BooleanField(default=True)
+    generate_narrative          = models.BooleanField(default=False)
+    require_operator_approval   = models.BooleanField(default=True)
+    provider_call_budget        = models.IntegerField(default=1, help_text="Max provider LLM calls permitted per run")
+    max_retry_count             = models.IntegerField(default=0, help_text="Max automatic retries permitted (default 0: fail-closed)")
+    metadata                    = models.JSONField(default=dict, blank=True)
+    created_at                  = models.DateTimeField(auto_now_add=True)
+    updated_at                  = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['client_id']
+        verbose_name = 'Intelligence Automation Config'
+        verbose_name_plural = 'Intelligence Automation Configs'
+
+    def __str__(self):
+        return f"IntelligenceAutomationConfig(client_id={self.client_id}, enabled={self.enabled}, freq={self.reporting_frequency})"
+
+
+class IntelligenceAutomationRun(models.Model):
+    """
+    Durable execution record of a scheduled or manual intelligence automation pipeline run
+    for one tenant, one reporting period, and one pipeline version.
+    """
+    client               = models.ForeignKey(Client, on_delete=models.CASCADE, related_name='intelligence_automation_runs', db_index=True)
+    agency_id            = models.CharField(max_length=64, null=True, blank=True, db_index=True)
+    period_start         = models.DateField(db_index=True)
+    period_end           = models.DateField(db_index=True)
+    pipeline_version     = models.CharField(max_length=50, default='bs6a-v1', db_index=True)
+    execution_identity   = models.CharField(max_length=64, db_index=True)
+    trigger_type         = models.CharField(max_length=20, choices=INTELLIGENCE_AUTOMATION_TRIGGER_CHOICES, default='MANUAL', db_index=True)
+    status               = models.CharField(max_length=30, choices=INTELLIGENCE_AUTOMATION_STATUS_CHOICES, default='PENDING', db_index=True)
+    current_stage        = models.CharField(max_length=30, choices=INTELLIGENCE_AUTOMATION_STAGE_CHOICES, default='ELIGIBILITY', db_index=True)
+    started_at           = models.DateTimeField(null=True, blank=True)
+    finished_at          = models.DateTimeField(null=True, blank=True)
+    requested_by         = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='requested_automation_runs')
+    dry_run              = models.BooleanField(default=False, db_index=True)
+    provider_call_count  = models.IntegerField(default=0)
+    retry_count          = models.IntegerField(default=0)
+    fallback_count       = models.IntegerField(default=0)
+    error_code           = models.CharField(max_length=100, blank=True, null=True, db_index=True)
+    error_message_safe   = models.TextField(blank=True, default='')
+    report               = models.ForeignKey(ExecutiveReport, null=True, blank=True, on_delete=models.SET_NULL, related_name='automation_runs')
+    narrative            = models.ForeignKey(ExecutiveNarrative, null=True, blank=True, on_delete=models.SET_NULL, related_name='automation_runs')
+    metadata             = models.JSONField(default=dict, blank=True)
+    created_at           = models.DateTimeField(auto_now_add=True)
+    updated_at           = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['client', '-created_at']),
+            models.Index(fields=['client', 'status']),
+            models.Index(fields=['execution_identity']),
+            models.Index(fields=['period_start', 'period_end']),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=['client', 'period_start', 'period_end', 'pipeline_version'],
+                condition=models.Q(status__in=['PENDING', 'ELIGIBILITY_CHECK', 'RUNNING']),
+                name='unique_active_intelligence_run',
+            )
+        ]
+
+    def __str__(self):
+        return f"AutomationRun #{self.id} | Client #{self.client_id} | {self.status} | {self.current_stage} | dry_run={self.dry_run}"
+
+
 class PostQueue(models.Model):
     """A reusable schedule (e.g. 'every weekday 10am') that drains QueuedItems."""
     client          = models.ForeignKey(Client, on_delete=models.CASCADE, related_name='post_queues')

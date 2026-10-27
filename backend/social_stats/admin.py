@@ -8,7 +8,7 @@
 # ============================================================================
 from django.contrib import admin
 from .models import (
-    SocialMetricSnapshot, SocialMetricRollup, BusinessSignal, ExecutiveReport,
+    SocialMetricSnapshot, SocialMetricRollup, BusinessSignal, ExecutiveReport, ExecutiveNarrative, IntelligenceAutomationConfig, IntelligenceAutomationRun,
     Client, UserProfile, PlatformCredential, DailyMetric, PostMetric, SyncLog,
     ROISettings, ROIReport,
     CalendarPost, CalendarNote, PostingSchedule, SiteContent, LookupCollection, LookupItem,
@@ -137,3 +137,27 @@ class ExecutiveReportAdmin(admin.ModelAdmin):
     list_filter = ['report_type', 'language', 'status']
     search_fields = ['client__company', 'title', 'source_hash']
     readonly_fields = ['source_hash', 'created_at', 'updated_at']
+
+
+@admin.register(ExecutiveNarrative)
+class ExecutiveNarrativeAdmin(admin.ModelAdmin):
+    list_display = ['id', 'client', 'executive_report', 'status', 'provider', 'model_name', 'prompt_version', 'validation_status', 'generated_at']
+    list_filter = ['status', 'validation_status', 'provider', 'language']
+    search_fields = ['client__name', 'client__company', 'source_hash', 'context_hash']
+    readonly_fields = ['source_hash', 'context_hash', 'created_at', 'updated_at']
+
+
+@admin.register(IntelligenceAutomationConfig)
+class IntelligenceAutomationConfigAdmin(admin.ModelAdmin):
+    list_display = ['client', 'enabled', 'timezone', 'reporting_frequency', 'reporting_day', 'reporting_hour', 'generate_report', 'generate_narrative', 'require_operator_approval', 'provider_call_budget', 'updated_at']
+    list_filter = ['enabled', 'reporting_frequency', 'generate_report', 'generate_narrative', 'require_operator_approval']
+    search_fields = ['client__name', 'client__company', 'timezone']
+    readonly_fields = ['created_at', 'updated_at']
+
+
+@admin.register(IntelligenceAutomationRun)
+class IntelligenceAutomationRunAdmin(admin.ModelAdmin):
+    list_display = ['id', 'client', 'status', 'current_stage', 'period_start', 'period_end', 'trigger_type', 'dry_run', 'provider_call_count', 'error_code', 'started_at', 'finished_at']
+    list_filter = ['status', 'current_stage', 'trigger_type', 'dry_run']
+    search_fields = ['client__name', 'client__company', 'execution_identity', 'error_code']
+    readonly_fields = ['execution_identity', 'started_at', 'finished_at', 'created_at', 'updated_at']

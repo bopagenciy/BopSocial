@@ -1,0 +1,49 @@
+"""
+Constants and Enums for BS-6A Production Intelligence Automation & Scheduling Foundation.
+"""
+from enum import Enum
+
+
+PIPELINE_VERSION = "bs6a-v1"
+DEFAULT_PROVIDER_CALL_BUDGET = 1
+DEFAULT_MAX_RETRY_COUNT = 0
+DEFAULT_REPORTING_FREQUENCY = "MONTHLY"
+DEFAULT_REPORTING_DAY = 1
+DEFAULT_REPORTING_HOUR = 6
+DEFAULT_LOOKBACK_DAYS = 30
+DEFAULT_FRESHNESS_HOURS = 24
+
+
+class AutomationStage(str, Enum):
+    ELIGIBILITY = "ELIGIBILITY"
+    SYNC_CHECK = "SYNC_CHECK"
+    SNAPSHOT_CHECK = "SNAPSHOT_CHECK"
+    ROLLUP_CHECK = "ROLLUP_CHECK"
+    SIGNAL_CHECK = "SIGNAL_CHECK"
+    REPORT_CHECK = "REPORT_CHECK"
+    NARRATIVE_CHECK = "NARRATIVE_CHECK"
+    COMPLETE = "COMPLETE"
+
+
+class AutomationStatus(str, Enum):
+    PENDING = "PENDING"
+    ELIGIBILITY_CHECK = "ELIGIBILITY_CHECK"
+    RUNNING = "RUNNING"
+    BLOCKED = "BLOCKED"
+    FAILED = "FAILED"
+    COMPLETED = "COMPLETED"
+    CANCELLED = "CANCELLED"
+
+
+class AutomationTriggerType(str, Enum):
+    MANUAL = "MANUAL"
+    SCHEDULED = "SCHEDULED"
+    RETRY = "RETRY"
+    ADMIN = "ADMIN"
+
+
+class FreshnessCode(str, Enum):
+    FRESH = "FRESH"
+    STALE = "STALE"
+    MISSING = "MISSING"
+    UNKNOWN = "UNKNOWN"
