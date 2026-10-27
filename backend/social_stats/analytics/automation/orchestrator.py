@@ -138,6 +138,13 @@ def execute_intelligence_automation(
     try:
         # Create persistent AutomationRun audit record
         agency_val = str(client.bop_organization_id) if getattr(client, "bop_organization_id", None) else None
+        
+        # Determine attempt number for this execution identity
+        prior_runs_count = IntelligenceAutomationRun.objects.filter(
+            execution_identity=eligibility.execution_identity
+        ).count()
+        attempt_num = prior_runs_count + 1
+
         run = IntelligenceAutomationRun.objects.create(
             client=client,
             agency_id=agency_val,
@@ -155,6 +162,8 @@ def execute_intelligence_automation(
             retry_count=0,
             fallback_count=0,
             metadata={
+                "attempt_number": attempt_num,
+                "block_state_hash": eligibility.block_state_hash,
                 "freshness": eligibility.freshness,
                 "existing_artifacts": eligibility.existing_artifacts,
                 "planned_stages": eligibility.planned_stages,

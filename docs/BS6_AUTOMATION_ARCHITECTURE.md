@@ -225,7 +225,7 @@ All pipeline transitions produce structured audit events logged with structured 
 
 ---
 
-## 10. Operational Interface & Controlled Scheduler Pilot (BS-6B & BS-6B.0A)
+## 10. Operational Interface & Controlled Scheduler Pilot (BS-6B, BS-6B.0A & BS-6B.0B)
 
 ### 10.1 CLI Management Command
 ```bash
@@ -242,7 +242,11 @@ python manage.py run_intelligence_automation \
   - **Decoupled Due Engine**: Evaluates `is_tenant_due(config, reference_datetime)` and `calculate_next_due_datetime(config)`. The scanner operates on a global UTC cadence and is completely decoupled from individual tenant local reporting hours.
   - **Missed-Tick Recovery**: If the scheduler is paused or restarts after downtime, any tenant whose threshold has arrived (`local_now >= due_threshold`) is immediately discovered and processed once for that reporting period, rather than skipped until the following month.
   - **Cadence**: Configured to run every 15 minutes (`*/15 * * * *`) via PeriodicTask `intelligence-automation-discovery` (ID #18).
-  - **Row-Storm & BLOCKED-Run Idempotency**: Filters against existing runs in `['COMPLETED', 'RUNNING', 'PENDING', 'ELIGIBILITY_CHECK', 'BLOCKED']`. A tenant that evaluates to `BLOCKED` for a given period creates exactly one audit run and is not repeatedly re-enqueued on subsequent 15-minute discovery ticks unless its target reporting period or configuration changes.
+  - **Material Block State Idempotency & Reactivation (BS-6B.0B)**:
+    - Instead of permanently skipping any period that has a historical `BLOCKED` row, the scanner computes a deterministic `block_state_hash` based on active blocking reasons, freshness codes, approval status, and configuration flags.
+    - If a tenant's blocking condition remains unchanged (`block_state_hash == stored_hash`), the scanner skips re-enqueuing, eliminating runaway row storms across the 96 daily scanner ticks.
+    - As soon as the material blocking state resolves (e.g. telemetry becomes fresh or operator approval is satisfied), the scanner detects the state change and immediately unlocks exactly ONE new attempt opportunity.
+    - Prior terminal `BLOCKED` runs remain immutable audit records, and new attempts record an incrementing `attempt_number`.
   - **Provider Invariant**: Never calls LLMs, Ollama, or third-party APIs directly. Only verifies due state and enqueues tenant execution tasks.
 - `run_intelligence_automation_task`: Worker task executing tenant automation unit under PostgreSQL single-flight advisory locking.
 
@@ -258,7 +262,7 @@ python manage.py run_intelligence_automation \
 - `max_retry_count`: `0`
 
 ### 10.4 Approval Model Design & Future Evolution (BS-6C Roadmap)
-In the current BS-6B baseline, operator approval is enforced at the config level (`require_operator_approval=True`). This produces `OPERATOR_APPROVAL_REQUIRED` on scheduled runs and blocks unapproved narrative generation.
+In the current baseline, operator approval is enforced at the config level (`require_operator_approval=True`). This produces `OPERATOR_APPROVAL_REQUIRED` on scheduled runs and blocks unapproved narrative generation.
 For BS-6C, the approval model will evolve to support **run-level or stage-level approval**:
 - A scheduled run executes data synthesis (stages 1-6) and transitions to `AWAITING_APPROVAL` at the narrative stage.
 - An operator reviews the generated report in the dashboard and clicks "Approve Narrative Generation", which releases the stage lock for that specific `run_id` without requiring `require_operator_approval` to be permanently disabled on the config.
@@ -267,7 +271,7 @@ For BS-6C, the approval model will evolve to support **run-level or stage-level 
 
 ## 11. Verification Matrix
 
-The test matrix validates all BS-6A, BS-6A.1, BS-6B, and BS-6B.0A invariants across 10 dedicated test modules:
+The test matrix validates all BS-6A, BS-6A.1, BS-6B, BS-6B.0A, and BS-6B.0B invariants across 11 dedicated test modules:
 1. `test_intelligence_automation_models.py` (Models, choices, defaults, active constraints)
 2. `test_intelligence_automation_period.py` (Timezones, calendar boundaries, DST transitions)
 3. `test_intelligence_automation_eligibility.py` (Fail-closed gates, freshness rules, budget limits)
@@ -278,5 +282,6 @@ The test matrix validates all BS-6A, BS-6A.1, BS-6B, and BS-6B.0A invariants acr
 8. `test_intelligence_automation_safety_contract.py` (Data eligibility vs authorization, force limits)
 9. `test_intelligence_automation_scheduler_pilot.py` (Discovery scanner, cadence, due calculation, gate blocking)
 10. `test_intelligence_automation_timezone_alignment.py` (Timezone conversion, DST spring/fall, missed-tick recovery, multi-timezone isolation, row-storm prevention)
+11. `test_intelligence_automation_blocked_reactivation.py` (Material block state fingerprint, safe reactivation, attempt sequencing, 96-tick storm prevention)
 
-**Result**: 75 passed in 1.93s. Full backend test suite: **1,167 passed** in 129.9s with zero regressions. Frontend test suite: **32 suites, 282 tests passed** in 34.1s.
+**Result**: 90 passed in 3.70s. Full backend test suite: **1,182 passed** in 130.9s with zero regressions. Frontend test suite: **32 suites, 282 tests passed** in 34.1s.

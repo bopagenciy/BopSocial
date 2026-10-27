@@ -19,6 +19,7 @@ from .constants import (
     DEFAULT_MAX_RETRY_COUNT,
     PIPELINE_VERSION,
 )
+from .eligibility import evaluate_intelligence_automation_eligibility
 from .orchestrator import execute_intelligence_automation, preview_intelligence_automation
 from .period import (
     calculate_next_due_datetime,
@@ -104,23 +105,54 @@ def discover_and_enqueue_due_intelligence_automations(dry_run: bool = True) -> D
             })
             continue
 
-        # Check if already executed, active, or evaluated for this target period
-        # Excludes COMPLETED, RUNNING, PENDING, ELIGIBILITY_CHECK, and already-BLOCKED runs
-        # (preventing row storms on repeated scans of an invariant blocked tenant)
-        existing_run = IntelligenceAutomationRun.objects.filter(
+        # Check if an active or completed run exists
+        active_or_complete = IntelligenceAutomationRun.objects.filter(
             client=client,
             period_start=p_start,
             period_end=p_end,
             pipeline_version=PIPELINE_VERSION,
-            status__in=["COMPLETED", "RUNNING", "PENDING", "ELIGIBILITY_CHECK", "BLOCKED"],
+            status__in=["COMPLETED", "RUNNING", "PENDING", "ELIGIBILITY_CHECK"],
         ).order_by("-id").first()
 
-        if existing_run:
+        if active_or_complete:
             skipped_tenants.append({
                 "client_id": client.id,
-                "reason": f"RUN_ALREADY_EXISTS_OR_ACTIVE (run #{existing_run.id}, status={existing_run.status})",
+                "reason": f"RUN_ALREADY_EXISTS_OR_ACTIVE (run #{active_or_complete.id}, status={active_or_complete.status})",
             })
             continue
+
+        # Inspect latest terminal BLOCKED run (if any)
+        latest_blocked = IntelligenceAutomationRun.objects.filter(
+            client=client,
+            period_start=p_start,
+            period_end=p_end,
+            pipeline_version=PIPELINE_VERSION,
+            status="BLOCKED",
+        ).order_by("-id").first()
+
+        if latest_blocked:
+            # Check current material eligibility fingerprint
+            current_eligibility = evaluate_intelligence_automation_eligibility(
+                client_id=client.id,
+                period_start=p_start,
+                period_end=p_end,
+                pipeline_version=PIPELINE_VERSION,
+                trigger_type=AutomationTriggerType.SCHEDULED.value,
+                now=now,
+                dry_run=True,
+            )
+
+            # Extract stored block_state_hash from previous run's metadata
+            stored_metadata = latest_blocked.metadata or {}
+            stored_hash = stored_metadata.get("block_state_hash") or ""
+
+            # If material block state is UNCHANGED and still not eligible/authorized:
+            if current_eligibility.block_state_hash and current_eligibility.block_state_hash == stored_hash:
+                skipped_tenants.append({
+                    "client_id": client.id,
+                    "reason": f"BLOCKED_STATE_UNCHANGED (run #{latest_blocked.id}, hash={stored_hash})",
+                })
+                continue
 
         due_tenants.append(client.id)
 

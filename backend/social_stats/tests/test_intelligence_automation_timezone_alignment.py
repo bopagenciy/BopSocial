@@ -239,19 +239,28 @@ class TimezoneSchedulerAlignmentTests(TestCase):
 
     def test_11_repeated_identical_blocked_scan_does_not_create_row_storm(self):
         """Proves repeated periodic scans of an invariant blocked tenant do NOT create runaway BLOCKED rows."""
-        # Create an existing BLOCKED run for the current period
         p_start = date(2026, 9, 1)
         p_end = date(2026, 9, 30)
+        
+        elig = evaluate_intelligence_automation_eligibility(
+            client_id=self.client_ny.id,
+            period_start=p_start,
+            period_end=p_end,
+            trigger_type=AutomationTriggerType.SCHEDULED.value,
+            dry_run=True,
+        )
+
         IntelligenceAutomationRun.objects.create(
             client=self.client_ny,
             period_start=p_start,
             period_end=p_end,
             pipeline_version=PIPELINE_VERSION,
-            execution_identity="sample-blocked-identity",
+            execution_identity=elig.execution_identity,
             trigger_type=AutomationTriggerType.SCHEDULED.value,
             status=AutomationStatus.BLOCKED.value,
             current_stage=AutomationStage.ELIGIBILITY.value,
-            error_code="ANALYTICS_DATA_STALE",
+            error_code=elig.blocking_reasons[0],
+            metadata={"block_state_hash": elig.block_state_hash},
         )
 
         initial_count = IntelligenceAutomationRun.objects.count()

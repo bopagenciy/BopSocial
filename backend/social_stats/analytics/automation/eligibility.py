@@ -28,7 +28,7 @@ from .constants import (
     PIPELINE_VERSION,
 )
 from .freshness import evaluate_tenant_freshness, FreshnessResult
-from .identity import compute_execution_identity
+from .identity import compute_block_state_hash, compute_execution_identity
 from .period import calculate_reporting_period
 
 
@@ -42,6 +42,7 @@ class EligibilityResult:
     pipeline_version: str
     data_eligible: bool = True
     execution_authorized: bool = False
+    block_state_hash: str = ""
     blocking_reasons: List[str] = field(default_factory=list)
     warnings: List[str] = field(default_factory=list)
     freshness: Dict[str, Any] = field(default_factory=dict)
@@ -58,6 +59,7 @@ class EligibilityResult:
             "eligible": self.eligible,
             "data_eligible": self.data_eligible,
             "execution_authorized": self.execution_authorized,
+            "block_state_hash": self.block_state_hash,
             "client_id": self.client_id,
             "period_start": self.period_start.isoformat(),
             "period_end": self.period_end.isoformat(),
@@ -331,10 +333,19 @@ def evaluate_intelligence_automation_eligibility(
         or (trigger_type in ["MANUAL", "ADMIN"])
     )
 
+    # Material block state fingerprint:
+    block_hash = compute_block_state_hash(
+        blocking_reasons=blocking_reasons,
+        freshness_code=freshness_res.code.value if hasattr(freshness_res, "code") else "",
+        requires_approval=req_approval,
+        config_enabled=config_enabled,
+    ) if not is_eligible else ""
+
     return EligibilityResult(
         eligible=is_eligible,
         data_eligible=is_data_eligible,
         execution_authorized=is_execution_authorized,
+        block_state_hash=block_hash,
         client_id=client_id,
         period_start=p_start,
         period_end=p_end,
