@@ -192,13 +192,20 @@ assert elig.blocking_reasons == ["OPERATOR_APPROVAL_REQUIRED: automated recurrin
 print("FRESHNESS RECOVERY VERIFIED: Sole blocker is OPERATOR_APPROVAL_REQUIRED.")
 ```
 
-### 7.2 Post-Sync Sentinels (Baseline + Freshness Recovery Delta)
-- `SocialMetricSnapshot` = 370 (+58 from 312 baseline)
-- `SocialMetricRollup` = 618 (+67 from 551 baseline)
-- `SyncLog` = 10 (+2 from 8 baseline)
-- `DailyMetric` = 41 (+8 from 33 baseline)
-- `BusinessSignal` = 9 (frozen)
-- `ExecutiveReport` = 2 (frozen)
-- `ExecutiveNarrative` = 2 (frozen)
-- `IntelligenceAutomationRun` = 2 (frozen)
+### 7.3 Secret Hygiene & Environment Configuration
+In compliance with production security standards (SEC-02):
+- **Never commit keys to source**: `FIELD_ENCRYPTION_KEYS` must be injected via container environment variables or `.env.docker` (which is `.gitignore`d).
+- **Format**: Primary key first (used for all new writes), followed by comma-separated legacy keys (for decrypting historical credentials during rotation windows).
+- **Sanitized Tests**: Synthetic tokens and dummy values in test suites must never mirror real provider token prefixes.
+
+---
+
+## 8. Phase BS-6D.0A: Pre-Live Execution Safety Gate Protocol
+
+### 8.1 BS-6D.1 Trigger Contract
+- **Trigger Type**: Strictly `MANUAL` / `ADMIN` controlled trigger.
+- **Monthly Cadence Preserved**: The production configuration (`MONTHLY`, 1st of month at 02:00 AM America/New_York) remains untouched.
+- **Fail-Closed Staleness Validation**: At the next monthly scheduled run (`2026-11-01T02:00:00-05:00`), data age without an intervening sync will be ~59.8h (>24h threshold), ensuring that the automation scheduler will safely fail closed unless a fresh synchronization occurs immediately prior to the execution window.
+- **Deterministic Reporting Period**: The manual pilot run targets calendar month `2026-09-01` to `2026-09-30` (or rolling 30-day window ending with refreshed telemetry), ensuring that `ExecutiveReport` and `ExecutiveNarrative` do not exist, legitimately triggering the single authorized Ollama provider call.
+
 

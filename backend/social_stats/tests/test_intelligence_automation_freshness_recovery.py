@@ -252,7 +252,7 @@ class IntelligenceAutomationFreshnessRecoveryTests(TestCase):
 
     def test_05_field_encryption_and_decryption_with_key_list(self):
         """EncryptedTextField encrypts with primary key and decrypts transparently."""
-        secret = "EAALwjvFB5Q4BS2_super_secret_token"
+        secret = "synthetic_dummy_token_for_fernet_crypto_testing_only"
         ciphertext = encrypt_value(secret)
         self.assertTrue(ciphertext.startswith("enc::"))
 

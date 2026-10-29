@@ -271,7 +271,7 @@ The test matrix validates all BS-6A through BS-6C.0A invariants across 14 dedica
 
 ### 12.1 Objective & Architecture
 Phase BS-6D.0 resolved the real production analytics staleness blocker for Client #3 (`Bop Agencia`) prior to the first live automated narrative execution in BS-6D.1:
-1. **Multi-Key Credential Decryption**: Configured `FIELD_ENCRYPTION_KEYS` rotation fallback in `dashboard/settings.py` so credentials encrypted with staging dev keys decrypt transparently while new writes use primary key.
+1. **Environment-Backed Multi-Key Decryption**: Multi-key credential decryption is strictly backed by the `FIELD_ENCRYPTION_KEYS` environment variable (never hardcoded in source). Secondary/historical keys decrypt existing credentials transparently while all new writes use the primary key.
 2. **Controlled Analytics Synchronization**: Executed canonical `sync_facebook_analytics` and `sync_instagram_analytics` scoped strictly to `Client.id = 3` across recent 30-day window.
 3. **Capability-Aware Missing Metric Semantics**: In the absence of `instagram_manage_insights`, the Instagram adapter safely degraded to `PARTIAL` capability mode, ingesting public account and media counters without fabricating fake zeroes for private timeseries metrics.
 4. **Freshness Recovery**:
@@ -284,4 +284,20 @@ Phase BS-6D.0 resolved the real production analytics staleness blocker for Clien
    - Narrative context hash generated from Report #2 matches `ExecutiveNarrative #2.context_hash` (`e4d61570...`) bit-for-bit.
    - Historical runs #1 and #2 remain immutable in `BLOCKED` status.
 6. **Eligibility Status**: Scheduled execution is cleared of all data and freshness blockers; the sole remaining gate is `OPERATOR_APPROVAL_REQUIRED`, perfectly setting up Phase BS-6D.1.
+
+---
+
+## 13. Phase BS-6D.0A: Pre-Live Execution Safety Gate
+
+### 13.1 Verification & Secret Hygiene
+Phase BS-6D.0A closed all pre-execution verification gates before live Ollama execution:
+1. **Secret Hygiene & Environment-Backed Rotation**: Confirmed zero secrets exist in tracked Python, tests, documentation, or migrations. `FIELD_ENCRYPTION_KEYS` is strictly resolved via environment variables (`os.environ.get('FIELD_ENCRYPTION_KEYS')`).
+2. **Complete Backend Regression**: Executed the complete test suite: **1,231 passed in 146.15s** with 0 failures and 0 errors.
+3. **First Live Execution Trigger Contract**: The first live provider execution in BS-6D.1 will use an honest `MANUAL` / `ADMIN` trigger rather than falsely forcing scheduled due state.
+4. **Scheduled Monthly Cadence Invariance**:
+   - Production config remains unchanged (`MONTHLY`, reporting_day=1, reporting_hour=2 America/New_York).
+   - Next scheduled execution is `2026-11-01T02:00:00-05:00` (UTC `2026-11-01T07:00:00Z`).
+   - At scheduled execution, data age without subsequent sync will be ~59.8h (>24h threshold), proving that the scheduler correctly fails closed on stale data unless a fresh sync immediately precedes it.
+5. **Legitimate Narrative Requirement**: Evaluated reporting period (calendar month `2026-09-01` to `2026-09-30` or rolling window ending with refreshed data) has 0 existing reports and 0 existing narratives, proving that a new narrative is genuinely and legitimately required.
+
 
