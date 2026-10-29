@@ -261,6 +261,27 @@ The test matrix validates all BS-6A through BS-6C.0A invariants across 14 dedica
 14. `test_intelligence_automation_provider_boundary.py` (Provider boundary state classification, active uniqueness, scanner duplicate prevention, 96-tick stability, lock reacquisition, concurrent executor blocking, token recheck, freshness/config/credentials/budget recheck, narrative reuse race, provider reservation atomicity, crash fail-closed behavior, zero provider calls)
 
 **Result**:
-- **134 intelligence automation tests passed** in 9.86s.
+- **139 intelligence automation tests passed** across 15 dedicated test modules (including `test_intelligence_automation_freshness_recovery.py`).
 - **207 BS-5 narrative safety and multichannel tests passed** in 25.38s.
 - **Full backend test suite: 1,226 passed** in 134.13s with zero regressions (0 failures, 0 errors).
+
+---
+
+## 12. Phase BS-6D.0: Controlled Analytics Freshness Recovery
+
+### 12.1 Objective & Architecture
+Phase BS-6D.0 resolved the real production analytics staleness blocker for Client #3 (`Bop Agencia`) prior to the first live automated narrative execution in BS-6D.1:
+1. **Multi-Key Credential Decryption**: Configured `FIELD_ENCRYPTION_KEYS` rotation fallback in `dashboard/settings.py` so credentials encrypted with staging dev keys decrypt transparently while new writes use primary key.
+2. **Controlled Analytics Synchronization**: Executed canonical `sync_facebook_analytics` and `sync_instagram_analytics` scoped strictly to `Client.id = 3` across recent 30-day window.
+3. **Capability-Aware Missing Metric Semantics**: In the absence of `instagram_manage_insights`, the Instagram adapter safely degraded to `PARTIAL` capability mode, ingesting public account and media counters without fabricating fake zeroes for private timeseries metrics.
+4. **Freshness Recovery**:
+   - Pre-sync: `STALE` (data age 188.8h > 24h threshold, blocking scheduled execution).
+   - Post-sync: `FRESH` (data age 0.01h < 24h threshold, `data_eligible=True`).
+5. **Deterministic Artifact Invariance**:
+   - `BusinessSignal` rows: 9 (exact baseline).
+   - `ExecutiveReport` rows: 2 (exact baseline).
+   - `ExecutiveNarrative` rows: 2 (exact baseline).
+   - Narrative context hash generated from Report #2 matches `ExecutiveNarrative #2.context_hash` (`e4d61570...`) bit-for-bit.
+   - Historical runs #1 and #2 remain immutable in `BLOCKED` status.
+6. **Eligibility Status**: Scheduled execution is cleared of all data and freshness blockers; the sole remaining gate is `OPERATOR_APPROVAL_REQUIRED`, perfectly setting up Phase BS-6D.1.
+

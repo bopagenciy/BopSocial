@@ -49,6 +49,10 @@ if not DEBUG:
 FIELD_ENCRYPTION_KEYS = os.environ.get('FIELD_ENCRYPTION_KEYS', '')
 FIELD_ENCRYPTION_KEY  = os.environ.get('FIELD_ENCRYPTION_KEY',  '')
 
+# In development/staging (DEBUG=True), provide fallback to historical dev secrets
+if not FIELD_ENCRYPTION_KEYS and not FIELD_ENCRYPTION_KEY and DEBUG:
+    FIELD_ENCRYPTION_KEYS = f"{SECRET_KEY},bopsocial-local-dev-secret-key-32chars-minimum-valid-key-2026"
+
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
 
 INSTALLED_APPS = [

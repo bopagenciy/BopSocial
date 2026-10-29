@@ -163,3 +163,42 @@ Note: Runs in `AWAITING_APPROVAL` and `PROVIDER_EXECUTION_READY` do **NOT** reta
    ).update(status="CANCELLED", approval_status="REJECTED", error_code="OPERATOR_ABORT", error_message_safe="Aborted by operator")
    ```
 4. **Verify Database Sentinels**: Confirm that baseline table counts remain invariant.
+
+---
+
+## 7. Phase BS-6D.0: Controlled Analytics Freshness Recovery & Pre-BS-6D.1 Checklist
+
+### 7.1 Recovery Verification Procedure
+Before approving a live provider call under BS-6D.1, the operator must verify that tenant analytics data is fresh (`< 24h` staleness):
+
+```python
+from django.utils import timezone
+from datetime import timedelta
+from social_stats.analytics.automation.freshness import evaluate_tenant_freshness
+from social_stats.analytics.automation.eligibility import evaluate_intelligence_automation_eligibility
+
+client_id = 3
+now = timezone.now()
+p_start = (now - timedelta(days=30)).date()
+p_end = now.date()
+
+freshness = evaluate_tenant_freshness(client_id, p_start, p_end, max_staleness_hours=24, now=now)
+assert freshness.is_fresh, f"Data is not fresh: {freshness.code}"
+assert freshness.data_age_hours < 24.0, f"Data age exceeds 24h: {freshness.data_age_hours}h"
+
+elig = evaluate_intelligence_automation_eligibility(client_id, trigger_type="SCHEDULED", now=now)
+assert elig.data_eligible, "Tenant data is not eligible"
+assert elig.blocking_reasons == ["OPERATOR_APPROVAL_REQUIRED: automated recurring narrative generation requires operator approval"]
+print("FRESHNESS RECOVERY VERIFIED: Sole blocker is OPERATOR_APPROVAL_REQUIRED.")
+```
+
+### 7.2 Post-Sync Sentinels (Baseline + Freshness Recovery Delta)
+- `SocialMetricSnapshot` = 370 (+58 from 312 baseline)
+- `SocialMetricRollup` = 618 (+67 from 551 baseline)
+- `SyncLog` = 10 (+2 from 8 baseline)
+- `DailyMetric` = 41 (+8 from 33 baseline)
+- `BusinessSignal` = 9 (frozen)
+- `ExecutiveReport` = 2 (frozen)
+- `ExecutiveNarrative` = 2 (frozen)
+- `IntelligenceAutomationRun` = 2 (frozen)
+
