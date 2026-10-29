@@ -157,7 +157,41 @@ class IntelligenceAutomationConfigAdmin(admin.ModelAdmin):
 
 @admin.register(IntelligenceAutomationRun)
 class IntelligenceAutomationRunAdmin(admin.ModelAdmin):
-    list_display = ['id', 'client', 'status', 'current_stage', 'period_start', 'period_end', 'trigger_type', 'dry_run', 'provider_call_count', 'error_code', 'started_at', 'finished_at']
-    list_filter = ['status', 'current_stage', 'trigger_type', 'dry_run']
+    list_display = [
+        'id', 'client', 'status', 'approval_status', 'current_stage',
+        'period_start', 'period_end', 'trigger_type', 'provider_call_count',
+        'approval_requested_at', 'approved_by', 'approval_decided_at',
+        'started_at', 'finished_at',
+    ]
+    list_filter = ['status', 'approval_status', 'current_stage', 'trigger_type', 'dry_run']
     search_fields = ['client__name', 'client__company', 'execution_identity', 'error_code']
-    readonly_fields = ['execution_identity', 'started_at', 'finished_at', 'created_at', 'updated_at']
+    readonly_fields = [
+        'execution_identity', 'approval_token', 'approval_requested_at',
+        'approval_decided_at', 'approved_by', 'started_at', 'finished_at',
+        'created_at', 'updated_at',
+    ]
+    actions = ['approve_selected_runs', 'reject_selected_runs']
+
+    @admin.action(description="Approve selected runs awaiting approval")
+    def approve_selected_runs(self, request, queryset):
+        from .analytics.automation.approval import approve_intelligence_run, ApprovalError
+        count = 0
+        for run in queryset.filter(status='AWAITING_APPROVAL', approval_status='PENDING'):
+            try:
+                approve_intelligence_run(run.id, request.user, comment="Admin action approval")
+                count += 1
+            except ApprovalError as exc:
+                self.message_user(request, f"Run #{run.id} failed: {exc}", level='error')
+        self.message_user(request, f"Successfully approved {count} run(s).")
+
+    @admin.action(description="Reject selected runs awaiting approval")
+    def reject_selected_runs(self, request, queryset):
+        from .analytics.automation.approval import reject_intelligence_run, ApprovalError
+        count = 0
+        for run in queryset.filter(status='AWAITING_APPROVAL', approval_status='PENDING'):
+            try:
+                reject_intelligence_run(run.id, request.user, comment="Admin action rejection")
+                count += 1
+            except ApprovalError as exc:
+                self.message_user(request, f"Run #{run.id} failed: {exc}", level='error')
+        self.message_user(request, f"Successfully rejected {count} run(s).")

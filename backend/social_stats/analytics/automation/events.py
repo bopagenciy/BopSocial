@@ -43,6 +43,8 @@ def log_automation_event(
     duration_ms: Optional[float] = None,
     error_code: Optional[str] = None,
     error_message: Optional[str] = None,
+    operator_id: Optional[int] = None,
+    decision: Optional[str] = None,
     extra: Optional[Dict[str, Any]] = None,
 ) -> None:
     """
@@ -68,6 +70,8 @@ def log_automation_event(
         "duration_ms": round(duration_ms, 2) if duration_ms is not None else None,
         "error_code": error_code,
         "error_message": safe_error_msg,
+        "operator_id": operator_id,
+        "decision": decision,
     }
     if extra:
         payload["extra"] = {k: redact_secrets(str(v)) for k, v in extra.items()}

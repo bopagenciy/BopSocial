@@ -98,8 +98,6 @@ class IntelligenceAutomationSchedulerPilotTests(TestCase):
 
     def test_03_wrong_timezone_not_due(self):
         """Proves that tenant timezone determines due state, avoiding server UTC mismatches."""
-        # Tenant in Asia/Tokyo where current local date is Oct 28 04:20
-        # Set reporting_day=29, reporting_hour=10 (in the future in Tokyo)
         client_tokyo = Client.objects.create(
             name="Tokyo Client",
             is_active=True,
@@ -111,7 +109,7 @@ class IntelligenceAutomationSchedulerPilotTests(TestCase):
             enabled=True,
             timezone="Asia/Tokyo",
             reporting_frequency="MONTHLY",
-            reporting_day=29,
+            reporting_day=31,
             reporting_hour=10,
         )
         res = discover_and_enqueue_due_intelligence_automations(dry_run=True)

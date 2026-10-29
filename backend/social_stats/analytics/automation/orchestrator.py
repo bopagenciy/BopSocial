@@ -20,6 +20,7 @@ from social_stats.models import (
     IntelligenceAutomationRun,
 )
 from .constants import (
+    ApprovalStatus,
     AutomationStage,
     AutomationStatus,
     AutomationTriggerType,
@@ -29,7 +30,7 @@ from .constants import (
 )
 from .eligibility import evaluate_intelligence_automation_eligibility, EligibilityResult
 from .events import log_automation_event, redact_secrets
-from .identity import compute_execution_identity
+from .identity import compute_approval_token, compute_execution_identity
 from .locking import SingleFlightLock, ConcurrencyLockError
 
 logger = logging.getLogger(__name__)
@@ -184,12 +185,16 @@ def execute_intelligence_automation(
             status=run.status,
         )
 
-        # Check Eligibility Gate
-        if not eligibility.eligible:
+        # Check Eligibility Gate: hard blockers (data missing/stale, client inactive, creds disconnected)
+        hard_blocking_reasons = [
+            r for r in eligibility.blocking_reasons
+            if not r.startswith("OPERATOR_APPROVAL_REQUIRED")
+        ]
+        if hard_blocking_reasons:
             run.status = AutomationStatus.BLOCKED.value
             run.current_stage = AutomationStage.ELIGIBILITY.value
             run.finished_at = timezone.now()
-            run.error_code = eligibility.blocking_reasons[0] if eligibility.blocking_reasons else "NOT_ELIGIBLE"
+            run.error_code = hard_blocking_reasons[0]
             run.error_message_safe = redact_secrets("; ".join(eligibility.blocking_reasons))
             run.save(update_fields=["status", "current_stage", "finished_at", "error_code", "error_message_safe", "updated_at"])
 
@@ -210,29 +215,84 @@ def execute_intelligence_automation(
         run.status = AutomationStatus.RUNNING.value
         run.save(update_fields=["status", "updated_at"])
 
-        # In DRY-RUN mode, complete immediately without executing canonical mutations
-        if dry_run:
-            run.status = AutomationStatus.COMPLETED.value
-            run.current_stage = AutomationStage.COMPLETE.value
-            run.finished_at = timezone.now()
-            duration_ms = (time.monotonic() - start_time) * 1000
-            run.save(update_fields=["status", "current_stage", "finished_at", "updated_at"])
+        # Stage: REPORT_CHECK
+        run.current_stage = AutomationStage.REPORT_CHECK.value
+        matching_report = ExecutiveReport.objects.filter(
+            client_id=client_id,
+            period_start=eligibility.period_start,
+            period_end=eligibility.period_end,
+            status="GENERATED",
+        ).order_by("-id").first()
+        if matching_report:
+            run.report = matching_report
+            run.save(update_fields=["report", "current_stage", "updated_at"])
 
-            log_automation_event(
-                event_name="automation.run.completed",
-                run_id=run.id,
-                client_id=client_id,
-                stage=AutomationStage.COMPLETE.value,
-                trigger_type=trigger_type,
-                dry_run=True,
-                status=run.status,
-                duration_ms=duration_ms,
-            )
-            return run
+        # Stage: NARRATIVE_CHECK
+        run.current_stage = AutomationStage.NARRATIVE_CHECK.value
+        matching_narrative = None
+        if run.report:
+            matching_narrative = ExecutiveNarrative.objects.filter(
+                executive_report=run.report,
+                status="VALIDATED",
+            ).order_by("-id").first()
+        elif client_id:
+            matching_narrative = ExecutiveNarrative.objects.filter(
+                executive_report__client_id=client_id,
+                executive_report__period_start=eligibility.period_start,
+                executive_report__period_end=eligibility.period_end,
+                status="VALIDATED",
+            ).order_by("-id").first()
 
-        # Canonical execution of remaining stages
-        # BS-6A Foundation: Live mutations remain disabled by safety contract.
-        # Live generation requires subsequent phase authorization.
+        if matching_narrative:
+            # REUSE existing validated narrative!
+            run.narrative = matching_narrative
+            run.save(update_fields=["narrative", "current_stage", "updated_at"])
+        else:
+            config = IntelligenceAutomationConfig.objects.filter(client_id=client_id).first()
+            gen_narrative = config.generate_narrative if config else False
+            req_approval = config.require_operator_approval if config else True
+
+            if gen_narrative and req_approval and not dry_run:
+                # PAUSE at NARRATIVE_CHECK awaiting operator approval!
+                token = compute_approval_token(
+                    run_id=run.id,
+                    execution_identity=run.execution_identity,
+                    pipeline_version=run.pipeline_version,
+                    period_start=run.period_start,
+                    period_end=run.period_end,
+                    report_id=run.report_id,
+                )
+                now_ts = timezone.now()
+                run.status = AutomationStatus.AWAITING_APPROVAL.value
+                run.current_stage = AutomationStage.NARRATIVE_CHECK.value
+                run.approval_status = ApprovalStatus.PENDING.value
+                run.approval_requested_at = now_ts
+                run.approval_token = token
+                run.provider_call_count = 0
+                run.save(update_fields=[
+                    "status",
+                    "current_stage",
+                    "approval_status",
+                    "approval_requested_at",
+                    "approval_token",
+                    "provider_call_count",
+                    "updated_at",
+                ])
+
+                log_automation_event(
+                    event_name="automation.approval.requested",
+                    run_id=run.id,
+                    client_id=client_id,
+                    stage=AutomationStage.NARRATIVE_CHECK.value,
+                    trigger_type=trigger_type,
+                    dry_run=False,
+                    status=run.status,
+                    extra={"approval_token": token},
+                )
+                # Lock is released in finally block
+                return run
+
+        # In DRY-RUN mode or after reuse complete immediately
         run.status = AutomationStatus.COMPLETED.value
         run.current_stage = AutomationStage.COMPLETE.value
         run.finished_at = timezone.now()
@@ -245,8 +305,10 @@ def execute_intelligence_automation(
             client_id=client_id,
             stage=AutomationStage.COMPLETE.value,
             trigger_type=trigger_type,
-            dry_run=False,
+            dry_run=dry_run,
             status=run.status,
+            report_id=run.report_id,
+            narrative_id=run.narrative_id,
             duration_ms=duration_ms,
         )
         return run

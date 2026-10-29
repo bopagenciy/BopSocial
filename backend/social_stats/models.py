@@ -2392,10 +2392,18 @@ INTELLIGENCE_AUTOMATION_STATUS_CHOICES = [
     ('PENDING', 'Pending'),
     ('ELIGIBILITY_CHECK', 'Eligibility Check'),
     ('RUNNING', 'Running'),
+    ('AWAITING_APPROVAL', 'Awaiting Approval'),
     ('BLOCKED', 'Blocked'),
     ('FAILED', 'Failed'),
     ('COMPLETED', 'Completed'),
     ('CANCELLED', 'Cancelled'),
+]
+
+INTELLIGENCE_AUTOMATION_APPROVAL_STATUS_CHOICES = [
+    ('NOT_REQUIRED', 'Not Required'),
+    ('PENDING', 'Pending'),
+    ('APPROVED', 'Approved'),
+    ('REJECTED', 'Rejected'),
 ]
 
 INTELLIGENCE_AUTOMATION_STAGE_CHOICES = [
@@ -2470,6 +2478,12 @@ class IntelligenceAutomationRun(models.Model):
     fallback_count       = models.IntegerField(default=0)
     error_code           = models.CharField(max_length=100, blank=True, null=True, db_index=True)
     error_message_safe   = models.TextField(blank=True, default='')
+    approval_status      = models.CharField(max_length=30, choices=INTELLIGENCE_AUTOMATION_APPROVAL_STATUS_CHOICES, default='NOT_REQUIRED', db_index=True)
+    approval_requested_at= models.DateTimeField(null=True, blank=True)
+    approval_decided_at  = models.DateTimeField(null=True, blank=True)
+    approved_by          = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='approved_intelligence_runs')
+    approval_comment_safe= models.TextField(blank=True, default='')
+    approval_token       = models.CharField(max_length=64, blank=True, default='', db_index=True)
     report               = models.ForeignKey(ExecutiveReport, null=True, blank=True, on_delete=models.SET_NULL, related_name='automation_runs')
     narrative            = models.ForeignKey(ExecutiveNarrative, null=True, blank=True, on_delete=models.SET_NULL, related_name='automation_runs')
     metadata             = models.JSONField(default=dict, blank=True)
@@ -2487,7 +2501,7 @@ class IntelligenceAutomationRun(models.Model):
         constraints = [
             models.UniqueConstraint(
                 fields=['client', 'period_start', 'period_end', 'pipeline_version'],
-                condition=models.Q(status__in=['PENDING', 'ELIGIBILITY_CHECK', 'RUNNING']),
+                condition=models.Q(status__in=['PENDING', 'ELIGIBILITY_CHECK', 'RUNNING', 'AWAITING_APPROVAL']),
                 name='unique_active_intelligence_run',
             )
         ]

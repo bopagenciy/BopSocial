@@ -29,6 +29,9 @@ from .analytics.api import (
     MultichannelBenchmarkView,
     MultichannelSignalPreviewView,
     MultichannelSignalPersistView,
+    AutomationRunApproveView,
+    AutomationRunRejectView,
+    AutomationRunResumeView,
 )
 from .views import (
     LoginView, me, ClientViewSet, CredentialViewSet,
@@ -708,6 +711,11 @@ urlpatterns = [
     # ── BS-5C Multichannel Business Signal Engine API ─────────────────────────
     path('analytics/multichannel/signals/preview/', MultichannelSignalPreviewView.as_view(), name='analytics_multichannel_signals_preview'),
     path('analytics/multichannel/signals/',         MultichannelSignalPersistView.as_view(), name='analytics_multichannel_signals_persist'),
+
+    # ── BS-6C Run-Level Intelligence Automation Approval Workflow API ────────
+    path('analytics/automation/runs/<int:pk>/approve/', AutomationRunApproveView.as_view(), name='analytics_automation_run_approve'),
+    path('analytics/automation/runs/<int:pk>/reject/',  AutomationRunRejectView.as_view(),  name='analytics_automation_run_reject'),
+    path('analytics/automation/runs/<int:pk>/resume/',  AutomationRunResumeView.as_view(),  name='analytics_automation_run_resume'),
     # REST API
     path('', include(router.urls)),
 ]

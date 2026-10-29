@@ -111,7 +111,7 @@ def discover_and_enqueue_due_intelligence_automations(dry_run: bool = True) -> D
             period_start=p_start,
             period_end=p_end,
             pipeline_version=PIPELINE_VERSION,
-            status__in=["COMPLETED", "RUNNING", "PENDING", "ELIGIBILITY_CHECK"],
+            status__in=["COMPLETED", "RUNNING", "PENDING", "ELIGIBILITY_CHECK", "AWAITING_APPROVAL"],
         ).order_by("-id").first()
 
         if active_or_complete:

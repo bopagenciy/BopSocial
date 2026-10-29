@@ -1,7 +1,17 @@
 """
 BS-6A Production Intelligence Automation & Scheduling Foundation.
 """
+from .approval import (
+    ApprovalError,
+    AuthorizationError,
+    DoubleApprovalError,
+    StaleApprovalError,
+    approve_intelligence_run,
+    reject_intelligence_run,
+    resume_approved_intelligence_run,
+)
 from .constants import (
+    ApprovalStatus,
     AutomationStage,
     AutomationStatus,
     AutomationTriggerType,
@@ -9,10 +19,11 @@ from .constants import (
     DEFAULT_PROVIDER_CALL_BUDGET,
     FreshnessCode,
     PIPELINE_VERSION,
+    PROVIDER_EXECUTION_READY,
 )
 from .eligibility import evaluate_intelligence_automation_eligibility, EligibilityResult
 from .freshness import evaluate_tenant_freshness, FreshnessResult
-from .identity import compute_block_state_hash, compute_execution_identity
+from .identity import compute_approval_token, compute_block_state_hash, compute_execution_identity
 from .locking import ConcurrencyLockError, SingleFlightLock
 from .orchestrator import execute_intelligence_automation, preview_intelligence_automation
 from .period import (
@@ -27,16 +38,26 @@ __all__ = [
     "PIPELINE_VERSION",
     "DEFAULT_PROVIDER_CALL_BUDGET",
     "DEFAULT_MAX_RETRY_COUNT",
+    "PROVIDER_EXECUTION_READY",
     "AutomationStage",
     "AutomationStatus",
+    "ApprovalStatus",
     "AutomationTriggerType",
     "FreshnessCode",
     "EligibilityResult",
     "FreshnessResult",
     "SingleFlightLock",
     "ConcurrencyLockError",
+    "ApprovalError",
+    "DoubleApprovalError",
+    "StaleApprovalError",
+    "AuthorizationError",
     "compute_execution_identity",
     "compute_block_state_hash",
+    "compute_approval_token",
+    "approve_intelligence_run",
+    "reject_intelligence_run",
+    "resume_approved_intelligence_run",
     "calculate_reporting_period",
     "calculate_next_due_datetime",
     "is_tenant_due",
