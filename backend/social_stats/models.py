@@ -2393,6 +2393,8 @@ INTELLIGENCE_AUTOMATION_STATUS_CHOICES = [
     ('ELIGIBILITY_CHECK', 'Eligibility Check'),
     ('RUNNING', 'Running'),
     ('AWAITING_APPROVAL', 'Awaiting Approval'),
+    ('PROVIDER_EXECUTION_READY', 'Provider Execution Ready'),
+    ('PROVIDER_EXECUTING', 'Provider Executing'),
     ('BLOCKED', 'Blocked'),
     ('FAILED', 'Failed'),
     ('COMPLETED', 'Completed'),
@@ -2501,7 +2503,14 @@ class IntelligenceAutomationRun(models.Model):
         constraints = [
             models.UniqueConstraint(
                 fields=['client', 'period_start', 'period_end', 'pipeline_version'],
-                condition=models.Q(status__in=['PENDING', 'ELIGIBILITY_CHECK', 'RUNNING', 'AWAITING_APPROVAL']),
+                condition=models.Q(status__in=[
+                    'PENDING',
+                    'ELIGIBILITY_CHECK',
+                    'RUNNING',
+                    'AWAITING_APPROVAL',
+                    'PROVIDER_EXECUTION_READY',
+                    'PROVIDER_EXECUTING',
+                ]),
                 name='unique_active_intelligence_run',
             )
         ]

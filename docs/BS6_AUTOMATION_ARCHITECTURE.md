@@ -20,8 +20,8 @@ Every stage in BS-6 is independently gated, strictly audited, tenant-isolated, i
 1. **Explicit Tenant Unit**: Automation never executes globally without tenant enumeration. An automation unit is strictly defined as:
    $$\text{Automation Unit} = \text{Tenant (Client)} + \text{Reporting Period} + \text{Pipeline Version}$$
 2. **Deterministic Execution Identity**: Every run derives its deduplication key via a SHA-256 digest of `client_id`, `period_start`, `period_end`, and `pipeline_version`.
-3. **Database Unique Constraints**: Database-level unique constraints on active execution identities prevent duplicate inflight executions across distributed workers, covering `['PENDING', 'ELIGIBILITY_CHECK', 'RUNNING', 'AWAITING_APPROVAL']`.
-4. **PostgreSQL Advisory Single-Flight Locking**: Fast, lightweight distributed mutual exclusion is maintained using PostgreSQL session advisory locks derived deterministically from the execution identity. Advisory locks are strictly released when pausing for human approval.
+3. **Database Unique Constraints**: Database-level unique constraints on active execution identities prevent duplicate inflight executions across distributed workers, covering all active states: `['PENDING', 'ELIGIBILITY_CHECK', 'RUNNING', 'AWAITING_APPROVAL', 'PROVIDER_EXECUTION_READY', 'PROVIDER_EXECUTING']`.
+4. **PostgreSQL Advisory Single-Flight Locking**: Fast, lightweight distributed mutual exclusion is maintained using PostgreSQL session advisory locks derived deterministically from the execution identity. Advisory locks are strictly released when pausing for human approval and when parked in execution-ready state.
 5. **Fail-Closed Eligibility**: Any unfulfilled safety invariant (e.g., inactive client, missing active credentials, stale telemetry, disabled config) halts execution cleanly without external provider calls or DB corruption.
 6. **Existing Artifact Reuse**: If valid `ExecutiveReport` or `ExecutiveNarrative` records already exist for the requested period, the engine reuses them rather than regenerating or overwriting canonical data.
 7. **Strict Provider Budget Enforcement**: Provider call budgets are strictly enforced (`budget = 1` by default, `0` in dry-run mode). Live LLM or social API calls are disallowed if the budget is exhausted.
@@ -29,6 +29,7 @@ Every stage in BS-6 is independently gated, strictly audited, tenant-isolated, i
 9. **Observability Without Secret Leaking**: All audit events use structured JSON with automatic redaction of bearer tokens, client secrets, passwords, and private API keys.
 10. **Disabled-by-Default Scheduler**: Recurring Celery Beat periodic tasks are registered as unscheduled/disabled until full production approval.
 11. **Run-Level Approval Workflow (BS-6C)**: When operator approval is required before live narrative generation, the run transitions cleanly to `AWAITING_APPROVAL`, calculates a cryptographically frozen `approval_token`, releases session advisory locks, and halts before any external provider call. Resuming requires explicit operator decision, lock reacquisition, and complete safety revalidation.
+12. **Provider Boundary & Execution-Ready State Contract (BS-6C.0A)**: Resumed runs reaching the provider boundary persist `status='PROVIDER_EXECUTION_READY'`. This state is fully protected under the database unique constraint and scheduler scanner, preventing duplicate enqueues across all 96 daily ticks. Live execution requires atomic reservation via `PROVIDER_EXECUTING` under single-flight locking, enforcing at-most-once semantics and fail-closed crash recovery.
 
 ---
 
@@ -67,7 +68,7 @@ Durable orchestration record tracking stage progression, execution identity, aud
 | `pipeline_version` | `CharField(32)` | Pipeline schema/algorithm version (default: `'bs6a-v1'`) |
 | `execution_identity` | `CharField(64)` | SHA-256 hash of `(client_id, period_start, period_end, pipeline_version)` |
 | `trigger_type` | `CharField(20)` | `MANUAL`, `SCHEDULED`, `RETRY`, or `ADMIN` |
-| `status` | `CharField(20)` | `PENDING`, `ELIGIBILITY_CHECK`, `RUNNING`, `AWAITING_APPROVAL`, `BLOCKED`, `FAILED`, `COMPLETED`, `CANCELLED` |
+| `status` | `CharField(30)` | `PENDING`, `ELIGIBILITY_CHECK`, `RUNNING`, `AWAITING_APPROVAL`, `PROVIDER_EXECUTION_READY`, `PROVIDER_EXECUTING`, `BLOCKED`, `FAILED`, `COMPLETED`, `CANCELLED` |
 | `current_stage` | `CharField(32)` | Currently executing or evaluated pipeline stage |
 | `approval_status` | `CharField(20)` | `NOT_REQUIRED`, `PENDING`, `APPROVED`, `REJECTED` |
 | `approval_requested_at`| `DateTimeField` | When the run transitioned to `AWAITING_APPROVAL` |
@@ -87,21 +88,28 @@ Durable orchestration record tracking stage progression, execution identity, aud
 | `report_id` | `PositiveIntegerField` | ID of generated or reused `ExecutiveReport` |
 | `narrative_id` | `PositiveIntegerField` | ID of generated or reused `ExecutiveNarrative` |
 
-#### Unique Constraint (BS-6C)
+#### Unique Constraint (BS-6C.0A)
 ```python
 UniqueConstraint(
-    fields=["execution_identity"],
-    condition=Q(status__in=["PENDING", "ELIGIBILITY_CHECK", "RUNNING", "AWAITING_APPROVAL"]),
+    fields=["client", "period_start", "period_end", "pipeline_version"],
+    condition=Q(status__in=[
+        "PENDING",
+        "ELIGIBILITY_CHECK",
+        "RUNNING",
+        "AWAITING_APPROVAL",
+        "PROVIDER_EXECUTION_READY",
+        "PROVIDER_EXECUTING",
+    ]),
     name="unique_active_intelligence_run",
 )
 ```
-This ensures that an approval-pending run continues to hold execution uniqueness at the database level, preventing a second active run for the same execution identity across all 96 daily scheduler ticks.
+This ensures that any run actively executing, awaiting approval, or parked at `PROVIDER_EXECUTION_READY` / `PROVIDER_EXECUTING` maintains database-level uniqueness across distributed workers and periodic scheduler scans.
 
 ---
 
 ## 4. Pipeline Stages & Approval Lifecycle
 
-The pipeline defines nine sequential, inspectable stages including the human-in-the-loop approval pause:
+The pipeline defines the complete, inspectable execution lifecycle:
 
 ```mermaid
 flowchart TD
@@ -115,82 +123,16 @@ flowchart TD
     G -- "No / Reused / Report Only" --> I["NARRATIVE_CHECK"]
     H -- "Operator Rejection" --> J["CANCELLED (Terminal)"]
     H -- "Operator Approval" --> K["RESUME (Reacquire Lock + Revalidate)"]
-    K --> I
-    I --> L["COMPLETE"]
+    K --> L["PROVIDER_EXECUTION_READY (Lock Released)"]
+    L --> M["BS-6D: RESERVE (Reacquire Lock + select_for_update)"]
+    M --> N["PROVIDER_EXECUTING (Atomic Budget Reservation)"]
+    N --> I
+    I --> O["COMPLETE"]
 ```
 
-1. **`ELIGIBILITY`**: Evaluates tenant active status, configuration presence, approval flags, credential presence, and existing lock states.
-2. **`SYNC_CHECK`**: Validates whether recent provider sync logs exist within the configured staleness window (`minimum_data_freshness_hours`).
-3. **`SNAPSHOT_CHECK`**: Verifies coverage of `SocialMetricSnapshot` records across active platforms for the period.
-4. **`ROLLUP_CHECK`**: Verifies daily/weekly/monthly `SocialMetricRollup` records exist for cross-platform calculations.
-5. **`SIGNAL_CHECK`**: Verifies deterministic `BusinessSignal` records exist or are evaluable for the period.
-6. **`REPORT_CHECK`**: Reuses existing `ExecutiveReport` or prepares deterministic synthesis.
-7. **`AWAITING_APPROVAL` (BS-6C)**: Pauses execution before any external provider call when `generate_narrative=True` and `require_operator_approval=True`. Calculates `approval_token`, transitions to `approval_status='PENDING'`, releases advisory lock, and stops safely.
-8. **`NARRATIVE_CHECK`**: Reuses existing `VALIDATED` `ExecutiveNarrative` or checks LLM provider budget and approvals.
-9. **`COMPLETE`**: Finalizes execution, updates duration, and releases locks.
-
 ---
 
-## 5. Deterministic Period Calculator (`period.py`)
-
-Reporting periods are calculated pure-functionally using timezone-aware calendar rules:
-- **Tenant Timezone Aware**: Never relies on server UTC boundaries. Converts execution timestamps to tenant local time (e.g., `America/New_York`) prior to calculating start and end dates.
-- **Calendar Month Mode (`MONTHLY`)**: Aligns with previous closed calendar months (e.g., execution on Oct 27 yields Sept 1 – Sept 30; execution on Nov 1 yields Oct 1 – Oct 31).
-- **Rolling Window Mode**: Computes exact `[now - lookback_days, now]` intervals.
-- **Weekly Mode (`WEEKLY`)**: Aligns with closed Monday–Sunday calendar weeks.
-- **Daylight Saving Time (DST)**: Utilizes Python's `zoneinfo` module to correctly handle DST cutovers without boundary skew.
-
----
-
-## 6. Measurable Freshness Engine (`freshness.py`)
-
-Data freshness evaluates whether upstream platform syncs and snapshots are current enough for intelligence synthesis:
-
-- **Metrics Evaluated**:
-  - `active_credentials_count`: Number of active, unexpired platform OAuth credentials.
-  - `last_sync_timestamp`: Most recent successful `SyncLog` across platforms.
-  - `snapshots_in_period`: Total `SocialMetricSnapshot` rows within period boundaries.
-  - `rollups_in_period`: Total `SocialMetricRollup` rows within period boundaries.
-  - `age_hours`: Elapsed hours since the last successful sync.
-- **Status Codes**:
-  - `FRESH`: Data age is within `minimum_data_freshness_hours`.
-  - `ACCEPTABLE`: Usable snapshots exist within lookback period.
-  - `STALE`: Telemetry exceeds staleness threshold.
-  - `NO_SYNC_LOGS`: No sync history recorded.
-  - `NO_CREDENTIALS`: No active platform credentials found.
-
----
-
-## 7. Pure Eligibility Engine & Safety Contract (`eligibility.py`)
-
-A pure evaluation function `evaluate_intelligence_automation_eligibility(...)` inspects tenant state and produces an `EligibilityResult`.
-
-### 7.1 Data Eligibility vs. Execution Authorization Semantics
-To prevent ambiguous interpretations where `eligible=True` might be misconstrued as unrestricted execution permission, the engine explicitly distinguishes between:
-1. **`data_eligible`**: Indicates whether upstream telemetry, platform credentials, metric snapshots, and period definitions are complete and sufficient for intelligence calculations.
-2. **`execution_authorized`**: Indicates whether the execution has explicit operational authorization under its trigger context.
-   - For `SCHEDULED` triggers: requires tenant configuration `enabled=True`.
-   - For `MANUAL` / `ADMIN` triggers: requires active tenant and zero structural blockers.
-3. **`status` / `eligible`**: Boolean composite indicator (`len(blocking_reasons) == 0`).
-4. **`blocking_reasons`**: Deterministic list of unfulfilled gate codes.
-
-### 7.2 Fail-Closed Checks
-1. `CLIENT_INACTIVE`: Client model has `is_active=False`.
-2. `CONFIG_MISSING`: No `IntelligenceAutomationConfig` exists for client (blocks `SCHEDULED`).
-3. `AUTOMATION_DISABLED`: Config has `enabled=False` (blocks `SCHEDULED`).
-4. `NO_CREDENTIALS`: Tenant has 0 active platform credentials.
-5. `DATA_STALE`: Telemetry age exceeds `minimum_data_freshness_hours` on scheduled runs.
-6. `INSUFFICIENT_DATA`: Zero snapshots found for the requested period.
-7. `BUDGET_EXCEEDED`: Narrative requested but provider call budget is 0.
-
-### 7.3 Artifact Reuse Logic
-- Checks if `ExecutiveReport` already exists for `(client_id, period_start, period_end)`.
-- Checks if `ExecutiveNarrative` already exists for `report_id` with `status="VALIDATED"`.
-- If existing artifacts are found, the planned stages skip generation and flag `REUSE`.
-
----
-
-## 8. Run-Level Approval & Controlled Resume Engine (BS-6C)
+## 8. Run-Level Approval & Provider Boundary Contract (BS-6C & BS-6C.0A)
 
 ### 8.1 Approval Request Point & Lock Release Contract
 Narrative stage pauses BEFORE any provider call:
@@ -231,10 +173,40 @@ Resuming an approved run cannot assume conditions have remained unchanged during
    - Telemetry freshness must remain valid within staleness thresholds.
    - Provider call budget must not be exceeded.
 5. **Existing Narrative Reuse**: If a `VALIDATED` `ExecutiveNarrative` already exists for the report, the resume service flags reuse without calling the provider.
-6. **Provider Boundary (`PROVIDER_EXECUTION_READY`)**:
-   - In Phase BS-6C, once an approved run passes all revalidations and reaches the narrative provider boundary, execution **halts deliberately**.
-   - Result dictionary records `status='PROVIDER_EXECUTION_READY'`, `would_call_provider=True`, and `provider_call_count=0`.
+6. **Provider Boundary Persistence (`PROVIDER_EXECUTION_READY`)**:
+   - Resumed run transitions to `status='PROVIDER_EXECUTION_READY'` and saves to the database.
+   - Session advisory lock is released before returning control.
+   - `provider_call_count` is verified as `0`.
    - **Zero live LLM calls (Ollama, OpenAI, Gemini, Anthropic) are executed.**
+
+### 8.4 Provider Execution Reservation & Single-Flight Contract (BS-6C.0A)
+
+Before ANY live provider call in Phase BS-6D, the execution engine must execute the atomic reservation protocol (`reserve_provider_execution`):
+1. **Advisory Lock Reacquisition**: Reacquires `SingleFlightLock` for `execution_identity`.
+2. **Atomic Row Lock**: Executes `select_for_update()` on `IntelligenceAutomationRun`.
+3. **Status Check**: Verifies `status == 'PROVIDER_EXECUTION_READY'` and `approval_status == 'APPROVED'`.
+4. **Approval Token Revalidation**: Re-verifies `approval_token == compute_approval_token(...)`.
+5. **Tenant & Config Revalidation**: Confirms client is active, config is enabled, credentials unexpired, and telemetry fresh.
+6. **Narrative Reuse Race Prevention**: If a `VALIDATED` `ExecutiveNarrative` was generated in the interim by another process, links narrative, transitions to `COMPLETED`, and halts without provider invocation.
+7. **Budget Revalidation**: Verifies `provider_call_count < config.provider_call_budget`.
+8. **Atomic Reservation**: Transitions run status to `'PROVIDER_EXECUTING'`, increments `provider_call_count = 1`, records `provider_call_reserved_at`, and stamps `reservation_token` inside the transaction.
+
+### 8.5 Crash Windows & Network Ambiguity Policy
+
+Over external network boundaries (HTTP / RPC to Ollama, OpenAI, Anthropic), distributed two-phase commits do not exist. Therefore, BS-6 formalizes exact crash semantics:
+
+- **Scenario A (Crash before provider call)**:
+  - Process crashes after lock acquisition or during reservation.
+  - PostgreSQL automatically releases session advisory locks upon connection drop.
+  - If reservation committed: run is in `PROVIDER_EXECUTING` with `provider_call_count=1`. Subsequent scheduler runs are blocked from re-calling the provider because budget is exhausted.
+- **Scenario B (Crash during provider call)**:
+  - External LLM was invoked, but worker process crashes before response is received or written.
+  - Because BOP Social enforces **zero automated retry (`max_retry_count=0`)**, the pipeline **FAILS CLOSED**.
+  - The architecture guarantees **AT-MOST-ONCE** execution. It never dispatches blind re-attempts over ambiguous network transport.
+- **Scenario C (Crash after response received, before narrative persistence)**:
+  - Provider response was received, but database write of `ExecutiveNarrative` crashed.
+  - The run remains in `PROVIDER_EXECUTING` or is marked `FAILED` by worker watchdog.
+  - Operator diagnostic review is required. No autonomous second call occurs.
 
 ---
 
@@ -249,47 +221,30 @@ All pipeline transitions produce structured audit events logged with structured 
   - `automation.approval.approved`
   - `automation.approval.rejected`
   - `automation.approval.resumed`
+  - `automation.provider_boundary.reached`
+  - `automation.provider_call.reserved`
+  - `automation.provider_reservation.blocked`
+  - `automation.provider_reservation.reused`
   - `automation.run.blocked`
   - `automation.run.completed`
   - `automation.run.failed`
-- **Secret Sanitization**:
-  - Sensitive patterns (OAuth bearer tokens, access tokens, client secrets, API keys, passwords) are automatically scrubbed via regex matching before emission.
 
 ---
 
 ## 10. Operational Interface & Discovery Scanner
 
-### 10.1 CLI Management Commands
-```bash
-# Dry-run inspection
-python manage.py run_intelligence_automation --client 3 --dry-run --explain
-
-# Run approval
-python manage.py approve_intelligence_run --run 42 --comment "Approved for monthly delivery"
-
-# Run rejection
-python manage.py approve_intelligence_run --run 42 --reject --comment "Client requested delay"
-
-# Resume approved run up to provider boundary
-python manage.py approve_intelligence_run --run 42 --resume
-```
-
-### 10.2 Celery Task Architecture & Discovery Scanner (`tasks.py`)
-- `discover_and_enqueue_due_intelligence_automations`: Periodic multi-tenant discovery scanner.
-  - **Decoupled Due Engine**: Evaluates `is_tenant_due(config, reference_datetime)` and `calculate_next_due_datetime(config)`. The scanner operates on a global UTC cadence (every 15 minutes) and is completely decoupled from individual tenant local reporting hours.
-  - **Missed-Tick Recovery**: If the scheduler is paused or restarts after downtime, any tenant whose threshold has arrived (`local_now >= due_threshold`) is immediately discovered and processed once for that reporting period, rather than skipped until the following month.
-  - **Material Block State Idempotency & Reactivation (BS-6B.0B)**:
-    - Instead of permanently skipping any period that has a historical `BLOCKED` row, the scanner computes a deterministic `block_state_hash` based on active blocking reasons, freshness codes, approval status, and configuration flags.
-    - If a tenant's blocking condition remains unchanged (`block_state_hash == stored_hash`), the scanner skips re-enqueuing, eliminating runaway row storms across the 96 daily scanner ticks.
-    - As soon as the material blocking state resolves (e.g. telemetry becomes fresh or operator approval is satisfied), the scanner detects the state change and immediately unlocks exactly ONE new attempt opportunity.
-    - Prior terminal `BLOCKED` runs remain immutable audit records, and new attempts record an incrementing `attempt_number`.
-  - **Active State Uniqueness**: The scanner explicitly skips tenants who have active runs in `['PENDING', 'ELIGIBILITY_CHECK', 'RUNNING', 'AWAITING_APPROVAL']`.
+### 10.1 Discovery Scanner Protection Against Duplicate Provider Runs
+The periodic discovery scanner (`discover_and_enqueue_due_intelligence_automations`) evaluates every 15 minutes:
+- Active/complete filter:
+  `status__in=["COMPLETED", "RUNNING", "PENDING", "ELIGIBILITY_CHECK", "AWAITING_APPROVAL", "PROVIDER_EXECUTION_READY", "PROVIDER_EXECUTING"]`
+- When a run is parked in `PROVIDER_EXECUTION_READY`, the scanner flags `RUN_ALREADY_EXISTS_OR_ACTIVE` and skips enqueuing.
+- Across 96 consecutive daily discovery scans: **0 duplicate runs created, 0 provider calls made**.
 
 ---
 
 ## 11. Verification Matrix
 
-The test matrix validates all BS-6A through BS-6C invariants across 13 dedicated test modules:
+The test matrix validates all BS-6A through BS-6C.0A invariants across 14 dedicated test modules:
 1. `test_intelligence_automation_models.py` (Models, choices, defaults, active constraints)
 2. `test_intelligence_automation_period.py` (Timezones, calendar boundaries, DST transitions)
 3. `test_intelligence_automation_eligibility.py` (Fail-closed gates, freshness rules, budget limits)
@@ -302,6 +257,10 @@ The test matrix validates all BS-6A through BS-6C invariants across 13 dedicated
 10. `test_intelligence_automation_timezone_alignment.py` (Timezone conversion, DST spring/fall, missed-tick recovery, multi-timezone isolation, row-storm prevention)
 11. `test_intelligence_automation_blocked_reactivation.py` (Material block state fingerprint, safe reactivation, attempt sequencing, 96-tick storm prevention)
 12. `test_intelligence_automation_audit_immutability.py` (Row immutability, legacy dynamic derivation, monotonic attempt numbering, lock release/reacquisition on resume)
-13. `test_intelligence_automation_approval_workflow.py` (BS-6C approval states, lock release on pause, reacquisition on resume, tenant authorization, double-approval protection, token freeze verification, revalidation delays, zero provider calls at provider boundary)
+13. `test_intelligence_automation_approval_workflow.py` (Approval states, lock release on pause, reacquisition on resume, tenant authorization, double-approval protection, token freeze verification, revalidation delays)
+14. `test_intelligence_automation_provider_boundary.py` (Provider boundary state classification, active uniqueness, scanner duplicate prevention, 96-tick stability, lock reacquisition, concurrent executor blocking, token recheck, freshness/config/credentials/budget recheck, narrative reuse race, provider reservation atomicity, crash fail-closed behavior, zero provider calls)
 
-**Result**: 119 intelligence automation tests passed in 8.21s. Grounded narrative & multi-channel test suites: **213 passed** in 24.19s. Full backend test suite: **1,211 passed** with zero regressions (0 failures, 0 errors).
+**Result**:
+- **134 intelligence automation tests passed** in 9.86s.
+- **207 BS-5 narrative safety and multichannel tests passed** in 25.38s.
+- **Full backend test suite: 1,226 passed** in 134.13s with zero regressions (0 failures, 0 errors).

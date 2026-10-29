@@ -181,7 +181,14 @@ def evaluate_intelligence_automation_eligibility(
         period_start=p_start,
         period_end=p_end,
         pipeline_version=pipeline_version,
-        status__in=["PENDING", "ELIGIBILITY_CHECK", "RUNNING", "AWAITING_APPROVAL"],
+        status__in=[
+            "PENDING",
+            "ELIGIBILITY_CHECK",
+            "RUNNING",
+            "AWAITING_APPROVAL",
+            "PROVIDER_EXECUTION_READY",
+            "PROVIDER_EXECUTING",
+        ],
     ).first()
 
     if active_run:

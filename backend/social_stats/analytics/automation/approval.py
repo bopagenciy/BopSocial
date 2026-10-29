@@ -9,7 +9,7 @@ Provides:
 """
 import logging
 from datetime import timedelta
-from typing import Any, Optional
+from typing import Any, Dict, Optional
 
 from django.db import transaction
 from django.utils import timezone
@@ -54,6 +54,16 @@ class StaleApprovalError(ApprovalError):
 
 class AuthorizationError(ApprovalError):
     """Raised when the acting operator lacks permission for the tenant/run."""
+    pass
+
+
+class ApprovalStateError(ApprovalError):
+    """Raised when run is in an invalid status for the requested approval action."""
+    pass
+
+
+class ApprovalIdentityMismatchError(ApprovalError):
+    """Raised when frozen approval token or execution identity does not match."""
     pass
 
 
@@ -284,7 +294,11 @@ def resume_approved_intelligence_run(
             period_start=run.period_start,
             period_end=run.period_end,
             pipeline_version=run.pipeline_version,
-            status=AutomationStatus.RUNNING.value,
+            status__in=[
+                AutomationStatus.RUNNING.value,
+                AutomationStatus.PROVIDER_EXECUTION_READY.value,
+                AutomationStatus.PROVIDER_EXECUTING.value,
+            ],
         ).exclude(id=run.id).first()
 
         if active_conflict:
@@ -512,8 +526,10 @@ def resume_approved_intelligence_run(
             trigger_type=run.trigger_type,
         )
 
-        # Step 6: Provider Boundary Reached (Section P)
-        # In BS-6C: STOP immediately before any live provider call!
+        # Step 6: Provider Boundary Reached (Section P & BS-6C.0A)
+        # In BS-6C / BS-6C.0A: STOP immediately before any live provider call!
+        # Persist explicit status as PROVIDER_EXECUTION_READY for active uniqueness protection
+        run.status = AutomationStatus.PROVIDER_EXECUTION_READY.value
         meta = run.metadata or {}
         meta["provider_boundary_reached"] = True
         meta["provider_boundary_status"] = PROVIDER_EXECUTION_READY
@@ -522,7 +538,7 @@ def resume_approved_intelligence_run(
         meta["resumed_at"] = timezone.now().isoformat()
         run.metadata = meta
         run.provider_call_count = 0
-        run.save(update_fields=["metadata", "provider_call_count", "updated_at"])
+        run.save(update_fields=["status", "metadata", "provider_call_count", "updated_at"])
 
         log_automation_event(
             event_name="automation.provider_boundary.reached",
@@ -542,4 +558,238 @@ def resume_approved_intelligence_run(
 
     finally:
         # Step 7: Always release lock before returning control
+        lock.release()
+
+
+def reserve_provider_execution(
+    run_id: int,
+    operator_user: Optional[Any] = None,
+    now: Optional[Any] = None,
+) -> Dict[str, Any]:
+    """
+    Atomically verifies all safety gates and reserves a single-flight provider call slot
+    for a run currently in PROVIDER_EXECUTION_READY status.
+
+    Enforces the BS-6C.0A Provider Boundary Contract:
+    1. Reacquires PostgreSQL SingleFlightLock for execution_identity.
+    2. Atomically loads run with select_for_update().
+    3. Verifies run status is PROVIDER_EXECUTION_READY (rejecting double reservations).
+    4. Verifies approval_status == APPROVED.
+    5. Revalidates approval token immutability against current parameters.
+    6. Revalidates tenant active status and config enabled status.
+    7. Revalidates platform credentials (active and unexpired).
+    8. Revalidates telemetry freshness.
+    9. Revalidates narrative reuse race: if a VALIDATED narrative appeared, reuses it immediately
+       and transitions to COMPLETED without calling provider.
+    10. Revalidates provider call budget (ensures provider_call_count < budget).
+    11. Atomically transitions run status to PROVIDER_EXECUTING, increments/reserves
+        provider_call_count to 1, and records reservation metadata BEFORE returning.
+
+    STRICT INVARIANT:
+    Zero live LLM calls (Ollama, OpenAI, Anthropic, Gemini) are made by this function.
+    """
+    current_time = now or timezone.now()
+
+    # Step 1: Pre-fetch execution identity for advisory lock
+    pre_run = IntelligenceAutomationRun.objects.filter(id=run_id).first()
+    if not pre_run:
+        raise ApprovalError(f"IntelligenceAutomationRun #{run_id} not found.")
+
+    if operator_user:
+        verify_operator_authorization(operator_user, pre_run.client_id)
+
+    # Step 2: Reacquire single-flight advisory lock
+    lock = SingleFlightLock(pre_run.execution_identity)
+    if not lock.acquire():
+        error_msg = f"Single-flight lock acquisition rejected for identity: {pre_run.execution_identity}"
+        log_automation_event(
+            event_name="automation.provider_reservation.blocked",
+            run_id=pre_run.id,
+            client_id=pre_run.client_id,
+            stage=pre_run.current_stage,
+            status=pre_run.status,
+            error_code="CONCURRENCY_LOCK_ACTIVE",
+            error_message=error_msg,
+        )
+        raise ConcurrencyLockError(error_msg)
+
+    try:
+        token_mismatch = False
+        mismatch_msg = ""
+        # Step 3: Atomic selection and state verification
+        with transaction.atomic():
+            run = IntelligenceAutomationRun.objects.select_for_update().filter(id=run_id).first()
+            if not run:
+                raise ApprovalError(f"IntelligenceAutomationRun #{run_id} not found.")
+
+            if run.status != AutomationStatus.PROVIDER_EXECUTION_READY.value:
+                raise ApprovalStateError(
+                    f"Run #{run.id} cannot reserve provider execution from status '{run.status}'. "
+                    f"Must be '{AutomationStatus.PROVIDER_EXECUTION_READY.value}'."
+                )
+
+            if run.approval_status != ApprovalStatus.APPROVED.value:
+                raise ApprovalStateError(
+                    f"Run #{run.id} has approval_status '{run.approval_status}'. Must be '{ApprovalStatus.APPROVED.value}'."
+                )
+
+            # Step 4: Token freeze verification
+            expected_token = compute_approval_token(
+                run_id=run.id,
+                execution_identity=run.execution_identity,
+                pipeline_version=run.pipeline_version,
+                period_start=run.period_start,
+                period_end=run.period_end,
+                report_id=run.report_id,
+            )
+            if run.approval_token and run.approval_token != expected_token:
+                token_mismatch = True
+                mismatch_msg = "Approval token mismatch. Execution identity or report changed."
+                run.status = AutomationStatus.BLOCKED.value
+                run.error_code = "APPROVAL_TOKEN_MISMATCH"
+                run.error_message_safe = mismatch_msg
+                run.save(update_fields=["status", "error_code", "error_message_safe", "updated_at"])
+
+            if token_mismatch:
+                pass
+            else:
+                # Step 5: Revalidate Client Active
+                client = Client.objects.filter(id=run.client_id).first()
+                if not client or not client.is_active:
+                    run.status = AutomationStatus.BLOCKED.value
+                    run.error_code = "CLIENT_INACTIVE"
+                    run.error_message_safe = "Client is inactive or deleted before provider execution."
+                    run.save(update_fields=["status", "error_code", "error_message_safe", "updated_at"])
+                    return {"reserved": False, "reason": "CLIENT_INACTIVE", "run_id": run.id, "status": run.status}
+
+                # Step 6: Revalidate Config Enabled
+                config = IntelligenceAutomationConfig.objects.filter(client_id=run.client_id).first()
+                if not config or not config.enabled:
+                    run.status = AutomationStatus.BLOCKED.value
+                    run.error_code = "AUTOMATION_CONFIG_DISABLED"
+                    run.error_message_safe = "Automation configuration is disabled before provider execution."
+                    run.save(update_fields=["status", "error_code", "error_message_safe", "updated_at"])
+                    return {"reserved": False, "reason": "AUTOMATION_CONFIG_DISABLED", "run_id": run.id, "status": run.status}
+
+                # Step 7: Revalidate Credentials
+                creds = list(PlatformCredential.objects.filter(client_id=run.client_id, is_active=True).values("id", "expires_at"))
+                if not creds:
+                    run.status = AutomationStatus.BLOCKED.value
+                    run.error_code = "PROVIDER_DISCONNECTED"
+                    run.error_message_safe = "No active credentials before provider execution."
+                    run.save(update_fields=["status", "error_code", "error_message_safe", "updated_at"])
+                    return {"reserved": False, "reason": "PROVIDER_DISCONNECTED", "run_id": run.id, "status": run.status}
+
+                all_expired = all(
+                    bool(c.get("expires_at") and current_time >= (c["expires_at"] - timedelta(minutes=10)))
+                    for c in creds
+                )
+                if all_expired:
+                    run.status = AutomationStatus.BLOCKED.value
+                    run.error_code = "PROVIDER_CREDENTIAL_EXPIRED"
+                    run.error_message_safe = "All credentials expired before provider execution."
+                    run.save(update_fields=["status", "error_code", "error_message_safe", "updated_at"])
+                    return {"reserved": False, "reason": "PROVIDER_CREDENTIAL_EXPIRED", "run_id": run.id, "status": run.status}
+
+                # Step 8: Revalidate Freshness
+                freshness = evaluate_tenant_freshness(
+                    client_id=run.client_id,
+                    period_start=run.period_start,
+                    period_end=run.period_end,
+                    max_staleness_hours=config.max_data_staleness_hours,
+                    now=current_time,
+                )
+                if freshness.code in [FreshnessCode.MISSING, FreshnessCode.UNKNOWN, FreshnessCode.STALE]:
+                    run.status = AutomationStatus.BLOCKED.value
+                    run.error_code = f"ANALYTICS_DATA_{freshness.code.value}"
+                    run.error_message_safe = f"Analytics data is {freshness.code.value} before provider execution."
+                    run.save(update_fields=["status", "error_code", "error_message_safe", "updated_at"])
+                    return {"reserved": False, "reason": run.error_code, "run_id": run.id, "status": run.status}
+
+                # Step 9: Revalidate Narrative Reuse Race (Section N)
+                matching_narrative = None
+                if run.report_id:
+                    matching_narrative = ExecutiveNarrative.objects.filter(
+                        executive_report_id=run.report_id,
+                        status="VALIDATED",
+                    ).order_by("-id").first()
+                elif run.client_id:
+                    matching_narrative = ExecutiveNarrative.objects.filter(
+                        executive_report__client_id=run.client_id,
+                        executive_report__period_start=run.period_start,
+                        executive_report__period_end=run.period_end,
+                        status="VALIDATED",
+                    ).order_by("-id").first()
+
+                if matching_narrative:
+                    # Race won by existing narrative: REUSE and complete without provider call!
+                    run.narrative = matching_narrative
+                    run.status = AutomationStatus.COMPLETED.value
+                    run.current_stage = AutomationStage.COMPLETE.value
+                    run.finished_at = current_time
+                    meta = run.metadata or {}
+                    meta["narrative_reuse"] = f"REUSE ExecutiveNarrative #{matching_narrative.id} (VALIDATED)"
+                    run.metadata = meta
+                    run.save(update_fields=["narrative", "status", "current_stage", "finished_at", "metadata", "updated_at"])
+                    log_automation_event(
+                        event_name="automation.provider_reservation.reused",
+                        run_id=run.id,
+                        client_id=run.client_id,
+                        stage=AutomationStage.COMPLETE.value,
+                        status=run.status,
+                        narrative_id=matching_narrative.id,
+                    )
+                    return {
+                        "reserved": False,
+                        "reused": True,
+                        "narrative_id": matching_narrative.id,
+                        "run_id": run.id,
+                        "status": run.status,
+                    }
+
+                # Step 10: Revalidate Provider Budget
+                if run.provider_call_count >= config.provider_call_budget or config.provider_call_budget < 1:
+                    run.status = AutomationStatus.BLOCKED.value
+                    run.error_code = "PROVIDER_CALL_BUDGET_EXHAUSTED"
+                    run.error_message_safe = "Provider call budget is exhausted (0 or reached)."
+                    run.save(update_fields=["status", "error_code", "error_message_safe", "updated_at"])
+                    return {"reserved": False, "reason": "PROVIDER_CALL_BUDGET_EXHAUSTED", "run_id": run.id, "status": run.status}
+
+                # Step 11: Atomically Reserve Provider Call Slot
+                run.status = AutomationStatus.PROVIDER_EXECUTING.value
+                run.provider_call_count = run.provider_call_count + 1
+                meta = run.metadata or {}
+                meta["provider_call_reserved_at"] = current_time.isoformat()
+                meta["reservation_token"] = compute_approval_token(
+                    run_id=run.id,
+                    execution_identity=run.execution_identity,
+                    pipeline_version=run.pipeline_version,
+                    period_start=run.period_start,
+                    period_end=run.period_end,
+                    report_id=run.report_id,
+                )
+                run.metadata = meta
+                run.save(update_fields=["status", "provider_call_count", "metadata", "updated_at"])
+
+                log_automation_event(
+                    event_name="automation.provider_call.reserved",
+                    run_id=run.id,
+                    client_id=run.client_id,
+                    stage=run.current_stage,
+                    status=run.status,
+                    provider_call_count=run.provider_call_count,
+                    extra={"reservation_token": meta["reservation_token"]},
+                )
+
+                return {
+                    "reserved": True,
+                    "run_id": run.id,
+                    "status": run.status,
+                    "provider_call_count": run.provider_call_count,
+                    "reservation_token": meta["reservation_token"],
+                }
+
+        if token_mismatch:
+            raise ApprovalIdentityMismatchError(mismatch_msg)
+    finally:
         lock.release()

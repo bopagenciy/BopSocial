@@ -189,7 +189,7 @@ class IntelligenceAutomationApprovalWorkflowTests(TestCase):
             run_id=run.id,
             operator_user=self.operator,
         )
-        self.assertEqual(resumed_run.status, AutomationStatus.RUNNING.value)
+        self.assertEqual(resumed_run.status, AutomationStatus.PROVIDER_EXECUTION_READY.value)
         self.assertEqual(resumed_run.provider_call_count, 0)
         self.assertTrue(resumed_run.metadata.get("provider_boundary_reached"))
         self.assertEqual(resumed_run.metadata.get("provider_boundary_status"), PROVIDER_EXECUTION_READY)
@@ -462,7 +462,7 @@ class IntelligenceAutomationApprovalWorkflowTests(TestCase):
              patch("requests.post") as mock_post:
             
             resumed = resume_approved_intelligence_run(run.id, self.operator)
-            self.assertEqual(resumed.status, AutomationStatus.RUNNING.value)
+            self.assertEqual(resumed.status, AutomationStatus.PROVIDER_EXECUTION_READY.value)
             self.assertEqual(resumed.provider_call_count, 0)
             self.assertTrue(resumed.metadata.get("provider_boundary_reached"))
             self.assertTrue(resumed.metadata.get("would_call_provider"))
@@ -552,5 +552,5 @@ class IntelligenceAutomationApprovalWorkflowTests(TestCase):
         # Controlled resume via API
         resp_resume = client.post(f"/api/analytics/automation/runs/{run.id}/resume/")
         self.assertEqual(resp_resume.status_code, 200)
-        self.assertEqual(resp_resume.data["status"], "RUNNING")
+        self.assertEqual(resp_resume.data["status"], "PROVIDER_EXECUTION_READY")
         self.assertEqual(resp_resume.data["provider_call_count"], 0)

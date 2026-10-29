@@ -3,12 +3,15 @@ BS-6A Production Intelligence Automation & Scheduling Foundation.
 """
 from .approval import (
     ApprovalError,
+    ApprovalIdentityMismatchError,
+    ApprovalStateError,
     AuthorizationError,
     DoubleApprovalError,
     StaleApprovalError,
     approve_intelligence_run,
     reject_intelligence_run,
     resume_approved_intelligence_run,
+    reserve_provider_execution,
 )
 from .constants import (
     ApprovalStatus,
@@ -20,6 +23,7 @@ from .constants import (
     FreshnessCode,
     PIPELINE_VERSION,
     PROVIDER_EXECUTION_READY,
+    PROVIDER_EXECUTING,
 )
 from .eligibility import evaluate_intelligence_automation_eligibility, EligibilityResult
 from .freshness import evaluate_tenant_freshness, FreshnessResult
@@ -39,6 +43,7 @@ __all__ = [
     "DEFAULT_PROVIDER_CALL_BUDGET",
     "DEFAULT_MAX_RETRY_COUNT",
     "PROVIDER_EXECUTION_READY",
+    "PROVIDER_EXECUTING",
     "AutomationStage",
     "AutomationStatus",
     "ApprovalStatus",
@@ -49,6 +54,8 @@ __all__ = [
     "SingleFlightLock",
     "ConcurrencyLockError",
     "ApprovalError",
+    "ApprovalStateError",
+    "ApprovalIdentityMismatchError",
     "DoubleApprovalError",
     "StaleApprovalError",
     "AuthorizationError",
@@ -58,6 +65,7 @@ __all__ = [
     "approve_intelligence_run",
     "reject_intelligence_run",
     "resume_approved_intelligence_run",
+    "reserve_provider_execution",
     "calculate_reporting_period",
     "calculate_next_due_datetime",
     "is_tenant_due",
