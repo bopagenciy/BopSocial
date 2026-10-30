@@ -208,4 +208,24 @@ In compliance with production security standards (SEC-02):
 - **Fail-Closed Staleness Validation**: At the next monthly scheduled run (`2026-11-01T02:00:00-05:00`), data age without an intervening sync will be ~59.8h (>24h threshold), ensuring that the automation scheduler will safely fail closed unless a fresh synchronization occurs immediately prior to the execution window.
 - **Deterministic Reporting Period**: The manual pilot run targets calendar month `2026-09-01` to `2026-09-30` (or rolling 30-day window ending with refreshed telemetry), ensuring that `ExecutiveReport` and `ExecutiveNarrative` do not exist, legitimately triggering the single authorized Ollama provider call.
 
+---
+
+## 9. Phase BS-6D.0B: Target-Period Coverage & Completeness Audit Protocol
+
+### 9.1 Freshness vs Coverage Policy
+Operational monitoring must maintain a strict separation between freshness and completeness:
+1. **Freshness Metric**: Measures time since last provider sync (`finished_at`). Evaluates tenant data health relative to `max_data_staleness_hours` (e.g. 24h).
+2. **Coverage Metric**: Measures availability of snapshots and rollups across the requested `[period_start, period_end]` date range.
+
+### 9.2 September 2026 Telemetry Audit Summary
+- **Expected Window**: `2026-09-01` to `2026-09-30` (30 calendar days).
+- **Facebook Coverage**: 9 / 30 days (30.0%) across dates `2026-09-22` to `2026-09-30`. 21 days missing (`2026-09-01` to `2026-09-21`).
+- **Instagram Coverage**: 0 / 30 days (0.0%).
+- **Comparable Metrics**: 0 of 15 canonical metrics.
+- **Signal Potential**: 1 signal (`PROVIDER_PARTIAL`), 0 multichannel signals.
+
+### 9.3 Known Policy Gap
+The automation engine currently lacks a target-period completeness rule (e.g., `minimum_coverage_percent = 80%`). Until this policy is formalized, operators must verify telemetry completeness before authorizing live provider execution.
+
+
 

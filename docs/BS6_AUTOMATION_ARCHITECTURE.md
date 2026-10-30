@@ -300,4 +300,46 @@ Phase BS-6D.0A closed all pre-execution verification gates before live Ollama ex
    - At scheduled execution, data age without subsequent sync will be ~59.8h (>24h threshold), proving that the scheduler correctly fails closed on stale data unless a fresh sync immediately precedes it.
 5. **Legitimate Narrative Requirement**: Evaluated reporting period (calendar month `2026-09-01` to `2026-09-30` or rolling window ending with refreshed data) has 0 existing reports and 0 existing narratives, proving that a new narrative is genuinely and legitimately required.
 
+---
+
+## 14. Phase BS-6D.0B: Target Period Coverage & Pre-Generation Determinism Audit
+
+### 14.1 Freshness vs. Target-Period Completeness Contract
+Phase BS-6D.0B established the critical operational distinction between:
+- **Tenant Freshness**: How recently the platform telemetry was synchronized from external providers (e.g. `data_age_hours <= max_staleness_hours`). Client #3 is verified `FRESH` (age ~21.15h < 24.0h threshold).
+- **Target-Period Coverage**: The temporal completeness and metric breadth across the exact dates of the requested reporting period.
+
+### 14.2 Empirical Coverage Audit (Client #3 — Bop Agencia)
+A read-only audit across production telemetry revealed:
+1. **Canonical Target Period**:
+   - `calculate_reporting_period(tz_name="America/New_York", frequency="MONTHLY", period_type="CALENDAR_MONTH")` deterministically derives the previous closed calendar month: `2026-09-01` to `2026-09-30` (30 calendar days).
+2. **September Snapshot Coverage**:
+   - **Facebook**: 63 snapshot rows spanning 9 distinct dates (`2026-09-22` to `2026-09-30`), representing **30.0% coverage** (6 canonical metrics: `CLICKS_TOTAL`, `ENGAGEMENT_TOTAL`, `FOLLOWERS_NET_CHANGE`, `PROFILE_VIEWS`, `REACTIONS`, `VIDEO_VIEWS`). Days `2026-09-01` to `2026-09-21` (21 days / 70% of the month) are completely missing.
+   - **Instagram**: 0 snapshot rows in September (**0.0% coverage**), as recent 30-day syncs did not reach prior to September 29.
+   - **Combined Period Coverage**: 9 / 30 days (30.0%).
+3. **September Rollup Coverage**:
+   - Day rollups: 70 rows (`2026-09-21` to `2026-09-30`).
+   - Week rollups: 14 rows (weeks of `2026-09-21` and `2026-09-28`).
+   - Month rollups: 7 rows (start `2026-09-01`, `samples=10`, values `0.0000`).
+4. **October MTD / Rolling Window Comparison**:
+   - October 1 to October 30 has **100.0% coverage** for Facebook (30 of 30 days, 227 snapshots, 9 canonical metrics) and 4 days for Instagram in `PARTIAL` mode (16 snapshots, 3 metrics), totaling 335 rollups.
+   - The BS-6D.0 sync window (`2026-09-29` to `2026-10-29`) refreshed October telemetry almost entirely, overlapping September by only 2 days.
+
+### 14.3 Discovery: Policy Gap in Automation Eligibility
+**NO TARGET-PERIOD COMPLETENESS GATE EXISTS** in `evaluate_intelligence_automation_eligibility`. The engine currently gates solely on `snapshot_count > 0` and `rollup_count > 0`, falsely marking September `data_eligible=True` and planning `REUSE` despite a 70% temporal data gap.
+
+### 14.4 Signal Engine Determinism & Delta Correction
+1. **Signal Generation Dry-Run**: Executing `generate_business_signals(persist=False)` for September `2026-09-01` to `2026-09-30` yields exactly **1 standard signal** (`PROVIDER_PARTIAL` on Instagram) and **0 multichannel signals** (0/15 comparable metrics).
+2. **Delta Correction**: The "+9 BusinessSignals" expectation was proven to be an artifact of the historical BS-5 pilot window (`2026-09-22 -> 2026-10-22`), NOT canonical September. Under current September data, expected signal delta is **+1**, not +9.
+
+### 14.5 Decision Rule & Pre-Live Recommendation
+Under the Phase BS-6D.0B decision rule:
+- Canonical September has an unacceptable **70% coverage deficit** (21 missing days, 0% Instagram).
+- Proceeding to live narrative generation on September data would generate an incomplete, factually misleading report.
+- **Verdict**: Live Ollama execution for September is **HALTED**. Operator options:
+  1. Execute a controlled historical sync for `2026-09-01` to `2026-09-21`.
+  2. Target the naturally supported recent window (October MTD / rolling window).
+  3. Formalize an explicit target-period completeness gate (`minimum_coverage_percent`) before proceeding to BS-6D.1.
+
+
 
