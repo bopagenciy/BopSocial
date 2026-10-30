@@ -38,8 +38,8 @@ class DailyMetricAdmin(admin.ModelAdmin):
 
 @admin.register(SyncLog)
 class SyncLogAdmin(admin.ModelAdmin):
-    list_display = ['client', 'platform', 'status', 'records_synced', 'started_at']
-    list_filter = ['platform', 'status']
+    list_display = ['client', 'platform', 'sync_scope', 'status', 'period_start', 'period_end', 'records_synced', 'started_at', 'finished_at']
+    list_filter = ['platform', 'sync_scope', 'status']
 
 
 @admin.register(ROISettings)
@@ -149,7 +149,7 @@ class ExecutiveNarrativeAdmin(admin.ModelAdmin):
 
 @admin.register(IntelligenceAutomationConfig)
 class IntelligenceAutomationConfigAdmin(admin.ModelAdmin):
-    list_display = ['client', 'enabled', 'timezone', 'reporting_frequency', 'reporting_day', 'reporting_hour', 'generate_report', 'generate_narrative', 'require_operator_approval', 'provider_call_budget', 'updated_at']
+    list_display = ['client', 'enabled', 'timezone', 'reporting_frequency', 'reporting_day', 'reporting_hour', 'minimum_period_coverage_percent', 'generate_report', 'generate_narrative', 'require_operator_approval', 'provider_call_budget', 'updated_at']
     list_filter = ['enabled', 'reporting_frequency', 'generate_report', 'generate_narrative', 'require_operator_approval']
     search_fields = ['client__name', 'client__company', 'timezone']
     readonly_fields = ['created_at', 'updated_at']

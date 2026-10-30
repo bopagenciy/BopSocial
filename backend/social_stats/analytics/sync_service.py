@@ -5,7 +5,7 @@ rate-limit evaluation, dual-writing to legacy models, and SyncLog auditing.
 """
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timezone as dt_timezone
+from datetime import date, datetime, timezone as dt_timezone
 from decimal import Decimal
 from typing import Dict, List, Optional, Tuple
 
@@ -55,6 +55,9 @@ class SyncResult:
 def sync_facebook_analytics(
     client_id: int,
     days: int = 30,
+    since: Optional[date] = None,
+    until: Optional[date] = None,
+    sync_scope: str = "CURRENT",
     cred: Optional[PlatformCredential] = None,
     adapter: Optional[FacebookAnalyticsAdapter] = None,
     dual_write: bool = True,
@@ -64,7 +67,14 @@ def sync_facebook_analytics(
     Extracts raw payloads via FacebookAnalyticsAdapter, normalizes, and ingests.
     """
     result = SyncResult(status="success", capability_mode="FULL")
-    sync_log = SyncLog.objects.create(platform="facebook", client_id=client_id, status="running")
+    sync_log = SyncLog.objects.create(
+        platform="facebook",
+        client_id=client_id,
+        status="running",
+        sync_scope=sync_scope,
+        period_start=since,
+        period_end=until,
+    )
 
     if not cred:
         cred = PlatformCredential.objects.filter(client_id=client_id, platform="facebook", is_active=True).first()
@@ -93,7 +103,7 @@ def sync_facebook_analytics(
 
     try:
         # 1. Fetch Account / Page Metrics
-        acct_payload = fb_adapter.fetch_account_metrics(cred)
+        acct_payload = fb_adapter.fetch_account_metrics(cred, since=since, until=until)
         result.warnings.extend(acct_payload.warnings)
         result.errors.extend(acct_payload.errors)
         result.rate_limit_state = cred.rate_limit_state or {}
@@ -224,7 +234,7 @@ def sync_facebook_analytics(
                 )
 
         # 2. Fetch Posts Metrics
-        post_payload = fb_adapter.fetch_post_metrics(cred)
+        post_payload = fb_adapter.fetch_post_metrics(cred, since=since, until=until)
         result.warnings.extend(post_payload.warnings)
         result.errors.extend(post_payload.errors)
 
@@ -362,6 +372,17 @@ def sync_facebook_analytics(
         sync_log.error_message = str(e)[:500]
     finally:
         sync_log.finished_at = timezone.now()
+        sync_log.metadata = {
+            "sync_scope": sync_scope,
+            "period_start": since.isoformat() if since else None,
+            "period_end": until.isoformat() if until else None,
+            "records_seen": result.records_seen,
+            "records_ingested": result.records_ingested,
+            "records_updated": result.records_updated,
+            "capability_mode": result.capability_mode,
+            "warnings_count": len(result.warnings),
+            "errors_count": len(result.errors),
+        }
         sync_log.save()
 
     return result
@@ -372,6 +393,9 @@ def sync_facebook_analytics(
 def sync_instagram_analytics(
     client_id: int,
     days: int = 30,
+    since: Optional[date] = None,
+    until: Optional[date] = None,
+    sync_scope: str = "CURRENT",
     cred: Optional[PlatformCredential] = None,
     adapter: Optional[InstagramAnalyticsAdapter] = None,
     dual_write: bool = True,
@@ -381,7 +405,14 @@ def sync_instagram_analytics(
     Supports FULL capability mode or PARTIAL degradation (basic media counters).
     """
     result = SyncResult(status="success")
-    sync_log = SyncLog.objects.create(platform="instagram", client_id=client_id, status="running")
+    sync_log = SyncLog.objects.create(
+        platform="instagram",
+        client_id=client_id,
+        status="running",
+        sync_scope=sync_scope,
+        period_start=since,
+        period_end=until,
+    )
 
     if not cred:
         cred = PlatformCredential.objects.filter(client_id=client_id, platform="instagram", is_active=True).first()
@@ -414,7 +445,7 @@ def sync_instagram_analytics(
 
     try:
         # 1. Fetch Account Metrics
-        acct_payload = ig_adapter.fetch_account_metrics(cred)
+        acct_payload = ig_adapter.fetch_account_metrics(cred, since=since, until=until)
         result.warnings.extend(acct_payload.warnings)
         result.errors.extend(acct_payload.errors)
         result.rate_limit_state = cred.rate_limit_state or {}
@@ -552,7 +583,7 @@ def sync_instagram_analytics(
                 )
 
         # 2. Fetch Media Metrics
-        media_payload = ig_adapter.fetch_post_metrics(cred)
+        media_payload = ig_adapter.fetch_post_metrics(cred, since=since, until=until)
         result.warnings.extend(media_payload.warnings)
         result.errors.extend(media_payload.errors)
 
@@ -697,6 +728,17 @@ def sync_instagram_analytics(
         sync_log.error_message = str(e)[:500]
     finally:
         sync_log.finished_at = timezone.now()
+        sync_log.metadata = {
+            "sync_scope": sync_scope,
+            "period_start": since.isoformat() if since else None,
+            "period_end": until.isoformat() if until else None,
+            "records_seen": result.records_seen,
+            "records_ingested": result.records_ingested,
+            "records_updated": result.records_updated,
+            "capability_mode": result.capability_mode,
+            "warnings_count": len(result.warnings),
+            "errors_count": len(result.errors),
+        }
         sync_log.save()
 
     return result

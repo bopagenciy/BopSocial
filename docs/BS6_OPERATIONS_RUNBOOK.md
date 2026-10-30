@@ -293,6 +293,54 @@ Before proceeding to Phase BS-6D.1 (First Live Ollama Generation):
 - [x] October 2026 evaluated: sufficiency confirmed (Facebook 100.0%, overall PARTIAL, execution authorized).
 - [x] Production database invariant: zero mutations across all 11 core tables.
 
+---
+
+## 11. Phase BS-6D.0D: Historical Coverage Recovery & Sync Provenance Protocol
+
+### 11.1 Operational Provenance Separation
+When operating analytics synchronizations:
+- **`CURRENT`**: Standard operational sync for recent/rolling telemetry (e.g. daily scheduled sync). May advance `latest_sync_at` and reset the data staleness clock.
+- **`HISTORICAL`**: Backfill for missing historical date ranges. Advances period coverage for the target dates, but **never** resets `latest_sync_at` or clears `ANALYTICS_DATA_STALE`.
+
+### 11.2 Executing a Controlled Historical Sync
+To recover missing telemetry for an incomplete historical period:
+
+```python
+from datetime import date
+from social_stats.analytics.sync_service import sync_facebook_analytics
+
+# Execute bounded historical sync
+result = sync_facebook_analytics(
+    client_id=3,
+    since=date(2026, 9, 1),
+    until=date(2026, 9, 21),
+    sync_scope="HISTORICAL",
+    dual_write=True,
+)
+```
+
+### 11.3 Recomputing Rollups Post-Recovery
+Always rebuild rollups bounded strictly to the recovered period:
+
+```python
+from datetime import date
+from social_stats.analytics.rollups import build_rollups_for_client
+
+build_rollups_for_client(
+    client_id=3,
+    platform="facebook",
+    periods=("day", "week", "month"),
+    start_date=date(2026, 9, 1),
+    end_date=date(2026, 9, 30),
+)
+```
+
+### 11.4 Verification Checklist Before Provider Generation
+1. Check `evaluate_tenant_freshness(client_id=3)`: Verify `qualifying_sync_scope == 'CURRENT'` and `latest_sync_at` is unaffected by the backfill.
+2. Check `evaluate_target_period_coverage(client_id=3, period_start, period_end)`: Verify `is_sufficient=True` ($\ge 80\%$).
+3. If scheduled generation is planned: Ensure a fresh `CURRENT` sync is executed so `age < 24h`.
+
+
 
 
 

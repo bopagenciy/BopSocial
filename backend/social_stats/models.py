@@ -12,6 +12,7 @@ from django.db import transaction
 from django.contrib.auth.models import User
 from django.utils import timezone
 from django.core.exceptions import ValidationError
+from django.core.validators import MinValueValidator, MaxValueValidator
 from datetime import timedelta
 from .currencies import CURRENCY_CHOICES
 from .fields import EncryptedTextField
@@ -36,6 +37,11 @@ SYNC_STATUS = [
     ('success', 'Success'),
     ('partial', 'Partial'),
     ('failed',  'Failed'),
+]
+
+SYNC_SCOPE_CHOICES = [
+    ('CURRENT',    'Current Operational Sync'),
+    ('HISTORICAL', 'Historical Backfill'),
 ]
 
 
@@ -901,9 +907,13 @@ class ROIReport(models.Model):
 class SyncLog(models.Model):
     client         = models.ForeignKey(Client, on_delete=models.CASCADE, related_name='sync_logs', null=True)
     platform       = models.CharField(max_length=30, choices=PLATFORM_CHOICES)
+    sync_scope     = models.CharField(max_length=20, choices=SYNC_SCOPE_CHOICES, default='CURRENT', db_index=True)
+    period_start   = models.DateField(null=True, blank=True, db_index=True)
+    period_end     = models.DateField(null=True, blank=True, db_index=True)
     status         = models.CharField(max_length=20, choices=SYNC_STATUS, default='pending')
     records_synced = models.IntegerField(default=0)
     error_message  = models.TextField(blank=True)
+    metadata       = models.JSONField(default=dict, blank=True)
     started_at     = models.DateTimeField(auto_now_add=True)
     finished_at    = models.DateTimeField(null=True, blank=True)
 
@@ -911,7 +921,7 @@ class SyncLog(models.Model):
         ordering = ['-started_at']
 
     def __str__(self):
-        return f"{self.platform} | {self.status} | {self.started_at:%Y-%m-%d %H:%M}"
+        return f"{self.platform} | {self.sync_scope} | {self.status} | {self.started_at:%Y-%m-%d %H:%M}"
 
 
 # ── Content Calendar ───────────────────────────────────────────────────────────
@@ -2439,7 +2449,11 @@ class IntelligenceAutomationConfig(models.Model):
     lookback_days               = models.IntegerField(default=30, help_text="Lookback days window for analytics aggregation")
     minimum_data_freshness      = models.CharField(max_length=20, choices=INTELLIGENCE_AUTOMATION_FRESHNESS_CHOICES, default='FRESH')
     max_data_staleness_hours    = models.IntegerField(default=24, help_text="Max acceptable staleness in hours")
-    minimum_period_coverage_percent = models.IntegerField(default=80, help_text="Minimum temporal coverage percentage required across target period (default: 80%).")
+    minimum_period_coverage_percent = models.IntegerField(
+        default=80,
+        validators=[MinValueValidator(1), MaxValueValidator(100)],
+        help_text="Minimum temporal coverage percentage required across target period (default: 80%).",
+    )
     generate_report             = models.BooleanField(default=True)
     generate_narrative          = models.BooleanField(default=False)
     require_operator_approval   = models.BooleanField(default=True)
@@ -2453,6 +2467,13 @@ class IntelligenceAutomationConfig(models.Model):
         ordering = ['client_id']
         verbose_name = 'Intelligence Automation Config'
         verbose_name_plural = 'Intelligence Automation Configs'
+
+    def clean(self):
+        super().clean()
+        if self.minimum_period_coverage_percent is not None and self.minimum_period_coverage_percent < 1:
+            raise ValidationError({
+                "minimum_period_coverage_percent": "Minimum period coverage percentage cannot be less than 1% in production configuration (standard baseline requires >= 80%)."
+            })
 
     def __str__(self):
         return f"IntelligenceAutomationConfig(client_id={self.client_id}, enabled={self.enabled}, freq={self.reporting_frequency})"

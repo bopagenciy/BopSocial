@@ -93,7 +93,12 @@ def get_client_platform_freshness(client_id: int, platform: str) -> Dict:
     Retrieves current data freshness summary for a client and platform.
     """
     last_log = (
-        SyncLog.objects.filter(client_id=client_id, platform=platform, status__in=["success", "partial"])
+        SyncLog.objects.filter(
+            client_id=client_id,
+            platform=platform,
+            status__in=["success", "partial"],
+            sync_scope="CURRENT",
+        )
         .order_by("-finished_at")
         .first()
     )

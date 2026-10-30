@@ -83,15 +83,28 @@ def evaluate_tenant_freshness(
             details={"reason": "NO_ACTIVE_CREDENTIALS"},
         )
 
-    # 2. Latest successful/partial SyncLog
-    latest_sync = (
+    # 2. Latest qualifying CURRENT SyncLog (BS-6D.0D Provenance Contract)
+    # A historical backfill must NOT qualify as current operational freshness evidence.
+    # A qualifying sync MUST:
+    #   a) have status in ['success', 'partial']
+    #   b) have sync_scope == 'CURRENT'
+    #   c) if period_end is specified, it must not be a purely historical period
+    qualifying_syncs = (
         SyncLog.objects.filter(
             client_id=client_id,
             status__in=["success", "partial"],
+            sync_scope="CURRENT",
         )
         .order_by("-finished_at")
-        .first()
     )
+
+    latest_sync = None
+    for s in qualifying_syncs:
+        # If period_end is bounded and older than 2 days before finished_at, it's historical regardless of label
+        if s.period_end and s.finished_at and s.period_end < (s.finished_at.date() - timedelta(days=2)):
+            continue
+        latest_sync = s
+        break
 
     latest_sync_at = latest_sync.finished_at if latest_sync else None
 
@@ -170,5 +183,7 @@ def evaluate_tenant_freshness(
         details={
             "sync_platform": latest_sync.platform if latest_sync else None,
             "sync_status": latest_sync.status if latest_sync else None,
+            "qualifying_sync_id": latest_sync.id if latest_sync else None,
+            "qualifying_sync_scope": latest_sync.sync_scope if latest_sync else None,
         },
     )

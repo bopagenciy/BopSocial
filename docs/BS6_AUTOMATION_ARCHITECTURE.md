@@ -397,6 +397,42 @@ The coverage engine operates as a pure read-only service:
 4. **CLI Diagnostics**:
    - `python manage.py run_intelligence_automation <client_id> --dry-run --explain` outputs full coverage breakdown, threshold comparisons, and platform diagnostics.
 
+---
+
+## 16. Phase BS-6D.0D: Sync Freshness Provenance & Controlled Historical Coverage Recovery
+
+### 16.1 The False-Freshness Invariant & Problem
+Prior to Phase BS-6D.0D, `evaluate_tenant_freshness` selected the most recent `SyncLog` ordered purely by `finished_at`:
+- If an operator or automated job executed a historical backfill for an ancient period (e.g. `2026-09-01` to `2026-09-21`), the job completed recently.
+- Taking `SyncLog.order_by("-finished_at").first()` caused the tenant to be falsely marked **`FRESH`** (`data_age_hours < 24h`) merely because historical telemetry was ingested today, even if current operational telemetry had not been synced in weeks or months.
+- This conflated **Period Coverage Recovery** with **Current Operational Freshness**.
+
+### 16.2 Sync Provenance Contract (`SyncLog.sync_scope`)
+To enforce strict separation between historical backfills and operational freshness:
+1. **Model Extension (`SyncLog`)**:
+   - `sync_scope`: `CharField` with choices `CURRENT` vs `HISTORICAL` (default: `CURRENT`, indexed).
+   - `period_start`: `DateField` (nullable, indexed).
+   - `period_end`: `DateField` (nullable, indexed).
+   - `metadata`: `JSONField` storing audit counters (`records_seen`, `records_ingested`, `records_updated`, `capability_mode`, `warnings_count`, `errors_count`).
+   - Migration: `0085_synclog_provenance_and_config_validation.py`.
+2. **Qualifying Freshness Rule (`evaluate_tenant_freshness`)**:
+   - Only `SyncLog` records with `status in ['success', 'partial']` AND `sync_scope == 'CURRENT'` qualify as freshness evidence.
+   - Guard against mislabeled jobs: If `period_end` is bounded and older than `finished_at.date() - 2 days`, the job is excluded from current freshness evaluation.
+   - Historical backfills (`sync_scope='HISTORICAL'`) strictly advance period coverage without resetting or advancing the tenant freshness clock.
+
+### 16.3 Production Configuration Hardening
+- `IntelligenceAutomationConfig.minimum_period_coverage_percent` is protected by `clean()` and `validators=[MinValueValidator(1), MaxValueValidator(100)]`.
+- Production configurations cannot be silently reset to 0% via Admin or API, preventing accidental bypass of the structural coverage gate.
+
+### 16.4 Client #3 September Coverage Recovery
+- Missing range identified: Facebook `2026-09-01` to `2026-09-21` (21 missing calendar days).
+- Single controlled historical sync executed: `since=date(2026, 9, 1)`, `until=date(2026, 9, 21)`, `sync_scope='HISTORICAL'`.
+- Provider payload: 199 records seen, 121 ingested, 57 updated.
+- Facebook September distinct days increased from 9 to **29 of 30 days (96.67% coverage)**, comfortably exceeding the 80% threshold.
+- Affected rollups idempotently recomputed for September: 161 created, 84 updated.
+- Provenance verification: Freshness remained **`STALE`** (`2026-10-29 19:10:06`, age ~26.1h > 24h threshold), proving zero false-freshness contamination.
+
+
 
 
 
