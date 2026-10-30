@@ -23,10 +23,12 @@ from social_stats.models import (
 from .constants import (
     AutomationStage,
     DEFAULT_LOOKBACK_DAYS,
+    DEFAULT_MINIMUM_PERIOD_COVERAGE_PERCENT,
     DEFAULT_PROVIDER_CALL_BUDGET,
     FreshnessCode,
     PIPELINE_VERSION,
 )
+from .coverage import evaluate_target_period_coverage, CoverageResult
 from .freshness import evaluate_tenant_freshness, FreshnessResult
 from .identity import compute_block_state_hash, compute_execution_identity
 from .period import calculate_reporting_period
@@ -46,6 +48,7 @@ class EligibilityResult:
     blocking_reasons: List[str] = field(default_factory=list)
     warnings: List[str] = field(default_factory=list)
     freshness: Dict[str, Any] = field(default_factory=dict)
+    target_period_coverage: Dict[str, Any] = field(default_factory=dict)
     existing_artifacts: Dict[str, Any] = field(default_factory=dict)
     planned_stages: List[str] = field(default_factory=list)
     skipped_stages: List[str] = field(default_factory=list)
@@ -68,6 +71,7 @@ class EligibilityResult:
             "blocking_reasons": self.blocking_reasons,
             "warnings": self.warnings,
             "freshness": self.freshness,
+            "target_period_coverage": self.target_period_coverage,
             "existing_artifacts": self.existing_artifacts,
             "planned_stages": self.planned_stages,
             "skipped_stages": self.skipped_stages,
@@ -236,6 +240,20 @@ def evaluate_intelligence_automation_eligibility(
         period_start__lte=p_end,
     ).count()
 
+    # 7b. Target-Period Completeness Gate (BS-6D.0C)
+    cov_threshold = getattr(config, "minimum_period_coverage_percent", DEFAULT_MINIMUM_PERIOD_COVERAGE_PERCENT) if config else DEFAULT_MINIMUM_PERIOD_COVERAGE_PERCENT
+    coverage_res: CoverageResult = evaluate_target_period_coverage(
+        client_id=client_id,
+        period_start=p_start,
+        period_end=p_end,
+        threshold_percent=cov_threshold,
+    )
+    coverage_dict = coverage_res.to_dict()
+
+    if not coverage_res.is_sufficient:
+        blocking_reasons.extend(coverage_res.blocking_reasons)
+    warnings.extend(coverage_res.warnings)
+
     # 8. Existing Intelligence Artifacts Inspection
     signals = list(BusinessSignal.objects.filter(
         client_id=client_id,
@@ -329,7 +347,7 @@ def evaluate_intelligence_automation_eligibility(
         "PERIOD_END_IN_FUTURE", "PROVIDER_DISCONNECTED: no active platform credentials",
         "PROVIDER_CREDENTIAL_EXPIRED: all platform credentials expired",
         "ANALYTICS_DATA_MISSING", "ANALYTICS_FRESHNESS_UNKNOWN",
-    ] or b.startswith("ANALYTICS_DATA_STALE")]
+    ] or b.startswith("ANALYTICS_DATA_STALE") or b.startswith("TARGET_PERIOD_COVERAGE_INSUFFICIENT")]
     is_data_eligible = len(data_blocking) == 0
 
     # Execution authorization: has operator/schedule authorized active generation?
@@ -346,6 +364,8 @@ def evaluate_intelligence_automation_eligibility(
         freshness_code=freshness_res.code.value if hasattr(freshness_res, "code") else "",
         requires_approval=req_approval,
         config_enabled=config_enabled,
+        coverage_code=coverage_res.overall_code.value if hasattr(coverage_res, "overall_code") else "",
+        coverage_summary=f"{coverage_res.overall_percent:.1f}%",
     ) if not is_eligible else ""
 
     return EligibilityResult(
@@ -361,6 +381,7 @@ def evaluate_intelligence_automation_eligibility(
         blocking_reasons=blocking_reasons,
         warnings=warnings,
         freshness=freshness_dict,
+        target_period_coverage=coverage_dict,
         existing_artifacts=existing_artifacts,
         planned_stages=planned_stages,
         skipped_stages=skipped_stages,

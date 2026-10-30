@@ -157,18 +157,26 @@ def discover_and_enqueue_due_intelligence_automations(dry_run: bool = True) -> D
                 # Safe legacy fallback: derive hash dynamically from stored immutable fields
                 from .identity import compute_block_state_hash
                 stored_freshness = (stored_metadata.get("freshness") or {}).get("code", "")
+                stored_cov = stored_metadata.get("target_period_coverage") or {}
+                cov_code = stored_cov.get("overall_code", "")
+                cov_summary = f"{stored_cov.get('overall_percent', 0.0):.1f}%" if "overall_percent" in stored_cov else ""
                 stored_hash = compute_block_state_hash(
                     blocking_reasons=[latest_blocked.error_code],
                     freshness_code=stored_freshness,
                     requires_approval=True,
                     config_enabled=config.enabled,
+                    coverage_code=cov_code,
+                    coverage_summary=cov_summary,
                 )
 
             # If material block state is UNCHANGED and still not eligible/authorized:
-            if current_eligibility.block_state_hash and (
-                current_eligibility.block_state_hash == stored_hash
-                or (not stored_hash and latest_blocked.error_code in current_eligibility.blocking_reasons)
-            ):
+            is_unchanged = False
+            if current_eligibility.block_state_hash and stored_hash and current_eligibility.block_state_hash == stored_hash:
+                is_unchanged = True
+            elif not stored_metadata.get("block_state_hash") and latest_blocked.error_code in current_eligibility.blocking_reasons:
+                is_unchanged = True
+
+            if is_unchanged:
                 skipped_tenants.append({
                     "client_id": client.id,
                     "reason": f"BLOCKED_STATE_UNCHANGED (run #{latest_blocked.id}, hash={stored_hash or 'legacy'})",

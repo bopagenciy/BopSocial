@@ -46,6 +46,7 @@ class IntelligenceAutomationEligibilityTests(TestCase):
             timezone="America/New_York",
             reporting_frequency="MONTHLY",
             lookback_days=30,
+            minimum_period_coverage_percent=0,
             generate_report=True,
             generate_narrative=False,
             require_operator_approval=True,

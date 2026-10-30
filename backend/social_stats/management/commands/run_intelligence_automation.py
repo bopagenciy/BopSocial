@@ -119,6 +119,12 @@ class Command(BaseCommand):
         self.stdout.write(f"Data Eligible:        {self.style.SUCCESS('YES') if data_eligible else self.style.ERROR('NO')}")
         self.stdout.write(f"Execution Authorized: {self.style.SUCCESS('YES') if execution_authorized else self.style.WARNING('NO (Operator Review / Scheduled Guard Active)')}")
         self.stdout.write(f"Eligibility Status:   {status_style('ELIGIBLE' if eligible else 'BLOCKED')}")
+        cov = preview.get("target_period_coverage", {})
+        cov_code = cov.get("overall_code", "UNKNOWN")
+        cov_pct = cov.get("overall_percent", 0.0)
+        cov_thresh = cov.get("threshold_percent", 80)
+        cov_style = self.style.SUCCESS if cov.get("is_sufficient") else self.style.ERROR
+        self.stdout.write(f"Period Coverage:      {cov_style(f'{cov_code} ({cov_pct:.1f}% / threshold: {cov_thresh}%)')}")
         self.stdout.write(f"Provider Budget:      {preview['provider_call_budget']} max call(s)")
         self.stdout.write("-" * 70)
 
@@ -154,6 +160,16 @@ class Command(BaseCommand):
             self.stdout.write(f"Latest Sync:      {freshness.get('latest_sync_at')}")
             self.stdout.write(f"Latest Snapshot:  {freshness.get('latest_snapshot_date')}")
             self.stdout.write(f"Latest Rollup:    {freshness.get('latest_rollup_date')}")
+
+            self.stdout.write("\n" + self.style.MIGRATE_LABEL("--- Target Period Coverage Details ---"))
+            self.stdout.write(f"Overall Code:         {cov.get('overall_code')}")
+            self.stdout.write(f"Overall Percent:      {cov.get('overall_percent')}%")
+            self.stdout.write(f"Threshold Percent:    {cov.get('threshold_percent')}%")
+            self.stdout.write(f"Expected Days:        {cov.get('expected_days')}")
+            self.stdout.write(f"Multichannel Complete: {cov.get('is_multichannel_complete')}")
+            platforms = cov.get("platforms", {})
+            for p_name, p_cov in platforms.items():
+                self.stdout.write(f"  [{p_name.upper()}]: {p_cov.get('snapshot_distinct_days')}/{cov.get('expected_days')} days ({p_cov.get('snapshot_coverage_percent')}%) | Mode: {p_cov.get('capability_mode')} | Rollup Days: {p_cov.get('rollup_distinct_days')} | Status: {p_cov.get('coverage_code')}")
 
             self.stdout.write("\n" + self.style.MIGRATE_LABEL("--- Existing Artifacts ---"))
             artifacts = preview["existing_artifacts"]

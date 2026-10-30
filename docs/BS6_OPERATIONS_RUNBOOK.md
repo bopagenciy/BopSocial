@@ -225,7 +225,74 @@ Operational monitoring must maintain a strict separation between freshness and c
 - **Signal Potential**: 1 signal (`PROVIDER_PARTIAL`), 0 multichannel signals.
 
 ### 9.3 Known Policy Gap
-The automation engine currently lacks a target-period completeness rule (e.g., `minimum_coverage_percent = 80%`). Until this policy is formalized, operators must verify telemetry completeness before authorizing live provider execution.
+The automation engine previously lacked a target-period completeness rule (e.g., `minimum_coverage_percent = 80%`), which allowed September 2026 to appear eligible despite 70% missing data. This gap has been fully resolved by Phase BS-6D.0C.
+
+---
+
+## 10. Phase BS-6D.0C: Target-Period Completeness Safety Gate Protocol
+
+### 10.1 Operational Gate Overview
+Before authorizing live Ollama generation (`BS-6D.1`), the operator must verify that the target period meets the fail-closed coverage requirements. The system will reject execution if coverage falls below `minimum_period_coverage_percent` (default: 80%).
+
+### 10.2 Inspecting Coverage via CLI
+To inspect coverage and verify eligibility for a reporting period without mutating the database:
+
+```bash
+docker exec -e DJANGO_SETTINGS_MODULE=dashboard.settings agencyos-backend-1 \
+  python manage.py run_intelligence_automation 3 \
+  --period-start 2026-09-01 --period-end 2026-09-30 \
+  --dry-run --explain
+```
+
+**Diagnostic Output Format**:
+```
+Target Period Coverage:
+  - Overall Code: INSUFFICIENT
+  - Primary Platform Coverage: 30.0% (Required: >= 80%)
+  - Multichannel Complete: False
+  - Expected Days: 30
+  - Platform Breakdown:
+    * facebook: 30.0% (9/30 days, 63 snapshots, 6 metrics) [Code: INSUFFICIENT]
+    * instagram: 0.0% (0/30 days, 0 snapshots, 0 metrics) [Code: NO_DATA]
+  - Warnings:
+    * MONTH_ROLLUP_SAMPLE_DEFICIT: facebook month rollup has sample_count=10 < 30 expected days
+    * PLATFORM_ZERO_COVERAGE: instagram has 0/30 days of data in period; cross-platform narrative claims are restricted
+    * PLATFORM_PARTIAL_CAPABILITY: instagram operating in PARTIAL capability mode (0/15 metrics available)
+```
+
+### 10.3 Failure Modes and Remediation
+
+| Failure Mode | CLI Error / Blocker | Cause | Remediation Procedure |
+|---|---|---|---|
+| **Zero Telemetry** | `TARGET_PERIOD_COVERAGE_INSUFFICIENT: 0 days of telemetry across all platforms` | No snapshots exist in the requested date range. | Run a targeted historical sync for the target range or adjust reporting period to synchronized dates. |
+| **Partial / Sub-Threshold Coverage** | `TARGET_PERIOD_COVERAGE_INSUFFICIENT: platform 'facebook' temporal coverage 30.0% (9/30 days) is below minimum required 80%` | Only a subset of days was synchronized (e.g., 9 of 30 days). | 1. Execute backfill for missing dates (e.g. `2026-09-01` to `2026-09-21`).<br>2. Alternatively, target an overlapping period with full coverage (e.g., October MTD).<br>3. Lower threshold in `IntelligenceAutomationConfig` if business explicitly approves partial reporting. |
+| **Zero Platform Coverage (Multichannel)** | Warning: `PLATFORM_ZERO_COVERAGE: instagram has 0/30 days` | One connected platform has 0 snapshots in period. | Tenant is restricted to single-platform narrative; multichannel signals will not be generated for unrepresented platform. |
+| **Stale Telemetry with Complete Period** | `ANALYTICS_DATA_STALE: age > 24h` | Target period data is complete, but last sync was > 24h ago. | Execute a fresh synchronization (`sync_social_data`) to refresh provider status before scheduled run. |
+
+### 10.4 Threshold Configuration
+The minimum coverage threshold is stored on `IntelligenceAutomationConfig`:
+
+```python
+# To inspect current threshold:
+config = IntelligenceAutomationConfig.objects.get(client_id=3)
+print(config.minimum_period_coverage_percent)  # Default: 80
+
+# To adjust threshold (e.g., for specialized tenant):
+config.minimum_period_coverage_percent = 75
+config.save(update_fields=["minimum_period_coverage_percent"])
+```
+
+### 10.5 Pre-Live Authorization Checklist
+Before proceeding to Phase BS-6D.1 (First Live Ollama Generation):
+- [x] Local and remote git branches aligned on `feature/bs-6a-production-intelligence-automation`.
+- [x] Target-period coverage safety gate implemented and verified (`evaluate_target_period_coverage`).
+- [x] Config schema updated with `minimum_period_coverage_percent` (default 80%).
+- [x] All 18 coverage test matrix cases passing (100%).
+- [x] Full backend regression passing: 1,249 tests passing, 0 failures, 0 errors.
+- [x] September 2026 evaluated: fail-closed rejection confirmed (`TARGET_PERIOD_COVERAGE_INSUFFICIENT: 30.0% < 80%`).
+- [x] October 2026 evaluated: sufficiency confirmed (Facebook 100.0%, overall PARTIAL, execution authorized).
+- [x] Production database invariant: zero mutations across all 11 core tables.
+
 
 
 

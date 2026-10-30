@@ -332,14 +332,71 @@ A read-only audit across production telemetry revealed:
 1. **Signal Generation Dry-Run**: Executing `generate_business_signals(persist=False)` for September `2026-09-01` to `2026-09-30` yields exactly **1 standard signal** (`PROVIDER_PARTIAL` on Instagram) and **0 multichannel signals** (0/15 comparable metrics).
 2. **Delta Correction**: The "+9 BusinessSignals" expectation was proven to be an artifact of the historical BS-5 pilot window (`2026-09-22 -> 2026-10-22`), NOT canonical September. Under current September data, expected signal delta is **+1**, not +9.
 
-### 14.5 Decision Rule & Pre-Live Recommendation
-Under the Phase BS-6D.0B decision rule:
-- Canonical September has an unacceptable **70% coverage deficit** (21 missing days, 0% Instagram).
-- Proceeding to live narrative generation on September data would generate an incomplete, factually misleading report.
-- **Verdict**: Live Ollama execution for September is **HALTED**. Operator options:
-  1. Execute a controlled historical sync for `2026-09-01` to `2026-09-21`.
-  2. Target the naturally supported recent window (October MTD / rolling window).
-  3. Formalize an explicit target-period completeness gate (`minimum_coverage_percent`) before proceeding to BS-6D.1.
+---
+
+## 15. Phase BS-6D.0C: Target-Period Completeness Safety Gate
+
+### 15.1 Architectural Problem & Purpose
+Phase BS-6D.0B proved a major architectural safety gap in the intelligence automation pipeline:
+- A tenant can be verified **`FRESH`** (e.g., sync finished 21 hours ago) while the canonical reporting period (e.g., September 1–30) has severe data gaps (Facebook 9/30 days = 30%, Instagram 0/30 days = 0%).
+- Previous eligibility engines gated solely on `snapshot_count > 0` and `rollup_count > 0`, allowing September 2026 to be marked `data_eligible=True` and planning artifact generation despite a 70% data deficit.
+- Generating executive narratives on severely incomplete data produces factually misleading narratives and invalid business signals.
+
+Phase BS-6D.0C introduces an explicit, deterministic, fail-closed **Target-Period Completeness Safety Gate** that enforces temporal density and platform breadth across the exact dates of the target reporting period before authorizing any downstream report or narrative generation.
+
+### 15.2 Freshness vs. Period Completeness Contract
+The pipeline enforces strict separation between two orthogonal telemetry health metrics:
+1. **Freshness Metric (`evaluate_tenant_freshness`)**:
+   - Measures time elapsed since the most recent provider synchronization (`now - finished_at`).
+   - Guard: Enforces `data_age_hours <= max_staleness_hours` (default 24h).
+   - Domain: Operational sync pipeline health.
+2. **Coverage Metric (`evaluate_target_period_coverage`)**:
+   - Measures observation density (`distinct_days / expected_days`) and metric breadth across `[period_start, period_end]`.
+   - Guard: Enforces `snapshot_coverage_percent >= minimum_period_coverage_percent` (default 80%).
+   - Domain: Reporting period validity and analytical representativeness.
+
+### 15.3 Configuration & Threshold Policy
+- **Model Attribute**: `IntelligenceAutomationConfig.minimum_period_coverage_percent`
+  - Type: `IntegerField` (validators: `MinValueValidator(0)`, `MaxValueValidator(100)`).
+  - Default: `80` (80% minimum temporal coverage).
+  - Migration: `0084_intelligenceautomationconfig_minimum_period_coverage_percent.py`.
+- **Baseline Threshold Rationale (80%)**:
+  - For a monthly report (30 days), 80% requires at least 24 distinct calendar days of observed telemetry.
+  - Accommodates minor provider sync lag or transient weekend batching (up to 6 missing days).
+  - Prevents hallucination-prone generation on fragmented periods (e.g., 9/30 days = 30%).
+  - Configurable to 0% for legacy test harnesses or specialized partial-period tenants.
+
+### 15.4 Core Coverage Engine (`evaluate_target_period_coverage`)
+The coverage engine operates as a pure read-only service:
+- **Inputs**: `client_id`, `period_start`, `period_end`, `threshold_percent`.
+- **Platform-Level Evaluation**:
+  - `snapshot_count`: Total snapshots in date range.
+  - `snapshot_distinct_days`: Distinct calendar dates represented in `bucket_timestamp`.
+  - `snapshot_coverage_percent`: `(distinct_days / expected_days) * 100.0`.
+  - `available_metrics`: Observed canonical metrics in period.
+  - `unavailable_metrics`: Canonical metrics absent from snapshots (preserved as `UNAVAILABLE`, never fabricated as zeroes).
+  - `capability_mode`: `FULL` vs `PARTIAL` provider support based on granted OAuth scopes.
+  - `coverage_code`: `SUFFICIENT` (>= threshold), `INSUFFICIENT` (< threshold), or `NO_DATA` (0 days).
+- **Tenant-Level Evaluation**:
+  - Primary canonical platform: Platform with highest coverage determines baseline sufficiency.
+  - `is_sufficient`: `True` iff at least one canonical platform satisfies the threshold (or threshold=0).
+  - `is_multichannel_complete`: `True` iff all connected platforms meet the threshold with 0 zero-data platforms and no partial-capability limitations.
+  - `warnings`: Emitted for zero-coverage platforms (`PLATFORM_ZERO_COVERAGE`), partial capabilities (`PLATFORM_PARTIAL_CAPABILITY`), and monthly rollup sample deficits (`MONTH_ROLLUP_SAMPLE_DEFICIT`).
+
+### 15.5 Pipeline Integration & Fail-Closed Guardrails
+1. **Eligibility Engine (`evaluate_intelligence_automation_eligibility`)**:
+   - Gate 7b evaluates `evaluate_target_period_coverage`.
+   - If `not coverage_res.is_sufficient`: Appends `TARGET_PERIOD_COVERAGE_INSUFFICIENT` to `blocking_reasons`.
+   - Included in `data_blocking`: Sets `data_eligible=False`, `eligible=False`, `execution_authorized=False`.
+2. **Material Block Fingerprint (`compute_block_state_hash`)**:
+   - Incorporates `coverage_code` and `coverage_summary` into the SHA-256 state hash.
+   - Any improvement in target period coverage (e.g., following a historical backfill) mutates the hash, deterministically enabling automatic reactivation via Celery Beat discovery.
+3. **Operator Resume Verification (`resume_intelligence_automation`)**:
+   - Gate 4.45 re-evaluates target period coverage at resume time before provider execution.
+   - If coverage has degraded or was invalidated, the run transitions to `BLOCKED` with zero provider calls.
+4. **CLI Diagnostics**:
+   - `python manage.py run_intelligence_automation <client_id> --dry-run --explain` outputs full coverage breakdown, threshold comparisons, and platform diagnostics.
+
 
 
 

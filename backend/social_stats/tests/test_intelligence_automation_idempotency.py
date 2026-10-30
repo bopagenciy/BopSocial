@@ -45,6 +45,7 @@ class IntelligenceAutomationIdempotencyTests(TestCase):
             generate_report=True,
             generate_narrative=True,
             require_operator_approval=False,
+            minimum_period_coverage_percent=0,
             provider_call_budget=1,
             max_retry_count=0,
         )

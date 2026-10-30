@@ -31,11 +31,13 @@ def compute_block_state_hash(
     freshness_code: str = "",
     requires_approval: bool = True,
     config_enabled: bool = False,
+    coverage_code: str = "",
+    coverage_summary: str = "",
 ) -> str:
     """
     Computes a deterministic SHA-256 fingerprint of the tenant's material blocking state.
     Used to prevent repeated row storms when an invariant blocked condition persists,
-    while permitting immediate reactivation when any blocker (freshness, approval, config) changes.
+    while permitting immediate reactivation when any blocker (freshness, coverage, approval, config) changes.
     """
     sorted_reasons = sorted(str(r) for r in blocking_reasons)
     payload = "|".join([
@@ -43,6 +45,8 @@ def compute_block_state_hash(
         str(freshness_code),
         str(requires_approval),
         str(config_enabled),
+        str(coverage_code),
+        str(coverage_summary),
     ])
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
 

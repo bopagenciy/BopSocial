@@ -2439,6 +2439,7 @@ class IntelligenceAutomationConfig(models.Model):
     lookback_days               = models.IntegerField(default=30, help_text="Lookback days window for analytics aggregation")
     minimum_data_freshness      = models.CharField(max_length=20, choices=INTELLIGENCE_AUTOMATION_FRESHNESS_CHOICES, default='FRESH')
     max_data_staleness_hours    = models.IntegerField(default=24, help_text="Max acceptable staleness in hours")
+    minimum_period_coverage_percent = models.IntegerField(default=80, help_text="Minimum temporal coverage percentage required across target period (default: 80%).")
     generate_report             = models.BooleanField(default=True)
     generate_narrative          = models.BooleanField(default=False)
     require_operator_approval   = models.BooleanField(default=True)

@@ -78,6 +78,7 @@ class BlockedRunReactivationTests(TestCase):
             reporting_day=1,
             reporting_hour=2,
             lookback_days=30,
+            minimum_period_coverage_percent=0,
             generate_report=True,
             generate_narrative=True,
             require_operator_approval=True,

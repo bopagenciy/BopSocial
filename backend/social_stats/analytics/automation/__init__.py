@@ -18,13 +18,16 @@ from .constants import (
     AutomationStage,
     AutomationStatus,
     AutomationTriggerType,
+    CoverageCode,
     DEFAULT_MAX_RETRY_COUNT,
+    DEFAULT_MINIMUM_PERIOD_COVERAGE_PERCENT,
     DEFAULT_PROVIDER_CALL_BUDGET,
     FreshnessCode,
     PIPELINE_VERSION,
     PROVIDER_EXECUTION_READY,
     PROVIDER_EXECUTING,
 )
+from .coverage import evaluate_target_period_coverage, CoverageResult, PlatformCoverage
 from .eligibility import evaluate_intelligence_automation_eligibility, EligibilityResult
 from .freshness import evaluate_tenant_freshness, FreshnessResult
 from .identity import compute_approval_token, compute_block_state_hash, compute_execution_identity
@@ -48,9 +51,12 @@ __all__ = [
     "AutomationStatus",
     "ApprovalStatus",
     "AutomationTriggerType",
+    "CoverageCode",
     "FreshnessCode",
     "EligibilityResult",
     "FreshnessResult",
+    "CoverageResult",
+    "PlatformCoverage",
     "SingleFlightLock",
     "ConcurrencyLockError",
     "ApprovalError",
@@ -72,6 +78,7 @@ __all__ = [
     "get_calendar_month_bounds",
     "get_rolling_window_bounds",
     "evaluate_tenant_freshness",
+    "evaluate_target_period_coverage",
     "evaluate_intelligence_automation_eligibility",
     "preview_intelligence_automation",
     "execute_intelligence_automation",

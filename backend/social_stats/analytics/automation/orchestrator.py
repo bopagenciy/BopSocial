@@ -74,6 +74,7 @@ def preview_intelligence_automation(
         "blocking_reasons": eligibility.blocking_reasons,
         "warnings": eligibility.warnings,
         "freshness": eligibility.freshness,
+        "target_period_coverage": eligibility.target_period_coverage,
         "existing_artifacts": eligibility.existing_artifacts,
         "planned_stages": eligibility.planned_stages,
         "skipped_stages": eligibility.skipped_stages,
@@ -166,6 +167,7 @@ def execute_intelligence_automation(
                 "attempt_number": attempt_num,
                 "block_state_hash": eligibility.block_state_hash,
                 "freshness": eligibility.freshness,
+                "target_period_coverage": eligibility.target_period_coverage,
                 "existing_artifacts": eligibility.existing_artifacts,
                 "planned_stages": eligibility.planned_stages,
                 "skipped_stages": eligibility.skipped_stages,
@@ -194,7 +196,9 @@ def execute_intelligence_automation(
             run.status = AutomationStatus.BLOCKED.value
             run.current_stage = AutomationStage.ELIGIBILITY.value
             run.finished_at = timezone.now()
-            run.error_code = hard_blocking_reasons[0]
+            first_blocker = hard_blocking_reasons[0]
+            code = first_blocker.split(":")[0].strip() if ":" in first_blocker else first_blocker.strip()
+            run.error_code = code[:100]
             run.error_message_safe = redact_secrets("; ".join(eligibility.blocking_reasons))
             run.save(update_fields=["status", "current_stage", "finished_at", "error_code", "error_message_safe", "updated_at"])
 

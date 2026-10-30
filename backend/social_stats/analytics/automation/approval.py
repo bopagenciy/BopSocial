@@ -26,9 +26,11 @@ from .constants import (
     ApprovalStatus,
     AutomationStage,
     AutomationStatus,
+    DEFAULT_MINIMUM_PERIOD_COVERAGE_PERCENT,
     FreshnessCode,
     PROVIDER_EXECUTION_READY,
 )
+from .coverage import evaluate_target_period_coverage
 from .events import log_automation_event, redact_secrets
 from .freshness import evaluate_tenant_freshness
 from .identity import compute_approval_token
@@ -420,6 +422,30 @@ def resume_approved_intelligence_run(
             run.status = AutomationStatus.BLOCKED.value
             run.error_code = "ANALYTICS_DATA_STALE"
             run.error_message_safe = f"Analytics data became stale (age {freshness.data_age_hours:.1f}h > {config.max_data_staleness_hours}h) upon resume."
+            run.save(update_fields=["status", "error_code", "error_message_safe", "updated_at"])
+            log_automation_event(
+                event_name="automation.resume.blocked",
+                run_id=run.id,
+                client_id=run.client_id,
+                stage=run.current_stage,
+                status=run.status,
+                error_code=run.error_code,
+                error_message=run.error_message_safe,
+            )
+            return run
+
+        # Gate 4.45: Target-Period Completeness Recheck (BS-6D.0C)
+        cov_threshold = getattr(config, "minimum_period_coverage_percent", DEFAULT_MINIMUM_PERIOD_COVERAGE_PERCENT) if config else DEFAULT_MINIMUM_PERIOD_COVERAGE_PERCENT
+        coverage = evaluate_target_period_coverage(
+            client_id=run.client_id,
+            period_start=run.period_start,
+            period_end=run.period_end,
+            threshold_percent=cov_threshold,
+        )
+        if not coverage.is_sufficient:
+            run.status = AutomationStatus.BLOCKED.value
+            run.error_code = "TARGET_PERIOD_COVERAGE_INSUFFICIENT"
+            run.error_message_safe = redact_secrets("; ".join(coverage.blocking_reasons))
             run.save(update_fields=["status", "error_code", "error_message_safe", "updated_at"])
             log_automation_event(
                 event_name="automation.resume.blocked",
