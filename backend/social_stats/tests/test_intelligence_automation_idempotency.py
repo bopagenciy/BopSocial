@@ -85,7 +85,17 @@ class IntelligenceAutomationIdempotencyTests(TestCase):
             finished_at=timezone.now() - timedelta(hours=1),
         )
 
-        # Existing ExecutiveReport
+        # Compute deterministic source identity (BS-6D.1B)
+        from social_stats.analytics.automation.identity import get_deterministic_report_source_hash
+        from social_stats.analytics.narrative.context import build_grounded_narrative_context, compute_context_hash
+
+        src_hash = get_deterministic_report_source_hash(
+            self.client_obj.id,
+            self.period_start,
+            self.period_end,
+        )
+
+        # Existing ExecutiveReport with deterministic source identity
         self.report = ExecutiveReport.objects.create(
             client=self.client_obj,
             report_type="EXECUTIVE",
@@ -94,11 +104,13 @@ class IntelligenceAutomationIdempotencyTests(TestCase):
             language="es",
             status="GENERATED",
             title="Informe Ejecutivo Canonico",
-            source_hash="canonical_source_hash_abcdef",
+            source_hash=src_hash,
             report_data={"summary": "Canonical Report"},
         )
 
-        # Existing VALIDATED ExecutiveNarrative
+        ctx_hash = compute_context_hash(build_grounded_narrative_context(self.report))
+
+        # Existing VALIDATED ExecutiveNarrative with matching context identity
         self.narrative = ExecutiveNarrative.objects.create(
             client=self.client_obj,
             executive_report=self.report,
@@ -107,8 +119,8 @@ class IntelligenceAutomationIdempotencyTests(TestCase):
             provider="ollama",
             model_name="qwen3.5:9b",
             prompt_version="bs5e-prompt-v3",
-            source_hash="canonical_source_hash_abcdef",
-            context_hash="canonical_context_hash_123456",
+            source_hash=src_hash,
+            context_hash=ctx_hash,
             narrative_json={"executive_summary": ["Grounded summary text"]},
             rendered_text="Grounded summary text",
             validation_status="PASS",

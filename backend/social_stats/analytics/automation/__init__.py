@@ -30,7 +30,14 @@ from .constants import (
 from .coverage import evaluate_target_period_coverage, CoverageResult, PlatformCoverage
 from .eligibility import evaluate_intelligence_automation_eligibility, EligibilityResult
 from .freshness import evaluate_tenant_freshness, FreshnessResult
-from .identity import compute_approval_token, compute_block_state_hash, compute_execution_identity
+from .identity import (
+    compute_approval_token,
+    compute_block_state_hash,
+    compute_execution_identity,
+    get_deterministic_report_source_hash,
+    verify_executive_report_reuse,
+    verify_executive_narrative_reuse,
+)
 from .locking import ConcurrencyLockError, SingleFlightLock
 from .orchestrator import execute_intelligence_automation, preview_intelligence_automation
 from .period import (
@@ -68,6 +75,9 @@ __all__ = [
     "compute_execution_identity",
     "compute_block_state_hash",
     "compute_approval_token",
+    "get_deterministic_report_source_hash",
+    "verify_executive_report_reuse",
+    "verify_executive_narrative_reuse",
     "approve_intelligence_run",
     "reject_intelligence_run",
     "resume_approved_intelligence_run",

@@ -257,8 +257,8 @@ def evaluate_intelligence_automation_eligibility(
     # 8. Existing Intelligence Artifacts Inspection
     signals = list(BusinessSignal.objects.filter(
         client_id=client_id,
-        period_start=p_start,
-        period_end=p_end,
+        period_start__gte=p_start,
+        period_end__lte=p_end,
     ))
     signal_count = len(signals)
 
@@ -271,6 +271,12 @@ def evaluate_intelligence_automation_eligibility(
     ).order_by("-id"))
     matching_report = reports[0] if reports else None
 
+    # Deterministic Report Reuse Verification (BS-6D.1B)
+    from .identity import verify_executive_report_reuse, verify_executive_narrative_reuse
+    report_reusable, report_reuse_reason, expected_source_hash = verify_executive_report_reuse(
+        matching_report, client_id, p_start, p_end
+    )
+
     # Matching Validated ExecutiveNarrative
     matching_narrative = None
     if matching_report:
@@ -278,14 +284,31 @@ def evaluate_intelligence_automation_eligibility(
             executive_report=matching_report,
             status="VALIDATED",
         ).order_by("-id").first()
+    elif client_id:
+        matching_narrative = ExecutiveNarrative.objects.filter(
+            executive_report__client_id=client_id,
+            executive_report__period_start=p_start,
+            executive_report__period_end=p_end,
+            status="VALIDATED",
+        ).order_by("-id").first()
+
+    # Deterministic Narrative Reuse Verification (BS-6D.1B)
+    narrative_reusable, narrative_reuse_reason, expected_context_hash = verify_executive_narrative_reuse(
+        matching_narrative, matching_report if report_reusable else None, client_id, p_start, p_end
+    )
 
     existing_artifacts = {
         "snapshots_count": snapshot_count,
         "rollups_count": rollup_count,
         "signals_count": signal_count,
-        "matching_report_id": matching_report.id if matching_report else None,
-        "matching_narrative_id": matching_narrative.id if matching_narrative else None,
+        "matching_report_id": matching_report.id if (matching_report and report_reusable) else None,
+        "matching_narrative_id": matching_narrative.id if (matching_narrative and narrative_reusable) else None,
+        "raw_matching_report_id": matching_report.id if matching_report else None,
+        "raw_matching_narrative_id": matching_narrative.id if matching_narrative else None,
+        "report_reusable": report_reusable,
+        "narrative_reusable": narrative_reusable,
         "report_source_hash": matching_report.source_hash if matching_report else None,
+        "expected_source_hash": expected_source_hash,
         "narrative_status": matching_narrative.status if matching_narrative else None,
     }
 
@@ -294,7 +317,7 @@ def evaluate_intelligence_automation_eligibility(
         blocking_reasons.append("OPERATOR_APPROVAL_REQUIRED: automated recurring narrative generation requires operator approval")
 
     # 10. Provider Call Budget Check
-    if gen_narrative and not matching_narrative and provider_budget < 1:
+    if gen_narrative and not (matching_narrative and narrative_reusable) and provider_budget < 1:
         blocking_reasons.append("PROVIDER_CALL_BUDGET_EXHAUSTED: budget is 0")
 
     # 11. Planned Stages & Artifact Reuse Decisions
@@ -322,20 +345,28 @@ def evaluate_intelligence_automation_eligibility(
         reuse_decisions["signals"] = f"REUSE {signal_count} existing signals"
 
     # Stage: REPORT_CHECK
-    if matching_report:
+    if matching_report and report_reusable:
         skipped_stages.append(AutomationStage.REPORT_CHECK.value)
         reuse_decisions["report"] = f"REUSE ExecutiveReport #{matching_report.id} (idempotent matching hash)"
     else:
         if gen_report:
             planned_stages.append(AutomationStage.REPORT_CHECK.value)
+            if matching_report and not report_reusable:
+                reuse_decisions["report"] = f"CREATE_NEW (persisted ExecutiveReport #{matching_report.id} source identity stale: {report_reuse_reason})"
+            else:
+                reuse_decisions["report"] = "CREATE_NEW (no existing report)"
 
     # Stage: NARRATIVE_CHECK
-    if matching_narrative:
+    if matching_narrative and narrative_reusable:
         skipped_stages.append(AutomationStage.NARRATIVE_CHECK.value)
         reuse_decisions["narrative"] = f"REUSE ExecutiveNarrative #{matching_narrative.id} (VALIDATED status, prompt={matching_narrative.prompt_version})"
     else:
         if gen_narrative:
             planned_stages.append(AutomationStage.NARRATIVE_CHECK.value)
+            if matching_narrative and not narrative_reusable:
+                reuse_decisions["narrative"] = f"CREATE_NEW (persisted ExecutiveNarrative #{matching_narrative.id} context identity stale: {narrative_reuse_reason})"
+            else:
+                reuse_decisions["narrative"] = "CREATE_NEW (no existing validated narrative)"
         else:
             skipped_stages.append(AutomationStage.NARRATIVE_CHECK.value)
             reuse_decisions["narrative"] = "SKIPPED (generate_narrative=False in config)"

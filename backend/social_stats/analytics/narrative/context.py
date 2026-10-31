@@ -110,6 +110,8 @@ def build_grounded_narrative_context(report, business_signals: Optional[List[Any
     else:
         # Legacy fallback
         summary_data = report_data.get("summary", {})
+        if not isinstance(summary_data, dict):
+            summary_data = {}
         for upper_key, lower_key in ALLOWLISTED_KPIS:
             kpis[lower_key] = summary_data.get(lower_key, 0)
 
@@ -297,6 +299,8 @@ def build_grounded_narrative_context(report, business_signals: Optional[List[Any
             "claim_category": claim_cat,
             "metric": s.get('metric', ''),
             "platform": s.get('platform', ''),
+            "period_start": str(s.get('period_start', '')) if s.get('period_start') else None,
+            "period_end": str(s.get('period_end', '')) if s.get('period_end') else None,
             "confidence": conf,
             "sample_size": s.get('sample_size', 0),
             "is_actionable": s.get('is_actionable', False),

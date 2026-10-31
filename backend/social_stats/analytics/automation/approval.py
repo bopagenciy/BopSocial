@@ -483,7 +483,7 @@ def resume_approved_intelligence_run(
             )
             return run
 
-        # Gate 4.6: Existing Validated Narrative Reuse (Section O)
+        # Gate 4.6: Existing Validated Narrative Reuse (Section O & BS-6D.1B)
         matching_narrative = None
         if run.report_id:
             matching_narrative = ExecutiveNarrative.objects.filter(
@@ -498,7 +498,11 @@ def resume_approved_intelligence_run(
                 status="VALIDATED",
             ).order_by("-id").first()
 
-        if matching_narrative:
+        from .identity import verify_executive_narrative_reuse
+        is_narr_reusable, narr_reason, _ = verify_executive_narrative_reuse(
+            matching_narrative, run.report, run.client_id, run.period_start, run.period_end
+        )
+        if matching_narrative and is_narr_reusable:
             # REUSE existing validated narrative! Zero LLM call!
             run.narrative = matching_narrative
             run.status = AutomationStatus.COMPLETED.value

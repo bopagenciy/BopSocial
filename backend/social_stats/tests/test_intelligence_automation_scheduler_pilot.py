@@ -306,19 +306,27 @@ class IntelligenceAutomationSchedulerPilotTests(TestCase):
         """Proves scheduled execution for canonical period reuses existing ExecutiveReport and ExecutiveNarrative."""
         p_start = date(2026, 9, 22)
         p_end = date(2026, 10, 22)
+        from social_stats.analytics.automation.identity import get_deterministic_report_source_hash
+        from social_stats.analytics.narrative.context import build_grounded_narrative_context, compute_context_hash
+
+        src_hash = get_deterministic_report_source_hash(self.client_3.id, p_start, p_end)
         rep = ExecutiveReport.objects.create(
             client=self.client_3,
             period_start=p_start,
             period_end=p_end,
             status="GENERATED",
             title="September Report",
+            source_hash=src_hash,
         )
+        ctx_hash = compute_context_hash(build_grounded_narrative_context(rep))
         narrative = ExecutiveNarrative.objects.create(
             client=self.client_3,
             executive_report=rep,
             status="VALIDATED",
             rendered_text="Canonical validated text.",
             prompt_version="bs5e-prompt-v3",
+            source_hash=src_hash,
+            context_hash=ctx_hash,
         )
         res = evaluate_intelligence_automation_eligibility(
             client_id=self.client_3.id,

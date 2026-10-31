@@ -227,7 +227,11 @@ def execute_intelligence_automation(
             period_end=eligibility.period_end,
             status="GENERATED",
         ).order_by("-id").first()
-        if matching_report:
+        from .identity import verify_executive_report_reuse, verify_executive_narrative_reuse
+        is_rep_reusable, rep_reason, _ = verify_executive_report_reuse(
+            matching_report, client_id, eligibility.period_start, eligibility.period_end
+        )
+        if matching_report and is_rep_reusable:
             run.report = matching_report
             run.save(update_fields=["report", "current_stage", "updated_at"])
 
@@ -247,7 +251,10 @@ def execute_intelligence_automation(
                 status="VALIDATED",
             ).order_by("-id").first()
 
-        if matching_narrative:
+        is_narr_reusable, narr_reason, _ = verify_executive_narrative_reuse(
+            matching_narrative, run.report, client_id, eligibility.period_start, eligibility.period_end
+        )
+        if matching_narrative and is_narr_reusable:
             # REUSE existing validated narrative!
             run.narrative = matching_narrative
             run.save(update_fields=["narrative", "current_stage", "updated_at"])

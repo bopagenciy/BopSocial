@@ -894,13 +894,28 @@ class NarrativeValidator:
             checks["multichannel_safety"] = True
 
         # 7. Recommendations Grounding & Evidence Refs
+        rep_meta = context.get("report", {})
+        rep_p_start = str(rep_meta.get("period_start", ""))
+        rep_p_end = str(rep_meta.get("period_end", ""))
         for idx, rec in enumerate(recs):
             rec_refs = rec.get("evidence_refs", [])
             for ref in rec_refs:
                 if ref not in evidence_registry:
                     errors.append(f"Recommendation evidence failed: Recommendation #{idx + 1} cites non-existent reference '{ref}'.")
+                else:
+                    ev_node = evidence_registry[ref]
+                    ev_start = str(ev_node.get("period_start", "")) if ev_node.get("period_start") else ""
+                    ev_end = str(ev_node.get("period_end", "")) if ev_node.get("period_end") else ""
+                    if ev_start and rep_p_start and ev_start < rep_p_start:
+                        errors.append(
+                            f"Evidence period mismatch failed: Reference '{ref}' period_start ({ev_start}) precedes target report period ({rep_p_start})."
+                        )
+                    if ev_end and rep_p_end and ev_end > rep_p_end:
+                        errors.append(
+                            f"Evidence period mismatch failed: Reference '{ref}' period_end ({ev_end}) exceeds target report period ({rep_p_end})."
+                        )
 
-        if not any("Recommendation evidence failed" in e for e in errors):
+        if not any("Recommendation evidence failed" in e or "Evidence period mismatch failed" in e for e in errors):
             checks["recommendations_grounded"] = True
 
         # Final verdict

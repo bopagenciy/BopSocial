@@ -139,12 +139,14 @@ class IntelligenceAutomationApprovalWorkflowTests(TestCase):
             bucket_period="DAY",
             bucket_timestamp=datetime(2026, 9, 15, 12, 0, 0, tzinfo=dt_tz.utc),
         )
+        from social_stats.analytics.automation.identity import get_deterministic_report_source_hash
+        src_hash = get_deterministic_report_source_hash(self.tenant_client.id, self.period_start, self.period_end)
         self.report = ExecutiveReport.objects.create(
             client=self.tenant_client,
             period_start=self.period_start,
             period_end=self.period_end,
             status="GENERATED",
-            source_hash="sha256-report-abc-123",
+            source_hash=src_hash,
         )
 
     # ── Z. Status Transitions ──────────────────────────────────────────────────
@@ -412,6 +414,8 @@ class IntelligenceAutomationApprovalWorkflowTests(TestCase):
         )
         approve_intelligence_run(run.id, self.operator)
 
+        from social_stats.analytics.narrative.context import build_grounded_narrative_context, compute_context_hash
+        ctx_hash = compute_context_hash(build_grounded_narrative_context(self.report))
         # A validated narrative is uploaded/generated in the interim
         narrative = ExecutiveNarrative.objects.create(
             client=self.tenant_client,
@@ -421,8 +425,8 @@ class IntelligenceAutomationApprovalWorkflowTests(TestCase):
             rendered_text="Pre-existing validated executive overview.",
             provider="fake",
             model_name="stub-model",
-            source_hash="sha256-report-abc-123",
-            context_hash="sha256-context-abc-123",
+            source_hash=self.report.source_hash,
+            context_hash=ctx_hash,
         )
 
         resumed = resume_approved_intelligence_run(run.id, self.operator)
