@@ -763,7 +763,10 @@ class NarrativeValidator:
         # Gate G: Limitation Preservation Lock (Section AY, BS-5E.1C Numeric Semantic Recognition)
         mc_intel = context.get("multichannel_intelligence", {})
         cov_summary = mc_intel.get("coverage_summary") or mc_intel.get("coverage", {})
-        is_limited_coverage = cov_summary.get("status") == "LIMITED" or (cov_summary.get("coverage_ratio") == "3/15")
+        expected_comp = cov_summary.get("comparable_metrics")
+        expected_total = cov_summary.get("total_metrics", 15)
+        cov_ratio_str = cov_summary.get("coverage_ratio", "")
+        is_limited_coverage = cov_summary.get("status") == "LIMITED" or cov_ratio_str in ("3/15", "0/15")
         has_cross_platform_claim = False
         cross_platform_claim_terms = [
             r"\bfrente\s+a\b",
@@ -784,7 +787,23 @@ class NarrativeValidator:
                     has_cross_platform_claim = True
                     break
 
-        if is_limited_coverage and has_cross_platform_claim:
+        # Zero comparable metrics safety guard:
+        if (expected_comp == 0 or cov_ratio_str == "0/15") and has_cross_platform_claim:
+            errors.append(
+                "Comparability lock failed: Cross-platform performance comparison claimed, but 0 comparable metrics exist between platforms for this period."
+            )
+
+        # Comparable ratio contradiction check:
+        ratio_matches = re.findall(r"(\d+)\s*(?:/|de)\s*(?:las\s+|un\s+total\s+de\s+)?15(?:\s+m[eé]tricas)?", full_text_lower)
+        for rm in ratio_matches:
+            stated_comp = int(rm)
+            if expected_comp is not None and stated_comp != expected_comp:
+                errors.append(
+                    f"Limitation preservation lock failed: Stated comparable count ({stated_comp}/15) contradicts context benchmark coverage ({expected_comp}/{expected_total})."
+                )
+                break
+
+        if is_limited_coverage and has_cross_platform_claim and expected_comp != 0:
             # Check coverage disclosure across limitations, executive_summary, and structured disclosure
             coverage_search_texts = list(output.get("limitations", [])) + list(output.get("executive_summary", []))
             if "cross_platform_coverage_disclosure" in output and isinstance(output["cross_platform_coverage_disclosure"], dict):

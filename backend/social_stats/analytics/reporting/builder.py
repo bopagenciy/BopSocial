@@ -128,8 +128,8 @@ def build_executive_report_data(
     # 3. Source Persisted Business Signals
     signals_qs = BusinessSignal.objects.filter(
         client=client,
-        period_end__gte=start_date,
-        period_start__lte=end_date,
+        period_start__gte=start_date,
+        period_end__lte=end_date,
     )
     if platform_filter:
         signals_qs = signals_qs.filter(Q(platform=platform_filter) | Q(platform__contains=platform_filter))

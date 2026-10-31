@@ -96,8 +96,10 @@ class IntelligenceAutomationSchedulerPilotTests(TestCase):
         scanned_clients = [s.get("client_id") for s in res.get("skipped_summary", [])] + res.get("due_client_ids", [])
         self.assertNotIn(self.client_3.id, scanned_clients)
 
-    def test_03_wrong_timezone_not_due(self):
+    @patch("django.utils.timezone.now")
+    def test_03_wrong_timezone_not_due(self, mock_now):
         """Proves that tenant timezone determines due state, avoiding server UTC mismatches."""
+        mock_now.return_value = datetime(2026, 10, 31, 0, 0, tzinfo=ZoneInfo("UTC"))
         client_tokyo = Client.objects.create(
             name="Tokyo Client",
             is_active=True,
