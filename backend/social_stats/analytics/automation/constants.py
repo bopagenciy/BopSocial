@@ -4,7 +4,7 @@ Constants and Enums for BS-6A Production Intelligence Automation & Scheduling Fo
 from enum import Enum
 
 
-PIPELINE_VERSION = "bs6a-v3"
+PIPELINE_VERSION = "bs6a-v4"
 DEFAULT_PROVIDER_CALL_BUDGET = 1
 DEFAULT_MAX_RETRY_COUNT = 0
 DEFAULT_REPORTING_FREQUENCY = "MONTHLY"

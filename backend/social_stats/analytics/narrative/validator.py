@@ -168,6 +168,38 @@ METRIC_ALIASES: Dict[str, List[str]] = {
     ],
 }
 
+# Natural-language phrases where 'alcance' denotes qualitative scope/extent rather than
+# the canonical metric REACH. These are masked before evaluating REACH metric mentions.
+# Note: Explicit references to the metric (e.g., 'métrica de alcance', 'REACH', 'alcance no disponible')
+# must remain unmasked.
+NON_METRIC_ALCANCE_PATTERNS: List[str] = [
+    r"\balcance\s+de\s+(?:la\s+|nuestra\s+)?comunidad\b",
+    r"\balcance\s+de(?:l|\s+este|\s+nuestro|\s+el)?\s+an[aá]lisis\b",
+    r"\balcance\s+de(?:l|\s+este|\s+nuestro|\s+el)?\s+(?:informe|reporte|estudio|documento|trabajo)\b",
+    r"\balcance\s+de\s+(?:esta\s+|nuestra\s+|la\s+|las\s+)?recomendaci[oó]n(?:es)?\b",
+    r"\balcance\s+de\s+(?:la\s+|esta\s+)?evaluaci[oó]n\b",
+    r"\balcance\s+de\s+(?:la\s+|esta\s+)?auditor[ií]a\b",
+    r"\balcance\s+(?:limitado\s+)?de(?:l|\s+este)?\s+(?:informe|reporte|an[aá]lisis)\b",
+    r"\b(?:fuera|dentro)\s+del\s+alcance\b",
+    r"\ben\s+el\s+alcance\s+de\b",
+    r"\balcance\s+temporal\b",
+    r"\balcance\s+geogr[aá]fico\b",
+]
+
+
+def _mask_non_metric_language(sentence: str) -> str:
+    """
+    Masks natural-language uses of words that collide with canonical metric names,
+    such as Spanish 'alcance' when used to mean qualitative scope/extent
+    (e.g., 'alcance de la comunidad', 'alcance del análisis', 'alcance de las recomendaciones').
+    Preserves explicit metric references (e.g., 'métrica de alcance', 'REACH', 'alcance registrado').
+    """
+    s = sentence
+    for pat in NON_METRIC_ALCANCE_PATTERNS:
+        s = re.sub(pat, " ", s, flags=re.IGNORECASE)
+    return s
+
+
 AVAILABLE_METRIC_ALIASES: Dict[str, List[str]] = {
     "followers_total": [r"\bfollowers\b", r"\bseguidores\b"],
     "reactions": [r"\breactions\b", r"\breacciones\b"],
@@ -534,7 +566,8 @@ class NarrativeValidator:
 
                 # 2. Claiming an unavailable metric is unavailable on a platform where it IS available
                 for m_key, patterns in METRIC_ALIASES.items():
-                    if any(re.search(pat, sent_lower) for pat in patterns):
+                    check_text = _mask_non_metric_language(sent_lower) if m_key == "reach" else sent_lower
+                    if any(re.search(pat, check_text) for pat in patterns):
                         if any(re.search(p, sent_lower) for p in NON_COMPARABLE_PATTERNS):
                             continue
                         for p_name, cap in platform_capabilities.items():
@@ -549,7 +582,8 @@ class NarrativeValidator:
                 if m_key not in all_unavailable:
                     continue
 
-                metric_matched = any(re.search(pat, sent_lower) for pat in patterns)
+                check_text = _mask_non_metric_language(sent_lower) if m_key == "reach" else sent_lower
+                metric_matched = any(re.search(pat, check_text) for pat in patterns)
                 if not metric_matched:
                     continue
 
@@ -649,7 +683,10 @@ class NarrativeValidator:
             r"\bthis proves\b",
             r"\bthis strategy drove\b",
             r"\bcausó\b",
+            r"\bcausado por\b",
             r"\bprovocó\b",
+            r"\bprovocado por\b",
+            r"\bimpulsado por\b",
             r"\btu audiencia prefiere\b",
             r"\besto demuestra\b",
             r"\besta estrategia impulsó\b",
@@ -658,9 +695,18 @@ class NarrativeValidator:
             r"\bdebido a la creatividad\b",
             r"\bdebido a las publicaciones\b",
             r"\bdebido al contenido\b",
+            r"\bdebido a la campaña\b",
+            r"\bdebido a las campañas\b",
+            r"\bdebido a la publicidad\b",
+            r"\bdebido al algoritmo\b",
+            r"\bgracias a la estrategia\b",
+            r"\bgracias a las campañas\b",
+            r"\bgracias al contenido\b",
+            r"\bgracias a las publicaciones\b",
             r"\bdebido a que su contenido\b",
             r"\bdebido a que la calidad\b",
             r"\bdebido a que la estrategia\b",
+            r"\bdebido a que la campaña\b",
         ]
         for pattern in unsupported_causal_tokens:
             if re.search(pattern, full_text_lower):
@@ -669,15 +715,27 @@ class NarrativeValidator:
 
         # Check connectives: allow definitional/mathematical explanations, reject performance attribution
         approved_definitional_causal_patterns = [
+            # Zero-baseline arithmetic / mathematical limitations
+            r"(?:debido a que|porque|ya que|because)\s+(?:cualquier\s+|la\s+)?l[ií]nea\s+base(?:\s+observada)?(?:\s+en\s+\w+)?(?:\s+en\s+cero|\s+es\s+cero|\s+de\s+cero)?\s+(?:es\s+cero|no\s+permite\s+c[aá]lculo(?:\s+relativo)?|impide\s+el\s+c[aá]lculo|no\s+se\s+puede\s+calcular|no\s+admite\s+c[aá]lculo)",
+            r"(?:debido a que|porque|ya que|because)\s+(?:cualquier\s+|la\s+)?l[ií]nea\s+base\s+en\s+cero\s+no\s+permite\s+c[aá]lculo(?:\s+relativo)?",
             r"(?:debido a que|porque|ya que|because)\s+(?:la\s+)?l[ií]nea\s+base(?:\s+observada)?(?:\s+en\s+\w+)?\s+es\s+cero",
             r"(?:debido a que|porque|ya que|because)\s+la\s+línea\s+base\s+observada\s+es\s+cero",
+            r"(?:debido a que|porque|ya que|because)\s+(?:una\s+de\s+las\s+plataformas\s+(?:tiene|presenta|registra)\s+)?l[ií]nea\s+base\s+(?:en\s+|de\s+)?cero",
+            r"(?:debido a que|porque|ya que|because)\s+la\s+divisi[oó]n\s+por\s+cero\s+no\s+est[aá]\s+definida",
+            # Metric classification / nature of metric
             r"(?:debido a que|porque|ya que|because)\s+(?:se\s+trata\s+de\s+|es\s+)?(?:una\s+)?m[eé]trica\s+de\s+(?:escala|volumen|audiencia)",
             r"(?:debido a que|porque|ya que|because)\s+followers_total\s+es\s+(?:una\s+)?m[eé]trica\s+de\s+volumen",
             r"(?:debido a que|porque|ya que|because)\s+se\s+trata\s+de\s+una\s+m[eé]trica\s+de\s+escala\s+absoluta",
-            r"(?:debido a que|porque|ya que|because)\s+(?:existen\s+|se\s+observan\s+)?(?:las\s+)?diferencias\s+en\s+las\s+definiciones",
+            # Cross-platform definitional / semantic differences
+            r"(?:debido a que|porque|ya que|because)\s+(?:existen\s+|se\s+observan\s+)?(?:las\s+)?diferencias\s+en\s+las\s+definiciones(?:\s+y\s+disponibilidad(?:\s+de\s+proveedor)?)?",
             r"(?:debido a que|porque|ya que|because)\s+(?:existen\s+|se\s+observan\s+)?diferencias\s+(?:sem[aá]nticas|de\s+definici[oó]n)",
+            r"(?:debido a que|porque|ya que|because)\s+(?:las\s+plataformas\s+)?miden\s+acciones\s+distintas",
+            # Integration / provider / capability constraints
             r"(?:debido a que|porque|ya que|because)\s+restricciones\s+de\s+api",
-            r"(?:debido a que|porque|ya que|because)\s+la\s+configuraci[oó]n\s+actual\s+del\s+proveedor",
+            r"(?:debido a que|porque|ya que|because)\s+(?:a\s+)?la\s+configuraci[oó]n\s+actual\s+del\s+proveedor",
+            r"(?:debido a que|porque|ya que|because)\s+(?:las\s+m[eé]tricas\s+)?no\s+(?:est[aá]n|fueron|son)\s+(?:provistas|suministradas|disponibles|reportadas)\s+por\s+la\s+integraci[oó]n",
+            r"(?:debido a que|porque|ya que|because)\s+(?:la\s+integraci[oó]n|la\s+configuraci[oó]n|el\s+proveedor)\s+(?:opera\s+en|presenta|tiene)\s+(?:modo\s+de\s+)?capacidad\s+parcial",
+            r"(?:debido a que|porque|ya que|because)\s+(?:los\s+permisos\s+actuales|las\s+restricciones\s+de\s+api)\s+no\s+(?:permiten|incluyen|exponen)",
         ]
 
         connective_patterns = [
