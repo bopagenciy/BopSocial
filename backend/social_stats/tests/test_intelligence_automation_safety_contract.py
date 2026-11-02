@@ -43,6 +43,7 @@ from social_stats.analytics.automation import (
     preview_intelligence_automation,
     execute_intelligence_automation,
 )
+from social_stats.analytics.narrative.schemas import PROMPT_VERSION
 
 
 class IntelligenceAutomationSafetyContractTests(TestCase):
@@ -146,7 +147,7 @@ class IntelligenceAutomationSafetyContractTests(TestCase):
             executive_report=rep,
             status="VALIDATED",
             rendered_text="Validated canonical text.",
-            prompt_version="bs5e-prompt-v3",
+            prompt_version=PROMPT_VERSION,
             source_hash=src_hash,
             context_hash=ctx_hash,
         )

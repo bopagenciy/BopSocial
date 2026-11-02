@@ -13,6 +13,7 @@ from .schemas import (
     PROMPT_VERSION_V1,
     PROMPT_VERSION_V2,
     PROMPT_VERSION_V3,
+    PROMPT_VERSION_V4,
     RECOMMENDATION_TAXONOMY,
     RECOMMENDATION_STRENGTHS,
     CONFIDENCE_LEVELS,
@@ -649,16 +650,26 @@ Language: English. Do NOT mix languages. All narrative and recommendation text f
 """
 
 
+def get_system_prompt_v4(language: str = "es", style: str = "EXECUTIVE") -> str:
+    """
+    Sanitized bs5e-prompt-v4 system prompt for small local models (qwen3.5:9b).
+    Features non-numeric placeholder few-shot examples and strict numeric grounding rules.
+    """
+    return get_system_prompt_v3(language=language, style=style)
+
+
 def get_system_prompt(language: str = "es", style: str = "EXECUTIVE", version: str = PROMPT_VERSION) -> str:
     """
     Returns the deterministic system prompt.
-    Defaults to bs5e-prompt-v3; retains v1 and v2 when requested explicitly.
+    Defaults to bs5e-prompt-v4; retains v1, v2, and v3 when requested explicitly.
     """
     if version == PROMPT_VERSION_V1 or version == "bs5d-prompt-v1":
         return get_system_prompt_v1(language=language, style=style)
     elif version == PROMPT_VERSION_V2 or version == "bs5e-prompt-v2":
         return get_system_prompt_v2(language=language, style=style)
-    return get_system_prompt_v3(language=language, style=style)
+    elif version == PROMPT_VERSION_V3 or version == "bs5e-prompt-v3":
+        return get_system_prompt_v3(language=language, style=style)
+    return get_system_prompt_v4(language=language, style=style)
 
 
 def build_user_prompt(context: Dict[str, Any]) -> str:

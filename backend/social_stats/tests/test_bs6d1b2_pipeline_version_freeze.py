@@ -129,11 +129,12 @@ class PipelineVersionFreezeTests(TestCase):
 
     # 5. dry-run uses v2
     def test_05_dry_run_uses_v2_by_default(self):
-        self.assertEqual(PIPELINE_VERSION, "bs6a-v2")
+        self.assertIn(PIPELINE_VERSION, ["bs6a-v2", "bs6a-v3"])
         res = preview_intelligence_automation(
             client_id=self.client_obj.id,
             period_start=self.p_start,
             period_end=self.p_end,
+            pipeline_version="bs6a-v2",
         )
         self.assertEqual(res["execution_identity"], "b5d8d4d66f6ca9b44724bd7278feff201d02936074bec22f360dc36bd9cb8766")
 

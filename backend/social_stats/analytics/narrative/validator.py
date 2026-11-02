@@ -18,10 +18,10 @@ from .schemas import (
 def _extract_all_numbers(text: str) -> Set[float]:
     """
     Extracts all numeric values (integers, floats, percentages) from a string.
-    Normalizes commas/periods.
+    Normalizes commas/periods. Does not treat hyphens between digits as negative signs.
     """
     cleaned = text.replace(",", "")
-    matches = re.findall(r"(?<![a-zA-Z_])[-+]?\d*\.?\d+(?:%)?", cleaned)
+    matches = re.findall(r"(?<![a-zA-Z0-9_])[-+]?\d*\.?\d+(?:%)?", cleaned)
     numbers = set()
     for m in matches:
         raw = m.rstrip("%")
@@ -33,30 +33,73 @@ def _extract_all_numbers(text: str) -> Set[float]:
     return numbers
 
 
+def _strip_structural_syntax(text: str) -> str:
+    """
+    Strips non-business structural syntax from narrative text prior to fact-lock validation.
+    Separates structural markers (array positions, step/recommendation labels, section markers,
+    reference tokens, schema versions) from factual business performance claims.
+    """
+    # 1. Alphanumeric hyphenated/underscored IDs and references (e.g., SIG-1, MC-SIG-1, REC-1, RULE-2)
+    s = re.sub(r"\b[A-Za-z]+(?:[-_][A-Za-z0-9]+)+\b", " ", text)
+
+    # 2. Schema and pipeline version identifiers (e.g., schema_version: 1, v1, v2, v3, v4)
+    s = re.sub(r"\bschema_version\s*[:=]?\s*\d+\b", " ", s, flags=re.IGNORECASE)
+    s = re.sub(r"\bv\d+\b", " ", s, flags=re.IGNORECASE)
+
+    # 3. Structural headers / ordinal labels (e.g., Recomendación 1, Paso 2, Item 3, Prioridad 1)
+    s = re.sub(
+        r"\b(?:recomendaci[oó]n|recommendation|paso|step|punto|item|fase|phase|nivel|level|prioridad|priority|opci[oó]n|option|secci[oó]n|section|versi[oó]n|version|regla|rule)\s+\d+\b",
+        " ",
+        s,
+        flags=re.IGNORECASE,
+    )
+
+    # 4. Dates in YYYY-MM-DD format (e.g., 2026-09-01)
+    s = re.sub(r"\b\d{4}-\d{2}-\d{2}\b", " ", s)
+
+    # 4. Ordered list / bullet markers at the beginning of lines or sentences (e.g., '1. ', '2) ', '[1] ')
+    s = re.sub(r"(?:^|(?<=[.!?;\n]))\s*\[?\d+[\x5c.\x5c)\]]\s+", " ", s)
+
+    # 5. Citation / reference brackets (e.g. '[1]', '(1)')
+    s = re.sub(r"\[\d+\]|\(\d+\)", " ", s)
+
+    return s
+
+
+def _extract_business_numbers(text: str) -> Set[float]:
+    """
+    Extracts numeric values that represent factual business claims,
+    excluding non-business structural numbers.
+    """
+    stripped = _strip_structural_syntax(text)
+    return _extract_all_numbers(stripped)
+
+
 def _collect_context_numbers(context: Dict[str, Any]) -> Set[float]:
     """
     Recursively collects all numeric values present in the grounded context.
-    Also includes standard allowable reference integers (1-10) and dates.
+    Extracts explicit metric values, counts, percentages, and metadata numbers.
+    Does NOT include generic small-integer whitelist (1..10), entity database IDs,
+    or calendar date components.
     """
     context_numbers = set()
 
-    def _walk(obj):
+    def _walk(obj, key=None):
+        if key in ("id", "client_id", "signal_id", "schema_version", "context_schema_version", "evidence_refs", "source_hash", "context_hash"):
+            return
         if isinstance(obj, (int, float)):
             context_numbers.add(float(obj))
         elif isinstance(obj, str):
-            for n in _extract_all_numbers(obj):
+            for n in _extract_business_numbers(obj):
                 context_numbers.add(n)
         elif isinstance(obj, dict):
             for k, v in obj.items():
-                _walk(v)
+                _walk(v, key=k)
         elif isinstance(obj, (list, tuple, set)):
             for item in obj:
-                _walk(item)
+                _walk(item, key=key)
 
     _walk(context)
-    # Allow natural reference indexes 1 through 10
-    for i in range(1, 11):
-        context_numbers.add(float(i))
     return context_numbers
 
 
@@ -434,9 +477,9 @@ class NarrativeValidator:
 
         # 2. Fact Lock: Validate numbers against context
         context_numbers = _collect_context_numbers(context)
-        output_numbers = _extract_all_numbers(full_text)
+        output_numbers = _extract_business_numbers(full_text)
         unsupported_numbers = []
-        for num in output_numbers:
+        for num in sorted(output_numbers):
             # Check if num or close approximation exists in context numbers
             if not any(abs(num - c_num) < 0.001 for c_num in context_numbers):
                 unsupported_numbers.append(num)

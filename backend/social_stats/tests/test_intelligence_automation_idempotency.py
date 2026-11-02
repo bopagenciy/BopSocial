@@ -27,6 +27,7 @@ from social_stats.analytics.automation.constants import (
 )
 from social_stats.analytics.automation.eligibility import evaluate_intelligence_automation_eligibility
 from social_stats.analytics.automation.orchestrator import preview_intelligence_automation
+from social_stats.analytics.narrative.schemas import PROMPT_VERSION
 
 
 class IntelligenceAutomationIdempotencyTests(TestCase):
@@ -118,7 +119,7 @@ class IntelligenceAutomationIdempotencyTests(TestCase):
             status="VALIDATED",
             provider="ollama",
             model_name="qwen3.5:9b",
-            prompt_version="bs5e-prompt-v3",
+            prompt_version=PROMPT_VERSION,
             source_hash=src_hash,
             context_hash=ctx_hash,
             narrative_json={"executive_summary": ["Grounded summary text"]},

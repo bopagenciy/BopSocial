@@ -499,3 +499,57 @@ Run #11 and Narrative #4 correctly failed closed. Phase BS-6D.1C.1 conducted for
    - Post count: 15 rows. The missing ID #14 is explained by standard non-transactional PostgreSQL primary key sequence consumption.
 4. **Immutability Preserved**:
    - Report #4, Narrative #4 (`REJECTED`), and Run #11 (`FAILED`) remain untouched as permanent audit evidence.
+
+---
+
+## 18. Phase BS-6D.1C.1A: Prompt Identity & Numeric Fact-Lock Closure
+
+### 18.1 Fact-Lock Validator Hardening & Loophole Closure
+Phase BS-6D.1C.1 identified that static prompt templates contained tenant baseline numbers (50, 20, 15) and that small integers (1..10) were unconditionally permitted through an arbitrary loop in `_collect_context_numbers`.
+
+To close this loophole without introducing false rejections on structural list formatting:
+1. **Elimination of Arbitrary Whitelist**:
+   - Removed `for i in range(1, 11): context_numbers.add(float(i))` entirely from `_collect_context_numbers` in `validator.py`.
+   - Small integers (1..10) are now treated identically to any other numeric value: they must be explicitly supported by context facts.
+2. **Context Number Extraction Cleansing**:
+   - Internal database IDs (`id`, `client_id`, `signal_id`, `task_id`), calendar dates (`YYYY-MM-DD`), and schema version numbers are strictly excluded from numeric context collection.
+   - String values within context dictionaries are parsed only for genuine business metrics.
+3. **Semantic Separation of Structural Syntax vs. Business Claims**:
+   - Structural Markdown elements are stripped prior to numeric fact extraction:
+     - Ordered list markers (e.g. `1. `, `2. `)
+     - Header labels (e.g. `Recomendación 1`, `Sección 2`)
+     - Evidence and citation tokens (e.g. `SIG-1`, `[1]`, `[SIG-1]`)
+     - Version identifiers (e.g. `v1`, `v2`, `v3`, `v4`)
+     - Schema version strings (e.g. `bs5e-v1`)
+     - Calendar dates (e.g. `2026-09-01`)
+   - Any remaining numeric tokens are classified as business claims and must match values present in `context_numbers`.
+
+### 18.2 Prompt Identity Versioning (`bs5e-prompt-v4`)
+Because the system prompt templates in `prompts.py` were materially altered to eliminate tenant-specific numbers and inject strict numeric grounding rules, the canonical prompt version was bumped:
+- **Canonical Prompt Version**: Advanced from `bs5e-prompt-v3` to `bs5e-prompt-v4` in `schemas.py` and `prompts.py`.
+- **System Prompt Function**: Introduced `get_system_prompt_v4(...)` and updated default `get_system_prompt(...)` to return v4.
+- **Rendered Prompt SHA-256 Digest**:
+  `95fa0160d714e197c92ba0153d2a9558cbe51856fc78edae7061a6bd81d2c2ea`
+
+### 18.3 Narrative Reuse Sensitivity to Prompt Version
+Narrative reuse logic was hardened to prevent reusing narratives generated under older, defective, or differently-prompted pipelines:
+- In `verify_executive_narrative_reuse(...)` (`backend/social_stats/analytics/automation/identity.py`), narrative verification now validates:
+  $$\text{narrative.prompt\_version} == \text{expected\_prompt\_version}$$
+- If an existing narrative was generated under `bs5e-prompt-v3` but the pipeline runs with `bs5e-prompt-v4`, reuse is rejected with:
+  `PROMPT_VERSION_MISMATCH: narrative=bs5e-prompt-v3 != expected=bs5e-prompt-v4`
+- Narrative #4 (`prompt_version='bs5e-prompt-v3'`) remains immutable and permanently non-reusable under v4.
+
+### 18.4 Execution Identity Advancement (`bs6a-v3`)
+Because Run #11 failed closed under `bs6a-v2`, advancing to `bs6a-v3` provides a clean, deterministic execution identity for the subsequent controlled regeneration:
+- **Pipeline Version**: Bumped to `bs6a-v3` in `constants.py`.
+- **Execution Identity Progression** (Client #3, Period 2026-09-01 → 2026-09-30):
+  - `bs6a-v1` (Run #10): `fd2c6f56f6256bda1e6fb9fdccfd0785c2f1c827ca6bcb796b392dc3f0dfc212` (`COMPLETED`, historical evidence)
+  - `bs6a-v2` (Run #11): `b5d8d4d66f6ca9b44724bd7278feff201d02936074bec22f360dc36bd9cb8766` (`FAILED`, forensic evidence)
+  - `bs6a-v3` (Prospective Run #12): `977529e00b87360abcee27a75bf05bd4e68960a621ca75d3eee6c2669b6f0fe9`
+- **Run Idempotency**: Failed runs are terminal audit records; they are never mutated, reset, or retried in place.
+
+### 18.5 Append-Only Audit Log Contract
+Audit log tables (such as `SyncLog`, `SocialMetricSnapshot`, `SocialMetricRollup`, and `AutomationRun`) represent strict, immutable historical journals.
+- Audit records must never be deleted to simulate or restore pre-flight baseline counts.
+- Gaps in auto-increment primary keys resulting from rollbacks or failed transactions are standard database behavior and must be documented rather than corrected through deletion.
+

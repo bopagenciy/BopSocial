@@ -50,6 +50,10 @@ from social_stats.analytics.automation.eligibility import (
 from social_stats.analytics.automation.orchestrator import (
     preview_intelligence_automation,
 )
+from social_stats.analytics.narrative.schemas import (
+    PROMPT_VERSION,
+    CONTEXT_SCHEMA_VERSION,
+)
 from social_stats.analytics.reporting.builder import (
     build_executive_report_data,
 )
@@ -337,6 +341,8 @@ class ArtifactReuseIntegrityTests(TestCase):
             status="VALIDATED",
             source_hash=expected_src_hash,
             context_hash=clean_ctx_hash,
+            prompt_version=PROMPT_VERSION,
+            context_schema_version=CONTEXT_SCHEMA_VERSION,
         )
         is_reusable, reason, _ = verify_executive_narrative_reuse(
             clean_narrative, clean_rep, self.client_obj.id, self.p_start, self.p_end

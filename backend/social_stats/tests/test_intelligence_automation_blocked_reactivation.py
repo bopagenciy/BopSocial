@@ -49,6 +49,7 @@ from social_stats.analytics.automation import (
     execute_intelligence_automation,
     is_tenant_due,
 )
+from social_stats.analytics.narrative.schemas import PROMPT_VERSION
 from social_stats.analytics.automation.tasks import (
     discover_and_enqueue_due_intelligence_automations,
     run_intelligence_automation_task,
@@ -439,7 +440,7 @@ class BlockedRunReactivationTests(TestCase):
             executive_report=rep,
             status="VALIDATED",
             rendered_text="Canonical validated text.",
-            prompt_version="bs5e-prompt-v3",
+            prompt_version=PROMPT_VERSION,
             source_hash=src_hash,
             context_hash=ctx_hash,
         )

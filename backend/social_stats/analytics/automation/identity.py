@@ -185,10 +185,12 @@ def verify_executive_narrative_reuse(
     client_id: int,
     period_start: date,
     period_end: date,
+    expected_prompt_version: Optional[str] = None,
+    expected_context_schema_version: Optional[str] = None,
 ) -> Tuple[bool, str, Optional[str]]:
     """
     Verifies whether an existing ExecutiveNarrative is valid and deterministically
-    aligned with the linked report and current context identity.
+    aligned with the linked report, prompt version, and current context identity.
     Returns:
         (is_reusable: bool, reason: str, expected_context_hash: Optional[str])
     """
@@ -216,6 +218,28 @@ def verify_executive_narrative_reuse(
     rep_src_hash = getattr(report, "source_hash", "") or ""
     if narr_src_hash != rep_src_hash:
         return False, f"NARRATIVE_REPORT_SOURCE_HASH_MISMATCH: narrative={narr_src_hash[:16]}... != report={rep_src_hash[:16]}...", None
+
+    # Check prompt version and schema version alignment
+    from social_stats.analytics.narrative.schemas import (
+        PROMPT_VERSION,
+        CONTEXT_SCHEMA_VERSION,
+        BS4H_CONTEXT_SCHEMA_VERSION,
+    )
+    if expected_prompt_version is None:
+        expected_prompt_version = PROMPT_VERSION
+
+    narr_prompt_ver = getattr(narrative, "prompt_version", "") or ""
+    if narr_prompt_ver != expected_prompt_version:
+        return False, f"PROMPT_VERSION_MISMATCH: narrative={narr_prompt_ver} != expected={expected_prompt_version}", None
+
+    narr_schema_ver = getattr(narrative, "context_schema_version", "") or ""
+    if expected_context_schema_version is not None:
+        if narr_schema_ver != expected_context_schema_version:
+            return False, f"CONTEXT_SCHEMA_VERSION_MISMATCH: narrative={narr_schema_ver} != expected={expected_context_schema_version}", None
+    else:
+        allowed_schemas = (CONTEXT_SCHEMA_VERSION, BS4H_CONTEXT_SCHEMA_VERSION)
+        if narr_schema_ver and narr_schema_ver not in allowed_schemas:
+            return False, f"CONTEXT_SCHEMA_VERSION_MISMATCH: narrative={narr_schema_ver} not in {allowed_schemas}", None
 
     # Compute expected context hash from current report data
     from social_stats.analytics.narrative.context import build_grounded_narrative_context, compute_context_hash

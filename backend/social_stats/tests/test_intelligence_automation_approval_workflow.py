@@ -417,10 +417,11 @@ class IntelligenceAutomationApprovalWorkflowTests(TestCase):
         from social_stats.analytics.narrative.context import build_grounded_narrative_context, compute_context_hash
         ctx_hash = compute_context_hash(build_grounded_narrative_context(self.report))
         # A validated narrative is uploaded/generated in the interim
+        from social_stats.analytics.narrative.schemas import PROMPT_VERSION
         narrative = ExecutiveNarrative.objects.create(
             client=self.tenant_client,
             executive_report=self.report,
-            prompt_version="bs4h-v1",
+            prompt_version=PROMPT_VERSION,
             status="VALIDATED",
             rendered_text="Pre-existing validated executive overview.",
             provider="fake",

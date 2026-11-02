@@ -29,6 +29,7 @@ from social_stats.analytics.automation.constants import (
     FreshnessCode,
     PIPELINE_VERSION,
 )
+from social_stats.analytics.narrative.schemas import PROMPT_VERSION
 from social_stats.analytics.automation.eligibility import (
     evaluate_intelligence_automation_eligibility,
 )
@@ -168,7 +169,7 @@ class IntelligenceAutomationFreshnessRecoveryTests(TestCase):
             executive_report=report,
             rendered_text="Baseline narrative text.",
             status="VALIDATED",
-            prompt_version="bs5e-prompt-v3",
+            prompt_version=PROMPT_VERSION,
             context_hash="test_context_hash_67890",
         )
         signal = BusinessSignal.objects.create(
