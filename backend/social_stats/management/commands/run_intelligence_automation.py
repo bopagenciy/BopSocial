@@ -46,7 +46,7 @@ class Command(BaseCommand):
             "--pipeline-version",
             type=str,
             default=PIPELINE_VERSION,
-            help="Pipeline version identifier (default: bs6a-v1).",
+            help=f"Pipeline version identifier (default: {PIPELINE_VERSION}).",
         )
         parser.add_argument(
             "--explain",

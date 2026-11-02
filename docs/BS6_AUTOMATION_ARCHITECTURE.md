@@ -65,7 +65,7 @@ Durable orchestration record tracking stage progression, execution identity, aud
 | `agency_id` | `CharField(64)` | Agency identifier (supports UUIDs and string IDs) |
 | `period_start` | `DateField` | Reporting period start boundary |
 | `period_end` | `DateField` | Reporting period end boundary |
-| `pipeline_version` | `CharField(32)` | Pipeline schema/algorithm version (default: `'bs6a-v1'`) |
+| `pipeline_version` | `CharField(32)` | Pipeline schema/algorithm version (canonical default: `'bs6a-v2'`, historical: `'bs6a-v1'`) |
 | `execution_identity` | `CharField(64)` | SHA-256 hash of `(client_id, period_start, period_end, pipeline_version)` |
 | `trigger_type` | `CharField(20)` | `MANUAL`, `SCHEDULED`, `RETRY`, or `ADMIN` |
 | `status` | `CharField(30)` | `PENDING`, `ELIGIBILITY_CHECK`, `RUNNING`, `AWAITING_APPROVAL`, `PROVIDER_EXECUTION_READY`, `PROVIDER_EXECUTING`, `BLOCKED`, `FAILED`, `COMPLETED`, `CANCELLED` |
@@ -104,6 +104,17 @@ UniqueConstraint(
 )
 ```
 This ensures that any run actively executing, awaiting approval, or parked at `PROVIDER_EXECUTION_READY` / `PROVIDER_EXECUTING` maintains database-level uniqueness across distributed workers and periodic scheduler scans.
+
+#### Pipeline Version Semantics & Artifact Identity Separation (BS-6D.1B.2)
+
+The intelligence automation pipeline enforces explicit, deterministic versioning:
+
+- **`bs6a-v1`**: Historical first-live automation contract. Used by initial production runs (such as Run #10 for Client #3, period 2026-09-01..2026-09-30). Run #10 identity under `bs6a-v1` remains permanently immutable (`fd2c6f56f6256bda1e6fb9fdccfd0785c2f1c827ca6bcb796b392dc3f0dfc212`).
+- **`bs6a-v2`**: Period-isolated and deterministic artifact-reuse corrected contract. Incorporates strict reporting-period signal containment, zero cross-period evidence leakage, deterministic report source-hash reuse verification, deterministic narrative context-hash reuse verification, and benchmark-truth validator enforcement.
+
+**Execution Identity vs. Artifact Reuse Identity Separation:**
+1. **Execution Identity**: Computed as `SHA-256("{client_id}:{period_start}:{period_end}:{pipeline_version}")`. Changing `pipeline_version` from `bs6a-v1` to `bs6a-v2` advances the execution identity deterministically (e.g., Client #3 September 2026 yields `b5d8d4d66f6ca9b44724bd7278feff201d02936074bec22f360dc36bd9cb8766`), permitting fresh orchestration without mutating historical records.
+2. **Artifact Reuse Identity**: Report source hashes (`source_hash`) and narrative context hashes (`context_hash`) remain governed strictly by their domain inputs (rollups, contained business signals, benchmarks, grounded report data). They do not embed the automation run's execution identity or pipeline version, preserving clean separation of concerns between orchestration runs and underlying analytical artifacts.
 
 ---
 
