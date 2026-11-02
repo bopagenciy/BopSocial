@@ -51,6 +51,7 @@ from social_stats.analytics.automation import (
 from social_stats.analytics.narrative.schemas import PROMPT_VERSION
 from social_stats.analytics.automation.tasks import (
     discover_and_enqueue_due_intelligence_automations,
+    discover_and_enqueue_due_intelligence_automations_live,
     run_intelligence_automation_task,
 )
 
@@ -339,3 +340,74 @@ class IntelligenceAutomationSchedulerPilotTests(TestCase):
         self.assertIn(f"REUSE ExecutiveReport #{rep.id}", res.reuse_decisions["report"])
         self.assertIn("narrative", res.reuse_decisions)
         self.assertIn(f"REUSE ExecutiveNarrative #{narrative.id}", res.reuse_decisions["narrative"])
+
+    def test_16_discovery_task_default_is_dry_run(self):
+        """Proves discovery task defaults to dry_run=True when called without arguments."""
+        config = IntelligenceAutomationConfig.objects.create(
+            client=self.client_3,
+            enabled=True,
+            timezone="America/New_York",
+            reporting_frequency="MONTHLY",
+            reporting_day=1,
+            reporting_hour=2,
+        )
+        with patch("social_stats.analytics.automation.tasks.run_intelligence_automation_task.delay") as mock_delay:
+            res = discover_and_enqueue_due_intelligence_automations()
+            self.assertTrue(res["dry_run"])
+            self.assertEqual(mock_delay.call_count, 0)
+
+    def test_17_live_discovery_task_enforces_non_dry(self):
+        """Proves discover_and_enqueue_due_intelligence_automations_live explicitly runs dry_run=False."""
+        config = IntelligenceAutomationConfig.objects.create(
+            client=self.client_3,
+            enabled=True,
+            timezone="America/New_York",
+            reporting_frequency="MONTHLY",
+            reporting_day=1,
+            reporting_hour=2,
+        )
+        with patch("social_stats.analytics.automation.tasks.is_tenant_due", return_value=(True, date(2026, 10, 1), date(2026, 10, 31), "DUE")):
+            with patch("social_stats.analytics.automation.tasks.run_intelligence_automation_task.delay") as mock_delay:
+                res = discover_and_enqueue_due_intelligence_automations_live()
+                self.assertFalse(res["dry_run"])
+                self.assertEqual(mock_delay.call_count, 1)
+                mock_delay.assert_called_once_with(
+                    client_id=self.client_3.id,
+                    period_start="2026-10-01",
+                    period_end="2026-10-31",
+                    trigger_type="SCHEDULED",
+                    dry_run=False,
+                )
+
+    def test_18_periodic_task_with_kwargs_dry_run_false(self):
+        """Proves scheduled call passing kwargs={'dry_run': False} executes live enqueuing."""
+        config = IntelligenceAutomationConfig.objects.create(
+            client=self.client_3,
+            enabled=True,
+            timezone="America/New_York",
+            reporting_frequency="MONTHLY",
+            reporting_day=1,
+            reporting_hour=2,
+        )
+        with patch("social_stats.analytics.automation.tasks.is_tenant_due", return_value=(True, date(2026, 10, 1), date(2026, 10, 31), "DUE")):
+            with patch("social_stats.analytics.automation.tasks.run_intelligence_automation_task.delay") as mock_delay:
+                res = discover_and_enqueue_due_intelligence_automations(dry_run=False)
+                self.assertFalse(res["dry_run"])
+                self.assertEqual(mock_delay.call_count, 1)
+
+    def test_19_celery_autodiscover_registers_automation_tasks(self):
+        """Proves importing social_stats.tasks registers automation tasks with Celery."""
+        from dashboard.celery import app
+        import social_stats.tasks  # noqa: F401
+        self.assertIn(
+            "social_stats.analytics.automation.tasks.discover_and_enqueue_due_intelligence_automations",
+            app.tasks,
+        )
+        self.assertIn(
+            "social_stats.analytics.automation.tasks.discover_and_enqueue_due_intelligence_automations_live",
+            app.tasks,
+        )
+        self.assertIn(
+            "social_stats.analytics.automation.tasks.run_intelligence_automation_task",
+            app.tasks,
+        )

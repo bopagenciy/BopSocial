@@ -74,6 +74,18 @@ def run_intelligence_automation_task(
 
 
 @shared_task
+def discover_and_enqueue_due_intelligence_automations_live() -> Dict[str, Any]:
+    """
+    Dedicated production Celery Beat entry point.
+    Enforces explicitly non-dry execution (dry_run=False).
+    Dispatches run_intelligence_automation_task for due tenants while
+    preserving fail-safe operator approval, data freshness/coverage gates,
+    and provider boundaries.
+    """
+    return discover_and_enqueue_due_intelligence_automations(dry_run=False)
+
+
+@shared_task
 def discover_and_enqueue_due_intelligence_automations(dry_run: bool = True) -> Dict[str, Any]:
     """
     Periodic Discovery Scanner.
