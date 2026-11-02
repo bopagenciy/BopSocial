@@ -447,3 +447,55 @@ To enforce strict separation between historical backfills and operational freshn
 
 
 
+
+
+---
+
+## 17. Phase BS-6D.1C.1: Rendered Prompt & Fact-Lock Forensics
+
+### 17.1 Problem Statement & Forensic Questions
+During Phase BS-6D.1C, the versioned regeneration under pipeline `bs6a-v2` successfully maintained clean period isolation, zero cross-period leak in Report #4, and executed exactly one controlled Ollama generation. However, the generated narrative contained numeric assertions `50`, `20`, and `15` that failed the hardened validator's fact-lock gate with:
+```text
+Fact lock failed: Output contains unsupported numeric facts: [15.0, 50.0, 20.0]
+```
+Run #11 and Narrative #4 correctly failed closed. Phase BS-6D.1C.1 conducted forensic analysis to determine the exact origin of each number.
+
+### 17.2 Forensic Findings & Numeric Provenance
+1. **50 & 20 Followers**:
+   - **Grounded Context**: Neither 50 nor 20 appeared anywhere in the clean grounded context of Report #4 (`context_hash: 96336b23...`).
+   - **Origin**: Found hardcoded in `backend/social_stats/analytics/narrative/prompts.py` inside `get_system_prompt_v3` (Spanish and English). Specifically in:
+     - "MANDATORY SEMANTIC CONSTRUCTIONS": `"Instagram registró 50 seguidores frente a 20 en Facebook..."`
+     - "GOLDEN FEW-SHOT STRUCTURAL EXAMPLE": `"Instagram registró 50 seguidores frente a 20 en Facebook. FOLLOWERS_TOTAL describe tamaño de audiencia..."`
+   - **Cause**: These numbers were synthetic pilot baseline numbers established during BS-5 testing. Ollama (`qwen3.5:9b`, temperature `0.0`) copied the few-shot template and phrasing instructions verbatim.
+   - **Validator Treatment**: **TRUE POSITIVE**. The numbers represented unsupported tenant performance claims not present in current period data.
+
+2. **15 Canonical Metrics**:
+   - **Grounded Context**: Not present in Report #4 context because `multichannel_complete = False` and `has_multichannel_data = False`.
+   - **Origin**: Hardcoded in `prompts.py` as `"solo 3 de 15 métricas canónicas son actualmente comparables."`
+   - **Benchmark Truth**: There are 15 canonical comparison rules in the multichannel comparison matrix. However, for September 2026, comparable KPIs = 0 (not 3!).
+   - **Validator Treatment**: **TRUE POSITIVE**. Claiming "solo 3 de 15" was factually inaccurate for September 2026.
+
+3. **6 Reactions & 3 Metrics**:
+   - Also present in the static system prompt examples (`Instagram registró 6 reacciones frente a 0...` and `solo 3 de 15...`).
+   - Allowed in Narrative #4 solely because `_collect_context_numbers` had hardcoded `for i in range(1, 11): context_numbers.add(float(i))` as reference indexes.
+
+### 17.3 Prompt-Context Identity Boundary
+- `compute_context_hash(context)` hashes strictly the canonical JSON of the grounded context dictionary (`context`).
+- The system prompt instructions and few-shot examples existed **outside** `context_hash`.
+- This created an architectural boundary mismatch where static prompt instructions could leak numbers not grounded in the hashed context.
+
+### 17.4 Hardening & Remediation
+1. **Prompt Sanitization (`prompts.py`)**:
+   - Replaced all tenant-specific and synthetic numeric values in `get_system_prompt_v3`, `get_system_prompt_v2`, and `get_system_prompt_v1` with non-numeric abstract placeholders (e.g. `<PLATAFORMA_A>`, `<PLATAFORMA_B>`) and structural summaries.
+   - Removed hardcoded `"solo 3 de 15 métricas"` in favor of dynamic coverage references.
+   - Replaced synthetic references (`MC-SIG-8`, `MC-SIG-7`) in examples with generic `SIG-1`.
+   - Injected **`CRITICAL NUMERIC GROUNDING RULE`** explicitly instructing the model to use ONLY numeric values literally present in `<GROUNDED_DATA>`.
+2. **Fact Manifest Alignment**:
+   - Ensured benchmark metadata (e.g. `total_metrics` in coverage summary) is permitted when present in context truth, without globally whitelisting numbers.
+3. **SyncLog Accounting Reconciliation**:
+   - Baseline count: 13 (IDs: 1..13).
+   - Deleted sequence: ID #14 was generated during an initial attempt that failed on token decryption, and was cleanly deleted to restore exact pre-sync baseline.
+   - New sync IDs: #15 (Facebook), #16 (Instagram).
+   - Post count: 15 rows. The missing ID #14 is explained by standard non-transactional PostgreSQL primary key sequence consumption.
+4. **Immutability Preserved**:
+   - Report #4, Narrative #4 (`REJECTED`), and Run #11 (`FAILED`) remain untouched as permanent audit evidence.
