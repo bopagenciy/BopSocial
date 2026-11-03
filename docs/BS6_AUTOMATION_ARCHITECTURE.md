@@ -695,4 +695,42 @@ To prevent infinite scheduler loops where a failed narrative triggers repeated r
   `14a1e02803da929b6e7dbac2e05bdeb7fe2c1452d52952934d0795ad7630513a`
 - **Run #16 Lifecycle**: Canonically cancelled (`approval_status='REJECTED'`, `provider_call_count=0`).
 
+## 22. Phase BS-6E.2C: Dynamic Multichannel Coverage Contract Calibration
+
+### 22.1 Multichannel Ratio Preservation Failure Mode
+In Phase BS-6E.2B, live provider execution under Ollama produced Narrative #8. All schema, facts, metrics, numeric grounding, evidence grounding, causality, and recommendation checks passed (unknown evidence refs = 0). It was rejected fail-closed exclusively by Gate G (`multichannel_safety` / `Limitation preservation lock`):
+```text
+Limitation preservation lock failed: Cross-platform performance claim made without preserving the limited data coverage limitation (3/15 comparable metrics).
+```
+The model generated:
+> *"La comparación entre plataformas es limitada conforme a la cobertura de métricas canónicas disponible en el periodo analizado."*
+Forensic analysis revealed:
+1. Line 265 of `prompts.py` provided a qualitative few-shot structural template: `"limitations": ["La comparación entre plataformas es limitada conforme a la cobertura de métricas canónicas disponible en el periodo.", ...]`, omitting the grounded canonical coverage ratio.
+2. The model reproduced this few-shot template almost verbatim, omitting the grounded ratio token (`"3 de 15"` or `"3/15"`).
+3. The coverage contract was static rather than derived dynamically from `ExecutiveReport`.
+
+### 22.2 Dynamic Multichannel Coverage Architecture (`bs5e-prompt-v6`, `bs6a-v7`)
+1. **Dynamic Contract Derivation**: `build_grounded_narrative_context` extracts `multichannel_comparison_contract` dynamically from `ExecutiveReport.report_data['multichannel_intelligence']`:
+   - `comparable_metrics_count`: Dynamic count of canonical comparable metrics (e.g., `3`).
+   - `total_canonical_metrics`: Dynamic count of total canonical metrics (e.g., `15`).
+   - `coverage_ratio`: Dynamic ratio string (e.g., `"3/15"`).
+   - `must_disclose_ratio`: Boolean indicating whether cross-platform comparison is partial/limited.
+   - `multichannel_complete`: Boolean indicating if coverage is 100% complete.
+2. **Context & Approved Facts Interpolation**:
+   - `limitations` entries dynamically interpolate `{comp_metrics} of {tot_metrics}`.
+   - `approved_facts` (`FACT-MC-1`) dynamically interpolates `{comp_metrics} de {tot_metrics}`.
+3. **Prompt Hardening**:
+   - Replaced all hardcoded few-shot ratio literals (`"3 de 15"`, `"3/15"`, `"6 reactions"`) with structural placeholders (`<COMPARABLE_COUNT> de <TOTAL_COUNT>`).
+   - Injected dynamic `REQUIRED MULTICHANNEL LIMITATION DISCLOSURE` in `build_user_prompt(context)` whenever `must_disclose_ratio` is True, detailing mandatory ratio preservation rules and accepted Spanish phrasing.
+4. **Dynamic Validator Precision**:
+   - `NarrativeValidator` evaluates coverage ratio dynamically against context contract rather than hardcoded 3/15.
+   - Contradiction check strictly verifies stated ratio against dynamic benchmark.
+   - Non-multichannel reports safely bypass cross-platform comparability constraints without false-positive lock triggers.
+5. **Version Progression**:
+   - `PIPELINE_VERSION = "bs6a-v7"`
+   - `PROMPT_VERSION = "bs5e-prompt-v6"`
+   - New Execution Identity (Client #3, 2026-10-01 → 2026-10-31): `0f2e1f7db1b8964f0e8419b23b70f11a6210888b45b9ebe3742bfa1c6561517d`
+   - Reusable Report: `ExecutiveReport #5` retains canonical `source_hash: dd6bb501ca5051cd784f95e64298ec131a27cd3b9adbc874eae8256e8650fe77`.
+
+
 

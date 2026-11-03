@@ -424,7 +424,7 @@ class PreApprovalReportBindingTests(TestCase):
 
     def test_13_deterministic_october_identity_bs6a_v5(self):
         """Proves pipeline version bs6a-v5 computes expected October execution identity."""
-        self.assertIn(PIPELINE_VERSION, ["bs6a-v5", "bs6a-v6"])
+        self.assertIn(PIPELINE_VERSION, ["bs6a-v5", "bs6a-v6", "bs6a-v7"])
         identity = compute_execution_identity(3, date(2026, 10, 1), date(2026, 10, 31), pipeline_version="bs6a-v5")
         self.assertEqual(identity, "92f0cb6f73782fd06f8c94b0233b7434297870a46b95b7d775a8572114cadae1")
 

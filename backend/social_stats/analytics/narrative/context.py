@@ -374,12 +374,41 @@ def build_grounded_narrative_context(report, business_signals: Optional[List[Any
 
     # Multichannel Intelligence integration (BS-5D)
     mc_intel = report_data.get("multichannel_intelligence", {})
+    has_mc_data = bool(mc_intel and (mc_intel.get("has_multichannel_data") or mc_intel.get("coverage_summary") or mc_intel.get("coverage")))
+    cov_summary = (mc_intel.get("coverage_summary") or mc_intel.get("coverage", {})) if has_mc_data else {}
+    comp_metrics = cov_summary.get("comparable_metrics") or cov_summary.get("comparable_metric_count")
+    tot_metrics = cov_summary.get("total_metrics") or cov_summary.get("canonical_metric_count")
+    cov_ratio = cov_summary.get("coverage_ratio")
+
+    if has_mc_data and (comp_metrics is None or tot_metrics is None) and cov_ratio and "/" in str(cov_ratio):
+        try:
+            parts = str(cov_ratio).split("/")
+            if comp_metrics is None:
+                comp_metrics = int(parts[0].strip())
+            if tot_metrics is None:
+                tot_metrics = int(parts[1].strip())
+        except Exception:
+            pass
+
+    if has_mc_data:
+        comp_metrics = comp_metrics if comp_metrics is not None else 0
+        tot_metrics = tot_metrics if tot_metrics is not None else 15
+        cov_ratio = cov_ratio or f"{comp_metrics}/{tot_metrics}"
+        is_mc_complete = bool(mc_intel.get("multichannel_complete", False))
+        must_disclose = bool(not is_mc_complete and comp_metrics < tot_metrics)
+    else:
+        comp_metrics = None
+        tot_metrics = None
+        cov_ratio = None
+        is_mc_complete = True
+        must_disclose = False
+
     if mc_intel and mc_intel.get("has_multichannel_data"):
         ref_mc_lim = "LIMITATION-CROSS-PLATFORM-PARTIAL"
         lim_entry = {
             "ref_id": ref_mc_lim,
             "type": "CROSS_PLATFORM_DATA_LIMITATION",
-            "description": "Cross-platform data coverage is LIMITED (3 of 15 metrics comparable) due to Instagram partial mode.",
+            "description": f"Cross-platform data coverage is LIMITED ({comp_metrics} of {tot_metrics} metrics comparable) due to Instagram partial mode.",
         }
         if lim_entry["description"] not in [l['description'] for l in limitations_list]:
             limitations_list.append(lim_entry)
@@ -400,6 +429,13 @@ def build_grounded_narrative_context(report, business_signals: Optional[List[Any
         "supported_recommendations": supported_recommendations,
         "evidence_registry": evidence_registry,
         "allowed_evidence_ids": sorted(list(evidence_registry.keys())),
+        "multichannel_comparison_contract": {
+            "comparable_metrics_count": comp_metrics,
+            "total_canonical_metrics": tot_metrics,
+            "coverage_ratio": cov_ratio,
+            "must_disclose_ratio": must_disclose,
+            "multichannel_complete": is_mc_complete,
+        },
         "has_sufficient_data": has_sufficient_data,
     }
     if mc_intel and mc_intel.get("has_multichannel_data"):
@@ -439,7 +475,7 @@ def build_grounded_narrative_context(report, business_signals: Optional[List[Any
             {
                 "fact_id": "FACT-MC-1",
                 "category": "COVERAGE_LIMITATION",
-                "text_es": "La comparación entre plataformas es limitada: solo 3 de 15 métricas canónicas son actualmente comparables.",
+                "text_es": f"La comparación entre plataformas es limitada: solo {comp_metrics} de {tot_metrics} métricas canónicas son actualmente comparables.",
                 "evidence_refs": cov_ref[:1],
             },
             {

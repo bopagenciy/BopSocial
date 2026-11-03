@@ -85,7 +85,7 @@ def _collect_context_numbers(context: Dict[str, Any]) -> Set[float]:
     context_numbers = set()
 
     def _walk(obj, key=None):
-        if key in ("id", "client_id", "signal_id", "schema_version", "context_schema_version", "evidence_refs", "source_hash", "context_hash"):
+        if key in ("id", "client_id", "signal_id", "schema_version", "context_schema_version", "evidence_refs", "source_hash", "context_hash", "multichannel_comparison_contract"):
             return
         if isinstance(obj, (int, float)):
             context_numbers.add(float(obj))
@@ -863,11 +863,32 @@ class NarrativeValidator:
 
         # Gate G: Limitation Preservation Lock (Section AY, BS-5E.1C Numeric Semantic Recognition)
         mc_intel = context.get("multichannel_intelligence", {})
-        cov_summary = mc_intel.get("coverage_summary") or mc_intel.get("coverage", {})
-        expected_comp = cov_summary.get("comparable_metrics")
-        expected_total = cov_summary.get("total_metrics", 15)
-        cov_ratio_str = cov_summary.get("coverage_ratio", "")
-        is_limited_coverage = cov_summary.get("status") == "LIMITED" or cov_ratio_str in ("3/15", "0/15")
+        contract = context.get("multichannel_comparison_contract", {})
+        has_mc = bool(mc_intel and (mc_intel.get("has_multichannel_data") or mc_intel.get("coverage_summary") or mc_intel.get("coverage"))) or bool(contract and contract.get("coverage_ratio"))
+        if not has_mc:
+            cov_summary = {}
+            expected_comp = None
+            expected_total = None
+            cov_ratio_str = ""
+            is_limited_coverage = False
+        else:
+            cov_summary = mc_intel.get("coverage_summary") or mc_intel.get("coverage", {})
+            expected_comp = contract.get("comparable_metrics_count") if "comparable_metrics_count" in contract and contract.get("comparable_metrics_count") is not None else (cov_summary.get("comparable_metrics") or cov_summary.get("comparable_metric_count"))
+            expected_total = contract.get("total_canonical_metrics") if "total_canonical_metrics" in contract and contract.get("total_canonical_metrics") is not None else (cov_summary.get("total_metrics") or cov_summary.get("canonical_metric_count") or 15)
+            cov_ratio_str = contract.get("coverage_ratio") or cov_summary.get("coverage_ratio", "")
+            if (expected_comp is None or expected_comp == 0) and cov_ratio_str and "/" in str(cov_ratio_str):
+                try:
+                    parts = str(cov_ratio_str).split("/")
+                    expected_comp = int(parts[0].strip())
+                    expected_total = int(parts[1].strip())
+                except Exception:
+                    pass
+            is_limited_coverage = (
+                cov_summary.get("status") == "LIMITED"
+                or contract.get("must_disclose_ratio")
+                or (expected_comp is not None and expected_total is not None and expected_comp < expected_total)
+                or cov_ratio_str in ("3/15", "0/15")
+            )
         has_cross_platform_claim = False
         cross_platform_claim_terms = [
             r"\bfrente\s+a\b",
@@ -889,18 +910,19 @@ class NarrativeValidator:
                     break
 
         # Zero comparable metrics safety guard:
-        if (expected_comp == 0 or cov_ratio_str == "0/15") and has_cross_platform_claim:
+        if has_mc and (expected_comp == 0 or cov_ratio_str == "0/15") and has_cross_platform_claim:
             errors.append(
                 "Comparability lock failed: Cross-platform performance comparison claimed, but 0 comparable metrics exist between platforms for this period."
             )
 
         # Comparable ratio contradiction check:
-        ratio_matches = re.findall(r"(\d+)\s*(?:/|de)\s*(?:las\s+|un\s+total\s+de\s+)?15(?:\s+m[eé]tricas)?", full_text_lower)
-        for rm in ratio_matches:
-            stated_comp = int(rm)
-            if expected_comp is not None and stated_comp != expected_comp:
+        ratio_matches = re.findall(r"(\d+)\s*(?:/|de)\s*(?:las\s+|un\s+total\s+de\s+)?(\d+)(?:\s+m[eé]tricas)?", full_text_lower)
+        for rm_comp, rm_tot in ratio_matches:
+            stated_comp = int(rm_comp)
+            stated_tot = int(rm_tot)
+            if expected_comp is not None and (stated_comp != expected_comp or (expected_total is not None and stated_tot != expected_total)):
                 errors.append(
-                    f"Limitation preservation lock failed: Stated comparable count ({stated_comp}/15) contradicts context benchmark coverage ({expected_comp}/{expected_total})."
+                    f"Limitation preservation lock failed: Stated comparable count ({stated_comp}/{stated_tot}) contradicts context benchmark coverage ({expected_comp}/{expected_total})."
                 )
                 break
 
@@ -913,12 +935,29 @@ class NarrativeValidator:
                     coverage_search_texts.append(stmt)
             coverage_text = " ".join(coverage_search_texts).lower()
 
+            comp_num = str(expected_comp) if expected_comp is not None else "3"
+            tot_num = str(expected_total) if expected_total is not None else "15"
+            word_map_es = {
+                0: "cero", 1: "una?", 2: "dos", 3: "tres", 4: "cuatro", 5: "cinco",
+                6: "seis", 7: "siete", 8: "ocho", 9: "nueve", 10: "diez",
+                11: "once", 12: "doce", 13: "trece", 14: "catorce", 15: "quince"
+            }
+            word_map_en = {
+                0: "zero", 1: "one", 2: "two", 3: "three", 4: "four", 5: "five",
+                6: "six", 7: "seven", 8: "eight", 9: "nine", 10: "ten",
+                11: "eleven", 12: "twelve", 13: "thirteen", 14: "fourteen", 15: "fifteen"
+            }
+            comp_es = f"(?:{comp_num}|{word_map_es.get(expected_comp, comp_num)})"
+            tot_es = f"(?:{tot_num}|{word_map_es.get(expected_total, tot_num)})"
+            comp_en = f"(?:{comp_num}|{word_map_en.get(expected_comp, comp_num)})"
+            tot_en = f"(?:{tot_num}|{word_map_en.get(expected_total, tot_num)})"
+
             coverage_ratio_semantic_regex = re.compile(
-                r"(?:"
-                r"3\s*/\s*15"
-                r"|(?:solo\s+)?(?:3|tres)\s+de\s+(?:las\s+|un\s+total\s+de\s+)?(?:15|quince)(?:\s+m[eé]tricas)?"
-                r"|(?:only\s+)?(?:3|three)\s+of\s+(?:the\s+)?(?:15|fifteen)(?:\s+metrics)?"
-                r")",
+                rf"(?:"
+                rf"{comp_num}\s*/\s*{tot_num}"
+                rf"|(?:solo\s+)?{comp_es}\s+de\s+(?:las\s+|un\s+total\s+de\s+)?{tot_es}(?:\s+m[eé]tricas)?"
+                rf"|(?:only\s+)?{comp_en}\s+of\s+(?:the\s+)?{tot_en}(?:\s+metrics)?"
+                rf")",
                 re.IGNORECASE
             )
 
@@ -928,7 +967,7 @@ class NarrativeValidator:
 
             if not preserves_limitation:
                 errors.append(
-                    "Limitation preservation lock failed: Cross-platform performance claim made without preserving the limited data coverage limitation (3/15 comparable metrics)."
+                    f"Limitation preservation lock failed: Cross-platform performance claim made without preserving the limited data coverage limitation ({expected_comp}/{expected_total} comparable metrics)."
                 )
 
         # Gate H: Language Contract Lock (Section AZ, AL)

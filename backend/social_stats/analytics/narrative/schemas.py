@@ -10,7 +10,8 @@ PROMPT_VERSION_V2 = "bs5e-prompt-v2"
 PROMPT_VERSION_V3 = "bs5e-prompt-v3"
 PROMPT_VERSION_V4 = "bs5e-prompt-v4"
 PROMPT_VERSION_V5 = "bs5e-prompt-v5"
-PROMPT_VERSION = PROMPT_VERSION_V5
+PROMPT_VERSION_V6 = "bs5e-prompt-v6"
+PROMPT_VERSION = PROMPT_VERSION_V6
 OUTPUT_SCHEMA_VERSION = "bs5e-output-v2"
 
 # Legacy aliases for backward compatibility
