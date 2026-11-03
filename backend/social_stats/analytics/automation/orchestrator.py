@@ -32,6 +32,7 @@ from .eligibility import evaluate_intelligence_automation_eligibility, Eligibili
 from .events import log_automation_event, redact_secrets
 from .identity import compute_approval_token, compute_execution_identity
 from .locking import SingleFlightLock, ConcurrencyLockError
+from ..narrative.prompts import PROMPT_VERSION
 
 logger = logging.getLogger(__name__)
 
@@ -172,6 +173,8 @@ def execute_intelligence_automation(
                 "planned_stages": eligibility.planned_stages,
                 "skipped_stages": eligibility.skipped_stages,
                 "reuse_decisions": eligibility.reuse_decisions,
+                "prompt_version": PROMPT_VERSION,
+                "report_source_hash": (eligibility.existing_artifacts or {}).get("report_source_hash") or (eligibility.existing_artifacts or {}).get("expected_source_hash"),
             },
         )
 

@@ -20,6 +20,7 @@ from .constants import (
     PIPELINE_VERSION,
 )
 from .eligibility import evaluate_intelligence_automation_eligibility
+from .identity import get_deterministic_report_source_hash
 from .orchestrator import execute_intelligence_automation, preview_intelligence_automation
 from .period import (
     calculate_next_due_datetime,
@@ -192,6 +193,46 @@ def discover_and_enqueue_due_intelligence_automations(dry_run: bool = True) -> D
                 skipped_tenants.append({
                     "client_id": client.id,
                     "reason": f"BLOCKED_STATE_UNCHANGED (run #{latest_blocked.id}, hash={stored_hash or 'legacy'})",
+                })
+                continue
+
+        # Inspect latest terminal FAILED run (if any) under current pipeline version
+        latest_failed = IntelligenceAutomationRun.objects.filter(
+            client=client,
+            period_start=p_start,
+            period_end=p_end,
+            pipeline_version=PIPELINE_VERSION,
+            status="FAILED",
+        ).order_by("-id").first()
+
+        if latest_failed:
+            from ..narrative.prompts import PROMPT_VERSION
+
+            failed_metadata = latest_failed.metadata or {}
+            failed_prompt_version = failed_metadata.get("prompt_version") or getattr(latest_failed.narrative, "prompt_version", None)
+
+            # Prompt matches if failed run used current PROMPT_VERSION
+            prompt_matches = (failed_prompt_version == PROMPT_VERSION) if failed_prompt_version else False
+
+            try:
+                current_source_hash = get_deterministic_report_source_hash(
+                    client_id=client.id,
+                    period_start=p_start,
+                    period_end=p_end,
+                )
+            except Exception:
+                current_source_hash = None
+
+            failed_source_hash = getattr(latest_failed.report, "source_hash", None) or failed_metadata.get("report_source_hash")
+            source_matches = (current_source_hash == failed_source_hash) if (current_source_hash and failed_source_hash) else False
+
+            # If both prompt version and source hash are identical to the failed run,
+            # material state is UNCHANGED. Suppress automatic scheduled rerun to prevent
+            # endless provider spend and repeated identical failure.
+            if prompt_matches and source_matches:
+                skipped_tenants.append({
+                    "client_id": client.id,
+                    "reason": f"FAILED_STATE_UNCHANGED (run #{latest_failed.id}, calls={latest_failed.provider_call_count}, prompt={PROMPT_VERSION})",
                 })
                 continue
 

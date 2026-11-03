@@ -632,6 +632,67 @@ Because Run #12 failed closed under `bs6a-v3`, advancing the pipeline version es
   - `bs6a-v1` (Run #10): `fd2c6f56f6256bda1e6fb9fdccfd0785c2f1c827ca6bcb796b392dc3f0dfc212`
   - `bs6a-v2` (Run #11): `b5d8d4d66f6ca9b44724bd7278feff201d02936074bec22f360dc36bd9cb8766`
   - `bs6a-v3` (Run #12): `977529e00b87360abcee27a75bf05bd4e68960a621ca75d3eee6c2669b6f0fe9`
-  - `bs6a-v4` (Prospective Run #13): `16a4f3542e2f23c3db83d89b5e8fa695083aff28e6d5472fab1564a049ea2d51`
+  - `bs6a-v4` (Run #13 / Run #14): `16a4f3542e2f23c3db83d89b5e8fa695083aff28e6d5472fab1564a049ea2d51`
+  - `bs6a-v5` (Run #15 / Run #16): `92f0cb6f73782fd06f8c94b0233b7434297870a46b95b7d775a8572114cadae1`
+  - `bs6a-v6` (Prospective Run #17): `14a1e02803da929b6e7dbac2e05bdeb7fe2c1452d52952934d0795ad7630513a`
+
+---
+
+## 20. Phase BS-6E.1B & BS-6E.1C: Pre-Approval Report Binding & Source Parity
+
+### 20.1 Architectural Problem
+In Phase BS-6E.1, scheduled autonomous runs paused at `AWAITING_APPROVAL` with `run.report_id = NULL`. This created two critical flaws:
+1. Operators could not inspect the bound executive report prior to granting approval.
+2. Generating the report post-approval altered `run.report_id`, which changed the cryptographic approval token between approval grant and provider execution reservation, causing fail-closed token validation failures.
+
+### 20.2 Resolution
+1. **Pre-Approval Report Binding**: The orchestrator creates or binds the canonical `ExecutiveReport` during the `REPORT` stage *before* entering `AWAITING_APPROVAL`.
+2. **Approval Token Binding**: The approval token strictly digests `run.id`, `run.client_id`, `run.report_id`, `report.source_hash`, `run.execution_identity`, and `run.pipeline_version`.
+3. **Source Hash Parity**: Unified deterministic hashing across all entry points ensures zero drift across worker processes.
+4. **Pipeline Version**: Bumped to `bs6a-v5`.
+
+---
+
+## 21. Phase BS-6E.2A: Evidence Reference Integrity & Failed-Cycle Rescheduling Control
+
+### 21.1 Narrative Evidence Hallucination Root Cause
+In Phase BS-6E.2, live provider execution under Ollama produced Narrative #7, which was rejected fail-closed during post-generation validation:
+```text
+Recommendation 1 references unknown evidence 'MC-SIG-8' (allowed: ['LIMITATION-CROSS-PLATFORM-PARTIAL', 'LIMITATION-IG-PARTIAL']).
+derive_recommendation_confidence: evidence 'MC-SIG-8' not found in registry.
+```
+Forensic analysis revealed:
+1. For October 2026, Client #3 had **0 BusinessSignals**. The registry only contained 2 data limitations (`LIMITATION-CROSS-PLATFORM-PARTIAL` and `LIMITATION-IG-PARTIAL`).
+2. Static few-shot examples in `prompts.py` hardcoded `evidence_refs: ["MC-SIG-8"]` and `["MC-SIG-7"]`.
+3. Hardcoded `approved_facts` in `context.py` contained stale references to `MC-SIG-8`, `MC-SIG-7`, `MC-SIG-6`, `MC-SIG-9`.
+4. Stale `executive_takeaways` from multichannel intelligence cited `MC-SIG-8` and `MC-SIG-7`.
+
+The LLM mimicked these static examples, inventing references to signals not present in the October evidence registry.
+
+### 21.2 Prompt & Context Hardening (`bs5e-prompt-v5`)
+1. **Allowed Evidence ID Section**: `prompts.py` now deterministically injects an explicit `ALLOWED EVIDENCE IDS FOR RECOMMENDATIONS (STRICT)` block into the prompt:
+   ```text
+   === ALLOWED EVIDENCE IDS FOR RECOMMENDATIONS (STRICT) ===
+   ALL_VALID_EVIDENCE_IDS: ['LIMITATION-CROSS-PLATFORM-PARTIAL', 'LIMITATION-IG-PARTIAL']
+   BUSINESS_SIGNAL_IDS: NONE (Do NOT cite any SIG-* or MC-SIG-* IDs!)
+   DATA_LIMITATION_IDS: ['LIMITATION-CROSS-PLATFORM-PARTIAL', 'LIMITATION-IG-PARTIAL']
+   ```
+2. **Structural Placeholders**: Replaced hardcoded example IDs in few-shot prompt schemas with `<VALID_EVIDENCE_ID_FROM_CONTEXT>`.
+3. **Context Sanitization**: `context.py` now sanitizes `executive_takeaways` and `approved_facts` against `evidence_registry.keys()`, stripping or omitting references to unregistered signals.
+4. **Confidence Derivation Safeguard**: `confidence.py` ensures `DATA_LIMITATION` evidence defaults safely to `"HIGH"` confidence when unstated, while preserving fail-closed rejection for missing keys.
+5. **Prompt Version Progression**: Bumped to `bs5e-prompt-v5`.
+
+### 21.3 Failed-Cycle Rescheduling Suppression
+To prevent infinite scheduler loops where a failed narrative triggers repeated re-enqueuing on every beat tick:
+1. The Celery Beat scanner (`discover_and_enqueue_due_intelligence_automations`) inspects the latest failed run for the tenant and period.
+2. If `latest_failed.status == 'FAILED'`, `latest_failed.pipeline_version == PIPELINE_VERSION`, `latest_failed.metadata.prompt_version == PROMPT_VERSION`, and the report `source_hash` is unchanged, the task suppresses re-enqueuing with reason `FAILED_STATE_UNCHANGED`.
+3. Any code or prompt change (version bump) or upstream data change (report hash change) automatically resets suppression and authorizes a clean retry.
+
+### 21.4 Pipeline Progression (`bs6a-v6`)
+- **Pipeline Version**: `bs6a-v6`
+- **Prompt Version**: `bs5e-prompt-v5`
+- **Execution Identity** (Client #3, 2026-10-01 → 2026-10-31):
+  `14a1e02803da929b6e7dbac2e05bdeb7fe2c1452d52952934d0795ad7630513a`
+- **Run #16 Lifecycle**: Canonically cancelled (`approval_status='REJECTED'`, `provider_call_count=0`).
 
 

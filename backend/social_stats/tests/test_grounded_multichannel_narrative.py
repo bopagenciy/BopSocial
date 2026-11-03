@@ -341,7 +341,7 @@ class GroundedMultichannelNarrativeSafetiesTests(TestCase):
         context = build_grounded_narrative_context(self.report)
         self.assertEqual(context["context_schema_version"], "bs4h-context-v2")
         self.assertEqual(CONTEXT_SCHEMA_VERSION, "bs4h-context-v2")
-        self.assertIn(PROMPT_VERSION, ["bs5e-prompt-v3", "bs5e-prompt-v4"])
+        self.assertIn(PROMPT_VERSION, ["bs5e-prompt-v3", "bs5e-prompt-v4", "bs5e-prompt-v5"])
 
     # 2. Multichannel Evidence Registry Resolution (MC-SIG-6..9)
     def test_multichannel_evidence_registry_resolution(self):
