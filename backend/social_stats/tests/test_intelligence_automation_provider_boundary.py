@@ -121,12 +121,14 @@ class ProviderBoundarySingleFlightContractTests(TestCase):
             bucket_period="DAY",
             bucket_timestamp=datetime(2026, 9, 15, 12, 0, 0, tzinfo=dt_tz.utc),
         )
+        from social_stats.analytics.automation.identity import get_deterministic_report_source_hash
+        src_hash = get_deterministic_report_source_hash(self.tenant_client.id, self.period_start, self.period_end)
         self.report = ExecutiveReport.objects.create(
             client=self.tenant_client,
             period_start=self.period_start,
             period_end=self.period_end,
             status="GENERATED",
-            source_hash="boundary_report_hash_123",
+            source_hash=src_hash,
         )
         self.exec_identity = compute_execution_identity(
             client_id=self.tenant_client.id,

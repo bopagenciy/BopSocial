@@ -82,9 +82,13 @@ def get_deterministic_report_source_hash(
     Zero database mutations.
     """
     from django.db.models import Q
-    from social_stats.models import SocialMetricRollup, BusinessSignal
+    from social_stats.models import Client, SocialMetricRollup, BusinessSignal
     from social_stats.analytics.reporting.builder import compute_source_hash, TEMPLATE_VERSION
     from social_stats.analytics.multichannel.benchmarks import build_multichannel_benchmark
+
+    client = Client.objects.filter(id=client_id).first()
+    if not client:
+        raise ValueError(f"Client #{client_id} does not exist.")
 
     # 1. Rollup count in period
     rollups_qs = SocialMetricRollup.objects.filter(
@@ -109,17 +113,29 @@ def get_deterministic_report_source_hash(
 
     # 3. Multichannel benchmark hash (if applicable)
     benchmark_hash = None
-    if not platform or platform in ("facebook", "instagram"):
-        try:
-            bm = build_multichannel_benchmark(
-                client_id=client_id,
-                start_date=period_start,
-                end_date=period_end,
-                persist=False,
-            )
-            benchmark_hash = bm.benchmark_hash if bm else None
-        except Exception:
-            benchmark_hash = None
+    clean_platform = (platform or "").lower()
+    platform_filter = clean_platform if clean_platform not in ("", "all", "none") else None
+    if not platform_filter or platform_filter in ("facebook", "instagram"):
+        bm = build_multichannel_benchmark(
+            client=client,
+            platform_a="facebook",
+            platform_b="instagram",
+            start_date=period_start,
+            end_date=period_end,
+            granularity="day",
+        )
+        has_benchmark_data = bool(bm and bm.coverage_summary.comparable_metrics > 0)
+        mc_signals = [s for s in persisted_signals if s.scope == "multichannel"]
+        valid_mc_signals = []
+        for s in mc_signals:
+            sig_bm_hash = s.evidence.get("benchmark_hash") if isinstance(s.evidence, dict) else None
+            if bm and bm.benchmark_hash and sig_bm_hash and sig_bm_hash != bm.benchmark_hash:
+                continue
+            valid_mc_signals.append(s)
+
+        has_mc_data = bool(valid_mc_signals or has_benchmark_data)
+        if has_mc_data:
+            benchmark_hash = bm.benchmark_hash if bm else (valid_mc_signals[0].evidence.get("benchmark_hash") if valid_mc_signals else None)
 
     return compute_source_hash(
         client_id=client_id,

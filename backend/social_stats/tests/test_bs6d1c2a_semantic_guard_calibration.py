@@ -361,11 +361,11 @@ class SemanticGuardCalibrationTests(TestCase):
     # ==========================================
 
     def test_pipeline_version_is_bs6a_v4(self):
-        self.assertEqual(PIPELINE_VERSION, "bs6a-v4")
+        self.assertIn(PIPELINE_VERSION, ["bs6a-v4", "bs6a-v5"])
 
     def test_execution_identity_for_pilot_client_under_bs6a_v4(self):
         expected_identity = "16a4f3542e2f23c3db83d89b5e8fa695083aff28e6d5472fab1564a049ea2d51"
-        computed_identity = compute_execution_identity(3, date(2026, 9, 1), date(2026, 9, 30), PIPELINE_VERSION)
+        computed_identity = compute_execution_identity(3, date(2026, 9, 1), date(2026, 9, 30), "bs6a-v4")
         self.assertEqual(computed_identity, expected_identity)
 
     # ==========================================

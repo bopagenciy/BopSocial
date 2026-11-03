@@ -234,6 +234,28 @@ def execute_intelligence_automation(
         if matching_report and is_rep_reusable:
             run.report = matching_report
             run.save(update_fields=["report", "current_stage", "updated_at"])
+        else:
+            config = IntelligenceAutomationConfig.objects.filter(client_id=client_id).first()
+            if config and config.generate_report and not dry_run:
+                from social_stats.analytics.reporting.service import save_executive_report
+                new_report = save_executive_report(
+                    client_id=client_id,
+                    date_from=eligibility.period_start,
+                    date_to=eligibility.period_end,
+                    platform="all",
+                    language="es",
+                )
+                run.report = new_report
+                run.save(update_fields=["report", "current_stage", "updated_at"])
+                log_automation_event(
+                    event_name="automation.report.created",
+                    run_id=run.id,
+                    client_id=client_id,
+                    stage=AutomationStage.REPORT_CHECK.value,
+                    report_id=new_report.id,
+                    status=run.status,
+                    extra={"source_hash": new_report.source_hash},
+                )
 
         # Stage: NARRATIVE_CHECK
         run.current_stage = AutomationStage.NARRATIVE_CHECK.value

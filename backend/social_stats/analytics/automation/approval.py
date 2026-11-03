@@ -483,6 +483,73 @@ def resume_approved_intelligence_run(
             )
             return run
 
+        # Gate 4.55: Bound Report Verification and Source Drift Protection
+        if config and config.generate_report:
+            if not run.report_id or not run.report:
+                run.status = AutomationStatus.BLOCKED.value
+                run.error_code = "REPORT_BINDING_MISSING"
+                run.error_message_safe = "Run is missing bound ExecutiveReport upon resume. Human re-approval required."
+                run.save(update_fields=["status", "error_code", "error_message_safe", "updated_at"])
+                log_automation_event(
+                    event_name="automation.resume.blocked",
+                    run_id=run.id,
+                    client_id=run.client_id,
+                    stage=run.current_stage,
+                    status=run.status,
+                    error_code=run.error_code,
+                    error_message=run.error_message_safe,
+                )
+                return run
+
+            bound_report = run.report
+            if (
+                bound_report.client_id != run.client_id
+                or bound_report.period_start != run.period_start
+                or bound_report.period_end != run.period_end
+            ):
+                run.status = AutomationStatus.BLOCKED.value
+                run.error_code = "REPORT_METADATA_MISMATCH"
+                run.error_message_safe = "Bound ExecutiveReport metadata does not match run parameters."
+                run.save(update_fields=["status", "error_code", "error_message_safe", "updated_at"])
+                log_automation_event(
+                    event_name="automation.resume.blocked",
+                    run_id=run.id,
+                    client_id=run.client_id,
+                    stage=run.current_stage,
+                    status=run.status,
+                    error_code=run.error_code,
+                    error_message=run.error_message_safe,
+                )
+                return run
+
+            from .identity import get_deterministic_report_source_hash
+            current_expected_src_hash = get_deterministic_report_source_hash(
+                client_id=run.client_id,
+                period_start=run.period_start,
+                period_end=run.period_end,
+                platform=bound_report.platform_filter,
+                language=bound_report.language or "es",
+            )
+            if not bound_report.source_hash or bound_report.source_hash != current_expected_src_hash:
+                run.status = AutomationStatus.BLOCKED.value
+                run.error_code = "REPORT_SOURCE_DRIFT"
+                run.error_message_safe = (
+                    f"Bound ExecutiveReport #{bound_report.id} source hash drifted "
+                    f"({(bound_report.source_hash or '')[:16]}... != current {current_expected_src_hash[:16]}...). "
+                    "Human re-approval required."
+                )
+                run.save(update_fields=["status", "error_code", "error_message_safe", "updated_at"])
+                log_automation_event(
+                    event_name="automation.resume.blocked",
+                    run_id=run.id,
+                    client_id=run.client_id,
+                    stage=run.current_stage,
+                    status=run.status,
+                    error_code=run.error_code,
+                    error_message=run.error_message_safe,
+                )
+                return run
+
         # Gate 4.6: Existing Validated Narrative Reuse (Section O & BS-6D.1B)
         matching_narrative = None
         if run.report_id:
@@ -735,6 +802,73 @@ def reserve_provider_execution(
                     run.error_message_safe = f"Analytics data is {freshness.code.value} before provider execution."
                     run.save(update_fields=["status", "error_code", "error_message_safe", "updated_at"])
                     return {"reserved": False, "reason": run.error_code, "run_id": run.id, "status": run.status}
+
+                # Step 8.5: Bound Report Verification and Source Drift Protection
+                if config and config.generate_report:
+                    if not run.report_id or not run.report:
+                        run.status = AutomationStatus.BLOCKED.value
+                        run.error_code = "REPORT_BINDING_MISSING"
+                        run.error_message_safe = "Run is missing bound ExecutiveReport before provider execution. Human re-approval required."
+                        run.save(update_fields=["status", "error_code", "error_message_safe", "updated_at"])
+                        log_automation_event(
+                            event_name="automation.provider_reservation.blocked",
+                            run_id=run.id,
+                            client_id=run.client_id,
+                            stage=run.current_stage,
+                            status=run.status,
+                            error_code=run.error_code,
+                            error_message=run.error_message_safe,
+                        )
+                        return {"reserved": False, "reason": "REPORT_BINDING_MISSING", "run_id": run.id, "status": run.status}
+
+                    bound_report = run.report
+                    if (
+                        bound_report.client_id != run.client_id
+                        or bound_report.period_start != run.period_start
+                        or bound_report.period_end != run.period_end
+                    ):
+                        run.status = AutomationStatus.BLOCKED.value
+                        run.error_code = "REPORT_METADATA_MISMATCH"
+                        run.error_message_safe = "Bound ExecutiveReport metadata does not match run parameters."
+                        run.save(update_fields=["status", "error_code", "error_message_safe", "updated_at"])
+                        log_automation_event(
+                            event_name="automation.provider_reservation.blocked",
+                            run_id=run.id,
+                            client_id=run.client_id,
+                            stage=run.current_stage,
+                            status=run.status,
+                            error_code=run.error_code,
+                            error_message=run.error_message_safe,
+                        )
+                        return {"reserved": False, "reason": "REPORT_METADATA_MISMATCH", "run_id": run.id, "status": run.status}
+
+                    from .identity import get_deterministic_report_source_hash
+                    current_expected_src_hash = get_deterministic_report_source_hash(
+                        client_id=run.client_id,
+                        period_start=run.period_start,
+                        period_end=run.period_end,
+                        platform=bound_report.platform_filter,
+                        language=bound_report.language or "es",
+                    )
+                    if not bound_report.source_hash or bound_report.source_hash != current_expected_src_hash:
+                        run.status = AutomationStatus.BLOCKED.value
+                        run.error_code = "REPORT_SOURCE_DRIFT"
+                        run.error_message_safe = (
+                            f"Bound ExecutiveReport #{bound_report.id} source hash drifted "
+                            f"({(bound_report.source_hash or '')[:16]}... != current {current_expected_src_hash[:16]}...). "
+                            "Human re-approval required."
+                        )
+                        run.save(update_fields=["status", "error_code", "error_message_safe", "updated_at"])
+                        log_automation_event(
+                            event_name="automation.provider_reservation.blocked",
+                            run_id=run.id,
+                            client_id=run.client_id,
+                            stage=run.current_stage,
+                            status=run.status,
+                            error_code=run.error_code,
+                            error_message=run.error_message_safe,
+                        )
+                        return {"reserved": False, "reason": "REPORT_SOURCE_DRIFT", "run_id": run.id, "status": run.status}
 
                 # Step 9: Revalidate Narrative Reuse Race (Section N)
                 matching_narrative = None
