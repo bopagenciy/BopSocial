@@ -1,0 +1,263 @@
+"""
+Future-safe Celery Task Wrappers and Discovery Task for BS-6A Intelligence Automation.
+REMAINS STRICTLY UNSCHEDULED AND DISABLED IN BS-6A.
+"""
+import logging
+from datetime import date, datetime
+from typing import Any, Dict, List, Optional
+
+from celery import shared_task
+from django.utils import timezone
+
+from social_stats.models import (
+    Client,
+    IntelligenceAutomationConfig,
+    IntelligenceAutomationRun,
+)
+from .constants import (
+    AutomationTriggerType,
+    DEFAULT_MAX_RETRY_COUNT,
+    PIPELINE_VERSION,
+)
+from .eligibility import evaluate_intelligence_automation_eligibility
+from .identity import get_deterministic_report_source_hash
+from .orchestrator import execute_intelligence_automation, preview_intelligence_automation
+from .period import (
+    calculate_next_due_datetime,
+    calculate_reporting_period,
+    get_tenant_local_datetime,
+    is_tenant_due,
+)
+
+logger = logging.getLogger(__name__)
+
+
+@shared_task(bind=True, max_retries=DEFAULT_MAX_RETRY_COUNT)
+def run_intelligence_automation_task(
+    self,
+    client_id: int,
+    period_start: Optional[str] = None,
+    period_end: Optional[str] = None,
+    trigger_type: str = AutomationTriggerType.SCHEDULED.value,
+    dry_run: bool = False,
+) -> Dict[str, Any]:
+    """
+    Celery task wrapper delegating directly to orchestration service.
+    Zero duplicated business logic.
+    Max retries hard-limited to 0 (fail-closed).
+    """
+    p_start = date.fromisoformat(period_start) if period_start else None
+    p_end = date.fromisoformat(period_end) if period_end else None
+
+    if dry_run:
+        return preview_intelligence_automation(
+            client_id=client_id,
+            period_start=p_start,
+            period_end=p_end,
+            trigger_type=trigger_type,
+        )
+
+    run = execute_intelligence_automation(
+        client_id=client_id,
+        period_start=p_start,
+        period_end=p_end,
+        trigger_type=trigger_type,
+        dry_run=False,
+    )
+
+    return {
+        "run_id": run.id,
+        "client_id": run.client_id,
+        "status": run.status,
+        "current_stage": run.current_stage,
+        "execution_identity": run.execution_identity,
+    }
+
+
+@shared_task
+def discover_and_enqueue_due_intelligence_automations_live() -> Dict[str, Any]:
+    """
+    Dedicated production Celery Beat entry point.
+    Enforces explicitly non-dry execution (dry_run=False).
+    Dispatches run_intelligence_automation_task for due tenants while
+    preserving fail-safe operator approval, data freshness/coverage gates,
+    and provider boundaries.
+    """
+    return discover_and_enqueue_due_intelligence_automations(dry_run=False)
+
+
+@shared_task
+def discover_and_enqueue_due_intelligence_automations(dry_run: bool = True) -> Dict[str, Any]:
+    """
+    Periodic Discovery Scanner.
+    Finds explicitly enabled tenant configs, computes due state in tenant timezone,
+    prevents duplicate enqueues for active, completed, or already-evaluated periods,
+    and supports missed-tick recovery across arbitrary tenant timezones.
+
+    DOES NOT DIRECTLY INVOKE ANY LLM OR THIRD-PARTY PROVIDER.
+    """
+    now = timezone.now()
+    due_tenants: List[int] = []
+    skipped_tenants: List[Dict[str, Any]] = []
+
+    # Enumerate ONLY explicitly enabled configurations
+    enabled_configs = IntelligenceAutomationConfig.objects.filter(enabled=True).select_related("client")
+
+    for config in enabled_configs:
+        client = config.client
+        if not client.is_active:
+            skipped_tenants.append({"client_id": client.id, "reason": "CLIENT_INACTIVE"})
+            continue
+
+        # Evaluate due state using timezone-aware scheduler engine (supports missed ticks)
+        is_due, p_start, p_end, due_reason = is_tenant_due(config, reference_datetime=now)
+        if not is_due:
+            skipped_tenants.append({
+                "client_id": client.id,
+                "reason": due_reason,
+            })
+            continue
+
+        # Check if an active or completed run exists
+        active_or_complete = IntelligenceAutomationRun.objects.filter(
+            client=client,
+            period_start=p_start,
+            period_end=p_end,
+            pipeline_version=PIPELINE_VERSION,
+            status__in=[
+                "COMPLETED",
+                "RUNNING",
+                "PENDING",
+                "ELIGIBILITY_CHECK",
+                "AWAITING_APPROVAL",
+                "PROVIDER_EXECUTION_READY",
+                "PROVIDER_EXECUTING",
+            ],
+        ).order_by("-id").first()
+
+        if active_or_complete:
+            skipped_tenants.append({
+                "client_id": client.id,
+                "reason": f"RUN_ALREADY_EXISTS_OR_ACTIVE (run #{active_or_complete.id}, status={active_or_complete.status})",
+            })
+            continue
+
+        # Inspect latest terminal BLOCKED run (if any)
+        latest_blocked = IntelligenceAutomationRun.objects.filter(
+            client=client,
+            period_start=p_start,
+            period_end=p_end,
+            pipeline_version=PIPELINE_VERSION,
+            status="BLOCKED",
+        ).order_by("-id").first()
+
+        if latest_blocked:
+            # Check current material eligibility fingerprint
+            current_eligibility = evaluate_intelligence_automation_eligibility(
+                client_id=client.id,
+                period_start=p_start,
+                period_end=p_end,
+                pipeline_version=PIPELINE_VERSION,
+                trigger_type=AutomationTriggerType.SCHEDULED.value,
+                now=now,
+                dry_run=True,
+            )
+
+            # Extract stored block_state_hash from previous run's metadata, or derive it from stored audit fields
+            stored_metadata = latest_blocked.metadata or {}
+            stored_hash = stored_metadata.get("block_state_hash") or ""
+            if not stored_hash and latest_blocked.error_code:
+                # Safe legacy fallback: derive hash dynamically from stored immutable fields
+                from .identity import compute_block_state_hash
+                stored_freshness = (stored_metadata.get("freshness") or {}).get("code", "")
+                stored_cov = stored_metadata.get("target_period_coverage") or {}
+                cov_code = stored_cov.get("overall_code", "")
+                cov_summary = f"{stored_cov.get('overall_percent', 0.0):.1f}%" if "overall_percent" in stored_cov else ""
+                stored_hash = compute_block_state_hash(
+                    blocking_reasons=[latest_blocked.error_code],
+                    freshness_code=stored_freshness,
+                    requires_approval=True,
+                    config_enabled=config.enabled,
+                    coverage_code=cov_code,
+                    coverage_summary=cov_summary,
+                )
+
+            # If material block state is UNCHANGED and still not eligible/authorized:
+            is_unchanged = False
+            if current_eligibility.block_state_hash and stored_hash and current_eligibility.block_state_hash == stored_hash:
+                is_unchanged = True
+            elif not stored_metadata.get("block_state_hash") and latest_blocked.error_code in current_eligibility.blocking_reasons:
+                is_unchanged = True
+
+            if is_unchanged:
+                skipped_tenants.append({
+                    "client_id": client.id,
+                    "reason": f"BLOCKED_STATE_UNCHANGED (run #{latest_blocked.id}, hash={stored_hash or 'legacy'})",
+                })
+                continue
+
+        # Inspect latest terminal FAILED run (if any) under current pipeline version
+        latest_failed = IntelligenceAutomationRun.objects.filter(
+            client=client,
+            period_start=p_start,
+            period_end=p_end,
+            pipeline_version=PIPELINE_VERSION,
+            status="FAILED",
+        ).order_by("-id").first()
+
+        if latest_failed:
+            from ..narrative.prompts import PROMPT_VERSION
+
+            failed_metadata = latest_failed.metadata or {}
+            failed_prompt_version = failed_metadata.get("prompt_version") or getattr(latest_failed.narrative, "prompt_version", None)
+
+            # Prompt matches if failed run used current PROMPT_VERSION
+            prompt_matches = (failed_prompt_version == PROMPT_VERSION) if failed_prompt_version else False
+
+            try:
+                current_source_hash = get_deterministic_report_source_hash(
+                    client_id=client.id,
+                    period_start=p_start,
+                    period_end=p_end,
+                )
+            except Exception:
+                current_source_hash = None
+
+            failed_source_hash = getattr(latest_failed.report, "source_hash", None) or failed_metadata.get("report_source_hash")
+            source_matches = (current_source_hash == failed_source_hash) if (current_source_hash and failed_source_hash) else False
+
+            # If both prompt version and source hash are identical to the failed run,
+            # material state is UNCHANGED. Suppress automatic scheduled rerun to prevent
+            # endless provider spend and repeated identical failure.
+            if prompt_matches and source_matches:
+                skipped_tenants.append({
+                    "client_id": client.id,
+                    "reason": f"FAILED_STATE_UNCHANGED (run #{latest_failed.id}, calls={latest_failed.provider_call_count}, prompt={PROMPT_VERSION})",
+                })
+                continue
+
+        due_tenants.append(client.id)
+
+        if not dry_run:
+            run_intelligence_automation_task.delay(
+                client_id=client.id,
+                period_start=p_start.isoformat(),
+                period_end=p_end.isoformat(),
+                trigger_type=AutomationTriggerType.SCHEDULED.value,
+                dry_run=False,
+            )
+
+    logger.info(
+        "discover_and_enqueue_due_intelligence_automations: %d due, %d skipped (dry_run=%s)",
+        len(due_tenants),
+        len(skipped_tenants),
+        dry_run,
+    )
+
+    return {
+        "timestamp": now.isoformat(),
+        "dry_run": dry_run,
+        "due_count": len(due_tenants),
+        "due_client_ids": due_tenants,
+        "skipped_summary": skipped_tenants,
+    }

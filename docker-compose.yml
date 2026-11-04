@@ -84,6 +84,7 @@ services:
     image: bopsocial-backend:local
     pull_policy: build
     build: ./backend
+    restart: unless-stopped
     env_file:
       - path: .env.docker
         required: false
@@ -99,6 +100,7 @@ services:
     image: bopsocial-backend:local
     pull_policy: build
     build: ./backend
+    restart: unless-stopped
     env_file:
       - path: .env.docker
         required: false

@@ -110,6 +110,8 @@ def build_grounded_narrative_context(report, business_signals: Optional[List[Any
     else:
         # Legacy fallback
         summary_data = report_data.get("summary", {})
+        if not isinstance(summary_data, dict):
+            summary_data = {}
         for upper_key, lower_key in ALLOWLISTED_KPIS:
             kpis[lower_key] = summary_data.get(lower_key, 0)
 
@@ -297,6 +299,8 @@ def build_grounded_narrative_context(report, business_signals: Optional[List[Any
             "claim_category": claim_cat,
             "metric": s.get('metric', ''),
             "platform": s.get('platform', ''),
+            "period_start": str(s.get('period_start', '')) if s.get('period_start') else None,
+            "period_end": str(s.get('period_end', '')) if s.get('period_end') else None,
             "confidence": conf,
             "sample_size": s.get('sample_size', 0),
             "is_actionable": s.get('is_actionable', False),
@@ -370,12 +374,41 @@ def build_grounded_narrative_context(report, business_signals: Optional[List[Any
 
     # Multichannel Intelligence integration (BS-5D)
     mc_intel = report_data.get("multichannel_intelligence", {})
+    has_mc_data = bool(mc_intel and (mc_intel.get("has_multichannel_data") or mc_intel.get("coverage_summary") or mc_intel.get("coverage")))
+    cov_summary = (mc_intel.get("coverage_summary") or mc_intel.get("coverage", {})) if has_mc_data else {}
+    comp_metrics = cov_summary.get("comparable_metrics") or cov_summary.get("comparable_metric_count")
+    tot_metrics = cov_summary.get("total_metrics") or cov_summary.get("canonical_metric_count")
+    cov_ratio = cov_summary.get("coverage_ratio")
+
+    if has_mc_data and (comp_metrics is None or tot_metrics is None) and cov_ratio and "/" in str(cov_ratio):
+        try:
+            parts = str(cov_ratio).split("/")
+            if comp_metrics is None:
+                comp_metrics = int(parts[0].strip())
+            if tot_metrics is None:
+                tot_metrics = int(parts[1].strip())
+        except Exception:
+            pass
+
+    if has_mc_data:
+        comp_metrics = comp_metrics if comp_metrics is not None else 0
+        tot_metrics = tot_metrics if tot_metrics is not None else 15
+        cov_ratio = cov_ratio or f"{comp_metrics}/{tot_metrics}"
+        is_mc_complete = bool(mc_intel.get("multichannel_complete", False))
+        must_disclose = bool(not is_mc_complete and comp_metrics < tot_metrics)
+    else:
+        comp_metrics = None
+        tot_metrics = None
+        cov_ratio = None
+        is_mc_complete = True
+        must_disclose = False
+
     if mc_intel and mc_intel.get("has_multichannel_data"):
         ref_mc_lim = "LIMITATION-CROSS-PLATFORM-PARTIAL"
         lim_entry = {
             "ref_id": ref_mc_lim,
             "type": "CROSS_PLATFORM_DATA_LIMITATION",
-            "description": "Cross-platform data coverage is LIMITED (3 of 15 metrics comparable) due to Instagram partial mode.",
+            "description": f"Cross-platform data coverage is LIMITED ({comp_metrics} of {tot_metrics} metrics comparable) due to Instagram partial mode.",
         }
         if lim_entry["description"] not in [l['description'] for l in limitations_list]:
             limitations_list.append(lim_entry)
@@ -395,46 +428,79 @@ def build_grounded_narrative_context(report, business_signals: Optional[List[Any
         "limitations": limitations_list,
         "supported_recommendations": supported_recommendations,
         "evidence_registry": evidence_registry,
+        "allowed_evidence_ids": sorted(list(evidence_registry.keys())),
+        "multichannel_comparison_contract": {
+            "comparable_metrics_count": comp_metrics,
+            "total_canonical_metrics": tot_metrics,
+            "coverage_ratio": cov_ratio,
+            "must_disclose_ratio": must_disclose,
+            "multichannel_complete": is_mc_complete,
+        },
         "has_sufficient_data": has_sufficient_data,
     }
     if mc_intel and mc_intel.get("has_multichannel_data"):
+        # Sanitize executive_takeaways to ensure evidence_ref points to a registered evidence ID
+        raw_takeaways = mc_intel.get("executive_takeaways", [])
+        sanitized_takeaways = []
+        for t in raw_takeaways:
+            t_copy = dict(t)
+            ref = t_copy.get("evidence_ref")
+            if ref and ref not in evidence_registry:
+                # If ref is not in registry, remap to valid registered limitation if applicable or None
+                if "COVERAGE" in t_copy.get("takeaway_type", "") and "LIMITATION-CROSS-PLATFORM-PARTIAL" in evidence_registry:
+                    t_copy["evidence_ref"] = "LIMITATION-CROSS-PLATFORM-PARTIAL"
+                elif "LIMITATION" in t_copy.get("takeaway_type", "") and "LIMITATION-CROSS-PLATFORM-PARTIAL" in evidence_registry:
+                    t_copy["evidence_ref"] = "LIMITATION-CROSS-PLATFORM-PARTIAL"
+                else:
+                    t_copy["evidence_ref"] = None
+            sanitized_takeaways.append(t_copy)
+
         context["multichannel_intelligence"] = {
             "benchmark_hash": mc_intel.get("benchmark_hash"),
             "coverage_summary": mc_intel.get("coverage_summary"),
             "platform_comparisons": mc_intel.get("platform_comparisons"),
             "limitations": mc_intel.get("limitations"),
-            "executive_takeaways": mc_intel.get("executive_takeaways"),
+            "executive_takeaways": sanitized_takeaways,
         }
+
+        # Select valid registered evidence refs for approved facts
+        cov_ref = [r for r in ["MC-SIG-8", "LIMITATION-CROSS-PLATFORM-PARTIAL", "LIMITATION-IG-PARTIAL"] if r in evidence_registry]
+        aud_ref = [r for r in ["MC-SIG-6"] if r in evidence_registry]
+        rxn_ref = [r for r in ["MC-SIG-7"] if r in evidence_registry]
+        noncomp_ref = [r for r in ["MC-SIG-9", "LIMITATION-CROSS-PLATFORM-PARTIAL"] if r in evidence_registry]
+        perm_ref = [r for r in ["MC-SIG-8", "LIMITATION-IG-PARTIAL", "LIMITATION-CROSS-PLATFORM-PARTIAL"] if r in evidence_registry]
+        perf_ref = [r for r in ["MC-SIG-7", "LIMITATION-CROSS-PLATFORM-PARTIAL"] if r in evidence_registry]
+
         context["approved_facts"] = [
             {
                 "fact_id": "FACT-MC-1",
                 "category": "COVERAGE_LIMITATION",
-                "text_es": "La comparación entre plataformas es limitada: solo 3 de 15 métricas canónicas son actualmente comparables.",
-                "evidence_refs": ["MC-SIG-8"],
+                "text_es": f"La comparación entre plataformas es limitada: solo {comp_metrics} de {tot_metrics} métricas canónicas son actualmente comparables.",
+                "evidence_refs": cov_ref[:1],
             },
             {
                 "fact_id": "FACT-MC-2",
                 "category": "AUDIENCE_CONTEXT",
-                "text_es": "Instagram registró una audiencia de 50 seguidores frente a 20 en Facebook. Esta diferencia describe tamaño de audiencia y no implica superioridad de rendimiento entre plataformas.",
-                "evidence_refs": ["MC-SIG-6"],
+                "text_es": "Instagram registró una audiencia observada frente a Facebook. FOLLOWERS_TOTAL describe tamaño de audiencia y no implica superioridad de rendimiento entre plataformas.",
+                "evidence_refs": aud_ref[:1],
             },
             {
                 "fact_id": "FACT-MC-3",
                 "category": "REACTIONS_OBSERVATION",
-                "text_es": "Instagram registró 6 reacciones frente a 0 en Facebook durante el periodo analizado. Debido a que la línea base observada en Facebook es cero, no se expresa una variación porcentual.",
-                "evidence_refs": ["MC-SIG-7"],
+                "text_es": "Cuando una plataforma registra actividad frente a una línea base de cero en otra plataforma durante el periodo analizado, debido a que la línea base observada es cero, no se expresa una variación porcentual.",
+                "evidence_refs": rxn_ref[:1],
             },
             {
                 "fact_id": "FACT-MC-4",
                 "category": "UNAVAILABLE_METRICS",
-                "text_es": "Diez métricas no están disponibles para una comparación completa con la configuración actual del proveedor, y dos métricas adicionales no son semánticamente comparables entre Facebook e Instagram.",
-                "evidence_refs": ["MC-SIG-8"],
+                "text_es": "Las métricas no provistas por la integración con la configuración actual del proveedor no se utilizan para evaluación directa entre plataformas.",
+                "evidence_refs": cov_ref[:1],
             },
             {
                 "fact_id": "FACT-MC-5",
                 "category": "NON_COMPARABLE_METRICS",
-                "text_es": "SAVES y VIDEO_VIEWS no se comparan directamente entre Facebook e Instagram debido a diferencias en las definiciones y disponibilidad de proveedor.",
-                "evidence_refs": ["MC-SIG-9"],
+                "text_es": "SAVES y VIDEO_VIEWS no se comparan directamente entre plataformas debido a diferencias en las definiciones y disponibilidad de proveedor.",
+                "evidence_refs": noncomp_ref[:1],
             },
             {
                 "fact_id": "FACT-MC-6",
@@ -442,7 +508,7 @@ def build_grounded_narrative_context(report, business_signals: Optional[List[Any
                 "recommendation_type": "REVIEW_PROVIDER_PERMISSIONS",
                 "strength": "OBSERVE",
                 "text_es": "Revisar los permisos y capacidades de integración del proveedor para ampliar la cobertura de métricas comparables.",
-                "evidence_refs": ["MC-SIG-8"],
+                "evidence_refs": perm_ref[:1],
             },
             {
                 "fact_id": "FACT-MC-7",
@@ -450,7 +516,7 @@ def build_grounded_narrative_context(report, business_signals: Optional[List[Any
                 "recommendation_type": "REVIEW_PLATFORM_PERFORMANCE",
                 "strength": "OBSERVE",
                 "text_es": "Revisar el desempeño por plataforma con mayor profundidad a medida que se acumule una muestra más amplia de métricas comparables.",
-                "evidence_refs": ["MC-SIG-7"],
+                "evidence_refs": perf_ref[:1],
             },
         ]
 

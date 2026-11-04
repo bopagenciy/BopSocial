@@ -18,10 +18,10 @@ from .schemas import (
 def _extract_all_numbers(text: str) -> Set[float]:
     """
     Extracts all numeric values (integers, floats, percentages) from a string.
-    Normalizes commas/periods.
+    Normalizes commas/periods. Does not treat hyphens between digits as negative signs.
     """
     cleaned = text.replace(",", "")
-    matches = re.findall(r"(?<![a-zA-Z_])[-+]?\d*\.?\d+(?:%)?", cleaned)
+    matches = re.findall(r"(?<![a-zA-Z0-9_])[-+]?\d*\.?\d+(?:%)?", cleaned)
     numbers = set()
     for m in matches:
         raw = m.rstrip("%")
@@ -33,30 +33,73 @@ def _extract_all_numbers(text: str) -> Set[float]:
     return numbers
 
 
+def _strip_structural_syntax(text: str) -> str:
+    """
+    Strips non-business structural syntax from narrative text prior to fact-lock validation.
+    Separates structural markers (array positions, step/recommendation labels, section markers,
+    reference tokens, schema versions) from factual business performance claims.
+    """
+    # 1. Alphanumeric hyphenated/underscored IDs and references (e.g., SIG-1, MC-SIG-1, REC-1, RULE-2)
+    s = re.sub(r"\b[A-Za-z]+(?:[-_][A-Za-z0-9]+)+\b", " ", text)
+
+    # 2. Schema and pipeline version identifiers (e.g., schema_version: 1, v1, v2, v3, v4)
+    s = re.sub(r"\bschema_version\s*[:=]?\s*\d+\b", " ", s, flags=re.IGNORECASE)
+    s = re.sub(r"\bv\d+\b", " ", s, flags=re.IGNORECASE)
+
+    # 3. Structural headers / ordinal labels (e.g., Recomendación 1, Paso 2, Item 3, Prioridad 1)
+    s = re.sub(
+        r"\b(?:recomendaci[oó]n|recommendation|paso|step|punto|item|fase|phase|nivel|level|prioridad|priority|opci[oó]n|option|secci[oó]n|section|versi[oó]n|version|regla|rule)\s+\d+\b",
+        " ",
+        s,
+        flags=re.IGNORECASE,
+    )
+
+    # 4. Dates in YYYY-MM-DD format (e.g., 2026-09-01)
+    s = re.sub(r"\b\d{4}-\d{2}-\d{2}\b", " ", s)
+
+    # 4. Ordered list / bullet markers at the beginning of lines or sentences (e.g., '1. ', '2) ', '[1] ')
+    s = re.sub(r"(?:^|(?<=[.!?;\n]))\s*\[?\d+[\x5c.\x5c)\]]\s+", " ", s)
+
+    # 5. Citation / reference brackets (e.g. '[1]', '(1)')
+    s = re.sub(r"\[\d+\]|\(\d+\)", " ", s)
+
+    return s
+
+
+def _extract_business_numbers(text: str) -> Set[float]:
+    """
+    Extracts numeric values that represent factual business claims,
+    excluding non-business structural numbers.
+    """
+    stripped = _strip_structural_syntax(text)
+    return _extract_all_numbers(stripped)
+
+
 def _collect_context_numbers(context: Dict[str, Any]) -> Set[float]:
     """
     Recursively collects all numeric values present in the grounded context.
-    Also includes standard allowable reference integers (1-10) and dates.
+    Extracts explicit metric values, counts, percentages, and metadata numbers.
+    Does NOT include generic small-integer whitelist (1..10), entity database IDs,
+    or calendar date components.
     """
     context_numbers = set()
 
-    def _walk(obj):
+    def _walk(obj, key=None):
+        if key in ("id", "client_id", "signal_id", "schema_version", "context_schema_version", "evidence_refs", "source_hash", "context_hash", "multichannel_comparison_contract"):
+            return
         if isinstance(obj, (int, float)):
             context_numbers.add(float(obj))
         elif isinstance(obj, str):
-            for n in _extract_all_numbers(obj):
+            for n in _extract_business_numbers(obj):
                 context_numbers.add(n)
         elif isinstance(obj, dict):
             for k, v in obj.items():
-                _walk(v)
+                _walk(v, key=k)
         elif isinstance(obj, (list, tuple, set)):
             for item in obj:
-                _walk(item)
+                _walk(item, key=key)
 
     _walk(context)
-    # Allow natural reference indexes 1 through 10
-    for i in range(1, 11):
-        context_numbers.add(float(i))
     return context_numbers
 
 
@@ -124,6 +167,38 @@ METRIC_ALIASES: Dict[str, List[str]] = {
         r"\bclics\b",
     ],
 }
+
+# Natural-language phrases where 'alcance' denotes qualitative scope/extent rather than
+# the canonical metric REACH. These are masked before evaluating REACH metric mentions.
+# Note: Explicit references to the metric (e.g., 'métrica de alcance', 'REACH', 'alcance no disponible')
+# must remain unmasked.
+NON_METRIC_ALCANCE_PATTERNS: List[str] = [
+    r"\balcance\s+de\s+(?:la\s+|nuestra\s+)?comunidad\b",
+    r"\balcance\s+de(?:l|\s+este|\s+nuestro|\s+el)?\s+an[aá]lisis\b",
+    r"\balcance\s+de(?:l|\s+este|\s+nuestro|\s+el)?\s+(?:informe|reporte|estudio|documento|trabajo)\b",
+    r"\balcance\s+de\s+(?:esta\s+|nuestra\s+|la\s+|las\s+)?recomendaci[oó]n(?:es)?\b",
+    r"\balcance\s+de\s+(?:la\s+|esta\s+)?evaluaci[oó]n\b",
+    r"\balcance\s+de\s+(?:la\s+|esta\s+)?auditor[ií]a\b",
+    r"\balcance\s+(?:limitado\s+)?de(?:l|\s+este)?\s+(?:informe|reporte|an[aá]lisis)\b",
+    r"\b(?:fuera|dentro)\s+del\s+alcance\b",
+    r"\ben\s+el\s+alcance\s+de\b",
+    r"\balcance\s+temporal\b",
+    r"\balcance\s+geogr[aá]fico\b",
+]
+
+
+def _mask_non_metric_language(sentence: str) -> str:
+    """
+    Masks natural-language uses of words that collide with canonical metric names,
+    such as Spanish 'alcance' when used to mean qualitative scope/extent
+    (e.g., 'alcance de la comunidad', 'alcance del análisis', 'alcance de las recomendaciones').
+    Preserves explicit metric references (e.g., 'métrica de alcance', 'REACH', 'alcance registrado').
+    """
+    s = sentence
+    for pat in NON_METRIC_ALCANCE_PATTERNS:
+        s = re.sub(pat, " ", s, flags=re.IGNORECASE)
+    return s
+
 
 AVAILABLE_METRIC_ALIASES: Dict[str, List[str]] = {
     "followers_total": [r"\bfollowers\b", r"\bseguidores\b"],
@@ -434,9 +509,9 @@ class NarrativeValidator:
 
         # 2. Fact Lock: Validate numbers against context
         context_numbers = _collect_context_numbers(context)
-        output_numbers = _extract_all_numbers(full_text)
+        output_numbers = _extract_business_numbers(full_text)
         unsupported_numbers = []
-        for num in output_numbers:
+        for num in sorted(output_numbers):
             # Check if num or close approximation exists in context numbers
             if not any(abs(num - c_num) < 0.001 for c_num in context_numbers):
                 unsupported_numbers.append(num)
@@ -491,7 +566,8 @@ class NarrativeValidator:
 
                 # 2. Claiming an unavailable metric is unavailable on a platform where it IS available
                 for m_key, patterns in METRIC_ALIASES.items():
-                    if any(re.search(pat, sent_lower) for pat in patterns):
+                    check_text = _mask_non_metric_language(sent_lower) if m_key == "reach" else sent_lower
+                    if any(re.search(pat, check_text) for pat in patterns):
                         if any(re.search(p, sent_lower) for p in NON_COMPARABLE_PATTERNS):
                             continue
                         for p_name, cap in platform_capabilities.items():
@@ -506,7 +582,8 @@ class NarrativeValidator:
                 if m_key not in all_unavailable:
                     continue
 
-                metric_matched = any(re.search(pat, sent_lower) for pat in patterns)
+                check_text = _mask_non_metric_language(sent_lower) if m_key == "reach" else sent_lower
+                metric_matched = any(re.search(pat, check_text) for pat in patterns)
                 if not metric_matched:
                     continue
 
@@ -606,7 +683,10 @@ class NarrativeValidator:
             r"\bthis proves\b",
             r"\bthis strategy drove\b",
             r"\bcausó\b",
+            r"\bcausado por\b",
             r"\bprovocó\b",
+            r"\bprovocado por\b",
+            r"\bimpulsado por\b",
             r"\btu audiencia prefiere\b",
             r"\besto demuestra\b",
             r"\besta estrategia impulsó\b",
@@ -615,9 +695,18 @@ class NarrativeValidator:
             r"\bdebido a la creatividad\b",
             r"\bdebido a las publicaciones\b",
             r"\bdebido al contenido\b",
+            r"\bdebido a la campaña\b",
+            r"\bdebido a las campañas\b",
+            r"\bdebido a la publicidad\b",
+            r"\bdebido al algoritmo\b",
+            r"\bgracias a la estrategia\b",
+            r"\bgracias a las campañas\b",
+            r"\bgracias al contenido\b",
+            r"\bgracias a las publicaciones\b",
             r"\bdebido a que su contenido\b",
             r"\bdebido a que la calidad\b",
             r"\bdebido a que la estrategia\b",
+            r"\bdebido a que la campaña\b",
         ]
         for pattern in unsupported_causal_tokens:
             if re.search(pattern, full_text_lower):
@@ -626,15 +715,27 @@ class NarrativeValidator:
 
         # Check connectives: allow definitional/mathematical explanations, reject performance attribution
         approved_definitional_causal_patterns = [
+            # Zero-baseline arithmetic / mathematical limitations
+            r"(?:debido a que|porque|ya que|because)\s+(?:cualquier\s+|la\s+)?l[ií]nea\s+base(?:\s+observada)?(?:\s+en\s+\w+)?(?:\s+en\s+cero|\s+es\s+cero|\s+de\s+cero)?\s+(?:es\s+cero|no\s+permite\s+c[aá]lculo(?:\s+relativo)?|impide\s+el\s+c[aá]lculo|no\s+se\s+puede\s+calcular|no\s+admite\s+c[aá]lculo)",
+            r"(?:debido a que|porque|ya que|because)\s+(?:cualquier\s+|la\s+)?l[ií]nea\s+base\s+en\s+cero\s+no\s+permite\s+c[aá]lculo(?:\s+relativo)?",
             r"(?:debido a que|porque|ya que|because)\s+(?:la\s+)?l[ií]nea\s+base(?:\s+observada)?(?:\s+en\s+\w+)?\s+es\s+cero",
             r"(?:debido a que|porque|ya que|because)\s+la\s+línea\s+base\s+observada\s+es\s+cero",
+            r"(?:debido a que|porque|ya que|because)\s+(?:una\s+de\s+las\s+plataformas\s+(?:tiene|presenta|registra)\s+)?l[ií]nea\s+base\s+(?:en\s+|de\s+)?cero",
+            r"(?:debido a que|porque|ya que|because)\s+la\s+divisi[oó]n\s+por\s+cero\s+no\s+est[aá]\s+definida",
+            # Metric classification / nature of metric
             r"(?:debido a que|porque|ya que|because)\s+(?:se\s+trata\s+de\s+|es\s+)?(?:una\s+)?m[eé]trica\s+de\s+(?:escala|volumen|audiencia)",
             r"(?:debido a que|porque|ya que|because)\s+followers_total\s+es\s+(?:una\s+)?m[eé]trica\s+de\s+volumen",
             r"(?:debido a que|porque|ya que|because)\s+se\s+trata\s+de\s+una\s+m[eé]trica\s+de\s+escala\s+absoluta",
-            r"(?:debido a que|porque|ya que|because)\s+(?:existen\s+|se\s+observan\s+)?(?:las\s+)?diferencias\s+en\s+las\s+definiciones",
+            # Cross-platform definitional / semantic differences
+            r"(?:debido a que|porque|ya que|because)\s+(?:existen\s+|se\s+observan\s+)?(?:las\s+)?diferencias\s+en\s+las\s+definiciones(?:\s+y\s+disponibilidad(?:\s+de\s+proveedor)?)?",
             r"(?:debido a que|porque|ya que|because)\s+(?:existen\s+|se\s+observan\s+)?diferencias\s+(?:sem[aá]nticas|de\s+definici[oó]n)",
+            r"(?:debido a que|porque|ya que|because)\s+(?:las\s+plataformas\s+)?miden\s+acciones\s+distintas",
+            # Integration / provider / capability constraints
             r"(?:debido a que|porque|ya que|because)\s+restricciones\s+de\s+api",
-            r"(?:debido a que|porque|ya que|because)\s+la\s+configuraci[oó]n\s+actual\s+del\s+proveedor",
+            r"(?:debido a que|porque|ya que|because)\s+(?:a\s+)?la\s+configuraci[oó]n\s+actual\s+del\s+proveedor",
+            r"(?:debido a que|porque|ya que|because)\s+(?:las\s+m[eé]tricas\s+)?no\s+(?:est[aá]n|fueron|son)\s+(?:provistas|suministradas|disponibles|reportadas)\s+por\s+la\s+integraci[oó]n",
+            r"(?:debido a que|porque|ya que|because)\s+(?:la\s+integraci[oó]n|la\s+configuraci[oó]n|el\s+proveedor)\s+(?:opera\s+en|presenta|tiene)\s+(?:modo\s+de\s+)?capacidad\s+parcial",
+            r"(?:debido a que|porque|ya que|because)\s+(?:los\s+permisos\s+actuales|las\s+restricciones\s+de\s+api)\s+no\s+(?:permiten|incluyen|exponen)",
         ]
 
         connective_patterns = [
@@ -762,8 +863,32 @@ class NarrativeValidator:
 
         # Gate G: Limitation Preservation Lock (Section AY, BS-5E.1C Numeric Semantic Recognition)
         mc_intel = context.get("multichannel_intelligence", {})
-        cov_summary = mc_intel.get("coverage_summary") or mc_intel.get("coverage", {})
-        is_limited_coverage = cov_summary.get("status") == "LIMITED" or (cov_summary.get("coverage_ratio") == "3/15")
+        contract = context.get("multichannel_comparison_contract", {})
+        has_mc = bool(mc_intel and (mc_intel.get("has_multichannel_data") or mc_intel.get("coverage_summary") or mc_intel.get("coverage"))) or bool(contract and contract.get("coverage_ratio"))
+        if not has_mc:
+            cov_summary = {}
+            expected_comp = None
+            expected_total = None
+            cov_ratio_str = ""
+            is_limited_coverage = False
+        else:
+            cov_summary = mc_intel.get("coverage_summary") or mc_intel.get("coverage", {})
+            expected_comp = contract.get("comparable_metrics_count") if "comparable_metrics_count" in contract and contract.get("comparable_metrics_count") is not None else (cov_summary.get("comparable_metrics") or cov_summary.get("comparable_metric_count"))
+            expected_total = contract.get("total_canonical_metrics") if "total_canonical_metrics" in contract and contract.get("total_canonical_metrics") is not None else (cov_summary.get("total_metrics") or cov_summary.get("canonical_metric_count") or 15)
+            cov_ratio_str = contract.get("coverage_ratio") or cov_summary.get("coverage_ratio", "")
+            if (expected_comp is None or expected_comp == 0) and cov_ratio_str and "/" in str(cov_ratio_str):
+                try:
+                    parts = str(cov_ratio_str).split("/")
+                    expected_comp = int(parts[0].strip())
+                    expected_total = int(parts[1].strip())
+                except Exception:
+                    pass
+            is_limited_coverage = (
+                cov_summary.get("status") == "LIMITED"
+                or contract.get("must_disclose_ratio")
+                or (expected_comp is not None and expected_total is not None and expected_comp < expected_total)
+                or cov_ratio_str in ("3/15", "0/15")
+            )
         has_cross_platform_claim = False
         cross_platform_claim_terms = [
             r"\bfrente\s+a\b",
@@ -784,7 +909,24 @@ class NarrativeValidator:
                     has_cross_platform_claim = True
                     break
 
-        if is_limited_coverage and has_cross_platform_claim:
+        # Zero comparable metrics safety guard:
+        if has_mc and (expected_comp == 0 or cov_ratio_str == "0/15") and has_cross_platform_claim:
+            errors.append(
+                "Comparability lock failed: Cross-platform performance comparison claimed, but 0 comparable metrics exist between platforms for this period."
+            )
+
+        # Comparable ratio contradiction check:
+        ratio_matches = re.findall(r"(\d+)\s*(?:/|de)\s*(?:las\s+|un\s+total\s+de\s+)?(\d+)(?:\s+m[eé]tricas)?", full_text_lower)
+        for rm_comp, rm_tot in ratio_matches:
+            stated_comp = int(rm_comp)
+            stated_tot = int(rm_tot)
+            if expected_comp is not None and (stated_comp != expected_comp or (expected_total is not None and stated_tot != expected_total)):
+                errors.append(
+                    f"Limitation preservation lock failed: Stated comparable count ({stated_comp}/{stated_tot}) contradicts context benchmark coverage ({expected_comp}/{expected_total})."
+                )
+                break
+
+        if is_limited_coverage and has_cross_platform_claim and expected_comp != 0:
             # Check coverage disclosure across limitations, executive_summary, and structured disclosure
             coverage_search_texts = list(output.get("limitations", [])) + list(output.get("executive_summary", []))
             if "cross_platform_coverage_disclosure" in output and isinstance(output["cross_platform_coverage_disclosure"], dict):
@@ -793,12 +935,29 @@ class NarrativeValidator:
                     coverage_search_texts.append(stmt)
             coverage_text = " ".join(coverage_search_texts).lower()
 
+            comp_num = str(expected_comp) if expected_comp is not None else "3"
+            tot_num = str(expected_total) if expected_total is not None else "15"
+            word_map_es = {
+                0: "cero", 1: "una?", 2: "dos", 3: "tres", 4: "cuatro", 5: "cinco",
+                6: "seis", 7: "siete", 8: "ocho", 9: "nueve", 10: "diez",
+                11: "once", 12: "doce", 13: "trece", 14: "catorce", 15: "quince"
+            }
+            word_map_en = {
+                0: "zero", 1: "one", 2: "two", 3: "three", 4: "four", 5: "five",
+                6: "six", 7: "seven", 8: "eight", 9: "nine", 10: "ten",
+                11: "eleven", 12: "twelve", 13: "thirteen", 14: "fourteen", 15: "fifteen"
+            }
+            comp_es = f"(?:{comp_num}|{word_map_es.get(expected_comp, comp_num)})"
+            tot_es = f"(?:{tot_num}|{word_map_es.get(expected_total, tot_num)})"
+            comp_en = f"(?:{comp_num}|{word_map_en.get(expected_comp, comp_num)})"
+            tot_en = f"(?:{tot_num}|{word_map_en.get(expected_total, tot_num)})"
+
             coverage_ratio_semantic_regex = re.compile(
-                r"(?:"
-                r"3\s*/\s*15"
-                r"|(?:solo\s+)?(?:3|tres)\s+de\s+(?:las\s+|un\s+total\s+de\s+)?(?:15|quince)(?:\s+m[eé]tricas)?"
-                r"|(?:only\s+)?(?:3|three)\s+of\s+(?:the\s+)?(?:15|fifteen)(?:\s+metrics)?"
-                r")",
+                rf"(?:"
+                rf"{comp_num}\s*/\s*{tot_num}"
+                rf"|(?:solo\s+)?{comp_es}\s+de\s+(?:las\s+|un\s+total\s+de\s+)?{tot_es}(?:\s+m[eé]tricas)?"
+                rf"|(?:only\s+)?{comp_en}\s+of\s+(?:the\s+)?{tot_en}(?:\s+metrics)?"
+                rf")",
                 re.IGNORECASE
             )
 
@@ -808,7 +967,7 @@ class NarrativeValidator:
 
             if not preserves_limitation:
                 errors.append(
-                    "Limitation preservation lock failed: Cross-platform performance claim made without preserving the limited data coverage limitation (3/15 comparable metrics)."
+                    f"Limitation preservation lock failed: Cross-platform performance claim made without preserving the limited data coverage limitation ({expected_comp}/{expected_total} comparable metrics)."
                 )
 
         # Gate H: Language Contract Lock (Section AZ, AL)
@@ -875,13 +1034,28 @@ class NarrativeValidator:
             checks["multichannel_safety"] = True
 
         # 7. Recommendations Grounding & Evidence Refs
+        rep_meta = context.get("report", {})
+        rep_p_start = str(rep_meta.get("period_start", ""))
+        rep_p_end = str(rep_meta.get("period_end", ""))
         for idx, rec in enumerate(recs):
             rec_refs = rec.get("evidence_refs", [])
             for ref in rec_refs:
                 if ref not in evidence_registry:
                     errors.append(f"Recommendation evidence failed: Recommendation #{idx + 1} cites non-existent reference '{ref}'.")
+                else:
+                    ev_node = evidence_registry[ref]
+                    ev_start = str(ev_node.get("period_start", "")) if ev_node.get("period_start") else ""
+                    ev_end = str(ev_node.get("period_end", "")) if ev_node.get("period_end") else ""
+                    if ev_start and rep_p_start and ev_start < rep_p_start:
+                        errors.append(
+                            f"Evidence period mismatch failed: Reference '{ref}' period_start ({ev_start}) precedes target report period ({rep_p_start})."
+                        )
+                    if ev_end and rep_p_end and ev_end > rep_p_end:
+                        errors.append(
+                            f"Evidence period mismatch failed: Reference '{ref}' period_end ({ev_end}) exceeds target report period ({rep_p_end})."
+                        )
 
-        if not any("Recommendation evidence failed" in e for e in errors):
+        if not any("Recommendation evidence failed" in e or "Evidence period mismatch failed" in e for e in errors):
             checks["recommendations_grounded"] = True
 
         # Final verdict

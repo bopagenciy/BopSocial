@@ -43,7 +43,7 @@ def derive_recommendation_confidence(
 
         if ev_type == "DATA_LIMITATION":
             # Verified system limitations carry deterministic HIGH confidence
-            c = ev.get("confidence", "HIGH")
+            c = ev.get("confidence") or "HIGH"
         elif ev_type in ("BUSINESS_SIGNAL", "MULTICHANNEL_SIGNAL"):
             c = ev.get("confidence") or ev.get("confidence_level") or "NONE"
         else:

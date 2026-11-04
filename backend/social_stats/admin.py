@@ -8,7 +8,7 @@
 # ============================================================================
 from django.contrib import admin
 from .models import (
-    SocialMetricSnapshot, SocialMetricRollup, BusinessSignal, ExecutiveReport,
+    SocialMetricSnapshot, SocialMetricRollup, BusinessSignal, ExecutiveReport, ExecutiveNarrative, IntelligenceAutomationConfig, IntelligenceAutomationRun,
     Client, UserProfile, PlatformCredential, DailyMetric, PostMetric, SyncLog,
     ROISettings, ROIReport,
     CalendarPost, CalendarNote, PostingSchedule, SiteContent, LookupCollection, LookupItem,
@@ -38,8 +38,8 @@ class DailyMetricAdmin(admin.ModelAdmin):
 
 @admin.register(SyncLog)
 class SyncLogAdmin(admin.ModelAdmin):
-    list_display = ['client', 'platform', 'status', 'records_synced', 'started_at']
-    list_filter = ['platform', 'status']
+    list_display = ['client', 'platform', 'sync_scope', 'status', 'period_start', 'period_end', 'records_synced', 'started_at', 'finished_at']
+    list_filter = ['platform', 'sync_scope', 'status']
 
 
 @admin.register(ROISettings)
@@ -137,3 +137,61 @@ class ExecutiveReportAdmin(admin.ModelAdmin):
     list_filter = ['report_type', 'language', 'status']
     search_fields = ['client__company', 'title', 'source_hash']
     readonly_fields = ['source_hash', 'created_at', 'updated_at']
+
+
+@admin.register(ExecutiveNarrative)
+class ExecutiveNarrativeAdmin(admin.ModelAdmin):
+    list_display = ['id', 'client', 'executive_report', 'status', 'provider', 'model_name', 'prompt_version', 'validation_status', 'generated_at']
+    list_filter = ['status', 'validation_status', 'provider', 'language']
+    search_fields = ['client__name', 'client__company', 'source_hash', 'context_hash']
+    readonly_fields = ['source_hash', 'context_hash', 'created_at', 'updated_at']
+
+
+@admin.register(IntelligenceAutomationConfig)
+class IntelligenceAutomationConfigAdmin(admin.ModelAdmin):
+    list_display = ['client', 'enabled', 'timezone', 'reporting_frequency', 'reporting_day', 'reporting_hour', 'minimum_period_coverage_percent', 'generate_report', 'generate_narrative', 'require_operator_approval', 'provider_call_budget', 'updated_at']
+    list_filter = ['enabled', 'reporting_frequency', 'generate_report', 'generate_narrative', 'require_operator_approval']
+    search_fields = ['client__name', 'client__company', 'timezone']
+    readonly_fields = ['created_at', 'updated_at']
+
+
+@admin.register(IntelligenceAutomationRun)
+class IntelligenceAutomationRunAdmin(admin.ModelAdmin):
+    list_display = [
+        'id', 'client', 'status', 'approval_status', 'current_stage',
+        'period_start', 'period_end', 'trigger_type', 'provider_call_count',
+        'approval_requested_at', 'approved_by', 'approval_decided_at',
+        'started_at', 'finished_at',
+    ]
+    list_filter = ['status', 'approval_status', 'current_stage', 'trigger_type', 'dry_run']
+    search_fields = ['client__name', 'client__company', 'execution_identity', 'error_code']
+    readonly_fields = [
+        'execution_identity', 'approval_token', 'approval_requested_at',
+        'approval_decided_at', 'approved_by', 'started_at', 'finished_at',
+        'created_at', 'updated_at',
+    ]
+    actions = ['approve_selected_runs', 'reject_selected_runs']
+
+    @admin.action(description="Approve selected runs awaiting approval")
+    def approve_selected_runs(self, request, queryset):
+        from .analytics.automation.approval import approve_intelligence_run, ApprovalError
+        count = 0
+        for run in queryset.filter(status='AWAITING_APPROVAL', approval_status='PENDING'):
+            try:
+                approve_intelligence_run(run.id, request.user, comment="Admin action approval")
+                count += 1
+            except ApprovalError as exc:
+                self.message_user(request, f"Run #{run.id} failed: {exc}", level='error')
+        self.message_user(request, f"Successfully approved {count} run(s).")
+
+    @admin.action(description="Reject selected runs awaiting approval")
+    def reject_selected_runs(self, request, queryset):
+        from .analytics.automation.approval import reject_intelligence_run, ApprovalError
+        count = 0
+        for run in queryset.filter(status='AWAITING_APPROVAL', approval_status='PENDING'):
+            try:
+                reject_intelligence_run(run.id, request.user, comment="Admin action rejection")
+                count += 1
+            except ApprovalError as exc:
+                self.message_user(request, f"Run #{run.id} failed: {exc}", level='error')
+        self.message_user(request, f"Successfully rejected {count} run(s).")

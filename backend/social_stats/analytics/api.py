@@ -1396,3 +1396,114 @@ class MultichannelSignalPersistView(AnalyticsBaseView):
             logger.exception(f"Error persisting multichannel signals: {e}")
             return Response({"error": "Internal error persisting multichannel signals"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
+
+class AutomationRunApproveView(AnalyticsBaseView):
+    """
+    POST /api/analytics/automation/runs/<run_id>/approve/
+    Operator approval endpoint for runs in AWAITING_APPROVAL status.
+    """
+    def post(self, request, pk: int):
+        from social_stats.models import IntelligenceAutomationRun
+        from .automation.approval import approve_intelligence_run, ApprovalError, AuthorizationError, DoubleApprovalError, StaleApprovalError
+
+        run = IntelligenceAutomationRun.objects.filter(id=pk).first()
+        if not run:
+            return Response({"error": f"Automation run #{pk} not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        client = self.validate_client(request, run.client_id)
+        if not client:
+            return Response({"error": "Unauthorized tenant access."}, status=status.HTTP_403_FORBIDDEN)
+
+        comment = request.data.get("comment", "")
+        try:
+            updated_run = approve_intelligence_run(run.id, request.user, comment=comment)
+            return Response({
+                "run_id": updated_run.id,
+                "status": updated_run.status,
+                "approval_status": updated_run.approval_status,
+                "approval_decided_at": updated_run.approval_decided_at.isoformat() if updated_run.approval_decided_at else None,
+                "approval_token": updated_run.approval_token,
+            }, status=status.HTTP_200_OK)
+        except DoubleApprovalError as e:
+            return Response({"error": str(e)}, status=status.HTTP_409_CONFLICT)
+        except AuthorizationError as e:
+            return Response({"error": str(e)}, status=status.HTTP_403_FORBIDDEN)
+        except (ApprovalError, StaleApprovalError) as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.exception(f"Error approving automation run #{pk}: {e}")
+            return Response({"error": "Internal error approving run."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class AutomationRunRejectView(AnalyticsBaseView):
+    """
+    POST /api/analytics/automation/runs/<run_id>/reject/
+    Operator rejection endpoint for runs in AWAITING_APPROVAL status.
+    """
+    def post(self, request, pk: int):
+        from social_stats.models import IntelligenceAutomationRun
+        from .automation.approval import reject_intelligence_run, ApprovalError, AuthorizationError
+
+        run = IntelligenceAutomationRun.objects.filter(id=pk).first()
+        if not run:
+            return Response({"error": f"Automation run #{pk} not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        client = self.validate_client(request, run.client_id)
+        if not client:
+            return Response({"error": "Unauthorized tenant access."}, status=status.HTTP_403_FORBIDDEN)
+
+        comment = request.data.get("comment", "")
+        try:
+            updated_run = reject_intelligence_run(run.id, request.user, comment=comment)
+            return Response({
+                "run_id": updated_run.id,
+                "status": updated_run.status,
+                "approval_status": updated_run.approval_status,
+                "approval_decided_at": updated_run.approval_decided_at.isoformat() if updated_run.approval_decided_at else None,
+            }, status=status.HTTP_200_OK)
+        except AuthorizationError as e:
+            return Response({"error": str(e)}, status=status.HTTP_403_FORBIDDEN)
+        except ApprovalError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.exception(f"Error rejecting automation run #{pk}: {e}")
+            return Response({"error": "Internal error rejecting run."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class AutomationRunResumeView(AnalyticsBaseView):
+    """
+    POST /api/analytics/automation/runs/<run_id>/resume/
+    Operator controlled resume endpoint up to provider boundary.
+    """
+    def post(self, request, pk: int):
+        from social_stats.models import IntelligenceAutomationRun
+        from .automation.approval import resume_approved_intelligence_run, ApprovalError, AuthorizationError
+        from .automation.locking import ConcurrencyLockError
+
+        run = IntelligenceAutomationRun.objects.filter(id=pk).first()
+        if not run:
+            return Response({"error": f"Automation run #{pk} not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        client = self.validate_client(request, run.client_id)
+        if not client:
+            return Response({"error": "Unauthorized tenant access."}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            resumed_run = resume_approved_intelligence_run(run.id, request.user)
+            return Response({
+                "run_id": resumed_run.id,
+                "status": resumed_run.status,
+                "current_stage": resumed_run.current_stage,
+                "provider_call_count": resumed_run.provider_call_count,
+                "metadata": resumed_run.metadata,
+            }, status=status.HTTP_200_OK)
+        except ConcurrencyLockError as e:
+            return Response({"error": str(e)}, status=status.HTTP_409_CONFLICT)
+        except AuthorizationError as e:
+            return Response({"error": str(e)}, status=status.HTTP_403_FORBIDDEN)
+        except ApprovalError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.exception(f"Error resuming automation run #{pk}: {e}")
+            return Response({"error": "Internal error resuming run."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

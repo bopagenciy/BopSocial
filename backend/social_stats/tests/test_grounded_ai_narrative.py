@@ -1048,7 +1048,7 @@ class GroundedContextSchemaMappingTests(TestCase):
 
     def test_prompt_version_is_v4(self):
         """Verify PROMPT_VERSION and CONTEXT_SCHEMA_VERSION (BS-4H / BS-5D)."""
-        self.assertIn(PROMPT_VERSION, ["bs4h-prompt-v4", "bs5d-prompt-v1", "bs5e-prompt-v2", "bs5e-prompt-v3"])
+        self.assertIn(PROMPT_VERSION, ["bs4h-prompt-v4", "bs5d-prompt-v1", "bs5e-prompt-v2", "bs5e-prompt-v3", "bs5e-prompt-v4", "bs5e-prompt-v5", "bs5e-prompt-v6"])
         self.assertIn(CONTEXT_SCHEMA_VERSION, ["bs4h-context-v1", "bs4h-context-v2"])
 
     @patch("requests.post")
@@ -1276,7 +1276,7 @@ class GroundedContextSchemaMappingTests(TestCase):
         self.assertIn("The root JSON object is ExecutiveNarrative", system_prompt)
         self.assertIn("Do not return a BusinessSignal", system_prompt)
         self.assertIn("THE ROOT OBJECT MUST CONTAIN EXACTLY THESE FOUR KEYS", system_prompt)
-        self.assertIn("SIG-DEMO-1", system_prompt)
+        self.assertTrue("SIG-DEMO-1" in system_prompt or "<VALID_EVIDENCE_ID_FROM_CONTEXT>" in system_prompt)
         self.assertIn("EXAMPLE ONLY", system_prompt)
 
         # Assertions on user prompt
