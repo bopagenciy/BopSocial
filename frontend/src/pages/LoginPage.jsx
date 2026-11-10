@@ -53,8 +53,9 @@ export default function LoginPage() {
 
   function validate() {
     const e = {};
-    if (!email.trim()) e.email = t('login.validation.email_required', 'Email is required.');
-    else if (!/\S+@\S+\.\S+/.test(email)) e.email = t('login.validation.email_invalid', 'Enter a valid email address.');
+    const trimmed = email.trim();
+    if (!trimmed) e.email = t('login.validation.email_required', 'Email is required.');
+    else if (!/\S+@\S+\.\S+/.test(trimmed)) e.email = t('login.validation.email_invalid', 'Enter a valid email address.');
     if (!password.trim()) e.password = t('login.validation.password_required', 'Password is required.');
     if (!accepted) e.terms = t('login.validation.terms_required', 'You must accept the Terms of Service and Privacy Policy.');
     setErrors(e);
@@ -136,7 +137,7 @@ export default function LoginPage() {
     ev.preventDefault();
     setServerError('');
     if (!validate()) return;
-    await doLogin(email, password, accepted);
+    await doLogin(email.trim().toLowerCase(), password, accepted);
   }
 
   async function signInAsDemo(demoEmail) {

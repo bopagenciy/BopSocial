@@ -33,6 +33,31 @@ from .serializers import (
 
 # ── Custom JWT: include role + client_id in token ─────────────────────────────
 class CustomTokenSerializer(TokenObtainPairSerializer):
+    def validate(self, attrs):
+        raw_username = attrs.get(self.username_field)
+        if not raw_username and hasattr(self, 'initial_data') and 'email' in self.initial_data:
+            raw_username = self.initial_data.get('email')
+
+        if isinstance(raw_username, str):
+            clean_username = raw_username.strip()
+            resolved_user = None
+            try:
+                resolved_user = User.objects.get(username__iexact=clean_username)
+            except User.DoesNotExist:
+                try:
+                    resolved_user = User.objects.get(email__iexact=clean_username)
+                except (User.DoesNotExist, User.MultipleObjectsReturned):
+                    pass
+            except User.MultipleObjectsReturned:
+                pass
+
+            if resolved_user:
+                attrs[self.username_field] = resolved_user.username
+            else:
+                attrs[self.username_field] = clean_username.lower()
+
+        return super().validate(attrs)
+
     @classmethod
     def get_token(cls, user):
         token = super().get_token(user)
@@ -85,33 +110,47 @@ class LoginView(TokenObtainPairView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Check for unverified email/password accounts before simplejwt rejects them
-        username = request.data.get('username', '').strip().lower()
-        try:
-            candidate = User.objects.get(username=username)
-            if not candidate.is_active:
-                # Check if they have an email verification pending
-                has_token = hasattr(candidate, 'email_verification')
-                if has_token:
-                    return Response(
-                        {'detail': 'email_not_verified', 'email': candidate.email},
-                        status=status.HTTP_401_UNAUTHORIZED,
-                    )
-        except User.DoesNotExist:
-            pass
+        # Support username or email, normalize whitespace and resolve canonical user
+        raw_identifier = request.data.get('username') or request.data.get('email')
+        clean_identifier = raw_identifier.strip() if isinstance(raw_identifier, str) else ''
+        resolved_user = None
+        if clean_identifier:
+            try:
+                resolved_user = User.objects.get(username__iexact=clean_identifier)
+            except User.DoesNotExist:
+                try:
+                    resolved_user = User.objects.get(email__iexact=clean_identifier)
+                except (User.DoesNotExist, User.MultipleObjectsReturned):
+                    pass
+            except User.MultipleObjectsReturned:
+                pass
+
+        canonical_username = resolved_user.username if resolved_user else clean_identifier.lower()
+
+        # Ensure request.data has the canonical username for serializer validation
+        if hasattr(request.data, '_mutable'):
+            mutable = request.data._mutable
+            request.data._mutable = True
+            request.data['username'] = canonical_username
+            request.data._mutable = mutable
+        elif isinstance(request.data, dict):
+            request.data['username'] = canonical_username
+
+        if resolved_user and not resolved_user.is_active:
+            # Check if they have an email verification pending
+            has_token = hasattr(resolved_user, 'email_verification')
+            if has_token:
+                return Response(
+                    {'detail': 'email_not_verified', 'email': resolved_user.email},
+                    status=status.HTTP_401_UNAUTHORIZED,
+                )
 
         password_for_mfa = request.data.get('password', '')
-        user_has_mfa = False
-        if username:
-            try:
-                _u = User.objects.get(username=username)
-                user_has_mfa = bool(getattr(_u, 'mfa', None) and _u.mfa.is_enabled)
-            except User.DoesNotExist:
-                pass
+        user_has_mfa = bool(resolved_user and getattr(resolved_user, 'mfa', None) and resolved_user.mfa.is_enabled)
 
         if user_has_mfa and password_for_mfa:
             from django.contrib.auth import authenticate
-            mfa_user = authenticate(request, username=username, password=password_for_mfa)
+            mfa_user = authenticate(request, username=canonical_username, password=password_for_mfa)
             if mfa_user:
                 from .security.mfa import issue_mfa_token
                 from .security.sessions import _client_ip
@@ -134,16 +173,21 @@ class LoginView(TokenObtainPairView):
 
         response = super().post(request, *args, **kwargs)
         if response.status_code == 200:
-            username = request.data.get('username', '')
-            try:
-                user = User.objects.get(username=username)
-                profile = user.profile
-                if not profile.terms_accepted:
-                    profile.terms_accepted = True
-                    profile.terms_accepted_at = timezone.now()
-                    profile.save(update_fields=['terms_accepted', 'terms_accepted_at'])
-            except Exception:
-                pass
+            target_user = resolved_user
+            if not target_user:
+                try:
+                    target_user = User.objects.get(username=canonical_username)
+                except Exception:
+                    pass
+            if target_user:
+                try:
+                    profile = target_user.profile
+                    if not profile.terms_accepted:
+                        profile.terms_accepted = True
+                        profile.terms_accepted_at = timezone.now()
+                        profile.save(update_fields=['terms_accepted', 'terms_accepted_at'])
+                except Exception:
+                    pass
 
             try:
                 self._record_login_session(request, response)

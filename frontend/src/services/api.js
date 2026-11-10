@@ -85,7 +85,7 @@ export const profileAPI = {
 };
 
 export const authAPI = {
-  login:              (email, password, termsAccepted) => api.post('/auth/login/', { username: email, password, terms_accepted: termsAccepted }),
+  login:              (email, password, termsAccepted) => api.post('/auth/login/', { username: typeof email === 'string' ? email.trim().toLowerCase() : email, password, terms_accepted: termsAccepted }),
   me:                 ()              => api.get('/auth/me/'),
   refresh:            (refresh)       => api.post('/auth/refresh/', { refresh }),
   signup:             (data)          => api.post('/auth/signup/', data),
