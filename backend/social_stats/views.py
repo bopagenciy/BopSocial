@@ -543,6 +543,32 @@ def _agency_client_ids(request):
                 Q(userprofile__agency=request.user)
             ).distinct().values_list('id', flat=True)
         )
+    # Harmonized agency_member resolution matching TenantScopedMixin
+    if getattr(profile, 'account_type', None) == 'agency_member' or getattr(profile, 'primary_agency_id', None):
+        agency_id = getattr(profile, 'primary_agency_id', None)
+        if not agency_id:
+            return []
+        from .marketplace_models import AgencyClientRelation, AgencyMembership
+        if not AgencyMembership.objects.filter(
+            user=request.user, agency_id=agency_id, is_active=True
+        ).exists():
+            return []
+        active_ids = list(
+            AgencyClientRelation.objects.filter(
+                agency_id=agency_id, status='active'
+            ).values_list('client_id', flat=True)
+        )
+        if profile.client_id and profile.client_id not in active_ids:
+            # Include direct workspace if not paused/inactive with own agency and not claimed by another agency
+            is_paused_own = AgencyClientRelation.objects.filter(
+                agency_id=agency_id, client_id=profile.client_id
+            ).exclude(status='active').exists()
+            is_other_agency = AgencyClientRelation.objects.filter(
+                client_id=profile.client_id, status='active'
+            ).exclude(agency_id=agency_id).exists()
+            if not is_paused_own and not is_other_agency:
+                active_ids.append(profile.client_id)
+        return active_ids
     if role == 'client' and profile.client_id:
         return [profile.client_id]
     return []
