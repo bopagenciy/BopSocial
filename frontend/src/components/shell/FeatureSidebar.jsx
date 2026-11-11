@@ -6,7 +6,7 @@
  *  Copyright (c) 2026 Chandrabhan Shekhawat / Gigai Kripa Services.
  *  Released under the MIT License — see LICENSE. Keep this notice.
  * ========================================================================== */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
@@ -20,12 +20,13 @@ import {
   Bell, ShieldCheck, ClipboardCheck,
   Mic, Sparkles,
   Bot, MessageSquare, Megaphone, UserPlus,
+  Briefcase, Store,
 } from 'lucide-react';
 
 import PermissionGate from '../ui/PermissionGate';
 import { useAuth } from '../../hooks/useAuth';
 import { useClients } from '../../hooks/useData';
-import { useBadgeCount } from '../../stores/appStore';
+import { useBadgeCount, useCurrentClient, useAppStore } from '../../stores/appStore';
 
 /**
  * 240px feature sidebar; nav set varies by `module`.
@@ -45,6 +46,9 @@ export default function FeatureSidebar({
 }) {
   const { t } = useTranslation('app');
   const location = useLocation();
+  const { user } = useAuth();
+  const isAgencyMember = user?.account_type === 'agency_member';
+  const showSwitcher = isAdmin || isAgencyMember;
 
   const navSet = NAV_SETS[module] || NAV_SETS.analytics;
 
@@ -113,12 +117,14 @@ export default function FeatureSidebar({
         {navSet.empty ? (
           <EmptyModule message={t(`modules.${module}.empty`, navSet.empty)} />
         ) : (
-          navSet.sections.map((section) => (
+          navSet.sections
+            .filter((section) => !section.agencyOnly || isAgencyMember)
+            .map((section) => (
             <Section key={section.title} title={getSectionTitle(section.title)}>
               {section.items.map((item) => (
                 <PermissionGate key={item.path} code={item.permission}>
                   <NavItem
-                    to={item.path.startsWith('/admin/') ? item.path : `${basePath}/${module}${item.path}`}
+                    to={item.path.startsWith('/admin/') || item.path.startsWith('/agency/') ? item.path : `${basePath}/${module}${item.path}`}
                     icon={item.icon}
                     label={getItemLabel(item)}
                     end={item.end}
@@ -134,8 +140,8 @@ export default function FeatureSidebar({
         )}
       </div>
 
-      {/* Client switcher (admin only) */}
-      {isAdmin && (
+      {/* Client switcher (admin and agency members) */}
+      {showSwitcher && (
         <ClientSwitcher selected={selectedClient} onSelect={onSelectClient} />
       )}
     </aside>
@@ -236,7 +242,22 @@ function ClientSwitcher({ selected, onSelect }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isAgencyMember = user?.account_type === 'agency_member';
+  const isAdmin = user?.role === 'superadmin' || user?.role === 'staff';
   const { clients } = useClients();
+  const currentClient = useCurrentClient();
+  const setCurrentClient = useAppStore((s) => s.setCurrentClient);
+
+  const activeClient = selected || currentClient;
+
+  // Auto-select initial client for agency members if none selected
+  useEffect(() => {
+    if (isAgencyMember && !activeClient && clients?.length > 0) {
+      const defaultC = clients.find((c) => c.id === user?.client_id) || clients[0];
+      setCurrentClient(defaultC);
+    }
+  }, [isAgencyMember, activeClient, clients, user?.client_id, setCurrentClient]);
 
   const filtered = (clients || []).filter((c) =>
     !search || (c.company || '').toLowerCase().includes(search.toLowerCase())
@@ -249,6 +270,7 @@ function ClientSwitcher({ selected, onSelect }) {
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="listbox"
         aria-expanded={open}
+        data-testid="client-switcher-button"
         style={{
           display: 'flex', alignItems: 'center', gap: 8,
           width: '100%', padding: '8px 10px',
@@ -267,7 +289,7 @@ function ClientSwitcher({ selected, onSelect }) {
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
           fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', textAlign: 'left',
         }}>
-          {selected?.company || t('client_switcher.all_clients', 'All clients')}
+          {activeClient?.company || (isAgencyMember ? (clients?.[0]?.company || t('client_switcher.select_client', 'Select client')) : t('client_switcher.all_clients', 'All clients'))}
         </span>
         <ChevronDown size={14} color="var(--text-tertiary)" />
       </button>
@@ -275,6 +297,7 @@ function ClientSwitcher({ selected, onSelect }) {
       {open && (
         <div
           role="listbox"
+          data-testid="client-switcher-dropdown"
           style={{
             position: 'absolute', bottom: 'calc(100% + 4px)', left: 10, right: 10,
             background: 'var(--surface-elevated)',
@@ -313,20 +336,30 @@ function ClientSwitcher({ selected, onSelect }) {
             </div>
           </div>
           <div style={{ padding: 4 }}>
-            <SwitcherRow
-              label={t('client_switcher.all_clients', 'All clients')}
-              active={!selected}
-              onClick={() => { onSelect?.(null); setOpen(false); }}
-            />
+            {!isAgencyMember && (
+              <SwitcherRow
+                label={t('client_switcher.all_clients', 'All clients')}
+                active={!activeClient}
+                onClick={() => {
+                  setCurrentClient(null);
+                  onSelect?.(null);
+                  setOpen(false);
+                  if (isAdmin) navigate('/admin/clients');
+                }}
+              />
+            )}
             {filtered.map((c) => (
               <SwitcherRow
                 key={c.id}
                 label={c.company}
-                active={selected?.id === c.id}
+                active={activeClient?.id === c.id}
                 onClick={() => {
+                  setCurrentClient(c);
                   onSelect?.(c);
                   setOpen(false);
-                  navigate(`/admin/client/${c.id}`);
+                  if (isAdmin) {
+                    navigate(`/admin/client/${c.id}`);
+                  }
                 }}
               />
             ))}
@@ -446,6 +479,14 @@ const NAV_SETS = {
           { label: 'Audit Log',     icon: ShieldCheck,    path: '/audit-log',     permission: 'audit.view' },
         ],
       },
+      {
+        title: 'Agencia',
+        agencyOnly: true,
+        items: [
+          { label: 'Clientes', icon: Users2, path: '/agency/clients' },
+          { label: 'Marketplace Profile', icon: Store, path: '/agency/marketplace-profile' },
+        ],
+      },
     ],
   },
 
@@ -498,5 +539,20 @@ const NAV_SETS = {
     icon: Rocket,
     empty: 'Ads management is coming soon. We\'re building it next.',
     sections: [],
+  },
+
+  agency: {
+    label: 'Agency',
+    subtitle: 'Agency Management',
+    icon: Briefcase,
+    sections: [
+      {
+        title: 'Gestión',
+        items: [
+          { label: 'Clientes', icon: Users2, path: '/agency/clients' },
+          { label: 'Marketplace Profile', icon: Store, path: '/agency/marketplace-profile' },
+        ],
+      },
+    ],
   },
 };

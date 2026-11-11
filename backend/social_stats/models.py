@@ -270,12 +270,50 @@ class UserProfile(models.Model):
         return f"{self.user.email} ({self.role})"
 
     def can_access_client(self, client_id):
+        try:
+            cid = int(client_id)
+        except (TypeError, ValueError):
+            return False
+
         if self.role == 'superadmin':
             return True
-        if self.role == 'client':
-            return self.client_id == int(client_id)
+
         if self.role == 'staff':
-            return self.assigned_clients.filter(id=client_id).exists()
+            return self.assigned_clients.filter(id=cid).exists()
+
+        if self.account_type == 'agency_member':
+            if not self.primary_agency_id:
+                return False
+            from .marketplace_models import AgencyMembership, AgencyClientRelation
+            if not AgencyMembership.objects.filter(
+                user=self.user, agency_id=self.primary_agency_id, is_active=True
+            ).exists():
+                return False
+
+            # Check explicit relation with user's primary agency
+            relation = AgencyClientRelation.objects.filter(
+                agency_id=self.primary_agency_id, client_id=cid
+            ).first()
+            if relation:
+                return relation.status == 'active'
+
+            # Allow self workspace (profile.client or default_workspace)
+            # ONLY IF it is not claimed by another agency
+            is_self_workspace = (self.client_id and self.client_id == cid) or (
+                self.default_workspace_id and self.default_workspace_id == cid
+            )
+            if is_self_workspace:
+                is_claimed_by_other = AgencyClientRelation.objects.filter(
+                    client_id=cid, status='active'
+                ).exclude(agency_id=self.primary_agency_id).exists()
+                if not is_claimed_by_other:
+                    return True
+
+            return False
+
+        if self.account_type == 'end_user' or self.role == 'client':
+            return self.client_id == cid
+
         return False
 
 

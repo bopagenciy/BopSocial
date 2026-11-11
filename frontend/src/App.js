@@ -18,6 +18,7 @@ import { lazy, Suspense } from 'react';
 import ErrorBoundary from './components/ui/ErrorBoundary';
 
 import { BrandLogoStacked } from './components/ui/BrandLogo';
+import { useCurrentClientId } from './stores/appStore';
 
 // ── New shell ───────────────────────────────────────────────────────────────
 import AppShell from './components/shell/AppShell';
@@ -95,6 +96,7 @@ const AgencyInviteResponsePage   = lazy(() => import('./pages/marketplace/Agency
 const MarketplacePage            = lazy(() => import('./pages/marketplace/MarketplacePage'));
 const AgencyProfilePage          = lazy(() => import('./pages/marketplace/AgencyProfilePage'));
 const AgencyMarketplaceProfilePage = lazy(() => import('./pages/agency/AgencyMarketplaceProfilePage'));
+const AgencyClientsPage            = lazy(() => import('./pages/agency/AgencyClientsPage'));
 const AdminTrustQueuePage          = lazy(() => import('./pages/admin/AdminTrustQueuePage'));
 
 // ── CTWA bot builder ────────────────────────────────────────────────────────
@@ -222,17 +224,19 @@ function AdminClientView() {
 // ── Client layout — wraps client routes in AppShell ───────────────────────────
 function ClientLayout() {
   const { user } = useAuth();
+  const currentClientId = useCurrentClientId();
+  const effectiveClientId = (user?.account_type === 'agency_member' && currentClientId) ? currentClientId : user?.client_id;
   return (
     <AppShell isAdmin={false}>
       <Suspense fallback={<LazyFallback />}>
         <Routes>
           <Route index element={<Navigate to="analytics" replace />} />
 
-          <Route path="analytics/*" element={<AnalyticsModule clientId={user?.client_id} />} />
+          <Route path="analytics/*" element={<AnalyticsModule clientId={effectiveClientId} />} />
           <Route path="messaging/*" element={<MessagingModule />} />
           <Route path="ads/*"       element={<AdsModule />} />
 
-          <Route path="settings"        element={<SettingsPage clientId={user?.client_id} />} />
+          <Route path="settings"        element={<SettingsPage clientId={effectiveClientId} />} />
           <Route path="account-settings" element={<UserSettingsPage />} />
           <Route path="onboarding"       element={<ClientOnboardingPage />} />
 
@@ -278,9 +282,10 @@ function AgencyLayout() {
     <AppShell isAdmin={false}>
       <Suspense fallback={<LazyFallback />}>
         <Routes>
-          <Route index element={<Navigate to="marketplace-profile" replace />} />
+          <Route index element={<Navigate to="clients" replace />} />
+          <Route path="clients" element={<AgencyClientsPage />} />
           <Route path="marketplace-profile" element={<AgencyMarketplaceProfilePage />} />
-          <Route path="*" element={<Navigate to="marketplace-profile" replace />} />
+          <Route path="*" element={<Navigate to="clients" replace />} />
         </Routes>
       </Suspense>
     </AppShell>

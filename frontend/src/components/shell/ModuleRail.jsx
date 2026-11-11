@@ -12,7 +12,7 @@ import { useTranslation } from 'react-i18next';
 import {
   BarChart3, MessageCircle, Target,
   Bell, Settings, LogOut, ChevronUp,
-  Briefcase, Receipt, Store,
+  Briefcase, Receipt, Store, Users2,
 } from 'lucide-react';
 
 import { BrandMark } from '../ui/BrandLogo';
@@ -295,8 +295,11 @@ function UserMenu({ user, open, onOpenChange, onLogout }) {
           </div>
           {isAgency && (
             <>
+              <MenuRow icon={Users2} label={t('rail.agency_clients', 'Clientes')} onClick={() => {
+                onOpenChange(false); navigate('/agency/clients');
+              }} />
               <MenuRow icon={Briefcase} label={t('rail.manage_agency', 'Manage agency')} onClick={() => {
-                onOpenChange(false); navigate('/agency');
+                onOpenChange(false); navigate('/agency/clients');
               }} />
               <MenuRow icon={Store} label={t('rail.marketplace_profile', 'Marketplace profile')} onClick={() => {
                 onOpenChange(false); navigate('/agency/marketplace-profile');

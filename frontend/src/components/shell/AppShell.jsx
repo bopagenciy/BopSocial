@@ -386,9 +386,10 @@ function MobileDrawer({ open, onClose, modules, currentModule, basePath }) {
 }
 
 function deriveModule(pathname, basePath) {
+  if (pathname.startsWith('/agency')) return 'agency';
   const rest = pathname.startsWith(basePath) ? pathname.slice(basePath.length) : pathname;
   const seg = rest.split('/').filter(Boolean)[0];
-  if (seg === 'analytics' || seg === 'messaging' || seg === 'ads') return seg;
+  if (seg === 'analytics' || seg === 'messaging' || seg === 'ads' || seg === 'agency') return seg;
   return 'analytics';  // default
 }
 

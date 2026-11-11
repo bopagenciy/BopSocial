@@ -365,10 +365,33 @@ class ClientViewSet(viewsets.ModelViewSet):
                 qs = Client.objects.all().order_by('company')
         elif profile.role == 'staff':
             qs = profile.assigned_clients.all().order_by('company')
-        elif profile.role == 'client' and profile.client:
+        elif profile.account_type == 'agency_member':
+            if not profile.primary_agency_id:
+                return Client.objects.none()
+            from .marketplace_models import AgencyMembership, AgencyClientRelation
+            if not AgencyMembership.objects.filter(
+                user=self.request.user, agency_id=profile.primary_agency_id, is_active=True
+            ).exists():
+                return Client.objects.none()
+
+            active_client_ids = list(
+                AgencyClientRelation.objects.filter(
+                    agency_id=profile.primary_agency_id, status='active'
+                ).values_list('client_id', flat=True)
+            )
+            qs = Client.objects.filter(id__in=active_client_ids).distinct().order_by('company')
+        elif (profile.account_type == 'end_user' or profile.role == 'client') and profile.client:
             qs = Client.objects.filter(id=profile.client_id)
         else:
             return Client.objects.none()
+
+        client_id_param = self.request.query_params.get('client_id') or self.request.query_params.get('client')
+        if client_id_param:
+            try:
+                cid = int(client_id_param)
+                qs = qs.filter(id=cid)
+            except (TypeError, ValueError):
+                return Client.objects.none()
 
         bop_org_id = self.request.query_params.get('bop_organization_id')
         if bop_org_id:
