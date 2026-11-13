@@ -277,6 +277,12 @@ export const agencyAPI = {
   update: (slug, data)  => api.put (`/agency/${slug}/`, data),
 };
 
+// ── Agency Client Management (BS-8G) ─────────────
+export const agencyClientAPI = {
+  list:   ()     => api.get('/agency/clients/'),
+  create: (data) => api.post('/agency/clients/', data),
+};
+
 // ── Reviews () ───────────────────────────────────
 export const reviewAPI = {
   list:    (slug, params)        => api.get(`/agencies/${slug}/reviews/`, { params }),

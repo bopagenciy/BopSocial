@@ -33,6 +33,13 @@ export function useClients() {
   }, []);
 
   useEffect(() => { fetch(); }, [fetch]);
+
+  useEffect(() => {
+    const handleRefetch = () => { fetch(); };
+    window.addEventListener('clients:refetch', handleRefetch);
+    return () => window.removeEventListener('clients:refetch', handleRefetch);
+  }, [fetch]);
+
   return { clients, loading, refetch: fetch };
 }
 

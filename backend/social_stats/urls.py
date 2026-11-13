@@ -118,6 +118,7 @@ from .review_views import (
     list_reviews, review_detail,
     respond_to_review, mark_review_helpful,
 )
+from .agency_client_views import agency_clients_endpoint
 from .verification_views import (
     submit_verification, list_pending_verifications, get_verification,
     approve_verification, reject_verification,
@@ -342,6 +343,9 @@ urlpatterns = [
     path('approvals/<int:approval_id>/',         get_approval,           name='approvals_get'),
     path('approvals/<int:approval_id>/approve/', approve_approval,       name='approvals_approve'),
     path('approvals/<int:approval_id>/reject/',  reject_approval,        name='approvals_reject'),
+
+    # Agency Clients (BS-8G)
+    path('agency/clients/', agency_clients_endpoint, name='agency_clients'),
 
     # Agency invites — user-side ()
     path('end-user/invite-agency/',         send_agency_invite,        name='end_user_invite_agency'),
