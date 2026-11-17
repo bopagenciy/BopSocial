@@ -15,6 +15,7 @@ import PageHeader from '../components/layout/PageHeader';
 import ConnectedAccounts from '../components/ui/ConnectedAccounts';
 import CompetitorSection from '../components/ui/CompetitorSection';
 import { useOAuthStatus, useLookups } from '../hooks/useData';
+import { useCurrentClientId } from '../stores/appStore';
 import {
   ArrowRight, Building2, CheckCircle2, Globe2, ImagePlus, Loader2,
   MapPin, MessageCircle, Palette, Phone, PlugZap, Upload, Users, X,
@@ -58,11 +59,17 @@ const GENDERS = [
   { value: 'unspecified', label: 'Unspecified' },
 ];
 
-export default function ClientOnboardingPage() {
+export default function ClientOnboardingPage({ clientId: propClientId }) {
   const { t } = useTranslation('onboarding');
   const { user, refreshUser } = useAuth();
   const navigate = useNavigate();
-  const clientId = user?.client_id;
+  const currentClientId = useCurrentClientId();
+  const effectiveClientId = propClientId || (
+    (user?.account_type === 'agency_member' && currentClientId)
+      ? currentClientId
+      : user?.client_id
+  );
+  const clientId = effectiveClientId;
   const { status: oauthStatus } = useOAuthStatus(clientId);
   const { lookups } = useLookups();
 
@@ -84,7 +91,7 @@ export default function ClientOnboardingPage() {
   const socialPlatformOptions = lookups.platforms?.map(item => ({ value: item.key, label: item.label })) || SOCIAL_PLATFORMS;
   const getCategoryKey = (category) => businessCategoryOptions.find(item => item.label === category)?.key;
 
-  const STEP_STORAGE_KEY = `onboarding_step_${user?.client_id || 'new'}`;
+  const STEP_STORAGE_KEY = `onboarding_step_${clientId || 'new'}`;
 
   const [currentStep, setCurrentStep] = useState(0);
   const [loading, setLoading]         = useState(false);
@@ -115,10 +122,12 @@ export default function ClientOnboardingPage() {
     competitors: [],
   });
 
-  // Load existing client data and resume saved step on mount
+  // Load existing client data and resume saved step on mount or client change
   useEffect(() => {
-    if (!clientId || dataLoaded) return;
+    if (!clientId) return;
+    let isSubscribed = true;
     clientsAPI.get(clientId).then(res => {
+      if (!isSubscribed) return;
       const c = res.data;
       setFormData(prev => ({
         ...prev,
@@ -147,8 +156,14 @@ export default function ClientOnboardingPage() {
       const savedStep = parseInt(sessionStorage.getItem(STEP_STORAGE_KEY) || '0', 10);
       if (savedStep > 0) setCurrentStep(Math.min(savedStep, 5));
       setDataLoaded(true);
-    }).catch(() => setDataLoaded(true));
-  }, [clientId, dataLoaded, STEP_STORAGE_KEY]);
+    }).catch(() => {
+      if (isSubscribed) setDataLoaded(true);
+    });
+
+    return () => {
+      isSubscribed = false;
+    };
+  }, [clientId, STEP_STORAGE_KEY]);
 
   const competitorLinksArrayToObject = (links) => {
     return (links || []).reduce((acc, link) => {

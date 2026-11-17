@@ -238,7 +238,7 @@ function ClientLayout() {
 
           <Route path="settings"        element={<SettingsPage clientId={effectiveClientId} />} />
           <Route path="account-settings" element={<UserSettingsPage />} />
-          <Route path="onboarding"       element={<ClientOnboardingPage />} />
+          <Route path="onboarding"       element={<ClientOnboardingPage clientId={effectiveClientId} />} />
 
           {/* Legacy URL redirects */}
           <Route path="posts"          element={<Navigate to="/dashboard/analytics/posts" replace />} />

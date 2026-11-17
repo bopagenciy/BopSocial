@@ -39,7 +39,7 @@ from .activity_logger import log_activity
 from .approval_executors import execute_approval
 from .marketplace_permissions import _is_owner, _is_superadmin
 from .models import (
-    AgencyMembership, ApprovalRequest,
+    AgencyMembership, ApprovalRequest, AgencyClientRelation,
 )
 
 
@@ -47,7 +47,38 @@ from .models import (
 # Helpers
 # ─────────────────────────────────────────────────────────────────────────────
 def _user_owns_approval(user, approval: ApprovalRequest) -> bool:
-    return _is_superadmin(user) or _is_owner(user, approval.client)
+    if not user or not user.is_authenticated:
+        return False
+    if _is_superadmin(user) or _is_owner(user, approval.client):
+        return True
+
+    # Agency-managed client approval authorization (BS-8J.1)
+    profile = getattr(user, 'profile', None)
+    if not profile or profile.account_type != 'agency_member':
+        return False
+
+    primary_agency = profile.primary_agency
+    if not primary_agency:
+        return False
+
+    membership = AgencyMembership.objects.filter(
+        agency=primary_agency, user=user, is_active=True
+    ).first()
+    if not membership or membership.role not in ('owner', 'admin', 'manager'):
+        return False
+
+    relation = approval.relation
+    if not relation or relation.agency_id != primary_agency.id or relation.status != 'active':
+        return False
+
+    if relation.client_id != approval.client_id:
+        return False
+
+    # Only when client has no external owner_user
+    if approval.client.owner_user_id is not None:
+        return False
+
+    return True
 
 
 def _user_can_view(user, approval: ApprovalRequest) -> bool:
