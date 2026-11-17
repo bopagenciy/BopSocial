@@ -67,6 +67,7 @@ from .invitation_views import (
     send_invitation, get_invitation, respond_invitation,
     list_invitations, cancel_invitation,
     list_notifications, mark_read, mark_all_read,
+    accept_invitation_endpoint,
 )
 from .auth_views import signup, verify_email, resend_verification, password_reset_request, password_reset_confirm
 from .security.views import (
@@ -118,7 +119,11 @@ from .review_views import (
     list_reviews, review_detail,
     respond_to_review, mark_review_helpful,
 )
-from .agency_client_views import agency_clients_endpoint
+from .agency_client_views import (
+    agency_clients_endpoint,
+    agency_client_invite_endpoint,
+    agency_client_revoke_invitation_endpoint,
+)
 from .verification_views import (
     submit_verification, list_pending_verifications, get_verification,
     approve_verification, reject_verification,
@@ -344,8 +349,11 @@ urlpatterns = [
     path('approvals/<int:approval_id>/approve/', approve_approval,       name='approvals_approve'),
     path('approvals/<int:approval_id>/reject/',  reject_approval,        name='approvals_reject'),
 
-    # Agency Clients (BS-8G)
+    # Agency Clients (BS-8G / BS-8J.2)
     path('agency/clients/', agency_clients_endpoint, name='agency_clients'),
+    path('agency/clients/<int:client_id>/invite/', agency_client_invite_endpoint, name='agency_client_invite'),
+    path('agency/clients/<int:client_id>/invitations/', agency_client_invite_endpoint, name='agency_client_invitations'),
+    path('agency/clients/<int:client_id>/invitations/<int:invite_id>/revoke/', agency_client_revoke_invitation_endpoint, name='agency_client_revoke_invitation'),
 
     # Agency invites — user-side ()
     path('end-user/invite-agency/',         send_agency_invite,        name='end_user_invite_agency'),
@@ -432,11 +440,12 @@ urlpatterns = [
     path('auth/social/microsoft/callback/',      microsoft_social_callback, name='microsoft_social_callback'),
 
     # Invitations
-    path('invitations/send/',                        send_invitation,    name='invitation_send'),
-    path('invitations/mine/',                        list_invitations,   name='invitation_mine'),
-    path('invitations/token/<uuid:token>/',          get_invitation,     name='invitation_get'),
-    path('invitations/token/<uuid:token>/respond/',  respond_invitation, name='invitation_respond'),
-    path('invitations/<int:pk>/cancel/',             cancel_invitation,  name='invitation_cancel'),
+    path('invitations/send/',                        send_invitation,            name='invitation_send'),
+    path('invitations/mine/',                        list_invitations,           name='invitation_mine'),
+    path('invitations/token/<uuid:token>/',          get_invitation,             name='invitation_get'),
+    path('invitations/token/<uuid:token>/respond/',  respond_invitation,         name='invitation_respond'),
+    path('invitations/token/<uuid:token>/accept/',   accept_invitation_endpoint, name='invitation_token_accept'),
+    path('invitations/<int:pk>/cancel/',             cancel_invitation,          name='invitation_cancel'),
 
     # Notifications
     path('notifications/',              list_notifications, name='notif_list'),

@@ -49,7 +49,26 @@ from .models import (
 def _user_owns_approval(user, approval: ApprovalRequest) -> bool:
     if not user or not user.is_authenticated:
         return False
-    if _is_superadmin(user) or _is_owner(user, approval.client):
+    if _is_superadmin(user):
+        return True
+
+    # Direct client owner
+    if approval.client.owner_user_id and approval.client.owner_user_id == user.id:
+        return True
+
+    # Client-scoped role check (BS-8J.2)
+    from .models import ClientUserRole
+    client_role = ClientUserRole.objects.filter(
+        client=approval.client, user=user
+    ).values_list('role', flat=True).first()
+    if client_role:
+        if client_role in ('approver', 'client_admin'):
+            return True
+        elif client_role in ('editor', 'viewer'):
+            return False
+
+    # Legacy client-role owner fallback (only when no conflicting client role)
+    if _is_owner(user, approval.client):
         return True
 
     # Agency-managed client approval authorization (BS-8J.1)
@@ -83,6 +102,9 @@ def _user_owns_approval(user, approval: ApprovalRequest) -> bool:
 
 def _user_can_view(user, approval: ApprovalRequest) -> bool:
     if _user_owns_approval(user, approval):
+        return True
+    from .models import ClientUserRole
+    if ClientUserRole.objects.filter(client=approval.client, user=user).exists():
         return True
     return AgencyMembership.objects.filter(
         user=user, agency_id=approval.relation.agency_id, is_active=True,
@@ -125,6 +147,10 @@ def _accessible_qs(user):
     qs = ApprovalRequest.objects.filter(client__owner_user=user)
     if profile and profile.role == 'client' and profile.client_id:
         qs = qs | ApprovalRequest.objects.filter(client_id=profile.client_id)
+    from .models import ClientUserRole
+    client_ids = list(ClientUserRole.objects.filter(user=user).values_list('client_id', flat=True))
+    if client_ids:
+        qs = qs | ApprovalRequest.objects.filter(client_id__in=client_ids)
     agency_ids = list(
         AgencyMembership.objects.filter(user=user, is_active=True)
         .values_list('agency_id', flat=True)

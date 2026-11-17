@@ -312,7 +312,9 @@ class UserProfile(models.Model):
             return False
 
         if self.account_type == 'end_user' or self.role == 'client':
-            return self.client_id == cid
+            if self.client_id == cid:
+                return True
+            return ClientUserRole.objects.filter(user=self.user, client_id=cid).exists()
 
         return False
 
@@ -1437,24 +1439,54 @@ class LookupItem(models.Model):
 
 
 # ── Client Invitation ─────────────────────────────────────────────────────────
+CLIENT_USER_ROLE_CHOICES = [
+    ('client_admin', 'Client Admin'),
+    ('approver',     'Approver'),
+    ('editor',       'Editor'),
+    ('viewer',       'Viewer'),
+]
+
+class ClientUserRole(models.Model):
+    """
+    Client-scoped role model for stakeholders/users within a specific Client workspace (BS-8J.2).
+    Applies strictly to the linked client workspace without modifying global UserProfile.role.
+    """
+    client     = models.ForeignKey('Client', on_delete=models.CASCADE, related_name='user_roles')
+    user       = models.ForeignKey(User, on_delete=models.CASCADE, related_name='client_roles')
+    role       = models.CharField(max_length=30, choices=CLIENT_USER_ROLE_CHOICES, default='viewer')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('client', 'user')
+        ordering = ['client', 'user']
+
+    def __str__(self):
+        return f"{self.user.email} - {self.client.company or self.client.name} ({self.role})"
+
+
 INVITATION_STATUS_CHOICES = [
     ('pending',   'Pending'),
     ('accepted',  'Accepted'),
     ('rejected',  'Rejected'),
     ('cancelled', 'Cancelled'),
     ('expired',   'Expired'),
+    ('revoked',   'Revoked'),
 ]
 
 class ClientInvitation(models.Model):
     invited_by    = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_invitations')
+    agency        = models.ForeignKey('Agency', null=True, blank=True, on_delete=models.SET_NULL, related_name='client_invitations')
     client_user   = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='received_invitations')
     client_email  = models.EmailField()
     client_record = models.ForeignKey(Client, null=True, blank=True, on_delete=models.SET_NULL, related_name='invitations')
+    role          = models.CharField(max_length=30, choices=CLIENT_USER_ROLE_CHOICES, default='viewer')
     token         = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     status        = models.CharField(max_length=20, choices=INVITATION_STATUS_CHOICES, default='pending')
     message       = models.TextField(blank=True)
     invited_at    = models.DateTimeField(auto_now_add=True)
     responded_at  = models.DateTimeField(null=True, blank=True)
+    accepted_at   = models.DateTimeField(null=True, blank=True)
     expires_at    = models.DateTimeField(null=True, blank=True)
 
     class Meta:
@@ -1467,7 +1499,7 @@ class ClientInvitation(models.Model):
 
     @property
     def is_expired(self):
-        return self.status == 'pending' and timezone.now() > self.expires_at
+        return self.status == 'pending' and self.expires_at is not None and timezone.now() > self.expires_at
 
     def __str__(self):
         return f"Invitation from {self.invited_by.email} to {self.client_email} ({self.status})"

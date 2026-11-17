@@ -7,8 +7,10 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   Users, Building2, Plus, Search, CheckCircle,
-  ExternalLink, ArrowRight, ShieldCheck, X, AlertCircle, Loader2
+  ExternalLink, ArrowRight, ShieldCheck, X, AlertCircle, Loader2,
+  UserPlus, Clock
 } from 'lucide-react';
+import { useAuth } from '../../hooks/useAuth';
 import { useClients } from '../../hooks/useData';
 import { useAppStore, useCurrentClient } from '../../stores/appStore';
 import { agencyClientAPI } from '../../services/api';
@@ -30,9 +32,16 @@ const INITIAL_FORM = {
 export default function AgencyClientsPage() {
   const { t } = useTranslation(['management', 'common', 'agency_portal']);
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { clients, loading, refetch } = useClients();
   const currentClient = useCurrentClient();
   const setCurrentClient = useAppStore((s) => s.setCurrentClient);
+
+  const userRole = user?.agency_role || user?.agencyMembership?.role;
+  const canInvite = user?.role === 'superadmin' || (
+    user?.account_type === 'agency_member' &&
+    (userRole ? ['owner', 'admin', 'manager'].includes(userRole) : true)
+  );
 
   const [search, setSearch] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
@@ -40,6 +49,102 @@ export default function AgencyClientsPage() {
   const [formErrors, setFormErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [feedback, setFeedback] = useState(null);
+
+  // Invitation state (BS-8J.2)
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [selectedClientForInvite, setSelectedClientForInvite] = useState(null);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState('approver');
+  const [inviteMessage, setInviteMessage] = useState('');
+  const [inviteErrors, setInviteErrors] = useState({});
+  const [inviteSubmitting, setInviteSubmitting] = useState(false);
+  const [pendingInvitesMap, setPendingInvitesMap] = useState({});
+
+  const handleOpenInviteModal = (client) => {
+    setSelectedClientForInvite(client);
+    setInviteEmail('');
+    setInviteRole('approver');
+    setInviteMessage('');
+    setInviteErrors({});
+    setShowInviteModal(true);
+  };
+
+  const handleCloseInviteModal = () => {
+    if (!inviteSubmitting) {
+      setShowInviteModal(false);
+      setSelectedClientForInvite(null);
+      setInviteErrors({});
+    }
+  };
+
+  const handleInviteSubmit = async (e) => {
+    e.preventDefault();
+    if (!selectedClientForInvite) return;
+
+    const errors = {};
+    const trimmedEmail = inviteEmail.trim();
+    if (!trimmedEmail) {
+      errors.email = 'El email es obligatorio.';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      errors.email = 'Ingresa un formato de email válido.';
+    }
+    if (!['approver', 'client_admin', 'editor', 'viewer'].includes(inviteRole)) {
+      errors.role = 'Rol no válido.';
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setInviteErrors(errors);
+      return;
+    }
+
+    setInviteSubmitting(true);
+    setInviteErrors({});
+
+    try {
+      const payload = {
+        email: trimmedEmail.toLowerCase(),
+        role: inviteRole,
+        message: inviteMessage.trim(),
+      };
+      const res = await agencyClientAPI.invite(selectedClientForInvite.id, payload);
+
+      setPendingInvitesMap((prev) => ({
+        ...prev,
+        [selectedClientForInvite.id]: [
+          ...(prev[selectedClientForInvite.id] || []),
+          {
+            id: res.data.id,
+            email: res.data.client_email || trimmedEmail.toLowerCase(),
+            client_email: res.data.client_email || trimmedEmail.toLowerCase(),
+            role: res.data.role || inviteRole,
+            status: res.data.status || 'pending',
+          },
+        ],
+      }));
+
+      setShowInviteModal(false);
+      setSelectedClientForInvite(null);
+      setFeedback({
+        type: 'success',
+        message: `Invitación enviada con éxito a ${trimmedEmail} (${inviteRole}).`,
+      });
+    } catch (err) {
+      const respData = err.response?.data;
+      if (respData?.details && typeof respData.details === 'object') {
+        const apiErrors = {};
+        for (const [k, v] of Object.entries(respData.details)) {
+          apiErrors[k] = Array.isArray(v) ? v.join(' ') : String(v);
+        }
+        setInviteErrors(apiErrors);
+      } else {
+        setInviteErrors({
+          general: respData?.error || 'Error al enviar la invitación. Intenta nuevamente.',
+        });
+      }
+    } finally {
+      setInviteSubmitting(false);
+    }
+  };
 
   const filteredClients = (clients || []).filter((c) =>
     !search ||
@@ -333,6 +438,36 @@ export default function AgencyClientsPage() {
                   </span>
                 </div>
 
+                {/* Pending Invitations list (BS-8J.2) */}
+                {pendingInvitesMap[c.id] && pendingInvitesMap[c.id].length > 0 && (
+                  <div
+                    data-testid={`pending-invites-${c.id}`}
+                    style={{
+                      padding: '8px 12px',
+                      background: 'rgba(234, 179, 8, 0.08)',
+                      borderRadius: 'var(--radius-sm, 6px)',
+                      border: '1px solid rgba(234, 179, 8, 0.25)',
+                      fontSize: 12,
+                      color: 'var(--text-secondary, #64748b)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 4,
+                    }}
+                  >
+                    <div style={{ fontWeight: 600, color: '#ca8a04', display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <Clock size={12} /> Invitaciones pendientes:
+                    </div>
+                    {pendingInvitesMap[c.id].map((inv, idx) => (
+                      <div key={inv.id || idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span>{inv.client_email || inv.email}</span>
+                        <span style={{ fontSize: 11, background: '#fef08a', color: '#854d0e', padding: '1px 6px', borderRadius: 999, fontWeight: 600 }}>
+                          {inv.role}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 <div style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -340,10 +475,37 @@ export default function AgencyClientsPage() {
                   paddingTop: 12,
                   borderTop: '1px solid var(--border-subtle)',
                   fontSize: 12,
+                  gap: 8,
+                  flexWrap: 'wrap',
                 }}>
-                  <span style={{ color: 'var(--text-tertiary)' }}>
-                    {isSelected ? '● Espacio actual' : 'Disponible'}
-                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ color: 'var(--text-tertiary)' }}>
+                      {isSelected ? '● Espacio actual' : 'Disponible'}
+                    </span>
+                    {canInvite && (
+                      <button
+                        type="button"
+                        data-testid={`invite-client-btn-${c.id}`}
+                        onClick={() => handleOpenInviteModal(c)}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 5,
+                          background: 'rgba(0, 215, 255, 0.08)',
+                          color: 'var(--brand-primary, #00b8d9)',
+                          border: '1px solid rgba(0, 215, 255, 0.25)',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          padding: '3px 8px',
+                          borderRadius: 'var(--radius-sm, 6px)',
+                          fontSize: 11,
+                        }}
+                      >
+                        <UserPlus size={12} />
+                        <span>Invitar usuario</span>
+                      </button>
+                    )}
+                  </div>
                   <button
                     type="button"
                     onClick={() => handleSelectAndGo(c)}
@@ -819,6 +981,244 @@ export default function AgencyClientsPage() {
                   ) : (
                     <span>Crear cliente</span>
                   )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* Invite Client User Modal (BS-8J.2) */}
+      {showInviteModal && selectedClientForInvite && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          data-testid="invite-user-modal"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 1000,
+            background: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 16,
+          }}
+        >
+          <div
+            style={{
+              background: 'var(--surface-card, #ffffff)',
+              borderRadius: 'var(--radius-xl, 16px)',
+              border: '1px solid var(--border-subtle, #e2e8f0)',
+              width: '100%',
+              maxWidth: 480,
+              boxShadow: 'var(--shadow-xl, 0 20px 25px -5px rgba(0, 0, 0, 0.1))',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column',
+            }}
+          >
+            {/* Modal Header */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '18px 24px',
+              borderBottom: '1px solid var(--border-subtle, #e2e8f0)',
+            }}>
+              <div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary, #0f172a)' }}>
+                  Invitar usuario
+                </div>
+                <div style={{ fontSize: 13, color: 'var(--text-secondary, #64748b)', marginTop: 2 }}>
+                  Espacio: {selectedClientForInvite.company || selectedClientForInvite.name}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleCloseInviteModal}
+                disabled={inviteSubmitting}
+                data-testid="close-invite-modal-btn"
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--text-tertiary, #94a3b8)',
+                  cursor: 'pointer',
+                  padding: 4,
+                  borderRadius: 6,
+                }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Modal Body / Form */}
+            <form onSubmit={handleInviteSubmit} style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {inviteErrors.general && (
+                <div style={{
+                  padding: '10px 14px',
+                  background: '#fef2f2',
+                  border: '1px solid #fecaca',
+                  borderRadius: 8,
+                  color: '#dc2626',
+                  fontSize: 13,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                }}>
+                  <AlertCircle size={16} />
+                  <span>{inviteErrors.general}</span>
+                </div>
+              )}
+
+              <div>
+                <label
+                  htmlFor="invite-email"
+                  style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary, #334155)', marginBottom: 6 }}
+                >
+                  Email del usuario *
+                </label>
+                <input
+                  id="invite-email"
+                  type="email"
+                  data-testid="invite-email-input"
+                  value={inviteEmail}
+                  onChange={(e) => {
+                    setInviteEmail(e.target.value);
+                    if (inviteErrors.email) setInviteErrors((prev) => ({ ...prev, email: null }));
+                  }}
+                  placeholder="stakeholder@alphabrands.com"
+                  style={{
+                    width: '100%',
+                    padding: '9px 12px',
+                    borderRadius: 8,
+                    border: inviteErrors.email ? '1px solid #ef4444' : '1px solid var(--border-default, #cbd5e1)',
+                    background: 'var(--surface-card, #ffffff)',
+                    fontSize: 13,
+                    color: 'var(--text-primary, #0f172a)',
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                  }}
+                  required
+                />
+                {inviteErrors.email && (
+                  <div style={{ color: '#ef4444', fontSize: 12, marginTop: 4 }}>
+                    {inviteErrors.email}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label
+                  htmlFor="invite-role"
+                  style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary, #334155)', marginBottom: 6 }}
+                >
+                  Rol en el workspace *
+                </label>
+                <select
+                  id="invite-role"
+                  data-testid="invite-role-select"
+                  value={inviteRole}
+                  onChange={(e) => setInviteRole(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '9px 12px',
+                    borderRadius: 8,
+                    border: '1px solid var(--border-default, #cbd5e1)',
+                    background: 'var(--surface-card, #ffffff)',
+                    fontSize: 13,
+                    color: 'var(--text-primary, #0f172a)',
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                  }}
+                >
+                  <option value="approver">Aprobador (approver)</option>
+                  <option value="client_admin">Administrador de Cliente (client_admin)</option>
+                  <option value="editor">Editor (editor)</option>
+                  <option value="viewer">Visualizador (viewer)</option>
+                </select>
+                {inviteErrors.role && (
+                  <div style={{ color: '#ef4444', fontSize: 12, marginTop: 4 }}>
+                    {inviteErrors.role}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label
+                  htmlFor="invite-message"
+                  style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary, #334155)', marginBottom: 6 }}
+                >
+                  Mensaje opcional
+                </label>
+                <textarea
+                  id="invite-message"
+                  data-testid="invite-message-input"
+                  value={inviteMessage}
+                  onChange={(e) => setInviteMessage(e.target.value)}
+                  placeholder="Hola, te invitamos a revisar y colaborar en el contenido de este workspace..."
+                  rows={3}
+                  style={{
+                    width: '100%',
+                    padding: '9px 12px',
+                    borderRadius: 8,
+                    border: '1px solid var(--border-default, #cbd5e1)',
+                    background: 'var(--surface-card, #ffffff)',
+                    fontSize: 13,
+                    color: 'var(--text-primary, #0f172a)',
+                    outline: 'none',
+                    resize: 'vertical',
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+
+              {/* Modal Footer */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'flex-end',
+                gap: 10,
+                marginTop: 8,
+                paddingTop: 16,
+                borderTop: '1px solid var(--border-subtle, #e2e8f0)',
+              }}>
+                <button
+                  type="button"
+                  onClick={handleCloseInviteModal}
+                  disabled={inviteSubmitting}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: 8,
+                    border: '1px solid var(--border-default, #cbd5e1)',
+                    background: 'transparent',
+                    color: 'var(--text-secondary, #64748b)',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  data-testid="submit-invite-btn"
+                  disabled={inviteSubmitting}
+                  style={{
+                    padding: '8px 18px',
+                    borderRadius: 8,
+                    border: 'none',
+                    background: 'var(--brand-primary, #00b8d9)',
+                    color: '#ffffff',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                  }}
+                >
+                  {inviteSubmitting ? <Loader2 size={15} className="animate-spin" /> : 'Enviar invitación'}
                 </button>
               </div>
             </form>

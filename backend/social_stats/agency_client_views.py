@@ -10,7 +10,7 @@ from django.db import transaction
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
 
-from .models import Client
+from .models import Client, ClientInvitation, CLIENT_USER_ROLE_CHOICES
 from .serializers import ClientSerializer
 from .marketplace_models import (
     AgencyMembership,
@@ -143,3 +143,167 @@ def agency_clients_endpoint(request):
         },
         'message': 'Client workspace created successfully.'
     }, status=201)
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def agency_client_invite_endpoint(request, client_id):
+    """
+    Agency-scoped client user invitation endpoint (BS-8J.2).
+    Allows Agency Owner / Admin / Manager to invite a stakeholder user into an existing
+    managed client workspace.
+    """
+    profile = getattr(request.user, 'profile', None)
+    if not profile or profile.account_type != 'agency_member':
+        return Response({'error': 'Only agency members can invite client users.'}, status=403)
+
+    agency = profile.primary_agency
+    if not agency:
+        return Response({'error': 'No primary agency associated with user.'}, status=403)
+
+    membership = AgencyMembership.objects.filter(
+        agency=agency, user=request.user, is_active=True
+    ).first()
+    if not membership:
+        return Response({'error': 'Active agency membership required.'}, status=403)
+
+    if membership.role not in ('owner', 'admin', 'manager'):
+        return Response({'error': 'Insufficient agency role to invite client users.'}, status=403)
+
+    client = Client.objects.filter(id=client_id).first()
+    if not client:
+        return Response({'error': 'Client workspace not found.'}, status=404)
+
+    relation = AgencyClientRelation.objects.filter(agency=agency, client=client).first()
+    if not relation or relation.status != 'active':
+        return Response({'error': 'Active agency-client relation required.'}, status=403)
+
+    # ── GET: List invitations for this client ─────────────────────────────────
+    if request.method == 'GET':
+        invitations = ClientInvitation.objects.filter(
+            client_record=client,
+            agency=agency,
+        ).order_by('-invited_at')
+        data = []
+        for inv in invitations:
+            is_exp = inv.is_expired
+            inv_status = 'expired' if is_exp else inv.status
+            data.append({
+                'id': inv.id,
+                'token': str(inv.token),
+                'client_id': client.id,
+                'client_email': inv.client_email,
+                'role': inv.role,
+                'status': inv_status,
+                'message': inv.message,
+                'invited_at': inv.invited_at.isoformat() if inv.invited_at else None,
+                'expires_at': inv.expires_at.isoformat() if inv.expires_at else None,
+                'responded_at': inv.responded_at.isoformat() if inv.responded_at else None,
+                'accepted_at': inv.accepted_at.isoformat() if inv.accepted_at else None,
+            })
+        return Response(data)
+
+    # ── POST: Create invitation ───────────────────────────────────────────────
+    raw_email = request.data.get('email')
+    if not raw_email or not str(raw_email).strip():
+        return Response({'error': 'Email is required.', 'details': {'email': ['Email is required.']}}, status=400)
+
+    normalized_email = str(raw_email).strip().lower()
+    try:
+        validate_email(normalized_email)
+    except ValidationError:
+        return Response({'error': 'Enter a valid email address.', 'details': {'email': ['Enter a valid email address.']}}, status=400)
+
+    role = request.data.get('role', 'viewer')
+    valid_roles = [r[0] for r in CLIENT_USER_ROLE_CHOICES]
+    if role not in valid_roles:
+        return Response({
+            'error': f'Invalid role. Allowed roles are: {", ".join(valid_roles)}',
+            'details': {'role': [f'Invalid role. Allowed: {", ".join(valid_roles)}']}
+        }, status=400)
+
+    message = request.data.get('message', '')
+    if isinstance(message, str):
+        message = message.strip()
+    else:
+        message = ''
+
+    # Duplicate pending check
+    pending_invite = ClientInvitation.objects.filter(
+        client_record=client,
+        client_email=normalized_email,
+        status='pending',
+    ).first()
+    if pending_invite and not pending_invite.is_expired:
+        return Response({
+            'error': 'A pending invitation already exists for this email in this client workspace.',
+            'details': {'email': ['A pending invitation already exists for this email.']}
+        }, status=400)
+
+    from django.contrib.auth.models import User
+    existing_user = User.objects.filter(email__iexact=normalized_email).first()
+
+    invitation = ClientInvitation.objects.create(
+        invited_by=request.user,
+        agency=agency,
+        client_record=client,
+        client_email=normalized_email,
+        client_user=existing_user,
+        role=role,
+        message=message,
+        status='pending',
+    )
+
+    return Response({
+        'id': invitation.id,
+        'token': str(invitation.token),
+        'client_id': client.id,
+        'client_name': client.company or client.name,
+        'agency_id': agency.id,
+        'agency_name': agency.name,
+        'client_email': invitation.client_email,
+        'role': invitation.role,
+        'status': invitation.status,
+        'message': invitation.message,
+        'invited_at': invitation.invited_at.isoformat() if invitation.invited_at else None,
+        'expires_at': invitation.expires_at.isoformat() if invitation.expires_at else None,
+        'invite_url': f"/invitation/{invitation.token}",
+    }, status=201)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def agency_client_revoke_invitation_endpoint(request, client_id, invite_id):
+    """
+    Revoke a pending client invitation (BS-8J.2).
+    """
+    profile = getattr(request.user, 'profile', None)
+    if not profile or profile.account_type != 'agency_member':
+        return Response({'error': 'Only agency members can revoke invitations.'}, status=403)
+
+    agency = profile.primary_agency
+    if not agency:
+        return Response({'error': 'No primary agency associated with user.'}, status=403)
+
+    membership = AgencyMembership.objects.filter(
+        agency=agency, user=request.user, is_active=True
+    ).first()
+    if not membership or membership.role not in ('owner', 'admin', 'manager'):
+        return Response({'error': 'Insufficient agency role to revoke invitations.'}, status=403)
+
+    relation = AgencyClientRelation.objects.filter(agency=agency, client_id=client_id).first()
+    if not relation or relation.status != 'active':
+        return Response({'error': 'Active agency-client relation required.'}, status=403)
+
+    invitation = ClientInvitation.objects.filter(
+        id=invite_id, client_record_id=client_id, agency=agency
+    ).first()
+    if not invitation:
+        return Response({'error': 'Invitation not found.'}, status=404)
+
+    if invitation.status != 'pending':
+        return Response({'error': f'Cannot revoke invitation with status "{invitation.status}".'}, status=400)
+
+    invitation.status = 'revoked'
+    invitation.save(update_fields=['status'])
+    return Response({'status': 'revoked', 'message': 'Invitation has been revoked.'}, status=200)

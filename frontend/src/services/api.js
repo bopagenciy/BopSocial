@@ -277,10 +277,13 @@ export const agencyAPI = {
   update: (slug, data)  => api.put (`/agency/${slug}/`, data),
 };
 
-// ── Agency Client Management (BS-8G) ─────────────
+// ── Agency Client Management (BS-8G / BS-8J.2) ─────────────
 export const agencyClientAPI = {
-  list:   ()     => api.get('/agency/clients/'),
-  create: (data) => api.post('/agency/clients/', data),
+  list:             ()                => api.get('/agency/clients/'),
+  create:           (data)            => api.post('/agency/clients/', data),
+  invite:           (clientId, data)  => api.post(`/agency/clients/${clientId}/invite/`, data),
+  listInvitations:  (clientId)        => api.get(`/agency/clients/${clientId}/invitations/`),
+  revokeInvitation: (clientId, invId) => api.post(`/agency/clients/${clientId}/invitations/${invId}/revoke/`),
 };
 
 // ── Reviews () ───────────────────────────────────

@@ -187,22 +187,150 @@ def send_invitation(request):
 @permission_classes([AllowAny])
 def get_invitation(request, token):
     try:
-        inv = ClientInvitation.objects.select_related('invited_by').get(token=token)
+        inv = ClientInvitation.objects.select_related('invited_by', 'client_record', 'agency').get(token=token)
     except ClientInvitation.DoesNotExist:
         return Response({'error': 'Invitation not found.'}, status=404)
 
-    agency = inv.invited_by
+    is_exp = inv.is_expired
+    if inv.status == 'pending' and is_exp:
+        inv.status = 'expired'
+        inv.save(update_fields=['status'])
+
+    agency_name = (
+        inv.agency.name if inv.agency
+        else (inv.invited_by.get_full_name() or inv.invited_by.email)
+    )
+    client_name = inv.client_record.company if inv.client_record else ''
+    user_exists = User.objects.filter(email__iexact=inv.client_email).exists()
+
     return Response({
         'token':        str(inv.token),
-        'agency_name':  agency.get_full_name() or agency.email,
-        'agency_email': agency.email,
+        'agency_name':  agency_name,
+        'agency_email': inv.invited_by.email,
+        'client_name':  client_name,
         'client_email': inv.client_email,
+        'role':         getattr(inv, 'role', 'viewer'),
         'message':      inv.message,
         'status':       inv.status,
-        'is_expired':   inv.is_expired,
+        'is_expired':   is_exp,
+        'user_exists':  user_exists,
         'expires_at':   inv.expires_at,
         'invited_at':   inv.invited_at,
     })
+
+
+# ── Accept Invitation via Token (BS-8J.2) ───────────────────────────────────────
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def accept_invitation_endpoint(request, token):
+    """
+    Accept an invitation via secure token (BS-8J.2).
+    Supports authenticated users, existing users with password verification,
+    and new user self-registration with secure password setting.
+    """
+    try:
+        inv = ClientInvitation.objects.select_related('invited_by', 'client_record', 'agency').get(token=token)
+    except ClientInvitation.DoesNotExist:
+        return Response({'error': 'Invitation not found.'}, status=404)
+
+    if inv.status in ('revoked', 'cancelled'):
+        return Response({'error': 'This invitation has been revoked.'}, status=400)
+
+    if inv.status != 'pending':
+        return Response({'error': f'Invitation is no longer pending ({inv.status}).'}, status=400)
+
+    if inv.is_expired:
+        inv.status = 'expired'
+        inv.save(update_fields=['status'])
+        return Response({'error': 'Invitation has expired.'}, status=400)
+
+    from django.contrib.auth import authenticate
+    from .models import ClientUserRole
+
+    user = None
+    existing_user = User.objects.filter(email__iexact=inv.client_email).first()
+
+    if request.user and request.user.is_authenticated:
+        if request.user.email.strip().lower() != inv.client_email.strip().lower():
+            return Response({'error': 'This invitation is not for your current logged-in email address.'}, status=403)
+        user = request.user
+    elif existing_user:
+        password = request.data.get('password')
+        if not password:
+            return Response({'error': 'Password is required to confirm acceptance for your account.'}, status=400)
+        auth_user = authenticate(username=existing_user.username, password=password)
+        if not auth_user:
+            auth_user = authenticate(username=existing_user.email, password=password)
+        if not auth_user:
+            return Response({'error': 'Invalid credentials for existing account.'}, status=400)
+        user = auth_user
+    else:
+        password = request.data.get('password')
+        full_name = (request.data.get('full_name') or '').strip()
+        if not password or len(str(password)) < 8:
+            return Response({'error': 'Password must be at least 8 characters long.'}, status=400)
+
+        parts = full_name.split(' ') if full_name else []
+        first_name = parts[0] if parts else ''
+        last_name = ' '.join(parts[1:]) if len(parts) > 1 else ''
+
+        norm_email = inv.client_email.strip().lower()
+        user = User.objects.create_user(
+            username=norm_email,
+            email=norm_email,
+            password=password,
+            first_name=first_name,
+            last_name=last_name,
+        )
+
+    # Attach UserProfile only to the invited Client
+    profile, _ = UserProfile.objects.get_or_create(
+        user=user,
+        defaults={
+            'role': 'client',
+            'account_type': 'end_user',
+            'client': inv.client_record,
+            'email_verified': True,
+        }
+    )
+    if profile.client_id != inv.client_record_id:
+        profile.client = inv.client_record
+        profile.role = 'client'
+        profile.account_type = 'end_user'
+        profile.save(update_fields=['client', 'role', 'account_type'])
+
+    # Assign client-scoped role
+    role_to_assign = getattr(inv, 'role', 'viewer') or 'viewer'
+    ClientUserRole.objects.update_or_create(
+        client=inv.client_record,
+        user=user,
+        defaults={'role': role_to_assign}
+    )
+
+    # Mark invitation accepted
+    now = timezone.now()
+    inv.status = 'accepted'
+    inv.client_user = user
+    inv.accepted_at = now
+    inv.responded_at = now
+    inv.save(update_fields=['status', 'client_user', 'accepted_at', 'responded_at'])
+
+    if inv.client_record:
+        _ensure_onboarding(inv.client_record)
+
+    access, refresh = _make_jwt(user)
+    return Response({
+        'status': 'accepted',
+        'access': access,
+        'refresh': refresh,
+        'client_id': inv.client_record.id if inv.client_record else None,
+        'role': role_to_assign,
+        'user': {
+            'id': user.id,
+            'email': user.email,
+            'name': user.get_full_name() or user.username,
+        }
+    }, status=200)
 
 
 # ── Respond to Invitation ──────────────────────────────────────────────────────
@@ -213,6 +341,9 @@ def respond_invitation(request, token):
         inv = ClientInvitation.objects.select_related('invited_by', 'client_record').get(token=token)
     except ClientInvitation.DoesNotExist:
         return Response({'error': 'Invitation not found.'}, status=404)
+
+    if inv.status in ('revoked', 'cancelled'):
+        return Response({'error': 'Invitation has been revoked.'}, status=400)
 
     if inv.status != 'pending':
         return Response({'error': f'Invitation already {inv.status}.'}, status=400)
@@ -229,11 +360,14 @@ def respond_invitation(request, token):
     if action not in ('accept', 'reject'):
         return Response({'error': 'action must be accept or reject.'}, status=400)
 
-    inv.responded_at = timezone.now()
+    now = timezone.now()
+    inv.responded_at = now
     agency_name = inv.invited_by.get_full_name() or inv.invited_by.email
 
     if action == 'accept':
         inv.status = 'accepted'
+        inv.accepted_at = now
+        inv.client_user = request.user
         inv.save()
 
         # Link profile to client and agency
@@ -241,6 +375,14 @@ def respond_invitation(request, token):
         profile.client = inv.client_record
         profile.agency = inv.invited_by
         profile.save(update_fields=['client', 'agency'])
+
+        from .models import ClientUserRole
+        role_to_assign = getattr(inv, 'role', 'viewer') or 'viewer'
+        ClientUserRole.objects.update_or_create(
+            client=inv.client_record,
+            user=request.user,
+            defaults={'role': role_to_assign}
+        )
 
         _ensure_onboarding(inv.client_record)
 
