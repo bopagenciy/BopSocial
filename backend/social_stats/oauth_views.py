@@ -17,6 +17,8 @@ from datetime import timedelta
 logger = logging.getLogger(__name__)
 
 from django.conf import settings
+from django.core import signing
+from django.core.cache import cache
 from django.shortcuts import redirect
 from django.utils import timezone
 from django.contrib.auth.decorators import login_required
@@ -29,6 +31,7 @@ from .models import PlatformCredential, Client
 from django.contrib.auth.models import User
 from .marketplace_permissions import (
     resolve_acting_context, check_action, deny_response, approval_pending_response,
+    can_manage_social_accounts,
 )
 from .activity_logger import log_activity_for_request
 from .meta_capabilities import (
@@ -67,10 +70,88 @@ def _facebook_consumer_secret():
     return getattr(settings, 'FACEBOOK_SOCIAL_APP_SECRET', '') or getattr(settings, 'META_APP_SECRET', '')
 
 
+_OAUTH_STATE_SALT = 'bopsocial.oauth.state.v1'
+_OAUTH_STATE_TTL = 600  # 10 minutes
+
+
+def _authorize_oauth_start(request, client_id):
+    """Verify client exists and authenticated user may manage social accounts."""
+    client = Client.objects.filter(id=client_id, is_active=True).first()
+    if not client:
+        return None, Response({'error': 'Client workspace not found.'}, status=404)
+    if not can_manage_social_accounts(request.user, client):
+        return None, Response(
+            {'error': 'Insufficient permissions to connect social accounts for this workspace.'},
+            status=403,
+        )
+    return client, None
+
+
+def _create_oauth_state(user_id: int, client_id: int, provider: str, extra: dict | None = None) -> str:
+    """Create a tamper-resistant, expiring, single-use OAuth state bound to user, client & provider."""
+    nonce = secrets.token_urlsafe(24)
+    cache_key = f'oauth_state:{nonce}'
+    cache.set(
+        cache_key,
+        {'user_id': int(user_id), 'client_id': int(client_id), 'provider': provider},
+        timeout=_OAUTH_STATE_TTL,
+    )
+    payload = {'n': nonce, 'u': int(user_id), 'c': int(client_id), 'p': provider}
+    if extra:
+        payload.update(extra)
+    return signing.dumps(payload, salt=_OAUTH_STATE_SALT)
+
+
+def _consume_oauth_state(state_token: str, expected_provider: str):
+    """Validate signature, expiry, provider binding, single-use nonce, and re-verify user authorization."""
+    if not state_token:
+        return None, 'oauth_state_missing'
+    try:
+        payload = signing.loads(state_token, salt=_OAUTH_STATE_SALT, max_age=_OAUTH_STATE_TTL)
+    except signing.SignatureExpired:
+        return None, 'oauth_state_expired'
+    except signing.BadSignature:
+        return None, 'oauth_state_invalid'
+
+    if not isinstance(payload, dict) or payload.get('p') != expected_provider:
+        return None, 'oauth_state_mismatch'
+
+    nonce = payload.get('n')
+    user_id = payload.get('u')
+    client_id = payload.get('c')
+    if not nonce or not user_id or not client_id:
+        return None, 'oauth_state_invalid'
+
+    cache_key = f'oauth_state:{nonce}'
+    cached = cache.get(cache_key)
+    cache.delete(cache_key)
+    if not isinstance(cached, dict):
+        return None, 'oauth_state_replayed'
+    if (
+        cached.get('user_id') != user_id
+        or cached.get('client_id') != client_id
+        or cached.get('provider') != expected_provider
+    ):
+        return None, 'oauth_state_mismatch'
+
+    user = User.objects.filter(id=user_id, is_active=True).first()
+    client = Client.objects.filter(id=client_id, is_active=True).first()
+    if not user or not client or not can_manage_social_accounts(user, client):
+        return None, 'oauth_unauthorized'
+
+    return payload, None
+
+
+def _oauth_start_response(request, auth_url: str):
+    """Return JSON auth_url for authenticated XHR/fetch calls, or redirect for browser calls."""
+    accept = request.META.get('HTTP_ACCEPT', '')
+    if request.GET.get('mode') == 'json' or 'application/json' in accept:
+        return Response({'auth_url': auth_url})
+    return redirect(auth_url)
+
+
 def _oauth_state_valid(request) -> bool:
-    """OAuth CSRF guard: the callback's `state` must equal the one-time value
-    stored in this browser's session at /start. Pops the stored value so a
-    state can't be replayed."""
+    """Legacy session state guard retained for backwards compatibility."""
     import hmac as _hmac
     returned = request.GET.get('state', '') or ''
     expected = request.session.pop('oauth_state', '') or ''
@@ -101,29 +182,30 @@ def _settings_redirect(client_id, query=''):
 # ══════════════════════════════════════════════════════════════════════
 
 @api_view(['GET'])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def facebook_oauth_start(request, client_id):
     """
     Capability-aware Meta OAuth authorization start.
     Initiates Facebook/Meta OAuth flow requesting strictly the scopes needed
     for the requested capability (default: 'facebook_page').
     """
+    client, err = _authorize_oauth_start(request, client_id)
+    if err:
+        return err
+
     capability = request.GET.get('capability', DEFAULT_META_CAPABILITY)
     if capability not in META_OAUTH_CAPABILITIES:
         logger.warning(
             "Unsupported Meta capability '%s' requested, defaulting to '%s' (client_id=%s)",
-            capability, DEFAULT_META_CAPABILITY, client_id
+            capability, DEFAULT_META_CAPABILITY, client.id
         )
         capability = DEFAULT_META_CAPABILITY
 
-    state = f"{client_id}:{secrets.token_urlsafe(16)}"
-    request.session['oauth_state']      = state
-    request.session['oauth_client_id']  = str(client_id)
-    request.session['oauth_capability'] = capability
+    state = _create_oauth_state(request.user.id, client.id, 'facebook', {'cap': capability})
 
     logger.info(
-        "FB oauth start (business app): client_id=%s capability=%s app_id=%s",
-        client_id, capability, settings.META_APP_ID
+        "FB oauth start (business app): client_id=%s user_id=%s capability=%s app_id=%s",
+        client.id, request.user.id, capability, settings.META_APP_ID
     )
 
     params = {
@@ -133,7 +215,7 @@ def facebook_oauth_start(request, client_id):
         'response_type': 'code',
         'state':         state,
     }
-    return redirect(f"https://www.facebook.com/dialog/oauth?{urlencode(params)}")
+    return _oauth_start_response(request, f"https://www.facebook.com/dialog/oauth?{urlencode(params)}")
 
 
 @api_view(['GET'])
@@ -290,8 +372,16 @@ def facebook_oauth_callback(request):
     code       = request.GET.get('code')
     state      = request.GET.get('state', '')
     error      = request.GET.get('error')
-    client_id  = state.split(':')[0] if ':' in state else state or '0'
-    capability = request.session.pop('oauth_capability', DEFAULT_META_CAPABILITY)
+
+    state_payload, state_err = _consume_oauth_state(state, 'facebook')
+    if state_err:
+        logger.warning("FB business callback rejected — %s", state_err)
+        return redirect(f"{settings.FRONTEND_URL}/oauth/callback?error={state_err}")
+
+    client_id  = str(state_payload['c'])
+    capability = state_payload.get('cap') or DEFAULT_META_CAPABILITY
+    if capability not in META_OAUTH_CAPABILITIES:
+        capability = DEFAULT_META_CAPABILITY
 
     if error or not code:
         logger.warning(
@@ -299,10 +389,6 @@ def facebook_oauth_callback(request):
             error, bool(code), client_id
         )
         return _settings_redirect(client_id, '?error=facebook_denied')
-
-    if not _oauth_state_valid(request):
-        logger.warning("FB business callback rejected — state mismatch (client_id=%s)", client_id)
-        return _settings_redirect(client_id, '?error=oauth_state_mismatch')
 
     # Step 1: Short-lived token
     token_resp = requests.get(
@@ -481,14 +567,19 @@ GOOGLE_SCOPES = ' '.join([
 ])
 
 @api_view(['GET'])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def google_oauth_start(request, client_id):
     """Redirect to Google consent screen.
     Optional ?platform=youtube or ?platform=google_my_business for separate flows.
     """
+    client, err = _authorize_oauth_start(request, client_id)
+    if err:
+        return err
+
     platform = request.GET.get('platform', 'all')  # youtube | google_my_business | all
-    state = f"{client_id}:{platform}:{secrets.token_urlsafe(16)}"
-    request.session['oauth_state'] = state
+    if platform not in ('youtube', 'google_my_business', 'all'):
+        platform = 'all'
+    state = _create_oauth_state(request.user.id, client.id, 'google', {'plat': platform})
 
     if platform == 'youtube':
         scopes = GOOGLE_SCOPES_YOUTUBE
@@ -506,7 +597,7 @@ def google_oauth_start(request, client_id):
         'prompt':        'consent',
         'state':          state,
     }
-    return redirect(f"https://accounts.google.com/o/oauth2/v2/auth?{urlencode(params)}")
+    return _oauth_start_response(request, f"https://accounts.google.com/o/oauth2/v2/auth?{urlencode(params)}")
 
 
 @api_view(['GET'])
@@ -517,16 +608,16 @@ def google_oauth_callback(request):
     state     = request.GET.get('state', '')
     error     = request.GET.get('error')
 
-    if error:
-        return redirect(f"{settings.FRONTEND_URL}/settings?error=google_denied")
+    state_payload, state_err = _consume_oauth_state(state, 'google')
+    if state_err:
+        logger.warning("Google callback rejected — %s", state_err)
+        return redirect(f"{settings.FRONTEND_URL}/oauth/callback?error={state_err}")
 
-    parts = state.split(':')
-    client_id = parts[0]
-    platform  = parts[1] if len(parts) >= 3 else 'all'  # youtube | google_my_business | all
+    client_id = str(state_payload['c'])
+    platform  = state_payload.get('plat') or 'all'
 
-    if not _oauth_state_valid(request):
-        logger.warning("Google callback rejected — state mismatch (client_id=%s)", client_id)
-        return _settings_redirect(client_id, '?error=oauth_state_mismatch')
+    if error or not code:
+        return _settings_redirect(client_id, '?error=google_denied')
 
     # Exchange code for tokens
     token_resp = requests.post(
@@ -653,11 +744,14 @@ def google_oauth_callback(request):
 # ══════════════════════════════════════════════════════════════════════
 
 @api_view(['GET'])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def linkedin_oauth_start(request, client_id):
     """Redirect to LinkedIn consent screen."""
-    state = f"{client_id}:{secrets.token_urlsafe(16)}"
-    request.session['oauth_state'] = state
+    client, err = _authorize_oauth_start(request, client_id)
+    if err:
+        return err
+
+    state = _create_oauth_state(request.user.id, client.id, 'linkedin')
 
     params = {
         'response_type': 'code',
@@ -670,7 +764,7 @@ def linkedin_oauth_start(request, client_id):
         # app and will be added back once that approval is granted.
         'scope':          'openid profile email',
     }
-    return redirect(f"https://www.linkedin.com/oauth/v2/authorization?{urlencode(params)}")
+    return _oauth_start_response(request, f"https://www.linkedin.com/oauth/v2/authorization?{urlencode(params)}")
 
 
 @api_view(['GET'])
@@ -681,14 +775,15 @@ def linkedin_oauth_callback(request):
     state     = request.GET.get('state', '')
     error     = request.GET.get('error')
 
-    if error:
-        return redirect(f"{settings.FRONTEND_URL}/settings?error=linkedin_denied")
+    state_payload, state_err = _consume_oauth_state(state, 'linkedin')
+    if state_err:
+        logger.warning("LinkedIn callback rejected — %s", state_err)
+        return redirect(f"{settings.FRONTEND_URL}/oauth/callback?error={state_err}")
 
-    client_id = state.split(':')[0]
+    client_id = str(state_payload['c'])
 
-    if not _oauth_state_valid(request):
-        logger.warning("LinkedIn callback rejected — state mismatch (client_id=%s)", client_id)
-        return _settings_redirect(client_id, '?error=oauth_state_mismatch')
+    if error or not code:
+        return _settings_redirect(client_id, '?error=linkedin_denied')
 
     # Exchange code for access token
     token_resp = requests.post(

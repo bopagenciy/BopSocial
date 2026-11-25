@@ -263,13 +263,29 @@ def notify_approver_for_post(self, unified_post_id: int):
     if post.status != 'pending_approval':
         return
 
-    # Approvers = superadmin + staff assigned to this client
-    from .models import UserProfile
-    profiles = UserProfile.objects.filter(role__in=('superadmin', 'staff'))
+    # Approvers = client-scoped approvers/admins + client owner + superadmin + assigned staff
+    from .models import UserProfile, ClientUserRole
     approvers = []
+    seen_ids = set()
+
+    if post.client.owner_user_id:
+        approvers.append(post.client.owner_user)
+        seen_ids.add(post.client.owner_user_id)
+
+    for cur in ClientUserRole.objects.filter(
+        client_id=post.client_id, role__in=('approver', 'client_admin')
+    ).select_related('user'):
+        if cur.user_id not in seen_ids:
+            approvers.append(cur.user)
+            seen_ids.add(cur.user_id)
+
+    profiles = UserProfile.objects.filter(role__in=('superadmin', 'staff')).select_related('user')
     for p in profiles:
-        if p.role == 'superadmin' or p.assigned_clients.filter(id=post.client_id).exists():
+        if p.user_id not in seen_ids and (
+            p.role == 'superadmin' or p.assigned_clients.filter(id=post.client_id).exists()
+        ):
             approvers.append(p.user)
+            seen_ids.add(p.user_id)
 
     if not approvers:
         logger.info('notify_approver_for_post: no approvers found for client=%s', post.client_id)

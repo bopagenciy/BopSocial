@@ -129,9 +129,20 @@ class TenantScopedMixin:
             return qs.filter(**{f'{f}__in': profile.assigned_clients.all()})
         agency_ids = self._agency_client_ids(profile)
         if agency_ids:
+            cid = self.request.query_params.get('client_id')
+            if cid:
+                try:
+                    cid_int = int(cid)
+                except (TypeError, ValueError):
+                    return qs.none()
+                return qs.filter(**{f'{f}_id': cid_int}) if cid_int in agency_ids else qs.none()
             return qs.filter(**{f'{f}_id__in': agency_ids})
         if profile.client_id:
             return qs.filter(**{f'{f}_id': profile.client_id})
+        from .models import ClientUserRole
+        role_cids = list(ClientUserRole.objects.filter(user=self.request.user).values_list('client_id', flat=True))
+        if role_cids:
+            return qs.filter(**{f'{f}_id__in': role_cids})
         return qs.none()
 
     def perform_create(self, serializer):

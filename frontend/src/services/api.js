@@ -319,12 +319,16 @@ export const clientsAPI = {
 
 // ── OAuth ─────────────────────────────────────────────
 export const oauthAPI = {
-  status:     (clientId)           => api.get(`/oauth/status/${clientId}/`),
-  disconnect: (clientId, platform) => api.delete(`/oauth/disconnect/${clientId}/${platform}/`),
-  // Connect URLs (redirect browser directly)
-  facebookUrl: (clientId)           => `${process.env.REACT_APP_API_URL || 'http://localhost:8000/api'}/oauth/facebook/start/${clientId}/`,
-  googleUrl:   (clientId, platform) => `${process.env.REACT_APP_API_URL || 'http://localhost:8000/api'}/oauth/google/start/${clientId}/?platform=${platform || 'all'}`,
-  linkedinUrl: (clientId)           => `${process.env.REACT_APP_API_URL || 'http://localhost:8000/api'}/oauth/linkedin/start/${clientId}/`,
+  status:        (clientId)           => api.get(`/oauth/status/${clientId}/`),
+  disconnect:    (clientId, platform) => api.delete(`/oauth/disconnect/${clientId}/${platform}/`),
+  // Authenticated OAuth initiation (returns { auth_url } without placing JWT in URLs)
+  startFacebook: (clientId)           => api.get(`/oauth/facebook/start/${clientId}/`, { params: { mode: 'json' } }),
+  startGoogle:   (clientId, platform) => api.get(`/oauth/google/start/${clientId}/`, { params: { platform: platform || 'all', mode: 'json' } }),
+  startLinkedin: (clientId)           => api.get(`/oauth/linkedin/start/${clientId}/`, { params: { mode: 'json' } }),
+  // Legacy URL builders
+  facebookUrl:   (clientId)           => `${process.env.REACT_APP_API_URL || 'http://localhost:8000/api'}/oauth/facebook/start/${clientId}/`,
+  googleUrl:     (clientId, platform) => `${process.env.REACT_APP_API_URL || 'http://localhost:8000/api'}/oauth/google/start/${clientId}/?platform=${platform || 'all'}`,
+  linkedinUrl:   (clientId)           => `${process.env.REACT_APP_API_URL || 'http://localhost:8000/api'}/oauth/linkedin/start/${clientId}/`,
 };
 
 // ── Overview ──────────────────────────────────────────

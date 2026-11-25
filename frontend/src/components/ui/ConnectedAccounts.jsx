@@ -20,7 +20,7 @@ export default function ConnectedAccounts({ clientId, status, onRefresh }) {
   const [loading, setLoading] = useState({});
   const [fbConsentOpen, setFbConsentOpen] = useState(false);
 
-  const handleConnect = (platform) => {
+  const handleConnect = async (platform) => {
     if (!clientId) {
       window.alert(t('alerts.workspace_preparing', 'Your client workspace is still being prepared. Please refresh the page and try again.'));
       return;
@@ -31,16 +31,34 @@ export default function ConnectedAccounts({ clientId, status, onRefresh }) {
       setFbConsentOpen(true);
       return;
     }
-    const urlMap = {
-      youtube:            oauthAPI.googleUrl(clientId, 'youtube'),
-      google_my_business: oauthAPI.googleUrl(clientId, 'google_my_business'),
-      linkedin:           oauthAPI.linkedinUrl(clientId),
-    };
-    window.location.href = urlMap[platform];
+    setLoading(l => ({ ...l, [platform]: true }));
+    try {
+      const startCall = platform === 'linkedin'
+        ? oauthAPI.startLinkedin(clientId)
+        : oauthAPI.startGoogle(clientId, platform);
+      const res = await startCall;
+      if (res?.data?.auth_url) {
+        window.location.href = res.data.auth_url;
+      }
+    } catch (err) {
+      window.alert(err?.response?.data?.error || t('alerts.connect_failed', 'Unable to start account connection.'));
+    } finally {
+      setLoading(l => ({ ...l, [platform]: false }));
+    }
   };
 
-  const handleFbConsentContinue = () => {
-    window.location.href = oauthAPI.facebookUrl(clientId);
+  const handleFbConsentContinue = async () => {
+    setLoading(l => ({ ...l, facebook: true }));
+    try {
+      const res = await oauthAPI.startFacebook(clientId);
+      if (res?.data?.auth_url) {
+        window.location.href = res.data.auth_url;
+      }
+    } catch (err) {
+      window.alert(err?.response?.data?.error || t('alerts.connect_failed', 'Unable to start Facebook connection.'));
+    } finally {
+      setLoading(l => ({ ...l, facebook: false }));
+    }
   };
 
   const handleDisconnect = async (platform) => {

@@ -26,6 +26,7 @@ from __future__ import annotations
 import logging
 from typing import Callable
 
+from django.db import transaction
 from django.utils import timezone
 
 from .models import (
@@ -53,25 +54,45 @@ def _exec_publish_post(approval) -> tuple[bool, str, dict]:
 
     payload = _payload(approval)
     post_id = payload.get('post_id') or approval.target_object_id
-    try:
-        post = UnifiedPost.objects.get(pk=post_id)
-    except UnifiedPost.DoesNotExist:
-        return (False, 'post no longer exists', {})
+    now = timezone.now()
 
-    # If the user edited the body before approving, persist that
-    body = payload.get('body') or payload.get('content')
-    if body and body != post.content:
-        post.content = body
-        post.save(update_fields=['content'])
+    with transaction.atomic():
+        try:
+            post = UnifiedPost.objects.select_for_update().get(pk=post_id)
+        except UnifiedPost.DoesNotExist:
+            return (False, 'post no longer exists', {})
 
-    if post.status not in ('draft', 'scheduled', 'failed', 'partial', 'pending_approval'):
-        return (False, f'post is in status {post.status}; cannot publish', {'post_id': post.id})
+        if post.client_id != approval.client_id:
+            return (False, 'post does not belong to approval client', {'post_id': post.id})
 
-    post.status = 'queued'
-    post.scheduled_at = timezone.now()
-    post.save(update_fields=['status', 'scheduled_at'])
-    publish_unified_post.delay(post.id)
-    return (True, 'queued for publishing', {'post_id': post.id})
+        if post.status not in ('draft', 'scheduled', 'failed', 'partial', 'pending_approval'):
+            return (False, f'post is in status {post.status}; cannot publish', {'post_id': post.id})
+
+        # If the user edited the body before approving, persist that
+        body = payload.get('body') or payload.get('content')
+        if body and body != post.content:
+            post.content = body
+
+        post.approved_by = approval.decided_by
+        post.approved_at = approval.decided_at or now
+
+        is_future = bool(post.scheduled_at and post.scheduled_at > now)
+        if is_future:
+            post.status = 'scheduled'
+            post.save(update_fields=['content', 'approved_by', 'approved_at', 'status'])
+            return (True, 'scheduled for publishing', {
+                'post_id': post.id,
+                'scheduled_at': post.scheduled_at.isoformat(),
+            })
+
+        post.status = 'queued'
+        post.queued_at = now
+        post.scheduled_at = post.scheduled_at or now
+        post.save(update_fields=[
+            'content', 'approved_by', 'approved_at', 'status', 'queued_at', 'scheduled_at',
+        ])
+        transaction.on_commit(lambda pid=post.id: publish_unified_post.delay(pid))
+        return (True, 'queued for publishing', {'post_id': post.id})
 
 
 # ─────────────────────────────────────────────────────────────────────────────

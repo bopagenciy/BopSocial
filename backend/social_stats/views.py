@@ -404,6 +404,8 @@ class ClientViewSet(viewsets.ModelViewSet):
         return [IsAuthenticated()]
 
     def perform_create(self, serializer):
+        from rest_framework.exceptions import PermissionDenied
+        from .models import ClientUserRole
         try:
             profile = self.request.user.profile
             role = profile.role
@@ -411,13 +413,31 @@ class ClientViewSet(viewsets.ModelViewSet):
             role = None
             profile = None
         if role not in ('superadmin', 'staff', 'client'):
-            from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied()
-        client = serializer.save()
-        # Link new client to this user's profile if they don't have one yet
-        if role == 'client' and profile and not profile.client:
+        if profile and profile.account_type == 'agency_member' and role not in ('superadmin', 'staff'):
+            raise PermissionDenied('Agency members must create clients via /api/agency/clients/.')
+        if role == 'client':
+            if not profile or profile.client_id or ClientUserRole.objects.filter(user=self.request.user).exists():
+                raise PermissionDenied('Detached client creation is not permitted.')
+            client = serializer.save(owner_user=self.request.user)
             profile.client = client
-            profile.save()
+            profile.save(update_fields=['client'])
+            return
+        serializer.save()
+
+    def perform_update(self, serializer):
+        from rest_framework.exceptions import PermissionDenied
+        from .marketplace_permissions import can_manage_client_workspace
+        if not can_manage_client_workspace(self.request.user, serializer.instance, destructive=False):
+            raise PermissionDenied('Insufficient permissions to update this client workspace.')
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        from rest_framework.exceptions import PermissionDenied
+        from .marketplace_permissions import can_manage_client_workspace
+        if not can_manage_client_workspace(self.request.user, instance, destructive=True):
+            raise PermissionDenied('Insufficient permissions to delete this client workspace.')
+        instance.delete()
 
     @action(detail=True, methods=['get'])
     def summary(self, request, pk=None):

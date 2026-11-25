@@ -32,6 +32,10 @@ class ClientSerializer(serializers.ModelSerializer):
     class Meta:
         model = Client
         fields = '__all__'
+        read_only_fields = (
+            'owner_user', 'ownership_type', 'created_via',
+            'subscription_plan', 'bop_organization_id', 'created_at',
+        )
 
     def validate(self, attrs):
         if self.instance and hasattr(self, 'initial_data') and isinstance(self.initial_data, dict):

@@ -30,6 +30,7 @@ Approval flow:
 """
 from __future__ import annotations
 
+from django.db import transaction
 from django.utils import timezone
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -37,9 +38,9 @@ from rest_framework.response import Response
 
 from .activity_logger import log_activity
 from .approval_executors import execute_approval
-from .marketplace_permissions import _is_owner, _is_superadmin
+from .marketplace_permissions import _is_owner, _is_superadmin, can_approve_for_client
 from .models import (
-    AgencyMembership, ApprovalRequest, AgencyClientRelation,
+    AgencyMembership, ApprovalRequest, AgencyClientRelation, UnifiedPost,
 )
 
 
@@ -221,36 +222,37 @@ def approve_approval(request, approval_id):
     Owner-only. On success the original action runs via the executor; the
     approval row records both decision metadata and execution result.
     """
-    try:
-        a = ApprovalRequest.objects.select_related(
-            'client', 'relation', 'relation__agency', 'requested_by',
-        ).get(pk=approval_id)
-    except ApprovalRequest.DoesNotExist:
-        return Response({'error': 'approval not found'}, status=404)
-    if not _user_owns_approval(request.user, a):
-        return Response({'error': 'only the workspace owner can approve'}, status=403)
-    if a.status != 'pending':
-        return Response({'error': f'already {a.status}'}, status=400)
-    if a.expires_at and timezone.now() >= a.expires_at:
-        a.status = 'expired'
-        a.save(update_fields=['status'])
-        return Response({'error': 'this approval has expired'}, status=410)
+    with transaction.atomic():
+        try:
+            a = ApprovalRequest.objects.select_for_update().select_related(
+                'client', 'relation', 'relation__agency', 'requested_by',
+            ).get(pk=approval_id)
+        except ApprovalRequest.DoesNotExist:
+            return Response({'error': 'approval not found'}, status=404)
+        if not _user_owns_approval(request.user, a):
+            return Response({'error': 'only the workspace owner can approve'}, status=403)
+        if a.status != 'pending':
+            return Response({'error': f'already {a.status}'}, status=400)
+        if a.expires_at and timezone.now() >= a.expires_at:
+            a.status = 'expired'
+            a.save(update_fields=['status'])
+            return Response({'error': 'this approval has expired'}, status=410)
 
-    data = request.data or {}
-    edited = data.get('edited_payload') or {}
-    if isinstance(edited, dict) and edited:
-        a.edited_payload = edited
+        data = request.data or {}
+        edited = data.get('edited_payload') or {}
+        if isinstance(edited, dict) and edited:
+            a.edited_payload = edited
 
-    a.status        = 'approved'
-    a.user_response = (data.get('response') or '').strip()
-    a.decided_at    = timezone.now()
-    a.decided_by    = request.user
-    a.save(update_fields=['edited_payload', 'status', 'user_response', 'decided_at', 'decided_by'])
+        a.status        = 'approved'
+        a.user_response = (data.get('response') or '').strip()
+        a.decided_at    = timezone.now()
+        a.decided_by    = request.user
+        a.save(update_fields=['edited_payload', 'status', 'user_response', 'decided_at', 'decided_by'])
 
-    success, msg, result = execute_approval(a)
-    a.executed_at      = timezone.now() if success else None
-    a.execution_result = {'success': success, 'message': msg, 'result': result}
-    a.save(update_fields=['executed_at', 'execution_result'])
+        success, msg, result = execute_approval(a)
+        a.executed_at      = timezone.now() if success else None
+        a.execution_result = {'success': success, 'message': msg, 'result': result}
+        a.save(update_fields=['executed_at', 'execution_result'])
 
     log_activity(
         a.client,
@@ -293,23 +295,35 @@ def approve_approval(request, approval_id):
 @permission_classes([IsAuthenticated])
 def reject_approval(request, approval_id):
     """POST {reason}."""
-    try:
-        a = ApprovalRequest.objects.select_related(
-            'client', 'relation', 'relation__agency', 'requested_by',
-        ).get(pk=approval_id)
-    except ApprovalRequest.DoesNotExist:
-        return Response({'error': 'approval not found'}, status=404)
-    if not _user_owns_approval(request.user, a):
-        return Response({'error': 'only the workspace owner can reject'}, status=403)
-    if a.status != 'pending':
-        return Response({'error': f'already {a.status}'}, status=400)
+    with transaction.atomic():
+        try:
+            a = ApprovalRequest.objects.select_for_update().select_related(
+                'client', 'relation', 'relation__agency', 'requested_by',
+            ).get(pk=approval_id)
+        except ApprovalRequest.DoesNotExist:
+            return Response({'error': 'approval not found'}, status=404)
+        if not _user_owns_approval(request.user, a):
+            return Response({'error': 'only the workspace owner can reject'}, status=403)
+        if a.status != 'pending':
+            return Response({'error': f'already {a.status}'}, status=400)
 
-    reason = (request.data.get('reason') or '').strip()
-    a.status        = 'rejected'
-    a.user_response = reason
-    a.decided_at    = timezone.now()
-    a.decided_by    = request.user
-    a.save(update_fields=['status', 'user_response', 'decided_at', 'decided_by'])
+        reason = (request.data.get('reason') or '').strip()
+        a.status        = 'rejected'
+        a.user_response = reason
+        a.decided_at    = timezone.now()
+        a.decided_by    = request.user
+        a.save(update_fields=['status', 'user_response', 'decided_at', 'decided_by'])
+
+        if a.target_object_type == 'UnifiedPost' and a.target_object_id:
+            UnifiedPost.objects.filter(
+                pk=a.target_object_id,
+                client_id=a.client_id,
+                status__in=('pending_approval', 'scheduled', 'queued'),
+            ).update(
+                status='draft',
+                approved_by=None,
+                approved_at=None,
+            )
 
     log_activity(
         a.client,

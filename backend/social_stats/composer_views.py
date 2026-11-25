@@ -49,6 +49,7 @@ from .video_probe import VideoProbeError
 from .tenant_mixins import TenantScopedMixin
 from .marketplace_permissions import (
     check_action, deny_response, approval_pending_response,
+    can_approve_for_client, can_mutate_content,
 )
 from .activity_logger import log_activity_for_request
 
@@ -124,6 +125,15 @@ class UnifiedPostViewSet(TenantScopedMixin, viewsets.ModelViewSet):
         return None
 
     def create(self, request, *args, **kwargs):
+        client_id = self.resolved_client_id()
+        if client_id:
+            from .models import Client
+            client = Client.objects.filter(id=client_id).first()
+            if client and not can_mutate_content(request.user, client):
+                return deny_response('Insufficient client role to create posts.')
+            paused = self._processing_paused_response(client)
+            if paused is not None:
+                return paused
         denial = self._gate_or_pending(
             'draft_posts',
             action_type='draft_post',
@@ -132,19 +142,43 @@ class UnifiedPostViewSet(TenantScopedMixin, viewsets.ModelViewSet):
         )
         if denial is not None:
             return denial
-        client_id = self.resolved_client_id()
-        if client_id:
-            from .models import Client
-            paused = self._processing_paused_response(Client.objects.filter(id=client_id).first())
-            if paused is not None:
-                return paused
         return super().create(request, *args, **kwargs)
+
+    def update(self, request, *args, **kwargs):
+        post = self.get_object()
+        if not can_mutate_content(request.user, post.client):
+            return deny_response('Insufficient client role to edit posts.')
+        paused = self._processing_paused_response(post.client)
+        if paused is not None:
+            return paused
+        return super().update(request, *args, **kwargs)
+
+    def perform_update(self, serializer):
+        instance = serializer.instance
+        material_fields = (
+            'content', 'media_urls', 'media_type',
+            'target_platforms', 'platform_overrides', 'scheduled_at', 'title',
+        )
+        material_changed = any(
+            field in serializer.validated_data
+            and serializer.validated_data[field] != getattr(instance, field)
+            for field in material_fields
+        )
+        extra = {'client_id': instance.client_id}
+        if material_changed and (instance.approved_by_id or instance.status == 'scheduled'):
+            extra['approved_by'] = None
+            extra['approved_at'] = None
+            if instance.client.requires_approval and instance.status in ('scheduled', 'queued'):
+                extra['status'] = 'pending_approval'
+        serializer.save(**extra)
 
     def destroy(self, request, *args, **kwargs):
         # Resolve the target post to evaluate its client. TenantScopedMixin
         # already filters get_object() to the active client, so the lookup
         # is safe.
         post = self.get_object()
+        if not can_mutate_content(request.user, post.client):
+            return deny_response('Insufficient client role to delete posts.')
         verdict, ctx = check_action(
             request, post.client, 'delete_posts',
             action_type='delete_post',
@@ -163,6 +197,8 @@ class UnifiedPostViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def publish_now(self, request, pk=None):
         post = self.get_object()
+        if not can_mutate_content(request.user, post.client):
+            return deny_response('Insufficient client role to publish posts.')
         paused = self._processing_paused_response(post.client)
         if paused is not None:
             return paused
@@ -211,20 +247,29 @@ class UnifiedPostViewSet(TenantScopedMixin, viewsets.ModelViewSet):
             return approval_pending_response(ctx['approval'])
 
         if post.client.requires_approval and not post.approved_by_id:
-            post.status = 'pending_approval'
-            post.save(update_fields=['status'])
-            from .notification_watchers import notify_approver_for_post
-            notify_approver_for_post.delay(post.id)
+            with transaction.atomic():
+                post.status = 'pending_approval'
+                post.save(update_fields=['status'])
+                from .notification_watchers import notify_approver_for_post
+                transaction.on_commit(lambda pid=post.id: notify_approver_for_post.delay(pid))
             return Response(
                 {'detail': 'Post requires approval before publishing.', 'status': 'pending_approval'},
                 status=202,
             )
-        now = timezone.now()
-        post.status = 'queued'
-        post.queued_at = now
-        post.scheduled_at = now
-        post.save(update_fields=['status', 'queued_at', 'scheduled_at'])
-        publish_unified_post.delay(post.id)
+        with transaction.atomic():
+            locked_post = UnifiedPost.objects.select_for_update().get(pk=post.id)
+            if locked_post.status not in ('draft', 'scheduled', 'failed', 'partial', 'pending_approval'):
+                return Response(
+                    {'detail': f'Cannot publish a post in status {locked_post.status}'},
+                    status=400,
+                )
+            now = timezone.now()
+            locked_post.status = 'queued'
+            locked_post.queued_at = now
+            locked_post.scheduled_at = now
+            locked_post.save(update_fields=['status', 'queued_at', 'scheduled_at'])
+            transaction.on_commit(lambda pid=locked_post.id: publish_unified_post.delay(pid))
+        post.refresh_from_db()
 
         log_activity_for_request(
             request, post.client,
@@ -241,6 +286,8 @@ class UnifiedPostViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def schedule(self, request, pk=None):
         post = self.get_object()
+        if not can_mutate_content(request.user, post.client):
+            return deny_response('Insufficient client role to schedule posts.')
         paused = self._processing_paused_response(post.client)
         if paused is not None:
             return paused
@@ -261,15 +308,13 @@ class UnifiedPostViewSet(TenantScopedMixin, viewsets.ModelViewSet):
 
         post.scheduled_at = dt
         if post.client and getattr(post.client, 'requires_approval', False):
-            post.status = 'pending_approval'
-            post.approved_by = None
-            post.approved_at = None
-            post.save(update_fields=['scheduled_at', 'status', 'approved_by', 'approved_at'])
-            try:
+            with transaction.atomic():
+                post.status = 'pending_approval'
+                post.approved_by = None
+                post.approved_at = None
+                post.save(update_fields=['scheduled_at', 'status', 'approved_by', 'approved_at'])
                 from .notification_watchers import notify_approver_for_post
-                notify_approver_for_post.delay(post.id)
-            except Exception:
-                logger.exception('Failed to dispatch notify_approver_for_post for post_id=%s', post.id)
+                transaction.on_commit(lambda pid=post.id: notify_approver_for_post.delay(pid))
         else:
             post.status = 'scheduled'
             post.save(update_fields=['scheduled_at', 'status'])
@@ -278,6 +323,8 @@ class UnifiedPostViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def cancel(self, request, pk=None):
         post = self.get_object()
+        if not can_mutate_content(request.user, post.client):
+            return deny_response('Insufficient client role to cancel posts.')
         if post.status in ('published', 'cancelled'):
             return Response({'detail': f'Already {post.status}'}, status=400)
         post.status = 'cancelled'
@@ -287,6 +334,8 @@ class UnifiedPostViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def duplicate(self, request, pk=None):
         original = self.get_object()
+        if not can_mutate_content(request.user, original.client):
+            return deny_response('Insufficient client role to duplicate posts.')
         with transaction.atomic():
             copy = UnifiedPost.objects.create(
                 client_id=original.client_id,
@@ -305,32 +354,44 @@ class UnifiedPostViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def approve(self, request, pk=None):
         post = self.get_object()
-        if post.status != 'pending_approval':
-            return Response({'detail': f'Post is not pending approval (status={post.status})'}, status=400)
-        post.approved_by = request.user
-        post.approved_at = timezone.now()
-
-        # Canonical future scheduling intent check (scheduled_at > now)
-        is_future = bool(post.scheduled_at and post.scheduled_at > timezone.now())
-
-        if is_future:
-            post.status = 'scheduled'
-            post.save(update_fields=['approved_by', 'approved_at', 'status'])
-            # Do NOT dispatch Celery publication task; wait for scheduler tick at due time
-            return Response(UnifiedPostSerializer(post).data)
-        else:
+        if not can_approve_for_client(request.user, post.client):
+            return Response(
+                {'detail': 'You are not authorized to approve posts for this client.'},
+                status=403,
+            )
+        with transaction.atomic():
+            locked_post = UnifiedPost.objects.select_for_update().get(pk=post.id)
+            if locked_post.status != 'pending_approval':
+                return Response(
+                    {'detail': f'Post is not pending approval (status={locked_post.status})'},
+                    status=400,
+                )
             now = timezone.now()
-            post.status = 'queued'
-            post.queued_at = now
-            post.scheduled_at = post.scheduled_at or now
-            post.save(update_fields=['approved_by', 'approved_at', 'status', 'queued_at', 'scheduled_at'])
-            publish_unified_post.delay(post.id)
-            return Response(UnifiedPostSerializer(post).data)
+            locked_post.approved_by = request.user
+            locked_post.approved_at = now
+
+            # Canonical future scheduling intent check (scheduled_at > now)
+            is_future = bool(locked_post.scheduled_at and locked_post.scheduled_at > now)
+
+            if is_future:
+                locked_post.status = 'scheduled'
+                locked_post.save(update_fields=['approved_by', 'approved_at', 'status'])
+                # Do NOT dispatch Celery publication task; wait for scheduler tick at due time
+            else:
+                locked_post.status = 'queued'
+                locked_post.queued_at = now
+                locked_post.scheduled_at = locked_post.scheduled_at or now
+                locked_post.save(update_fields=['approved_by', 'approved_at', 'status', 'queued_at', 'scheduled_at'])
+                transaction.on_commit(lambda pid=locked_post.id: publish_unified_post.delay(pid))
+        post.refresh_from_db()
+        return Response(UnifiedPostSerializer(post).data)
 
     @action(detail=True, methods=['post'])
     def add_to_queue(self, request, pk=None):
         """Snapshot this post into a QueuedItem inside the named queue."""
         post = self.get_object()
+        if not can_mutate_content(request.user, post.client):
+            return deny_response('Insufficient client role to queue posts.')
         queue_id = request.data.get('queue_id')
         if not queue_id:
             return Response({'detail': 'queue_id is required'}, status=400)
@@ -390,6 +451,10 @@ class MediaAssetViewSet(TenantScopedMixin, viewsets.ModelViewSet):
         client_id = self.resolved_client_id()
         if not client_id:
             return Response({'detail': 'No client context'}, status=400)
+        from .models import Client
+        client = Client.objects.filter(id=client_id).first()
+        if not client or not can_mutate_content(request.user, client):
+            return deny_response('Insufficient client role to upload media.')
 
         upload = request.FILES.get('file')
         if not upload:
@@ -408,11 +473,27 @@ class MediaAssetViewSet(TenantScopedMixin, viewsets.ModelViewSet):
         except (ValueError, VideoProbeError) as e:
             return Response({'detail': str(e)}, status=400)
 
+    def update(self, request, *args, **kwargs):
+        asset = self.get_object()
+        if not can_mutate_content(request.user, asset.client):
+            return deny_response('Insufficient client role to update media.')
+        return super().update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        asset = self.get_object()
+        if not can_mutate_content(request.user, asset.client):
+            return deny_response('Insufficient client role to delete media.')
+        return super().destroy(request, *args, **kwargs)
+
     @action(detail=False, methods=['post'], parser_classes=[MultiPartParser, FormParser])
     def bulk_upload(self, request):
         client_id = self.resolved_client_id()
         if not client_id:
             return Response({'detail': 'No client context'}, status=400)
+        from .models import Client
+        client = Client.objects.filter(id=client_id).first()
+        if not client or not can_mutate_content(request.user, client):
+            return deny_response('Insufficient client role to upload media.')
         files = request.FILES.getlist('files')
         if not files:
             return Response({'detail': 'files are required (multipart "files")'}, status=400)

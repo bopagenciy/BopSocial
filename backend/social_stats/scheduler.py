@@ -55,31 +55,35 @@ logger = logging.getLogger(__name__)
 def process_scheduled_posts(self):
     """Find scheduled UnifiedPosts whose time has come and dispatch them."""
     now = timezone.now()
-    due = UnifiedPost.objects.filter(
+    due = UnifiedPost.objects.select_related('client').filter(
         status='scheduled',
         scheduled_at__lte=now,
     ).order_by('scheduled_at')[:200]
 
     dispatched = 0
     for post in due:
+        if post.client and getattr(post.client, 'requires_approval', False) and not post.approved_by_id:
+            with transaction.atomic():
+                moved = (UnifiedPost.objects
+                         .filter(id=post.id, status='scheduled')
+                         .update(status='pending_approval'))
+                if moved:
+                    from .notification_watchers import notify_approver_for_post
+                    transaction.on_commit(lambda pid=post.id: notify_approver_for_post.delay(pid))
+            continue
+
         with transaction.atomic():
             updated = (UnifiedPost.objects
                        .filter(id=post.id, status='scheduled')
                        .update(status='queued', queued_at=now))
             if not updated:
                 continue
-        try:
-            publish_unified_post.delay(post.id)
-            dispatched += 1
-            logger.info(
-                'process_scheduled_posts: dispatched post_id=%s client_id=%s scheduled_at=%s',
-                post.id, post.client_id, post.scheduled_at,
-            )
-        except Exception:
-            logger.exception(
-                'process_scheduled_posts: failed to dispatch post_id=%s client_id=%s',
-                post.id, post.client_id,
-            )
+            transaction.on_commit(lambda pid=post.id: publish_unified_post.delay(pid))
+        dispatched += 1
+        logger.info(
+            'process_scheduled_posts: dispatched post_id=%s client_id=%s scheduled_at=%s',
+            post.id, post.client_id, post.scheduled_at,
+        )
 
     if dispatched:
         logger.info('process_scheduled_posts dispatched %s posts', dispatched)

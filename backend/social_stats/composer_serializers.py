@@ -103,7 +103,7 @@ class UnifiedPostSerializer(serializers.ModelSerializer):
             'publish_logs',
         ]
         read_only_fields = [
-            'status', 'queued_at', 'published_at',
+            'client', 'status', 'queued_at', 'published_at',
             'created_by', 'created_by_name', 'created_at', 'updated_at',
             'approved_by', 'approved_at',
             'source_queue', 'source_queued_item',

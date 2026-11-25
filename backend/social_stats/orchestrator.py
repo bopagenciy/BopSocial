@@ -74,12 +74,28 @@ def publish_unified_post(self, unified_post_id: int, mode: str = MODE_INITIAL_PU
                     unified_post_id, post.status)
         return
 
-    # Approval gate
-    if post.client.requires_approval and post.status != 'scheduled' and not post.approved_by_id:
+    # Never publish a future scheduled post prematurely
+    if post.status == 'scheduled' and post.scheduled_at and post.scheduled_at > timezone.now():
+        logger.info('publish_unified_post: post %s scheduled for future %s — skipping premature dispatch',
+                    unified_post_id, post.scheduled_at)
+        return
+
+    # Reject check: if latest ApprovalRequest for this post was rejected and no newer approval exists
+    from .marketplace_models import ApprovalRequest
+    latest_ar = ApprovalRequest.objects.filter(
+        target_object_type='UnifiedPost',
+        target_object_id=post.id,
+    ).order_by('-created_at').first()
+    if latest_ar and latest_ar.status == 'rejected' and not post.approved_by_id:
+        logger.info('publish_unified_post: post %s has rejected approval — skipping dispatch', unified_post_id)
+        return
+
+    # Approval gate: requires_approval=True ALWAYS requires valid approved_by_id regardless of status
+    if post.client.requires_approval and not post.approved_by_id:
         post.status = 'pending_approval'
         post.save(update_fields=['status'])
         from .notification_watchers import notify_approver_for_post
-        notify_approver_for_post.delay(post.id)
+        transaction.on_commit(lambda pid=post.id: notify_approver_for_post.delay(pid))
         return
 
     all_targets = list(post.target_platforms or [])
@@ -97,51 +113,54 @@ def publish_unified_post(self, unified_post_id: int, mode: str = MODE_INITIAL_PU
     else:
         targets = all_targets
 
-    to_dispatch = []
-    for platform in targets:
-        log = PlatformPublishLog.objects.filter(unified_post=post, platform=platform).first()
-        if log:
-            # 1. Success Immutability: definitive external success evidence must never be replayed
-            if log.status == 'success' or bool(log.platform_post_id):
-                logger.info(
-                    'publish_unified_post: post %s platform %s already succeeded (id=%s) — skipping provider invocation (immutable)',
-                    post.id, platform, log.platform_post_id,
+    with transaction.atomic():
+        to_dispatch = []
+        for platform in targets:
+            log = PlatformPublishLog.objects.select_for_update().filter(
+                unified_post=post, platform=platform
+            ).first()
+            if log:
+                # 1. Success Immutability: definitive external success evidence must never be replayed
+                if log.status == 'success' or bool(log.platform_post_id):
+                    logger.info(
+                        'publish_unified_post: post %s platform %s already succeeded (id=%s) — skipping provider invocation (immutable)',
+                        post.id, platform, log.platform_post_id,
+                    )
+                    continue
+
+                # 2. In-flight protection
+                if log.status == 'publishing' and log.attempted_at:
+                    logger.info('publish_unified_post: post %s platform %s is actively publishing — skipping duplicate fanout',
+                                post.id, platform)
+                    continue
+
+                # 3. Failed targets require explicit retry mode
+                if log.status == 'failed' and mode != MODE_PLATFORM_RETRY:
+                    logger.info('publish_unified_post: post %s platform %s has failed — skipping automatic redispatch (explicit retry required)',
+                                post.id, platform)
+                    continue
+
+                # Reset log for dispatch
+                log.status = 'pending'
+                log.error_code = ''
+                log.error_message = ''
+                log.save(update_fields=['status', 'error_code', 'error_message'])
+            else:
+                log = PlatformPublishLog.objects.create(
+                    unified_post=post, platform=platform, status='pending',
                 )
-                continue
 
-            # 2. In-flight protection
-            if log.status == 'publishing' and log.attempted_at:
-                logger.info('publish_unified_post: post %s platform %s is actively publishing — skipping duplicate fanout',
-                            post.id, platform)
-                continue
+            to_dispatch.append(platform)
 
-            # 3. Failed targets require explicit retry mode
-            if log.status == 'failed' and mode != MODE_PLATFORM_RETRY:
-                logger.info('publish_unified_post: post %s platform %s has failed — skipping automatic redispatch (explicit retry required)',
-                            post.id, platform)
-                continue
+        if not to_dispatch:
+            update_unified_post_status(post.id)
+            return
 
-            # Reset log for dispatch
-            log.status = 'pending'
-            log.error_code = ''
-            log.error_message = ''
-            log.save(update_fields=['status', 'error_code', 'error_message'])
-        else:
-            log = PlatformPublishLog.objects.create(
-                unified_post=post, platform=platform, status='pending',
-            )
+        post.status = 'publishing'
+        post.save(update_fields=['status'])
 
-        to_dispatch.append(platform)
-
-    if not to_dispatch:
-        update_unified_post_status(post.id)
-        return
-
-    post.status = 'publishing'
-    post.save(update_fields=['status'])
-
-    for platform in to_dispatch:
-        publish_to_platform.delay(post.id, platform)
+        for platform in to_dispatch:
+            transaction.on_commit(lambda pid=post.id, plat=platform: publish_to_platform.delay(pid, plat))
 
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=120, acks_late=True)
