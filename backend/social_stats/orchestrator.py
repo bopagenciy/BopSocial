@@ -95,7 +95,7 @@ def publish_unified_post(self, unified_post_id: int, mode: str = MODE_INITIAL_PU
         post.status = 'pending_approval'
         post.save(update_fields=['status'])
         from .notification_watchers import notify_approver_for_post
-        transaction.on_commit(lambda pid=post.id: notify_approver_for_post.delay(pid))
+        notify_approver_for_post.delay(post.id)
         return
 
     all_targets = list(post.target_platforms or [])
@@ -159,8 +159,8 @@ def publish_unified_post(self, unified_post_id: int, mode: str = MODE_INITIAL_PU
         post.status = 'publishing'
         post.save(update_fields=['status'])
 
-        for platform in to_dispatch:
-            transaction.on_commit(lambda pid=post.id, plat=platform: publish_to_platform.delay(pid, plat))
+    for platform in to_dispatch:
+        publish_to_platform.delay(post.id, platform)
 
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=120, acks_late=True)

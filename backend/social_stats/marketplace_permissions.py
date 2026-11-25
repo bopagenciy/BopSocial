@@ -84,7 +84,7 @@ def _is_owner(user, client: Client) -> bool:
     if client_role is not None:
         return client_role == 'client_admin'
     prof = _profile(user)
-    if prof and prof.role == 'client' and prof.account_type != 'agency_member' and prof.client_id == client.id:
+    if prof and prof.role in ('client', 'client_admin') and prof.account_type != 'agency_member' and prof.client_id == client.id:
         return True
     return False
 

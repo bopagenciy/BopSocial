@@ -250,8 +250,8 @@ class UnifiedPostViewSet(TenantScopedMixin, viewsets.ModelViewSet):
             with transaction.atomic():
                 post.status = 'pending_approval'
                 post.save(update_fields=['status'])
-                from .notification_watchers import notify_approver_for_post
-                transaction.on_commit(lambda pid=post.id: notify_approver_for_post.delay(pid))
+            from .notification_watchers import notify_approver_for_post
+            notify_approver_for_post.delay(post.id)
             return Response(
                 {'detail': 'Post requires approval before publishing.', 'status': 'pending_approval'},
                 status=202,
@@ -268,7 +268,7 @@ class UnifiedPostViewSet(TenantScopedMixin, viewsets.ModelViewSet):
             locked_post.queued_at = now
             locked_post.scheduled_at = now
             locked_post.save(update_fields=['status', 'queued_at', 'scheduled_at'])
-            transaction.on_commit(lambda pid=locked_post.id: publish_unified_post.delay(pid))
+        publish_unified_post.delay(locked_post.id)
         post.refresh_from_db()
 
         log_activity_for_request(
@@ -382,7 +382,8 @@ class UnifiedPostViewSet(TenantScopedMixin, viewsets.ModelViewSet):
                 locked_post.queued_at = now
                 locked_post.scheduled_at = locked_post.scheduled_at or now
                 locked_post.save(update_fields=['approved_by', 'approved_at', 'status', 'queued_at', 'scheduled_at'])
-                transaction.on_commit(lambda pid=locked_post.id: publish_unified_post.delay(pid))
+        if not is_future:
+            publish_unified_post.delay(locked_post.id)
         post.refresh_from_db()
         return Response(UnifiedPostSerializer(post).data)
 

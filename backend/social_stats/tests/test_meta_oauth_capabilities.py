@@ -43,7 +43,8 @@ from social_stats.meta_capabilities import (
 
 class MetaOAuthCapabilitiesTests(TestCase):
     def setUp(self):
-        self.http = HttpClient()
+        from rest_framework.test import APIClient
+        self.http = APIClient()
         self.user = User.objects.create_user(
             username='meta.pilot@bopagencia.local',
             email='meta.pilot@bopagencia.local',
@@ -59,6 +60,7 @@ class MetaOAuthCapabilitiesTests(TestCase):
             role='superadmin',
             client=self.client_a,
         )
+        self.http.force_authenticate(user=self.user)
 
     # ── Test 1: Facebook-only OAuth requests exact Facebook scopes ──────────
     def test_facebook_only_oauth_requests_exact_facebook_scopes(self):

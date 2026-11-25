@@ -67,9 +67,12 @@ def process_scheduled_posts(self):
                 moved = (UnifiedPost.objects
                          .filter(id=post.id, status='scheduled')
                          .update(status='pending_approval'))
-                if moved:
+            if moved:
+                try:
                     from .notification_watchers import notify_approver_for_post
-                    transaction.on_commit(lambda pid=post.id: notify_approver_for_post.delay(pid))
+                    notify_approver_for_post.delay(post.id)
+                except Exception:
+                    logger.exception('process_scheduled_posts: failed to notify approver for post_id=%s', post.id)
             continue
 
         with transaction.atomic():
@@ -78,12 +81,18 @@ def process_scheduled_posts(self):
                        .update(status='queued', queued_at=now))
             if not updated:
                 continue
-            transaction.on_commit(lambda pid=post.id: publish_unified_post.delay(pid))
-        dispatched += 1
-        logger.info(
-            'process_scheduled_posts: dispatched post_id=%s client_id=%s scheduled_at=%s',
-            post.id, post.client_id, post.scheduled_at,
-        )
+        try:
+            publish_unified_post.delay(post.id)
+            dispatched += 1
+            logger.info(
+                'process_scheduled_posts: dispatched post_id=%s client_id=%s scheduled_at=%s',
+                post.id, post.client_id, post.scheduled_at,
+            )
+        except Exception:
+            logger.exception(
+                'process_scheduled_posts: failed to dispatch post_id=%s client_id=%s',
+                post.id, post.client_id,
+            )
 
     if dispatched:
         logger.info('process_scheduled_posts dispatched %s posts', dispatched)

@@ -202,6 +202,7 @@ def facebook_oauth_start(request, client_id):
         capability = DEFAULT_META_CAPABILITY
 
     state = _create_oauth_state(request.user.id, client.id, 'facebook', {'cap': capability})
+    request.session['oauth_state'] = state
 
     logger.info(
         "FB oauth start (business app): client_id=%s user_id=%s capability=%s app_id=%s",

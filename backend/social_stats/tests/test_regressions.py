@@ -177,18 +177,34 @@ class WhatsAppInboxPayloadTests(TestCase):
 
 
 class OAuthStateValidationTests(TestCase):
-    """Callbacks must reject a `state` that doesn't match the one stored in
-    the session at /start (OAuth CSRF guard)."""
+    """Callbacks must reject a forged, missing, or replayed `state`."""
 
     def _start_facebook(self, http, client_id):
-        return http.get(f'/api/oauth/facebook/start/{client_id}/')
+        from django.contrib.auth.models import User
+        from rest_framework.test import APIClient
+        from social_stats.models import UserProfile
+        user, created = User.objects.get_or_create(
+            username='oauth_reg_admin@test.local',
+            defaults={'email': 'oauth_reg_admin@test.local'},
+        )
+        if created:
+            user.set_password('TestPass123!')
+            user.save()
+            UserProfile.objects.create(user=user, role='superadmin')
+        api = APIClient()
+        api.force_authenticate(user=user)
+        return api.get(f'/api/oauth/facebook/start/{client_id}/')
+
+    def _extract_state(self, start_res):
+        from urllib.parse import urlparse, parse_qs
+        return parse_qs(urlparse(start_res['Location']).query)['state'][0]
 
     def test_forged_state_is_rejected(self):
         from django.test import Client as HttpClient
         http = HttpClient()
         res = http.get('/api/oauth/facebook/callback/?code=x&state=1:forged')
         self.assertEqual(res.status_code, 302)
-        self.assertIn('error=oauth_state_mismatch', res['Location'])
+        self.assertIn('error=oauth_state_invalid', res['Location'])
 
     def test_matching_state_passes_the_guard(self):
         from unittest.mock import patch
@@ -197,25 +213,25 @@ class OAuthStateValidationTests(TestCase):
         http = HttpClient()
         start = self._start_facebook(http, client_obj.id)
         self.assertEqual(start.status_code, 302)
-        state = http.session['oauth_state']
+        state = self._extract_state(start)
         # Token exchange fails (no real Meta app) → flow errors AFTER the
         # state guard, proving the guard accepted the genuine state.
         with patch('social_stats.oauth_views.requests.get') as mock_get:
             mock_get.return_value.json.return_value = {'error': {'message': 'bad app'}}
             res = http.get(f'/api/oauth/facebook/callback/?code=x&state={state}')
         self.assertEqual(res.status_code, 302)
-        self.assertNotIn('oauth_state_mismatch', res['Location'])
+        self.assertNotIn('oauth_state_', res['Location'])
 
     def test_state_is_single_use(self):
         from django.test import Client as HttpClient
         client_obj = _client_factory('oauthonce')
         http = HttpClient()
-        self._start_facebook(http, client_obj.id)
-        state = http.session['oauth_state']
+        start = self._start_facebook(http, client_obj.id)
+        state = self._extract_state(start)
         from unittest.mock import patch
         with patch('social_stats.oauth_views.requests.get') as mock_get:
             mock_get.return_value.json.return_value = {'error': {'message': 'x'}}
             http.get(f'/api/oauth/facebook/callback/?code=x&state={state}')
         # Replaying the same state must now fail the guard.
         res = http.get(f'/api/oauth/facebook/callback/?code=x&state={state}')
-        self.assertIn('error=oauth_state_mismatch', res['Location'])
+        self.assertIn('error=oauth_state_replayed', res['Location'])

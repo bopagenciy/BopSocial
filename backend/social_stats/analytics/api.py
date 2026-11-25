@@ -50,14 +50,22 @@ class AnalyticsBaseView(APIView):
         except (ValueError, TypeError):
             return None
 
-        from ..views import check_client_access
-        if not check_client_access(request, client_id):
+        client = Client.objects.filter(id=client_id, is_active=True).first()
+        if not client:
             return None
 
-        return Client.objects.filter(id=client_id, is_active=True).first()
+        if request.user.is_staff or request.user.is_superuser or client.owner_user_id == request.user.id:
+            return client
+
+        from ..views import check_client_access
+        if check_client_access(request, client_id):
+            return client
+        return None
 
     def can_generate_report(self, request, client: Client) -> bool:
         """Read access does not imply report-generation or provider-execution permissions."""
+        if request.user.is_staff or request.user.is_superuser or client.owner_user_id == request.user.id:
+            return True
         from ..marketplace_permissions import can_mutate_content
         return can_mutate_content(request.user, client)
 
