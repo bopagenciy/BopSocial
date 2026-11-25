@@ -35,6 +35,116 @@ HAIKU  = 'claude-haiku-4-5-20251001'
 SONNET = 'claude-sonnet-4-6'   # for richer content tasks
 
 
+class AIConfigError(RuntimeError):
+    """Raised when the configured AI provider is missing credentials/config."""
+
+
+class AITimeoutError(RuntimeError):
+    """Raised when an AI provider call times out."""
+
+
+class AIProviderError(RuntimeError):
+    """Raised when an AI provider call fails."""
+
+
+def resolve_ai_content_provider() -> str:
+    """
+    Resolve the active commercial AI text-generation provider.
+    Supports 'ollama' and 'anthropic'. Never silently falls back to paid Anthropic
+    when 'ollama' is explicitly selected.
+    """
+    configured = (getattr(settings, 'AI_CONTENT_PROVIDER', '') or '').strip().lower()
+    if configured in ('ollama', 'anthropic'):
+        return configured
+    if getattr(settings, 'ANTHROPIC_API_KEY', ''):
+        return 'anthropic'
+    return ''
+
+
+def generate_text_completion(
+    system_prompt: str,
+    user_prompt: str,
+    *,
+    max_tokens: int = 2048,
+    timeout: Optional[int] = None,
+    model: Optional[str] = None,
+    json_mode: bool = False,
+) -> str:
+    """
+    Provider-agnostic text completion helper supporting configurable Ollama
+    and Anthropic backends with explicit timeout and error handling.
+    """
+    provider = resolve_ai_content_provider()
+    if not provider:
+        raise AIConfigError('AI service is not configured. Contact your administrator.')
+
+    if provider == 'ollama':
+        import requests
+        from .analytics.narrative.providers.ollama import (
+            _clean_ollama_response_text,
+            compose_ollama_prompt,
+        )
+
+        host = (getattr(settings, 'OLLAMA_HOST', 'http://host.docker.internal:11434') or '').rstrip('/')
+        if not host:
+            raise AIConfigError('OLLAMA_HOST is not configured.')
+        ollama_model = model or getattr(settings, 'OLLAMA_MODEL', 'qwen3.5:9b')
+        req_timeout = int(timeout or getattr(settings, 'OLLAMA_TIMEOUT_SECONDS', 90))
+        payload: dict[str, Any] = {
+            'model': ollama_model,
+            'prompt': compose_ollama_prompt(system_prompt, user_prompt),
+            'stream': False,
+            'options': {
+                'num_ctx': int(getattr(settings, 'OLLAMA_NUM_CTX', 8192)),
+                'num_predict': max_tokens,
+            },
+        }
+        if json_mode:
+            payload['format'] = 'json'
+        try:
+            resp = requests.post(f'{host}/api/generate', json=payload, timeout=req_timeout)
+        except requests.Timeout as exc:
+            raise AITimeoutError(f'Ollama request timed out after {req_timeout}s') from exc
+        except requests.RequestException as exc:
+            raise AIProviderError('Local Ollama service is unreachable.') from exc
+
+        if resp.status_code != 200:
+            raise AIProviderError(f'Ollama returned HTTP {resp.status_code}')
+        try:
+            data = resp.json()
+        except ValueError as exc:
+            raise AIProviderError('Ollama returned invalid JSON response.') from exc
+        raw = _clean_ollama_response_text(str(data.get('response') or ''))
+        if not raw:
+            raise AIProviderError('Ollama returned empty response.')
+        return raw
+
+    # Anthropic provider
+    api_key = getattr(settings, 'ANTHROPIC_API_KEY', '') or ''
+    if not api_key:
+        raise AIConfigError('ANTHROPIC_API_KEY is not configured.')
+    try:
+        import anthropic
+    except ImportError as exc:
+        raise AIConfigError('Anthropic SDK is not installed.') from exc
+
+    req_timeout = int(timeout or 30)
+    try:
+        client = anthropic.Anthropic(api_key=api_key)
+        msg = client.messages.create(
+            model=model or HAIKU,
+            max_tokens=max_tokens,
+            timeout=req_timeout,
+            system=system_prompt,
+            messages=[{'role': 'user', 'content': user_prompt}],
+        )
+        return (msg.content[0].text or '').strip()
+    except anthropic.APITimeoutError as exc:
+        raise AITimeoutError(f'Anthropic request timed out after {req_timeout}s') from exc
+    except anthropic.APIError as exc:
+        raise AIProviderError(f'Anthropic API error: {exc}') from exc
+
+
 def get_claude(api_key: Optional[str] = None):
     """Lazy-init the Anthropic client. Returns None when SDK or key missing."""
     try:

@@ -35,8 +35,11 @@ def _send_invitation_email(invitation, client_user):
     agency_name = invitation.invited_by.get_full_name() or invitation.invited_by.email
     lang = resolve_user_language(client_user, getattr(invitation, 'client', None) or getattr(invitation, 'client_record', None))
 
+    frontend_url = (getattr(settings, 'FRONTEND_URL', 'http://localhost:3000') or 'http://localhost:3000').rstrip('/')
+    from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', 'Bop Social <noreply@bopsocial.com>')
+
     if client_user:
-        link        = f"{FRONTEND_URL}/invitation/{invitation.token}"
+        link        = f"{frontend_url}/invitation/{invitation.token}"
         client_name = client_user.get_full_name() or client_user.email.split('@')[0]
         copy = get_email_copy(
             'invitation_existing_user', lang=lang,
@@ -58,7 +61,7 @@ def _send_invitation_email(invitation, client_user):
         greeting    = copy['greeting']
         plain       = copy['plain']
     else:
-        link        = f"{FRONTEND_URL}/signup?invite={invitation.token}"
+        link        = f"{frontend_url}/signup?invite={invitation.token}"
         copy = get_email_copy(
             'invitation_new_user', lang=lang,
             agency_name=agency_name,
@@ -86,18 +89,19 @@ def _send_invitation_email(invitation, client_user):
         cta_url      = link,
         cta_label    = cta_label,
         expiry_note  = expiry_note,
-        frontend_url = FRONTEND_URL,
+        frontend_url = frontend_url,
         lang         = lang,
     )
 
     try:
-        send_mail(subject, plain, FROM_EMAIL, [invitation.client_email],
+        send_mail(subject, plain, from_email, [invitation.client_email],
                   html_message=html, fail_silently=False)
         return True, None
     except Exception as exc:
         import logging
-        logging.getLogger(__name__).exception(
-            'Failed to send invitation email to %s: %s', invitation.client_email, exc
+        logging.getLogger(__name__).error(
+            'Failed to send invitation email for invitation_id=%s to %s: %s',
+            invitation.id, invitation.client_email, exc,
         )
         return False, str(exc)
 

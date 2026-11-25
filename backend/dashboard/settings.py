@@ -226,6 +226,7 @@ def _env_bool(name: str, default: bool) -> bool:
     return raw.strip().lower() in ('1', 'true', 'yes', 'on')
 
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+USE_X_FORWARDED_HOST = _env_bool('USE_X_FORWARDED_HOST', not DEBUG)
 SECURE_SSL_REDIRECT     = _env_bool('SECURE_SSL_REDIRECT',     not DEBUG)
 
 # Running the test suite (e.g. CI with DEBUG=False): never force an HTTPS
@@ -240,6 +241,12 @@ SESSION_COOKIE_HTTPONLY = True
 CSRF_COOKIE_HTTPONLY    = False  # double-submit cookie pattern needs JS read
 SESSION_COOKIE_SAMESITE = os.environ.get('SESSION_COOKIE_SAMESITE', 'Lax')
 CSRF_COOKIE_SAMESITE    = os.environ.get('CSRF_COOKIE_SAMESITE', 'Lax')
+CSRF_TRUSTED_ORIGINS    = [
+    o.strip() for o in os.environ.get('CSRF_TRUSTED_ORIGINS', '').split(',')
+    if o.strip()
+]
+if not CSRF_TRUSTED_ORIGINS and os.environ.get('FRONTEND_URL', '').startswith(('http://', 'https://')):
+    CSRF_TRUSTED_ORIGINS = [os.environ['FRONTEND_URL'].rstrip('/')]
 
 # HSTS — default to 1 year preload-eligible in prod; 0 in dev (so the browser
 # doesn't latch onto http://localhost behaviour).
@@ -438,12 +445,12 @@ LINKEDIN_CLIENT_ID     = os.environ.get('LINKEDIN_CLIENT_ID', '')
 LINKEDIN_CLIENT_SECRET = os.environ.get('LINKEDIN_CLIENT_SECRET', '')
 LINKEDIN_REDIRECT_URI  = os.environ.get('LINKEDIN_REDIRECT_URI', 'http://localhost:8000/api/oauth/linkedin/callback/')
 
-# ── Email (Zoho) ──────────────────────────────────────
-EMAIL_BACKEND       = 'django.core.mail.backends.smtp.EmailBackend'
+# ── Email (SMTP) ──────────────────────────────────────
+EMAIL_BACKEND       = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
 EMAIL_HOST          = os.environ.get('EMAIL_HOST', 'smtp.zoho.in')
 EMAIL_PORT          = int(os.environ.get('EMAIL_PORT', 587))
-EMAIL_USE_TLS       = True
-EMAIL_USE_SSL       = False
+EMAIL_USE_TLS       = _env_bool('EMAIL_USE_TLS', True)
+EMAIL_USE_SSL       = _env_bool('EMAIL_USE_SSL', False)
 EMAIL_HOST_USER     = os.environ.get('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
 DEFAULT_FROM_EMAIL  = os.environ.get('DEFAULT_FROM_EMAIL', 'Bop Social <noreply@bopsocial.com>')
@@ -456,8 +463,13 @@ BACKEND_PUBLIC_URL  = os.environ.get('BACKEND_PUBLIC_URL', '')
 FACEBOOK_CONSUMER_APP_ID       = os.environ.get('FACEBOOK_CONSUMER_APP_ID', '')
 FACEBOOK_CONSUMER_REDIRECT_URI = os.environ.get('FACEBOOK_CONSUMER_REDIRECT_URI', '')
 
-# ── Anthropic Claude API ──────────────────────────────
-ANTHROPIC_API_KEY = os.environ.get('ANTHROPIC_API_KEY', '')
+# ── AI Providers (Configurable Anthropic / Local Ollama) ─
+ANTHROPIC_API_KEY       = os.environ.get('ANTHROPIC_API_KEY', '')
+AI_CONTENT_PROVIDER     = os.environ.get('AI_CONTENT_PROVIDER', '')  # 'ollama' | 'anthropic' | ''
+OLLAMA_HOST             = os.environ.get('OLLAMA_HOST', 'http://host.docker.internal:11434')
+OLLAMA_MODEL            = os.environ.get('OLLAMA_MODEL', 'qwen3.5:9b')
+OLLAMA_TIMEOUT_SECONDS  = int(os.environ.get('OLLAMA_TIMEOUT_SECONDS', '90'))
+OLLAMA_NUM_CTX          = int(os.environ.get('OLLAMA_NUM_CTX', '32768'))
 
 # AI infrastructure () — central limits + model selection.
 AI_MONTHLY_BUDGET_USD     = float(os.environ.get('AI_MONTHLY_BUDGET_USD', '500'))

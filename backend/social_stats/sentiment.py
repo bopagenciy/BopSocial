@@ -33,26 +33,32 @@ def classify(text: str) -> str:
     if not text or not text.strip():
         return 'unknown'
 
-    client = _get_client()
-    if not client:
+    from .ai_helpers import (
+        AIConfigError,
+        generate_text_completion,
+        resolve_ai_content_provider,
+    )
+
+    if not resolve_ai_content_provider():
         return 'unknown'
 
     try:
-        msg = client.messages.create(
-            model=_MODEL,
-            max_tokens=8,
-            system=(
+        raw = generate_text_completion(
+            (
                 'Classify the sentiment of the following message as EXACTLY '
                 'one of: positive, neutral, negative. Output only the single '
                 'lowercase word. No punctuation, no explanation.'
             ),
-            messages=[{'role': 'user', 'content': text[:1500]}],
+            text[:1500],
+            max_tokens=8,
+            timeout=15,
         )
-        out = ''.join(b.text for b in msg.content if hasattr(b, 'text')).strip().lower()
-        out = re.sub(r'[^a-z]', '', out)  # strip stray punctuation
+        out = re.sub(r'[^a-z]', '', (raw or '').strip().lower())
         return out if out in VALID else 'unknown'
+    except AIConfigError:
+        return 'unknown'
     except Exception:
-        logger.exception('Anthropic sentiment classify failed — returning unknown')
+        logger.exception('Sentiment classify failed — returning unknown')
         return 'unknown'
 
 

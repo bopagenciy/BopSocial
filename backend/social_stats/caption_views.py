@@ -195,39 +195,34 @@ def _generate_caption(request):
     if cached:
         return Response({'captions': cached, 'cached': True})
 
-    # Call Claude
-    api_key = getattr(settings, 'ANTHROPIC_API_KEY', '')
-    if not api_key:
-        return Response({'error': 'AI service is not configured. Contact your administrator.'}, status=503)
+    from .ai_helpers import (
+        AIConfigError,
+        AITimeoutError,
+        AIProviderError,
+        generate_text_completion,
+        parse_json_response,
+    )
 
     try:
-        claude = anthropic.Anthropic(api_key=api_key)
         user_prompt = _build_user_prompt(topic, tone, post_type, platforms, keywords, cta, client_context)
-
-        message = claude.messages.create(
-            model='claude-haiku-4-5-20251001',
+        raw = generate_text_completion(
+            SYSTEM_PROMPT,
+            user_prompt,
             max_tokens=2048,
             timeout=30,
-            system=SYSTEM_PROMPT,
-            messages=[{'role': 'user', 'content': user_prompt}],
+            json_mode=True,
         )
-        raw = message.content[0].text.strip()
+        captions = parse_json_response(raw)
 
-        # Strip markdown code fences if Claude wrapped it
-        if raw.startswith('```'):
-            raw = raw.split('\n', 1)[1] if '\n' in raw else raw[3:]
-            if raw.endswith('```'):
-                raw = raw[:-3].strip()
-
-        captions = json.loads(raw)
-
-    except anthropic.APITimeoutError:
+    except AIConfigError:
+        return Response({'error': 'AI service is not configured. Contact your administrator.'}, status=503)
+    except AITimeoutError:
         return Response({'error': 'The AI took too long to respond (30s limit). Please try again.'}, status=504)
-    except anthropic.APIError as e:
-        logger.error('Anthropic API error: %s', e)
+    except AIProviderError as e:
+        logger.error('AI provider error: %s', e)
         return Response({'error': 'AI service error. Please try again in a moment.'}, status=502)
     except json.JSONDecodeError:
-        logger.error('Claude returned non-JSON: %s', raw[:200])
+        logger.error('AI returned non-JSON: %s', raw[:200])
         return Response({'error': 'AI returned an unexpected format. Please try again.'}, status=502)
     except Exception as e:
         logger.error('Caption generation error: %s', e)

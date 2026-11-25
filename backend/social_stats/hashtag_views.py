@@ -239,42 +239,37 @@ def _generate_hashtags(request):
         # Return a minimal HashtagSet-like response from cache
         return Response({'hashtags': cached, 'cached': True, 'id': None})
 
-    # Claude API
-    api_key = getattr(settings, 'ANTHROPIC_API_KEY', '')
-    if not api_key:
-        return Response({'error': 'AI service is not configured. Contact your administrator.'}, status=503)
+    from .ai_helpers import (
+        AIConfigError,
+        AITimeoutError,
+        AIProviderError,
+        generate_text_completion,
+        parse_json_response,
+    )
 
     try:
-        claude      = anthropic.Anthropic(api_key=api_key)
         user_prompt = _build_user_prompt(niche, location, platform, post_topic, post_type, client_context)
-
-        message = claude.messages.create(
-            model='claude-haiku-4-5-20251001',
+        raw = generate_text_completion(
+            SYSTEM_PROMPT,
+            user_prompt,
             max_tokens=4096,
             timeout=45,
-            system=SYSTEM_PROMPT,
-            messages=[{'role': 'user', 'content': user_prompt}],
+            json_mode=True,
         )
-        raw = message.content[0].text.strip()
+        hashtags = parse_json_response(raw)
 
-        # Strip markdown code fences if present
-        if raw.startswith('```'):
-            raw = raw.split('\n', 1)[1] if '\n' in raw else raw[3:]
-            if raw.endswith('```'):
-                raw = raw[:-3].strip()
-
-        hashtags = json.loads(raw)
-
-    except anthropic.APITimeoutError:
+    except AIConfigError:
+        return Response({'error': 'AI service is not configured. Contact your administrator.'}, status=503)
+    except AITimeoutError:
         return Response(
             {'error': 'The AI took too long to respond (45s limit). Please try again.'},
             status=504,
         )
-    except anthropic.APIError as e:
-        logger.error('Anthropic API error: %s', e)
+    except AIProviderError as e:
+        logger.error('AI provider error: %s', e)
         return Response({'error': 'AI service error. Please try again in a moment.'}, status=502)
     except json.JSONDecodeError:
-        logger.error('Claude returned non-JSON for hashtags: %s', raw[:300])
+        logger.error('AI returned non-JSON for hashtags: %s', raw[:300])
         return Response({'error': 'AI returned an unexpected format. Please try again.'}, status=502)
     except Exception as e:
         logger.error('Hashtag generation error: %s', e)

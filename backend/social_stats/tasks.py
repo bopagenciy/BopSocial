@@ -1189,23 +1189,27 @@ def generate_ai_insights(client_id, month, year):
         "but honest. End with one specific action to take next week."
     )
 
-    api_key = settings.ANTHROPIC_API_KEY
-    if not api_key:
-        logger.error("generate_ai_insights: ANTHROPIC_API_KEY not set")
+    from .ai_helpers import (
+        AIConfigError,
+        generate_text_completion,
+        resolve_ai_content_provider,
+    )
+
+    provider = resolve_ai_content_provider()
+    if not provider:
+        logger.error("generate_ai_insights: AI provider not configured")
         return
 
     try:
-        import anthropic
-        anthropic_client = anthropic.Anthropic(api_key=api_key)
-        message = anthropic_client.messages.create(
-            model="claude-sonnet-4-20250514",
+        content = generate_text_completion(
+            system_prompt,
+            data_summary,
             max_tokens=1024,
-            system=system_prompt,
-            messages=[{"role": "user", "content": data_summary}],
+            timeout=60,
+            model="claude-sonnet-4-20250514" if provider == 'anthropic' else None,
         )
-        content = message.content[0].text
-    except Exception as e:
-        logger.error("generate_ai_insights: Claude API error: %s", e)
+    except (AIConfigError, Exception) as e:
+        logger.error("generate_ai_insights: AI provider error: %s", e)
         return
 
     # Upsert the insight

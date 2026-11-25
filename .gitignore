@@ -120,3 +120,6 @@ staticfiles/
 .pytest_cache/
 .mypy_cache/
 *.sqlite3
+
+# Local PostgreSQL backups
+backups/
