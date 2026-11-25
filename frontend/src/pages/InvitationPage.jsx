@@ -27,13 +27,17 @@ export default function InvitationPage() {
   const { t } = useTranslation('auth');
   const { token } = useParams();
   const navigate = useNavigate();
-  const { user, refreshAuth } = useAuth();
+  const { user, refreshAuth, logout } = useAuth();
 
   const [inv, setInv] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [responding, setResponding] = useState('');
   const [done, setDone] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPwd, setConfirmPwd] = useState('');
+  const [mfaRequired, setMfaRequired] = useState(false);
 
   useEffect(() => {
     invitationAPI.getByToken(token)
@@ -42,26 +46,56 @@ export default function InvitationPage() {
       .finally(() => setLoading(false));
   }, [token, t]);
 
-  // Stash & redirect to login if not authenticated
-  useEffect(() => {
-    if (!loading && inv && !user) {
-      localStorage.setItem('pending_invite_token', token);
-      navigate(`/login?next=/invitation/${token}`, { replace: true });
+  async function handleAcceptSubmit(e) {
+    if (e) e.preventDefault();
+    setError('');
+    if (!user) {
+      if (!inv?.user_exists) {
+        if (!fullName.trim()) {
+          setError(t('signup.validation.full_name_required', 'Full name is required.'));
+          return;
+        }
+        if (!password || password.length < 8) {
+          setError(t('signup.validation.password_length', 'Password must be at least 8 characters.'));
+          return;
+        }
+        if (password !== confirmPwd) {
+          setError(t('signup.validation.passwords_mismatch', 'Passwords do not match.'));
+          return;
+        }
+      } else if (!password) {
+        setError(t('signup.validation.password_required', 'Password is required.'));
+        return;
+      }
     }
-  }, [loading, inv, user, token, navigate]);
+
+    setResponding('accept');
+    try {
+      const payload = user ? {} : (inv?.user_exists ? { password } : { full_name: fullName.trim(), password });
+      const res = await invitationAPI.accept(token, payload);
+      await refreshAuth(res.data.access, res.data.refresh);
+      setDone('accepted');
+      setTimeout(() => navigate('/u', { replace: true }), 1200);
+    } catch (err) {
+      const data = err?.response?.data;
+      if (data?.mfa_required) {
+        setMfaRequired(true);
+      }
+      setError(data?.error || t('common.something_went_wrong', 'Something went wrong.'));
+    } finally {
+      setResponding('');
+    }
+  }
 
   async function handleRespond(action) {
+    if (action === 'accept') {
+      return handleAcceptSubmit();
+    }
     setResponding(action);
     setError('');
     try {
-      const res = await invitationAPI.respond(token, action);
-      if (action === 'accept') {
-        await refreshAuth(res.data.access, res.data.refresh);
-        setDone('accepted');
-        setTimeout(() => navigate('/dashboard', { replace: true }), 1500);
-      } else {
-        setDone('rejected');
-      }
+      await invitationAPI.respond(token, action);
+      setDone('rejected');
     } catch (e) {
       setError(e?.response?.data?.error || t('common.something_went_wrong', 'Something went wrong.'));
     } finally {
@@ -157,6 +191,14 @@ export default function InvitationPage() {
           <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
             {inv.agency_email}
           </div>
+          {inv.client_name && (
+            <div style={{ marginTop: 8, fontSize: 13, color: 'var(--text-primary)', fontWeight: 500 }}>
+              Workspace: {inv.client_name} ({inv.role || 'viewer'})
+            </div>
+          )}
+          <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>
+            Invited email: {inv.client_email}
+          </div>
 
           {inv.message && (
             <div
@@ -194,29 +236,118 @@ export default function InvitationPage() {
           </div>
         )}
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 18 }}>
-          <Button
-            variant="secondary"
-            size="md"
-            icon={XCircle}
-            disabled={!!responding}
-            loading={responding === 'reject'}
-            onClick={() => handleRespond('reject')}
-            fullWidth
-          >
-            {t('invitation.reject_button', 'Decline')}
-          </Button>
-          <Button
-            size="md"
-            icon={CheckCircle}
-            disabled={!!responding}
-            loading={responding === 'accept'}
-            onClick={() => handleRespond('accept')}
-            fullWidth
-          >
-            {t('invitation.accept_button', 'Accept invitation')}
-          </Button>
-        </div>
+        {user && inv.client_email && user.email?.toLowerCase() !== inv.client_email.toLowerCase() ? (
+          <div style={{ marginTop: 16, textAlign: 'left' }}>
+            <div style={{ fontSize: 13, color: 'var(--danger)', marginBottom: 10 }}>
+              {t('invitation.wrong_account', 'You are signed in as {{email}}, but this invitation is for {{invited}}.', {
+                email: user.email,
+                invited: inv.client_email,
+              })}
+            </div>
+            <Button
+              variant="secondary"
+              fullWidth
+              onClick={() => {
+                logout?.();
+              }}
+            >
+              {t('invitation.switch_account', 'Sign out to switch account')}
+            </Button>
+          </div>
+        ) : !user ? (
+          <form onSubmit={handleAcceptSubmit} style={{ marginTop: 16, textAlign: 'left', display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {!inv.user_exists && (
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4, color: 'var(--text-secondary)' }}>
+                  {t('signup.full_name_label', 'Full name')}
+                </label>
+                <input
+                  type="text"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="Jane Doe"
+                  style={inputStyle}
+                  required
+                />
+              </div>
+            )}
+            <div>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4, color: 'var(--text-secondary)' }}>
+                {inv.user_exists
+                  ? t('invitation.confirm_password', 'Enter your account password to accept')
+                  : t('signup.password_label', 'Create password (min. 8 characters)')}
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                style={inputStyle}
+                required
+              />
+            </div>
+            {!inv.user_exists && (
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4, color: 'var(--text-secondary)' }}>
+                  {t('signup.confirm_password_label', 'Confirm password')}
+                </label>
+                <input
+                  type="password"
+                  value={confirmPwd}
+                  onChange={(e) => setConfirmPwd(e.target.value)}
+                  style={inputStyle}
+                  required
+                />
+              </div>
+            )}
+            {mfaRequired ? (
+              <Button
+                type="button"
+                size="md"
+                fullWidth
+                onClick={() => navigate(`/login?next=/invitation/${token}`)}
+              >
+                {t('invitation.sign_in_mfa', 'Sign in with MFA to accept')}
+              </Button>
+            ) : (
+              <Button
+                type="submit"
+                size="md"
+                icon={CheckCircle}
+                disabled={!!responding}
+                loading={responding === 'accept'}
+                fullWidth
+              >
+                {inv.user_exists
+                  ? t('invitation.accept_button', 'Accept invitation')
+                  : t('invitation.create_and_accept', 'Create account & accept')}
+              </Button>
+            )}
+          </form>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 18 }}>
+            <Button
+              variant="secondary"
+              size="md"
+              icon={XCircle}
+              disabled={!!responding}
+              loading={responding === 'reject'}
+              onClick={() => handleRespond('reject')}
+              fullWidth
+            >
+              {t('invitation.reject_button', 'Decline')}
+            </Button>
+            <Button
+              size="md"
+              icon={CheckCircle}
+              disabled={!!responding}
+              loading={responding === 'accept'}
+              onClick={() => handleRespond('accept')}
+              fullWidth
+            >
+              {t('invitation.accept_button', 'Accept invitation')}
+            </Button>
+          </div>
+        )}
       </div>
     );
   }
@@ -279,4 +410,15 @@ const subStyle = {
   margin: '8px 0 0',
   fontSize: 14, lineHeight: 1.6,
   color: 'var(--text-secondary)',
+};
+
+const inputStyle = {
+  width: '100%',
+  padding: '9px 12px',
+  borderRadius: 'var(--radius-md)',
+  border: '1px solid var(--border-default)',
+  background: 'var(--surface-sunken)',
+  color: 'var(--text-primary)',
+  fontSize: 14,
+  boxSizing: 'border-box',
 };

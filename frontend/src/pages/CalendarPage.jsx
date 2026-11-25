@@ -54,10 +54,12 @@ function fmt(n) {
 }
 
 const STATUS_BADGE = {
-  published: { bg: '#D1FAE5', color: '#059669' },
-  scheduled: { bg: '#e6fbff', color: '#007a9a' },
-  draft:     { bg: '#F1F5F9', color: 'var(--text-secondary)' },
-  failed:    { bg: '#FEE2E2', color: '#EF4444' },
+  published:        { bg: '#D1FAE5', color: '#059669' },
+  scheduled:        { bg: '#e6fbff', color: '#007a9a' },
+  pending_approval: { bg: '#FEF3C7', color: '#B45309' },
+  rejected:         { bg: '#FEE2E2', color: '#B91C1C' },
+  draft:            { bg: '#F1F5F9', color: 'var(--text-secondary)' },
+  failed:           { bg: '#FEE2E2', color: '#EF4444' },
 };
 
 // ── List view ─────────────────────────────────────────────────────────────────

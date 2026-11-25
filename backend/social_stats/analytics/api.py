@@ -50,12 +50,16 @@ class AnalyticsBaseView(APIView):
         except (ValueError, TypeError):
             return None
 
-        # Staff can view any client; regular user can only view their own client
-        qs = Client.objects.filter(id=client_id, is_active=True)
-        if not request.user.is_staff:
-            qs = qs.filter(owner_user=request.user)
+        from ..views import check_client_access
+        if not check_client_access(request, client_id):
+            return None
 
-        return qs.first()
+        return Client.objects.filter(id=client_id, is_active=True).first()
+
+    def can_generate_report(self, request, client: Client) -> bool:
+        """Read access does not imply report-generation or provider-execution permissions."""
+        from ..marketplace_permissions import can_mutate_content
+        return can_mutate_content(request.user, client)
 
 
 class AnalyticsSummaryView(AnalyticsBaseView):
@@ -771,6 +775,8 @@ class ExecutiveReportListView(AnalyticsBaseView):
         client = self.validate_client(request, client_id_raw)
         if not client:
             return Response({'error': 'Client not found or unauthorized'}, status=status.HTTP_404_NOT_FOUND)
+        if not self.can_generate_report(request, client):
+            return Response({'error': 'Insufficient permissions to generate reports.'}, status=status.HTTP_403_FORBIDDEN)
 
         start_date = _parse_date(request.data.get('date_from') or request.data.get('start_date'))
         end_date = _parse_date(request.data.get('date_to') or request.data.get('end_date'))
@@ -884,6 +890,8 @@ class ExecutiveReportGeneratePDFView(AnalyticsBaseView):
         client = self.validate_client(request, report.client_id)
         if not client:
             return Response({'error': 'Report not found or unauthorized'}, status=status.HTTP_404_NOT_FOUND)
+        if not self.can_generate_report(request, client):
+            return Response({'error': 'Insufficient permissions to generate report PDF.'}, status=status.HTTP_403_FORBIDDEN)
 
         try:
             report, _ = generate_pdf_for_report(report)
@@ -946,6 +954,8 @@ class ReportNarrativePreviewView(AnalyticsBaseView):
         client = self.validate_client(request, report.client_id)
         if not client:
             return Response({'error': 'Report not found or unauthorized'}, status=status.HTTP_404_NOT_FOUND)
+        if not self.can_generate_report(request, client):
+            return Response({'error': 'Insufficient permissions to generate report PDF.'}, status=status.HTTP_403_FORBIDDEN)
 
         language = request.data.get('language') or report.language
         style = request.data.get('style', 'EXECUTIVE')
@@ -979,6 +989,8 @@ class ReportNarrativeView(AnalyticsBaseView):
         client = self.validate_client(request, report.client_id)
         if not client:
             return Response({'error': 'Report not found or unauthorized'}, status=status.HTTP_404_NOT_FOUND)
+        if not self.can_generate_report(request, client):
+            return Response({'error': 'Insufficient permissions to generate report PDF.'}, status=status.HTTP_403_FORBIDDEN)
 
         narrative, is_stale = get_latest_narrative_for_report(report)
         if not narrative:
@@ -1015,6 +1027,8 @@ class ReportNarrativeView(AnalyticsBaseView):
         client = self.validate_client(request, report.client_id)
         if not client:
             return Response({'error': 'Report not found or unauthorized'}, status=status.HTTP_404_NOT_FOUND)
+        if not self.can_generate_report(request, client):
+            return Response({'error': 'Insufficient permissions to generate report PDF.'}, status=status.HTTP_403_FORBIDDEN)
 
         language = request.data.get('language') or report.language
         style = request.data.get('style', 'EXECUTIVE')

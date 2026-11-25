@@ -243,16 +243,20 @@ def agency_client_invite_endpoint(request, client_id):
     from django.contrib.auth.models import User
     existing_user = User.objects.filter(email__iexact=normalized_email).first()
 
-    invitation = ClientInvitation.objects.create(
-        invited_by=request.user,
-        agency=agency,
-        client_record=client,
-        client_email=normalized_email,
-        client_user=existing_user,
-        role=role,
-        message=message,
-        status='pending',
-    )
+    with transaction.atomic():
+        invitation = ClientInvitation.objects.create(
+            invited_by=request.user,
+            agency=agency,
+            client_record=client,
+            client_email=normalized_email,
+            client_user=existing_user,
+            role=role,
+            message=message,
+            status='pending',
+        )
+
+    from .invitation_views import _send_invitation_email
+    email_sent, email_error = _send_invitation_email(invitation, existing_user)
 
     return Response({
         'id': invitation.id,
@@ -268,6 +272,8 @@ def agency_client_invite_endpoint(request, client_id):
         'invited_at': invitation.invited_at.isoformat() if invitation.invited_at else None,
         'expires_at': invitation.expires_at.isoformat() if invitation.expires_at else None,
         'invite_url': f"/invitation/{invitation.token}",
+        'email_sent': email_sent,
+        'email_error': email_error,
     }, status=201)
 
 

@@ -51,12 +51,28 @@ EMAIL_RE = re.compile(r'^[^\s@]+@[^\s@]+\.[^\s@]+$')
 # Helpers
 # ─────────────────────────────────────────────────────────────────────────────
 def _workspace_for(user) -> Client | None:
-    """Return the workspace this end-user owns. Prefer profile.default_workspace,
-    fall back to Client.owner_user lookup."""
+    """Return the authorized workspace for this end-user.
+    Checks profile.default_workspace, validated profile.client,
+    authorized ClientUserRole membership, and Client.owner_user."""
     profile = getattr(user, 'profile', None)
     if profile and profile.default_workspace_id:
-        return profile.default_workspace
-    return Client.objects.filter(owner_user=user).order_by('id').first()
+        ws = profile.default_workspace
+        if ws and ws.is_active and profile.can_access_client(ws.id):
+            return ws
+    if profile and profile.client_id:
+        ws = profile.client
+        if ws and ws.is_active and profile.can_access_client(ws.id):
+            return ws
+    from .models import ClientUserRole
+    role_entry = (
+        ClientUserRole.objects.filter(user=user, client__is_active=True)
+        .select_related('client')
+        .order_by('id')
+        .first()
+    )
+    if role_entry:
+        return role_entry.client
+    return Client.objects.filter(owner_user=user, is_active=True).order_by('id').first()
 
 
 def _serialize_workspace(client: Client) -> dict:
@@ -202,7 +218,23 @@ def end_user_me(request):
         'workspace': _serialize_workspace(workspace) if workspace else None,
     }
     if workspace:
-        from .models import AgencyClientRelation
+        from .models import AgencyClientRelation, ClientUserRole
+        active_rel = (
+            AgencyClientRelation.objects.filter(client=workspace, status='active')
+            .select_related('agency')
+            .order_by('id')
+            .first()
+        )
+        client_role = (
+            ClientUserRole.objects.filter(client=workspace, user=user)
+            .values_list('role', flat=True)
+            .first()
+        )
+        payload['client_role'] = client_role or ('owner' if workspace.owner_user_id == user.id else 'viewer')
+        payload['managing_agency'] = (
+            {'id': active_rel.agency_id, 'name': active_rel.agency.name}
+            if active_rel else None
+        )
         payload['relations'] = {
             'active':  AgencyClientRelation.objects.filter(client=workspace, status='active').count(),
             'pending': AgencyClientRelation.objects.filter(client=workspace, status='pending').count(),

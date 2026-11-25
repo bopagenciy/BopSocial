@@ -92,9 +92,14 @@ def _send_invitation_email(invitation, client_user):
 
     try:
         send_mail(subject, plain, FROM_EMAIL, [invitation.client_email],
-                  html_message=html, fail_silently=True)
-    except Exception:
-        pass
+                  html_message=html, fail_silently=False)
+        return True, None
+    except Exception as exc:
+        import logging
+        logging.getLogger(__name__).exception(
+            'Failed to send invitation email to %s: %s', invitation.client_email, exc
+        )
+        return False, str(exc)
 
 
 def _ensure_onboarding(client):
@@ -224,99 +229,111 @@ def get_invitation(request, token):
 @permission_classes([AllowAny])
 def accept_invitation_endpoint(request, token):
     """
-    Accept an invitation via secure token (BS-8J.2).
-    Supports authenticated users, existing users with password verification,
+    Accept an invitation via secure token (BS-8J.2 / BS-9C).
+    Supports authenticated users, existing users with password verification (preserving MFA),
     and new user self-registration with secure password setting.
     """
-    try:
-        inv = ClientInvitation.objects.select_related('invited_by', 'client_record', 'agency').get(token=token)
-    except ClientInvitation.DoesNotExist:
-        return Response({'error': 'Invitation not found.'}, status=404)
-
-    if inv.status in ('revoked', 'cancelled'):
-        return Response({'error': 'This invitation has been revoked.'}, status=400)
-
-    if inv.status != 'pending':
-        return Response({'error': f'Invitation is no longer pending ({inv.status}).'}, status=400)
-
-    if inv.is_expired:
-        inv.status = 'expired'
-        inv.save(update_fields=['status'])
-        return Response({'error': 'Invitation has expired.'}, status=400)
-
+    from django.db import transaction
     from django.contrib.auth import authenticate
-    from .models import ClientUserRole
+    from .models import ClientUserRole, UserMFA
 
-    user = None
-    existing_user = User.objects.filter(email__iexact=inv.client_email).first()
+    with transaction.atomic():
+        try:
+            inv = (
+                ClientInvitation.objects
+                .select_for_update(of=('self',))
+                .select_related('invited_by', 'client_record', 'agency')
+                .get(token=token)
+            )
+        except ClientInvitation.DoesNotExist:
+            return Response({'error': 'Invitation not found.'}, status=404)
 
-    if request.user and request.user.is_authenticated:
-        if request.user.email.strip().lower() != inv.client_email.strip().lower():
-            return Response({'error': 'This invitation is not for your current logged-in email address.'}, status=403)
-        user = request.user
-    elif existing_user:
-        password = request.data.get('password')
-        if not password:
-            return Response({'error': 'Password is required to confirm acceptance for your account.'}, status=400)
-        auth_user = authenticate(username=existing_user.username, password=password)
-        if not auth_user:
-            auth_user = authenticate(username=existing_user.email, password=password)
-        if not auth_user:
-            return Response({'error': 'Invalid credentials for existing account.'}, status=400)
-        user = auth_user
-    else:
-        password = request.data.get('password')
-        full_name = (request.data.get('full_name') or '').strip()
-        if not password or len(str(password)) < 8:
-            return Response({'error': 'Password must be at least 8 characters long.'}, status=400)
+        if inv.status in ('revoked', 'cancelled'):
+            return Response({'error': 'This invitation has been revoked.'}, status=400)
 
-        parts = full_name.split(' ') if full_name else []
-        first_name = parts[0] if parts else ''
-        last_name = ' '.join(parts[1:]) if len(parts) > 1 else ''
+        if inv.status != 'pending':
+            return Response({'error': f'Invitation is no longer pending ({inv.status}).'}, status=400)
 
-        norm_email = inv.client_email.strip().lower()
-        user = User.objects.create_user(
-            username=norm_email,
-            email=norm_email,
-            password=password,
-            first_name=first_name,
-            last_name=last_name,
+        if inv.is_expired:
+            inv.status = 'expired'
+            inv.save(update_fields=['status'])
+            return Response({'error': 'Invitation has expired.'}, status=400)
+
+        user = None
+        existing_user = User.objects.filter(email__iexact=inv.client_email).first()
+
+        if request.user and request.user.is_authenticated:
+            if request.user.email.strip().lower() != inv.client_email.strip().lower():
+                return Response({'error': 'This invitation is not for your current logged-in email address.'}, status=403)
+            user = request.user
+        elif existing_user:
+            if UserMFA.objects.filter(user=existing_user, is_enabled=True).exists():
+                return Response({
+                    'error': 'Multi-factor authentication is enabled on your account. Please sign in first to accept this invitation.',
+                    'mfa_required': True,
+                }, status=403)
+            password = request.data.get('password')
+            if not password:
+                return Response({'error': 'Password is required to confirm acceptance for your account.'}, status=400)
+            auth_user = authenticate(username=existing_user.username, password=password)
+            if not auth_user:
+                auth_user = authenticate(username=existing_user.email, password=password)
+            if not auth_user:
+                return Response({'error': 'Invalid credentials for existing account.'}, status=400)
+            user = auth_user
+        else:
+            password = request.data.get('password')
+            full_name = (request.data.get('full_name') or '').strip()
+            if not password or len(str(password)) < 8:
+                return Response({'error': 'Password must be at least 8 characters long.'}, status=400)
+
+            parts = full_name.split(' ') if full_name else []
+            first_name = parts[0] if parts else ''
+            last_name = ' '.join(parts[1:]) if len(parts) > 1 else ''
+
+            norm_email = inv.client_email.strip().lower()
+            user = User.objects.create_user(
+                username=norm_email,
+                email=norm_email,
+                password=password,
+                first_name=first_name,
+                last_name=last_name,
+            )
+
+        # Attach UserProfile only to the invited Client
+        profile, _ = UserProfile.objects.get_or_create(
+            user=user,
+            defaults={
+                'role': 'client',
+                'account_type': 'end_user',
+                'client': inv.client_record,
+                'email_verified': True,
+            }
+        )
+        if profile.client_id != inv.client_record_id:
+            profile.client = inv.client_record
+            profile.role = 'client'
+            profile.account_type = 'end_user'
+            profile.save(update_fields=['client', 'role', 'account_type'])
+
+        # Assign client-scoped role
+        role_to_assign = getattr(inv, 'role', 'viewer') or 'viewer'
+        ClientUserRole.objects.update_or_create(
+            client=inv.client_record,
+            user=user,
+            defaults={'role': role_to_assign}
         )
 
-    # Attach UserProfile only to the invited Client
-    profile, _ = UserProfile.objects.get_or_create(
-        user=user,
-        defaults={
-            'role': 'client',
-            'account_type': 'end_user',
-            'client': inv.client_record,
-            'email_verified': True,
-        }
-    )
-    if profile.client_id != inv.client_record_id:
-        profile.client = inv.client_record
-        profile.role = 'client'
-        profile.account_type = 'end_user'
-        profile.save(update_fields=['client', 'role', 'account_type'])
+        # Mark invitation accepted
+        now = timezone.now()
+        inv.status = 'accepted'
+        inv.client_user = user
+        inv.accepted_at = now
+        inv.responded_at = now
+        inv.save(update_fields=['status', 'client_user', 'accepted_at', 'responded_at'])
 
-    # Assign client-scoped role
-    role_to_assign = getattr(inv, 'role', 'viewer') or 'viewer'
-    ClientUserRole.objects.update_or_create(
-        client=inv.client_record,
-        user=user,
-        defaults={'role': role_to_assign}
-    )
-
-    # Mark invitation accepted
-    now = timezone.now()
-    inv.status = 'accepted'
-    inv.client_user = user
-    inv.accepted_at = now
-    inv.responded_at = now
-    inv.save(update_fields=['status', 'client_user', 'accepted_at', 'responded_at'])
-
-    if inv.client_record:
-        _ensure_onboarding(inv.client_record)
+        if inv.client_record:
+            _ensure_onboarding(inv.client_record)
 
     access, refresh = _make_jwt(user)
     return Response({

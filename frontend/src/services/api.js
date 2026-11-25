@@ -473,11 +473,12 @@ export const socialAuthAPI = {
 
 // ── Invitations ───────────────────────────────────────────────────────────────
 export const invitationAPI = {
-  send:       (data)         => api.post('/invitations/send/', data),
-  getByToken: (token)        => api.get(`/invitations/token/${token}/`),
-  respond:    (token, action) => api.post(`/invitations/token/${token}/respond/`, { action }),
-  mine:       ()             => api.get('/invitations/mine/'),
-  cancel:     (id)           => api.delete(`/invitations/${id}/cancel/`),
+  send:       (data)           => api.post('/invitations/send/', data),
+  getByToken: (token)          => api.get(`/invitations/token/${token}/`),
+  accept:     (token, data={}) => api.post(`/invitations/token/${token}/accept/`, data),
+  respond:    (token, action)  => api.post(`/invitations/token/${token}/respond/`, { action }),
+  mine:       ()               => api.get('/invitations/mine/'),
+  cancel:     (id)             => api.delete(`/invitations/${id}/cancel/`),
 };
 
 // ── Notifications ─────────────────────────────────────────────────────────────

@@ -36,6 +36,6 @@ services:
     image: bopsocial-frontend:local
     build:
       context: .
-      dockerfile: Dockerfile.runtime
+      dockerfile: Dockerfile.bopsocial-local
     ports:
       - "${FRONTEND_PORT:-3010}:80"

@@ -12,7 +12,10 @@ DRF views for the Content Calendar feature.
 from collections import defaultdict
 from datetime import date, timedelta, datetime
 import calendar as cal_module
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
+from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
@@ -20,7 +23,9 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import CalendarPost, CalendarNote, PostingSchedule, Client
+from .models import CalendarPost, CalendarNote, PostingSchedule, Client, UnifiedPost
+from .marketplace_models import ApprovalRequest
+from .marketplace_permissions import can_mutate_content, deny_response
 from .calendar_serializers import (
     CalendarPostSerializer, CalendarNoteSerializer, PostingScheduleSerializer
 )
@@ -129,17 +134,86 @@ class CalendarPostViewSet(viewsets.ModelViewSet):
         if status_f:
             qs = qs.filter(status=status_f)
 
-        # Group by date string
+        try:
+            tz = ZoneInfo(client.timezone or 'UTC')
+        except (ZoneInfoNotFoundError, Exception):
+            tz = ZoneInfo('UTC')
+
+        # Group by date string in workspace timezone
         posts_by_date = defaultdict(list)
         serializer = self.get_serializer(qs.distinct(), many=True)
         for post in serializer.data:
-            # Use scheduled_at or published_at for date key
-            dt = post.get('scheduled_at') or post.get('published_at')
-            if dt:
-                date_key = dt[:10]  # 'YYYY-MM-DD'
+            dt_str = post.get('scheduled_at') or post.get('published_at')
+            if dt_str:
+                try:
+                    parsed = datetime.fromisoformat(dt_str.replace('Z', '+00:00'))
+                    if parsed.tzinfo is None:
+                        parsed = parsed.replace(tzinfo=ZoneInfo('UTC'))
+                    date_key = parsed.astimezone(tz).date().isoformat()
+                except Exception:
+                    date_key = dt_str[:10]
             else:
                 date_key = 'undated'
             posts_by_date[date_key].append(post)
+
+        # Include canonical UnifiedPost records (single source of truth for Composer)
+        u_qs = UnifiedPost.objects.filter(client_id=client_id)
+        if month and year:
+            m, y = int(month), int(year)
+            start = date(y, m, 1)
+            last  = cal_module.monthrange(y, m)[1]
+            end   = date(y, m, last)
+            u_qs = u_qs.filter(
+                Q(scheduled_at__date__range=[start, end]) |
+                Q(published_at__date__range=[start, end]) |
+                Q(scheduled_at__isnull=True, published_at__isnull=True, created_at__date__range=[start, end])
+            )
+        if platform:
+            u_qs = u_qs.filter(target_platforms__contains=[platform])
+
+        unified_list = list(u_qs.order_by('scheduled_at', '-created_at')[:300])
+        unified_ids = [u.id for u in unified_list]
+        rejected_ids = set()
+        if unified_ids:
+            seen_ar = set()
+            for ar in ApprovalRequest.objects.filter(
+                target_object_type='UnifiedPost',
+                target_object_id__in=unified_ids,
+            ).order_by('target_object_id', '-created_at').values('target_object_id', 'status'):
+                tid = ar['target_object_id']
+                if tid not in seen_ar:
+                    seen_ar.add(tid)
+                    if ar['status'] == 'rejected':
+                        rejected_ids.add(tid)
+
+        for up in unified_list:
+            display_status = 'rejected' if (up.status == 'draft' and up.id in rejected_ids) else up.status
+            if status_f and display_status != status_f:
+                continue
+            dt_obj = up.scheduled_at or up.published_at or up.created_at
+            if dt_obj:
+                local_dt = dt_obj.astimezone(tz) if timezone.is_aware(dt_obj) else dt_obj.replace(tzinfo=ZoneInfo('UTC')).astimezone(tz)
+                date_key = local_dt.date().isoformat()
+            else:
+                date_key = 'undated'
+            platforms = list(up.target_platforms or [])
+            posts_by_date[date_key].append({
+                'id': f'unified-{up.id}',
+                'unified_post_id': up.id,
+                'source': 'unified',
+                'client': up.client_id,
+                'platform': platforms[0] if platforms else 'facebook',
+                'target_platforms': platforms,
+                'post_type': up.media_type or 'text',
+                'status': display_status,
+                'title': up.title or '',
+                'caption': up.content or '',
+                'hashtags': '',
+                'media_url': '',
+                'scheduled_at': up.scheduled_at.isoformat() if up.scheduled_at else None,
+                'published_at': up.published_at.isoformat() if up.published_at else None,
+                'created_at': up.created_at.isoformat() if up.created_at else None,
+            })
 
         return Response(dict(posts_by_date))
 
@@ -179,10 +253,6 @@ class CalendarPostViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'], url_path='reschedule')
     def reschedule(self, request, pk=None):
-        post = self.get_object()
-        if post.status == 'published':
-            return Response({'error': 'Cannot reschedule a published post.'}, status=400)
-
         new_time_str = request.data.get('scheduled_at')
         if not new_time_str:
             return Response({'error': 'scheduled_at is required.'}, status=400)
@@ -200,6 +270,57 @@ class CalendarPostViewSet(viewsets.ModelViewSet):
 
         if new_time <= timezone.now():
             return Response({'error': 'New scheduled time must be in the future.'}, status=400)
+
+        if isinstance(pk, str) and pk.startswith('unified-'):
+            try:
+                uid = int(pk.split('-', 1)[1])
+            except (ValueError, IndexError):
+                return Response({'error': 'Invalid unified post id.'}, status=400)
+            up = UnifiedPost.objects.select_related('client').filter(pk=uid).first()
+            if not up:
+                return Response({'error': 'Post not found.'}, status=404)
+            profile = getattr(request.user, 'profile', None)
+            if not profile or not profile.can_access_client(up.client_id):
+                return Response({'error': 'Access denied.'}, status=403)
+            if not can_mutate_content(request.user, up.client):
+                return deny_response('Insufficient client role to reschedule posts.')
+            if up.status == 'published':
+                return Response({'error': 'Cannot reschedule a published post.'}, status=400)
+
+            with transaction.atomic():
+                up.scheduled_at = new_time
+                if up.client and getattr(up.client, 'requires_approval', False):
+                    up.status = 'pending_approval'
+                    up.approved_by = None
+                    up.approved_at = None
+                    up.save(update_fields=['scheduled_at', 'status', 'approved_by', 'approved_at', 'updated_at'])
+                    from .notification_watchers import notify_approver_for_post
+                    transaction.on_commit(lambda pid=up.id: notify_approver_for_post.delay(pid))
+                else:
+                    up.status = 'scheduled'
+                    up.save(update_fields=['scheduled_at', 'status', 'updated_at'])
+
+            platforms = list(up.target_platforms or [])
+            return Response({
+                'id': f'unified-{up.id}',
+                'unified_post_id': up.id,
+                'source': 'unified',
+                'client': up.client_id,
+                'platform': platforms[0] if platforms else 'facebook',
+                'target_platforms': platforms,
+                'post_type': up.media_type or 'text',
+                'status': up.status,
+                'title': up.title or '',
+                'caption': up.content or '',
+                'scheduled_at': up.scheduled_at.isoformat() if up.scheduled_at else None,
+                'published_at': up.published_at.isoformat() if up.published_at else None,
+            })
+
+        post = self.get_object()
+        if not can_mutate_content(request.user, post.client):
+            return deny_response('Insufficient client role to reschedule posts.')
+        if post.status == 'published':
+            return Response({'error': 'Cannot reschedule a published post.'}, status=400)
 
         post.scheduled_at = new_time
         post.status       = 'scheduled'

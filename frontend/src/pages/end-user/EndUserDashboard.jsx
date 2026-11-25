@@ -36,8 +36,12 @@ export default function EndUserDashboard() {
   }, []);
 
   const workspace = data?.workspace;
+  const managingAgency = data?.managing_agency;
+  const clientRole = data?.client_role;
   const relations = data?.relations || { active: 0, pending: 0 };
   const firstName = (user?.first_name || (user?.email || '').split('@')[0] || 'there').trim();
+  const canManageConnections = !clientRole || clientRole === 'owner' || clientRole === 'client_admin';
+  const canApprove = !clientRole || clientRole === 'owner' || clientRole === 'client_admin' || clientRole === 'approver';
 
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 24 }}>
@@ -86,17 +90,29 @@ export default function EndUserDashboard() {
       </section>
 
       <section style={cardGrid}>
-        <ActionCard
-          icon={Plug}
-          title={t('end_user.dashboard.actions.connect_socials_title', 'Connect your social accounts')}
-          body={t('end_user.dashboard.actions.connect_socials_body', 'Connect Facebook, Instagram, YouTube, LinkedIn or Google My Business to start tracking posts and engagement.')}
-          cta={t('end_user.dashboard.actions.connect_socials_cta', 'Open connections')}
-          to="/u/connections"
-          tone="primary"
-        />
+        {canManageConnections && (
+          <ActionCard
+            icon={Plug}
+            title={t('end_user.dashboard.actions.connect_socials_title', 'Connect your social accounts')}
+            body={t('end_user.dashboard.actions.connect_socials_body', 'Connect Facebook, Instagram, YouTube, LinkedIn or Google My Business to start tracking posts and engagement.')}
+            cta={t('end_user.dashboard.actions.connect_socials_cta', 'Open connections')}
+            to="/u/connections"
+            tone="primary"
+          />
+        )}
+        {canApprove && (
+          <ActionCard
+            icon={Calendar}
+            title={t('end_user.dashboard.actions.approvals_title', 'Content approvals')}
+            body={t('end_user.dashboard.actions.approvals_body', 'Review, approve, or reject content and actions submitted by your agency.')}
+            cta={t('end_user.dashboard.actions.approvals_cta', 'Open approvals')}
+            to="/u/approvals"
+            tone={canManageConnections ? 'ghost' : 'primary'}
+          />
+        )}
         <ActionCard
           icon={Users2}
-          title={relations.active ? t('end_user.dashboard.actions.agency_active_title', 'Working with an agency') : t('end_user.dashboard.actions.agency_need_title', 'Need help running socials?')}
+          title={managingAgency ? t('end_user.dashboard.actions.agency_managed_by', 'Managed by {{agency}}', { agency: managingAgency.name }) : (relations.active ? t('end_user.dashboard.actions.agency_active_title', 'Working with an agency') : t('end_user.dashboard.actions.agency_need_title', 'Need help running socials?'))}
           body={
             relations.active
               ? t('end_user.dashboard.actions.agency_active_body', 'Manage your agency permissions, pause access, or review activity any time.')
@@ -105,8 +121,6 @@ export default function EndUserDashboard() {
           cta={relations.active ? t('end_user.dashboard.actions.manage_agency_cta', 'Manage agency') : t('end_user.dashboard.actions.find_agency_cta', 'Find an agency')}
           to={relations.active ? '/u/agency' : '/u/agency/find'}
           tone="ghost"
-          disabled
-          disabledHint={t('end_user.dashboard.actions.coming_next_release', 'Coming in the next release')}
         />
       </section>
     </div>

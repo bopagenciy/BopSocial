@@ -23,6 +23,7 @@ import { composerAPI, captionAPI, hashtagAPI } from '../../services/api';
 import { useTranslation } from 'react-i18next';
 import { formatDate } from '../../utils/formatters';
 import { useAuth } from '../../hooks/useAuth';
+import { useCurrentClient } from '../../stores/appStore';
 import { useComposerPost } from '../../hooks/useComposer';
 
 /* ── Platform metadata for toggles + previews ──────────────────────────── */
@@ -56,6 +57,13 @@ export default function ComposerPage() {
   const { t } = useTranslation('content');
 
   const isEditing = !!id;
+  const currentClient = useCurrentClient();
+  const isMultiWorkspace = user?.account_type === 'agency_member' || user?.role === 'superadmin' || user?.role === 'staff';
+  const activeClientId = currentClient?.id || (!isMultiWorkspace ? user?.client_id : null) || null;
+  const activeClientRef = useRef(activeClientId);
+  const prevClientRef = useRef(activeClientId);
+  activeClientRef.current = activeClientId;
+
   const { data: existing, loading: loadingExisting, refetch } = useComposerPost(id);
 
   /* ── Editor state ──────────────────────────────────────────────────── */
@@ -67,9 +75,28 @@ export default function ComposerPage() {
   const [scheduleMode, setScheduleMode] = useState('now'); // 'now' | 'schedule' | 'queue'
   const [scheduledAt, setScheduledAt] = useState('');
 
+  /* ── Workspace switch isolation ────────────────────────────────────── */
+  useEffect(() => {
+    if (prevClientRef.current !== activeClientId) {
+      prevClientRef.current = activeClientId;
+      setTitle('');
+      setContent('');
+      setMediaType('text');
+      setMediaAssets([]);
+      setPreflight(null);
+      setScheduledAt('');
+      if (isEditing) {
+        navigate(isMultiWorkspace ? '/admin/analytics/composer' : '/dashboard/composer', { replace: true });
+      }
+    }
+  }, [activeClientId, isEditing, isMultiWorkspace, navigate]);
+
   /* ── Pre-fill when editing ────────────────────────────────────────── */
   useEffect(() => {
     if (existing && isEditing) {
+      if (activeClientId && existing.client && existing.client !== activeClientId) {
+        return;
+      }
       setTitle(existing.title || '');
       setContent(existing.content || '');
       setMediaType(existing.media_type || 'text');
@@ -79,7 +106,7 @@ export default function ComposerPage() {
         setScheduledAt(toLocalInput(existing.scheduled_at));
       }
     }
-  }, [existing, isEditing]);
+  }, [existing, isEditing, activeClientId]);
 
   /* ── State for save + preflight + AI strip ─────────────────────────── */
   const [saving, setSaving]       = useState(false);
@@ -111,10 +138,17 @@ export default function ComposerPage() {
   }
 
   async function uploadFile(file) {
+    if (!activeClientId) {
+      toast.error(t('composer.select_client_required', 'Select a client workspace first.'));
+      return;
+    }
+    const reqClientId = activeClientId;
     const fd = new FormData();
     fd.append('file', file);
+    fd.append('client', String(reqClientId));
     try {
       const res = await composerAPI.media.upload(fd);
+      if (activeClientRef.current !== reqClientId) return;
       setMediaAssets((cur) => [...cur, res.data]);
       // Auto-pick media type if first upload
       if (mediaAssets.length === 0) {
@@ -125,6 +159,7 @@ export default function ComposerPage() {
       }
       toast.success(t('composer.uploaded'));
     } catch (e) {
+      if (activeClientRef.current !== reqClientId) return;
       toast.error(e.response?.data?.detail || t('composer.upload_failed'));
     }
   }
@@ -136,6 +171,7 @@ export default function ComposerPage() {
   /* ── Save / publish flow ───────────────────────────────────────────── */
   function buildPayload() {
     return {
+      client: activeClientId,
       title: title.trim(),
       content,
       media_type: mediaType,
@@ -147,6 +183,9 @@ export default function ComposerPage() {
   }
 
   async function ensurePost() {
+    if (!activeClientId) {
+      throw new Error(t('composer.select_client_required', 'Select a client workspace first.'));
+    }
     const payload = buildPayload();
     if (isEditing) {
       const res = await composerAPI.posts.update(id, payload);
@@ -159,28 +198,39 @@ export default function ComposerPage() {
 
   async function onSaveDraft() {
     if (!validate()) return;
+    const reqClientId = activeClientId;
     setSaving(true);
     try {
       await ensurePost();
+      if (activeClientRef.current !== reqClientId) return;
       toast.success(t('composer.draft_saved'));
     } catch (e) {
-      toast.error(e.response?.data?.detail || t('composer.save_failed'));
+      if (activeClientRef.current !== reqClientId) return;
+      toast.error(e.response?.data?.detail || e.message || t('composer.save_failed'));
     } finally {
       setSaving(false);
     }
   }
 
   async function onPreflight() {
+    if (!activeClientId) {
+      toast.error(t('composer.select_client_required', 'Select a client workspace first.'));
+      return;
+    }
+    const reqClientId = activeClientId;
     setPreflight(null);
     try {
       const res = await composerAPI.preflight({
         ...buildPayload(),
+        client_id: reqClientId,
         media_assets: mediaAssets.map((a) => a.id),
       });
+      if (activeClientRef.current !== reqClientId) return;
       setPreflight(res.data);
       if (res.data.ok) toast.success(t('composer.preflight_passed_toast'));
       else toast.error(t('composer.preflight_issues_toast'));
     } catch (e) {
+      if (activeClientRef.current !== reqClientId) return;
       toast.error(e.response?.data?.detail || t('composer.preflight_failed_toast'));
     }
   }
@@ -221,6 +271,9 @@ export default function ComposerPage() {
   }
 
   function validate() {
+    if (!activeClientId) {
+      toast.error(t('composer.select_client_required', 'Select a client workspace first.')); return false;
+    }
     if (mediaType === 'text' && !content.trim()) {
       toast.error(t('composer.validation_text_required')); return false;
     }
@@ -235,9 +288,15 @@ export default function ComposerPage() {
 
   /* ── AI strip ──────────────────────────────────────────────────────── */
   async function aiCompose() {
+    if (!activeClientId) {
+      toast.error(t('composer.select_client_required', 'Select a client workspace first.'));
+      return;
+    }
+    const reqClientId = activeClientId;
     setAiBusy(true);
     try {
       const res = await captionAPI.generate({
+        client_id: reqClientId,
         topic: title || 'general post',
         tone: 'friendly',
         post_type: 'announcement',
@@ -245,12 +304,14 @@ export default function ComposerPage() {
         keywords: '',
         call_to_action: '',
       });
+      if (activeClientRef.current !== reqClientId) return;
       // Pick the first platform's caption (existing endpoint returns dict per platform)
       const captions = res.data?.captions || res.data?.generated_captions || {};
       const first = targetPlatforms.find((p) => captions[p]) || Object.keys(captions)[0];
       if (first && captions[first]) setContent(captions[first]);
       else toast.error(t('composer.ai_no_caption'));
     } catch (e) {
+      if (activeClientRef.current !== reqClientId) return;
       toast.error(t('composer.ai_compose_failed'));
     } finally {
       setAiBusy(false);
@@ -258,12 +319,19 @@ export default function ComposerPage() {
   }
 
   async function aiHashtags() {
+    if (!activeClientId) {
+      toast.error(t('composer.select_client_required', 'Select a client workspace first.'));
+      return;
+    }
+    const reqClientId = activeClientId;
     setAiBusy(true);
     try {
       const res = await hashtagAPI.generate({
+        client_id: reqClientId,
         niche: title || content.slice(0, 60) || 'general',
         platform: targetPlatforms[0] || 'instagram',
       });
+      if (activeClientRef.current !== reqClientId) return;
       const tags = (res.data?.hashtags?.suggested || res.data?.hashtags || [])
         .slice(0, 8)
         .map((t) => (t.startsWith('#') ? t : `#${t}`))
@@ -271,6 +339,7 @@ export default function ComposerPage() {
       if (tags) setContent((c) => `${c}${c && !c.endsWith('\n') ? '\n\n' : ''}${tags}`);
       else toast.error(t('composer.ai_no_hashtags'));
     } catch (e) {
+      if (activeClientRef.current !== reqClientId) return;
       toast.error(t('composer.ai_hashtags_failed'));
     } finally {
       setAiBusy(false);
@@ -414,7 +483,7 @@ export default function ComposerPage() {
             />
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4 }}>
               <AIWriteButton
-                clientId={user?.client_id}
+                clientId={activeClientId}
                 platform={targetPlatforms?.[0] || 'instagram'}
                 onInsert={(text) => setContent((c) => c ? `${c}\n\n${text}` : text)}
                 size="sm"
