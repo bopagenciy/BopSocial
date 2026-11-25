@@ -426,11 +426,55 @@ class ClientViewSet(viewsets.ModelViewSet):
         serializer.save()
 
     def perform_update(self, serializer):
-        from rest_framework.exceptions import PermissionDenied
+        import os
+        import re
+        import uuid
+        from django.core.files.storage import default_storage
+        from rest_framework.exceptions import PermissionDenied, ValidationError
         from .marketplace_permissions import can_manage_client_workspace
         if not can_manage_client_workspace(self.request.user, serializer.instance, destructive=False):
             raise PermissionDenied('Insufficient permissions to update this client workspace.')
-        serializer.save()
+
+        uploaded_product_files = []
+        if getattr(self.request, 'FILES', None):
+            indexed_files = []
+            for key in self.request.FILES.keys():
+                if key == 'product_images':
+                    for idx, f in enumerate(self.request.FILES.getlist(key)):
+                        indexed_files.append((idx, f))
+                else:
+                    match = re.match(r'^product_images\[(\d+)\]$', key)
+                    if match:
+                        indexed_files.append((int(match.group(1)), self.request.FILES[key]))
+            indexed_files.sort(key=lambda item: item[0])
+            uploaded_product_files = [item[1] for item in indexed_files]
+
+        max_product_images = 20
+        max_image_bytes = 15 * 1024 * 1024
+        allowed_exts = {'.jpg', '.jpeg', '.png', '.webp', '.gif'}
+
+        if len(uploaded_product_files) > max_product_images:
+            raise ValidationError({'product_images': f'A maximum of {max_product_images} product images can be uploaded at once.'})
+
+        for f in uploaded_product_files:
+            ext = os.path.splitext(getattr(f, 'name', '') or '')[1].lower()
+            content_type = (getattr(f, 'content_type', '') or '').lower()
+            if ext not in allowed_exts and not content_type.startswith('image/'):
+                raise ValidationError({'product_images': f"Unsupported image format for '{getattr(f, 'name', 'file')}'."})
+            if getattr(f, 'size', 0) > max_image_bytes:
+                raise ValidationError({'product_images': f"Image '{getattr(f, 'name', 'file')}' exceeds the 15 MB limit."})
+
+        instance = serializer.save()
+
+        if uploaded_product_files:
+            existing_urls = list(instance.product_images or []) if isinstance(instance.product_images, list) else []
+            for f in uploaded_product_files:
+                ext = os.path.splitext(getattr(f, 'name', '') or '')[1].lower() or '.jpg'
+                rel_path = f'product_images/client_{instance.id}/{uuid.uuid4().hex}{ext}'
+                saved_path = default_storage.save(rel_path, f)
+                existing_urls.append(default_storage.url(saved_path))
+            instance.product_images = existing_urls
+            instance.save(update_fields=['product_images'])
 
     def perform_destroy(self, instance):
         from rest_framework.exceptions import PermissionDenied

@@ -24,8 +24,8 @@ class UserSerializer(serializers.ModelSerializer):
 
 class ClientSerializer(serializers.ModelSerializer):
     bop_organization_id = serializers.UUIDField(read_only=True)
-    logo = serializers.ImageField(required=False)
-    profile_image = serializers.ImageField(required=False)
+    logo = serializers.ImageField(required=False, allow_null=True)
+    profile_image = serializers.ImageField(required=False, allow_null=True)
     competitors = serializers.SerializerMethodField()
     currency = serializers.CharField(required=False, max_length=10)
 
@@ -49,7 +49,17 @@ class ClientSerializer(serializers.ModelSerializer):
         return super().validate(attrs)
 
     def to_internal_value(self, data):
-        if hasattr(data, 'copy'):
+        from django.http import QueryDict
+        if isinstance(data, QueryDict):
+            raw_currency = data.get('currency')
+            if isinstance(raw_currency, str) and raw_currency != raw_currency.strip().upper():
+                # Shallow-copy QueryDict lists without copy.deepcopy(), which crashes on TemporaryUploadedFile (BufferedRandom).
+                mutable = QueryDict('', mutable=True)
+                for key, values in data.lists():
+                    mutable.setlist(key, list(values))
+                mutable['currency'] = raw_currency.strip().upper()
+                data = mutable
+        elif hasattr(data, 'copy') and isinstance(data, dict):
             data = data.copy()
             if 'currency' in data and isinstance(data['currency'], str):
                 data['currency'] = data['currency'].strip().upper()
@@ -60,6 +70,29 @@ class ClientSerializer(serializers.ModelSerializer):
 
     def get_competitors(self, obj):
         return CompetitorSerializer(obj.competitors.all(), many=True).data
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        request = self.context.get('request')
+        user = getattr(request, 'user', None) if request else None
+        if user and user.is_authenticated:
+            from .media_access import generate_client_asset_token
+            if instance.profile_image and instance.profile_image.name:
+                rel_path = instance.profile_image.name.lstrip('/')
+                token = generate_client_asset_token(instance.id, rel_path, user.id)
+                data['profile_image'] = f"/media/{rel_path}?token={token}"
+            if isinstance(data.get('product_images'), list):
+                signed_urls = []
+                for url in data['product_images']:
+                    if isinstance(url, str) and url.startswith('/media/'):
+                        clean_url = url.split('?', 1)[0]
+                        rel_path = clean_url[len('/media/'):].lstrip('/')
+                        token = generate_client_asset_token(instance.id, rel_path, user.id)
+                        signed_urls.append(f"{clean_url}?token={token}")
+                    else:
+                        signed_urls.append(url)
+                data['product_images'] = signed_urls
+        return data
 
     def validate_currency(self, value):
         if not value:

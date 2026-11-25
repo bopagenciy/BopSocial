@@ -261,6 +261,7 @@ from .media_views import (
     secure_media_thumb_view,
     public_publishing_media_view,
     legacy_media_proxy_view,
+    client_asset_proxy_view,
 )
 
 router = DefaultRouter()
@@ -675,6 +676,7 @@ urlpatterns = [
     path('media/serve/<int:pk>/thumb/', secure_media_thumb_view, name='secure_media_thumb'),
     path('media/public/<str:signed_token>/', public_publishing_media_view, name='public_publishing_media'),
     path('media/serve-legacy/', legacy_media_proxy_view, name='legacy_media_proxy'),
+    path('media/serve-client-asset/', client_asset_proxy_view, name='client_asset_proxy'),
 
     # ── BS-3H / BS-3I / BS-3J Publication Operations & Platform Retry Console ───────
     path('social/publications/operations/',                  PublicationOperationsListView.as_view(),   name='publication_operations_list'),

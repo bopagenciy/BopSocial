@@ -70,7 +70,18 @@ export default function SettingsPage({ clientId: propClientId }) {
   // Business Profile State
   const [profileLoading, setProfileLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [profileImageCleared, setProfileImageCleared] = useState(false);
   const [activeTab, setActiveTab] = useState('accounts');
+
+  const getAssetPreviewUrl = (item) => {
+    if (!item) return '';
+    if (item instanceof File) return URL.createObjectURL(item);
+    if (typeof item === 'string') {
+      const mediaMatch = item.match(/^https?:\/\/[^/]+(\/media\/.*)$/i);
+      return mediaMatch ? mediaMatch[1] : item;
+    }
+    return '';
+  };
   const [formData, setFormData] = useState({
     // Business Basics
     name: '',
@@ -129,8 +140,8 @@ export default function SettingsPage({ clientId: propClientId }) {
           gender: client.gender || 'all',
           business_location: client.business_location || '',
           target_locations: client.target_locations || [],
-          profile_image: null, // File objects can't be pre-loaded
-          product_images: [],
+          profile_image: client.profile_image || null,
+          product_images: Array.isArray(client.product_images) ? client.product_images : [],
           brand_assets: client.brand_assets || {},
           competitors: (client.competitors || []).map(comp => ({
             ...comp,
@@ -216,6 +227,7 @@ export default function SettingsPage({ clientId: propClientId }) {
         product_images: [...prev.product_images, ...Array.from(files)]
       }));
     } else {
+      if (field === 'profile_image') setProfileImageCleared(false);
       setFormData(prev => ({ ...prev, [field]: files[0] }));
     }
   };
@@ -227,6 +239,7 @@ export default function SettingsPage({ clientId: propClientId }) {
         product_images: prev.product_images.filter((_, i) => i !== index)
       }));
     } else {
+      if (field === 'profile_image') setProfileImageCleared(true);
       setFormData(prev => ({ ...prev, [field]: null }));
     }
   };
@@ -391,27 +404,74 @@ export default function SettingsPage({ clientId: propClientId }) {
       };
 
       Object.keys(normalizedData).forEach(key => {
+        if (key === 'profile_image') {
+          if (formData.profile_image instanceof File) {
+            submitData.append('profile_image', formData.profile_image);
+          } else if (profileImageCleared) {
+            submitData.append('profile_image', '');
+          }
+          return;
+        }
+        if (key === 'product_images') {
+          const items = Array.isArray(formData.product_images) ? formData.product_images : [];
+          const keptUrls = items
+            .filter((item) => typeof item === 'string')
+            .map((url) => url.split('?')[0]);
+          const newFiles = items.filter((item) => item instanceof File);
+          submitData.append('product_images', JSON.stringify(keptUrls));
+          newFiles.forEach((file, index) => {
+            submitData.append(`product_images[${index}]`, file);
+          });
+          return;
+        }
         if (normalizedData[key] === null || normalizedData[key] === undefined) {
           return;
         }
-        if (key === 'profile_image' && formData[key]) {
-          submitData.append(key, formData[key]);
-        } else if (key === 'product_images') {
-          formData[key].forEach((file, index) => {
-            submitData.append(`product_images[${index}]`, file);
-          });
-        } else if (Array.isArray(formData[key]) || typeof formData[key] === 'object') {
+        if (Array.isArray(formData[key]) || typeof formData[key] === 'object') {
           submitData.append(key, JSON.stringify(formData[key]));
         } else {
           submitData.append(key, formData[key]);
         }
       });
 
-      await clientsAPI.update(clientId, submitData);
+      const response = await clientsAPI.update(clientId, submitData);
+      const updated = response?.data;
+      if (updated) {
+        setProfileImageCleared(false);
+        setFormData(prev => ({
+          ...prev,
+          profile_image: updated.profile_image || null,
+          product_images: Array.isArray(updated.product_images) ? updated.product_images : prev.product_images,
+        }));
+      }
       alert(t('client_settings.success', 'Profile updated successfully!'));
     } catch (error) {
       console.error('Failed to update profile:', error);
-      alert(t('client_settings.error', 'Failed to update profile. Please try again.'));
+      const status = error?.response?.status;
+      const data = error?.response?.data;
+      let detail = '';
+      if (status === 413) {
+        detail = t('client_settings.error_too_large', 'Uploaded files exceed the maximum allowed request size.');
+      } else if (status === 403) {
+        detail = t('client_settings.error_forbidden', 'You do not have permission to update this workspace profile.');
+      } else if (data && typeof data === 'object' && !Array.isArray(data)) {
+        if (typeof data.detail === 'string') {
+          detail = data.detail;
+        } else {
+          const fieldMessages = Object.entries(data)
+            .slice(0, 3)
+            .map(([field, val]) => {
+              const msg = Array.isArray(val) ? val[0] : val;
+              return typeof msg === 'string' ? `${field}: ${msg}` : null;
+            })
+            .filter(Boolean);
+          if (fieldMessages.length > 0) {
+            detail = fieldMessages.join(' | ');
+          }
+        }
+      }
+      const baseMsg = t('client_settings.error', 'Failed to update profile. Please try again.');
+      alert(detail ? `${baseMsg}\n\n${detail}` : baseMsg);
     } finally {
       setSaving(false);
     }
@@ -782,8 +842,8 @@ export default function SettingsPage({ clientId: propClientId }) {
                       </label>
                       {formData.profile_image && (
                         <div style={previewWrapStyle}>
-                          <img src={URL.createObjectURL(formData.profile_image)} alt="Profile" style={previewImageStyle} />
-                          <button onClick={() => removeFile('profile_image')} style={removeBtnStyle}>
+                          <img src={getAssetPreviewUrl(formData.profile_image)} alt="Profile" style={previewImageStyle} />
+                          <button type="button" onClick={() => removeFile('profile_image')} style={removeBtnStyle}>
                             <X size={14} />
                           </button>
                         </div>
@@ -810,8 +870,8 @@ export default function SettingsPage({ clientId: propClientId }) {
                       <div style={settingsImageGridStyle}>
                         {formData.product_images.map((file, index) => (
                           <div key={index} style={previewWrapStyle}>
-                            <img src={URL.createObjectURL(file)} alt={`Product ${index + 1}`} style={previewImageStyle} />
-                            <button onClick={() => removeFile('product_images', index)} style={removeBtnStyle}>
+                            <img src={getAssetPreviewUrl(file)} alt={`Product ${index + 1}`} style={previewImageStyle} />
+                            <button type="button" onClick={() => removeFile('product_images', index)} style={removeBtnStyle}>
                               <X size={14} />
                             </button>
                           </div>

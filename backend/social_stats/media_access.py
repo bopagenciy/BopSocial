@@ -22,6 +22,35 @@ logger = logging.getLogger(__name__)
 
 MEDIA_TOKEN_SALT = 'bop-social-media-access-v1'
 PUBLIC_MEDIA_SALT = 'bop-social-public-publish-v1'
+CLIENT_ASSET_SALT = 'bop-social-client-asset-v1'
+
+
+def generate_client_asset_token(client_id: int, rel_path: str, user_id: int, max_age: int = 86400) -> str:
+    """
+    Generate a tamper-proof signed token for client branding/product assets (profile_images, product_images).
+    """
+    import hashlib
+    path_hash = hashlib.sha256(rel_path.encode('utf-8')).hexdigest()[:16]
+    signer = TimestampSigner(salt=CLIENT_ASSET_SALT)
+    return signer.sign(f"{client_id}:{path_hash}:{user_id}")
+
+
+def verify_client_asset_token(token: str, client_id: int, rel_path: str, max_age: int = 86400) -> bool:
+    """Validate a signed client asset token against client_id, rel_path, and expiration."""
+    if not token:
+        return False
+    import hashlib
+    expected_hash = hashlib.sha256(rel_path.encode('utf-8')).hexdigest()[:16]
+    signer = TimestampSigner(salt=CLIENT_ASSET_SALT)
+    try:
+        unsigned = signer.unsign(token, max_age=max_age)
+        parts = unsigned.split(':')
+        if len(parts) != 3:
+            return False
+        tok_cid, tok_hash, _ = parts
+        return int(tok_cid) == int(client_id) and tok_hash == expected_hash
+    except (BadSignature, SignatureExpired, ValueError):
+        return False
 
 
 def generate_media_token(asset_id: int, client_id: int, user_id: int, max_age: int = 86400) -> str:
@@ -199,6 +228,42 @@ def serve_secure_file(request, file_field, asset_id: int, is_thumbnail: bool = F
         return response
 
     # Development / direct Daphne streaming
+    response = FileResponse(open(file_path, 'rb'), content_type=content_type)
+    response['X-Content-Type-Options'] = 'nosniff'
+    response['Cache-Control'] = 'private, no-transform, max-age=3600'
+    return response
+
+
+def serve_secure_rel_path(request, rel_path: str):
+    """Safely stream an authorized file under MEDIA_ROOT by relative path."""
+    rel_path = (rel_path or '').lstrip('/')
+    if not rel_path:
+        raise Http404("Media file path is empty")
+
+    media_root = os.path.normcase(os.path.realpath(os.path.abspath(str(settings.MEDIA_ROOT))))
+    file_path = os.path.normcase(os.path.realpath(os.path.abspath(os.path.join(media_root, rel_path))))
+
+    if os.path.commonpath([file_path, media_root]) != media_root:
+        logger.error("Directory traversal attempt blocked: %s", file_path)
+        raise PermissionDenied("Invalid media file path")
+
+    if not os.path.isfile(file_path):
+        raise Http404("Media file does not exist on disk")
+
+    mime, _ = mimetypes.guess_type(file_path)
+    content_type = mime or 'application/octet-stream'
+
+    use_x_accel = getattr(settings, 'USE_X_ACCEL_REDIRECT', False) or (
+        request and request.META.get('HTTP_X_ACCEL_MAPPING')
+    )
+    if use_x_accel:
+        clean_rel = os.path.relpath(file_path, media_root).replace('\\', '/')
+        response = HttpResponse(content_type=content_type)
+        response['X-Accel-Redirect'] = f"/internal_media/{clean_rel}"
+        response['X-Content-Type-Options'] = 'nosniff'
+        response['Cache-Control'] = 'private, no-transform, max-age=3600'
+        return response
+
     response = FileResponse(open(file_path, 'rb'), content_type=content_type)
     response['X-Content-Type-Options'] = 'nosniff'
     response['Cache-Control'] = 'private, no-transform, max-age=3600'

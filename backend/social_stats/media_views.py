@@ -17,10 +17,12 @@ from rest_framework.decorators import api_view, authentication_classes, permissi
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
-from .models import MediaAsset
+from .models import Client, MediaAsset
 from .media_access import (
     serve_secure_file,
+    serve_secure_rel_path,
     user_has_media_access,
+    verify_client_asset_token,
     verify_media_token,
     verify_public_publishing_token,
 )
@@ -182,3 +184,67 @@ def legacy_media_proxy_view(request):
 
     target_field = asset.thumbnail if (asset.thumbnail and asset.thumbnail.name == rel_path) else asset.file
     return serve_secure_file(request, target_field, asset.id)
+
+
+@api_view(['GET'])
+@authentication_classes([])
+@permission_classes([AllowAny])
+def client_asset_proxy_view(request):
+    """
+    Proxy endpoint handling /media/profile_images/... and /media/product_images/...
+    forwarded by Nginx. Enforces signed-token or authenticated tenant authorization.
+    """
+    raw_path = (
+        request.META.get('HTTP_X_ORIGINAL_URI')
+        or request.query_params.get('path')
+        or request.META.get('PATH_INFO', '')
+    )
+    raw_path = raw_path.split('?', 1)[0]
+    if raw_path.startswith('/media/'):
+        rel_path = raw_path[len('/media/'):]
+    elif raw_path.startswith('media/'):
+        rel_path = raw_path[len('media/'):]
+    else:
+        rel_path = raw_path.lstrip('/')
+
+    rel_path = urllib.parse.unquote(rel_path).lstrip('/')
+
+    client_obj = None
+    if rel_path.startswith('profile_images/'):
+        client_obj = Client.objects.filter(profile_image=rel_path).first()
+    elif rel_path.startswith('product_images/'):
+        media_url = f'/media/{rel_path}'
+        client_obj = Client.objects.filter(product_images__contains=[media_url]).first()
+        if client_obj is None:
+            import re
+            match = re.match(r'^product_images/client_(\d+)/', rel_path)
+            if match:
+                candidate = Client.objects.filter(id=int(match.group(1))).first()
+                if candidate and isinstance(candidate.product_images, list) and media_url in candidate.product_images:
+                    client_obj = candidate
+
+    if not client_obj:
+        return Response({'detail': 'Client media asset not found.'}, status=404)
+
+    token = request.query_params.get('token')
+    if token and verify_client_asset_token(token, client_obj.id, rel_path):
+        return serve_secure_rel_path(request, rel_path)
+
+    user = getattr(request, 'user', None)
+    if (not user or not user.is_authenticated) and 'HTTP_AUTHORIZATION' in request.META:
+        try:
+            from rest_framework_simplejwt.authentication import JWTAuthentication
+            auth_res = JWTAuthentication().authenticate(request)
+            if auth_res:
+                user = auth_res[0]
+        except Exception:
+            pass
+
+    if not user or not user.is_authenticated:
+        return Response({'detail': 'Authentication required to access private media.'}, status=401)
+
+    from types import SimpleNamespace
+    if not user_has_media_access(user, SimpleNamespace(client=client_obj, client_id=client_obj.id)):
+        return Response({'detail': 'You do not have permission to access this client media.'}, status=403)
+
+    return serve_secure_rel_path(request, rel_path)
