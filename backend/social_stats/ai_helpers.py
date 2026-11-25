@@ -94,6 +94,7 @@ def generate_text_completion(
             'model': ollama_model,
             'prompt': compose_ollama_prompt(system_prompt, user_prompt),
             'stream': False,
+            'think': False,
             'options': {
                 'num_ctx': int(getattr(settings, 'OLLAMA_NUM_CTX', 8192)),
                 'num_predict': max_tokens,

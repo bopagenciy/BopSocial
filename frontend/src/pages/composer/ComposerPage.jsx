@@ -50,6 +50,63 @@ const MEDIA_TYPES = [
   { id: 'story',    label: 'Story',     icon: ImageIcon },
 ];
 
+export function extractComposerHashtags(data, existingContent = '', limit = 8) {
+  const payload = data?.hashtags ?? data;
+  const rawCandidates = [];
+
+  const pushTag = (val) => {
+    if (!val || typeof val !== 'string') return;
+    val
+      .split(/[\s,]+/)
+      .map((s) => s.trim().replace(/^#+/, '').replace(/[.,;:!?]+$/, ''))
+      .filter((s) => s && /^[A-Za-z0-9_À-ÿ-]+$/.test(s))
+      .forEach((clean) => rawCandidates.push(`#${clean}`));
+  };
+
+  const pushHashtagsFromText = (text) => {
+    if (!text || typeof text !== 'string') return;
+    const matches = text.match(/#[A-Za-z0-9_À-ÿ]+/g) || [];
+    matches.forEach((m) => pushTag(m));
+  };
+
+  if (Array.isArray(payload)) {
+    payload.forEach((item) => pushTag(typeof item === 'string' ? item : item?.tag || item?.name));
+  } else if (payload && typeof payload === 'object') {
+    if (Array.isArray(payload.suggested)) {
+      payload.suggested.forEach((item) => pushTag(typeof item === 'string' ? item : item?.tag || item?.name));
+    }
+    // recommended_set.caption / first_comment may contain prose + #hashtags; only extract #tokens
+    pushHashtagsFromText(payload.recommended_set?.caption);
+    pushHashtagsFromText(payload.recommended_set?.first_comment);
+
+    for (const container of [payload.groups, payload.categories]) {
+      if (container && typeof container === 'object') {
+        Object.values(container).forEach((group) => {
+          if (Array.isArray(group?.tags)) {
+            group.tags.forEach((item) => pushTag(typeof item === 'string' ? item : item?.tag || item?.name));
+          }
+        });
+      }
+    }
+  }
+
+  const existingSet = new Set(
+    (String(existingContent || '').match(/#[A-Za-z0-9_À-ÿ]+/g) || []).map((t) => t.toLowerCase()),
+  );
+  const seen = new Set();
+  const result = [];
+
+  for (const tag of rawCandidates) {
+    const key = tag.toLowerCase();
+    if (seen.has(key) || existingSet.has(key)) continue;
+    seen.add(key);
+    result.push(tag);
+    if (result.length >= limit) break;
+  }
+
+  return result;
+}
+
 export default function ComposerPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -332,10 +389,7 @@ export default function ComposerPage() {
         platform: targetPlatforms[0] || 'instagram',
       });
       if (activeClientRef.current !== reqClientId) return;
-      const tags = (res.data?.hashtags?.suggested || res.data?.hashtags || [])
-        .slice(0, 8)
-        .map((t) => (t.startsWith('#') ? t : `#${t}`))
-        .join(' ');
+      const tags = extractComposerHashtags(res.data, content, 8).join(' ');
       if (tags) setContent((c) => `${c}${c && !c.endsWith('\n') ? '\n\n' : ''}${tags}`);
       else toast.error(t('composer.ai_no_hashtags'));
     } catch (e) {

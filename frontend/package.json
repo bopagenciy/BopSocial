@@ -41,6 +41,7 @@
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
+    "postbuild": "node scripts/stamp-sw-version.js",
     "test": "react-scripts test --watchAll=false",
     "test:watch": "react-scripts test"
   },

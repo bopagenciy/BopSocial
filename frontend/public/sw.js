@@ -1,5 +1,5 @@
 /* Bop Social Service Worker — caches app shell for offline + Add to Home Screen */
-const CACHE_NAME = 'bopsocial-v2.6b.2.1';
+const CACHE_NAME = 'bopsocial-__BUILD_ID__';
 const SHELL_ASSETS = ['/', '/index.html'];
 
 self.addEventListener('install', (event) => {
@@ -20,10 +20,13 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   const { request } = event;
-  // Only cache GET requests for same-origin navigation & static assets
+  // Only handle same-origin GET requests
   if (request.method !== 'GET') return;
-  // Skip API calls — always go to network
-  if (request.url.includes('/api/')) return;
+  // Never cache authenticated requests, API calls, or private media
+  if (request.headers && request.headers.get('Authorization')) return;
+  if (request.url.includes('/api/') || request.url.includes('/media/')) return;
+  // Never cache hashed JS/CSS chunks in SW so new deployments never reuse old chunks
+  if (request.url.includes('/static/js/') || request.url.includes('/static/css/')) return;
 
   // For HTML navigation requests, use Network-First strategy to ensure fresh releases are served
   if (request.mode === 'navigate') {
@@ -41,17 +44,18 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // For static assets, serve from cache with network fallback and background update
-  event.respondWith(
-    caches.match(request).then((cached) => {
-      const fetched = fetch(request).then((response) => {
-        if (response.ok && request.url.match(/\.(js|css|png|jpg|svg|woff2?)$/)) {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-        }
-        return response;
-      }).catch(() => cached);
-      return cached || fetched;
-    })
-  );
+  // For non-hashed static brand assets (icons, images, fonts), use Network-First with cache fallback
+  if (request.url.match(/\.(png|jpg|jpeg|svg|webp|woff2?)$/)) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response.ok) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+          }
+          return response;
+        })
+        .catch(() => caches.match(request))
+    );
+  }
 });

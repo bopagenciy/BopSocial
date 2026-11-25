@@ -65,7 +65,7 @@ def _resolved_client(request):
         return None, Response({'error': 'No profile'}, status=403)
 
     raw = request.data.get('client_id') if hasattr(request, 'data') else None
-    raw = raw or request.query_params.get('client_id')
+    raw = raw or request.query_params.get('client_id') or request.META.get('HTTP_X_CLIENT_ID')
 
     if profile.role == 'superadmin':
         cid = raw or profile.client_id
@@ -76,8 +76,30 @@ def _resolved_client(request):
             cid = None
         if cid is None or not profile.assigned_clients.filter(id=cid).exists():
             return None, Response({'error': 'client_id required'}, status=400)
+    elif profile.account_type == 'agency_member':
+        try:
+            cid = int(raw) if raw else profile.client_id
+        except (TypeError, ValueError):
+            return None, Response({'error': 'Invalid client_id'}, status=400)
+        if not cid:
+            return None, Response({'error': 'client_id required'}, status=400)
+        from .marketplace_models import AgencyClientRelation, AgencyMembership
+        if not profile.primary_agency_id or not AgencyMembership.objects.filter(
+            user=request.user, agency_id=profile.primary_agency_id, is_active=True
+        ).exists():
+            return None, Response({'error': 'Access denied'}, status=403)
+        if not AgencyClientRelation.objects.filter(
+            agency_id=profile.primary_agency_id, client_id=cid, status='active'
+        ).exists():
+            return None, Response({'error': 'Access denied'}, status=403)
     else:
         cid = profile.client_id
+        if raw:
+            try:
+                if int(raw) != cid:
+                    return None, Response({'error': 'Access denied'}, status=403)
+            except (TypeError, ValueError):
+                return None, Response({'error': 'Invalid client_id'}, status=400)
 
     if not cid:
         return None, Response({'error': 'client_id required'}, status=400)

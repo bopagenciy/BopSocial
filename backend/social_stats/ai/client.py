@@ -94,7 +94,16 @@ class AIClient:
         if self.client is not None and getattr(self.client, 'is_processing_paused', False):
             raise AIError('AI processing is paused for this workspace (data-processing restriction).')
 
+    def _active_provider(self) -> str:
+        from ..ai_helpers import resolve_ai_content_provider
+        return resolve_ai_content_provider()
+
     def _model(self, override: Optional[str], deep: bool = False, fast: bool = False) -> str:
+        provider = self._active_provider()
+        if provider == 'ollama':
+            if override and not override.startswith('claude-'):
+                return override
+            return getattr(settings, 'OLLAMA_MODEL', 'qwen3.5:9b')
         if override:
             return override
         if fast:
@@ -149,7 +158,7 @@ class AIClient:
     def complete(self, prompt: str, *, system: str = '', model: Optional[str] = None,
                  max_tokens: int = 1024, temperature: float = 0.7,
                  cache_key: Optional[str] = None, fast: bool = False, deep: bool = False,
-                 use_cache: bool = True, safety: bool = True) -> str:
+                 use_cache: bool = True, safety: bool = True, json_mode: bool = False) -> str:
         """
         Synchronous completion. Returns plain text from the assistant.
 
@@ -208,7 +217,64 @@ class AIClient:
                 )
                 return hit
 
-        # 3. SDK call
+        # 3. Provider call (Ollama or Anthropic SDK)
+        provider = self._active_provider()
+        if provider == 'ollama':
+            from ..ai_helpers import AIProviderError, generate_text_completion
+            t0 = time.monotonic()
+            status = 'success'
+            err_msg = ''
+            text = ''
+            in_tok = out_tok = 0
+            request_id = 'ollama'
+            try:
+                text = generate_text_completion(
+                    system,
+                    prompt,
+                    max_tokens=max(int(max_tokens or 1024), 2048),
+                    model=chosen_model,
+                    json_mode=json_mode,
+                )
+            except RateLimited:
+                raise
+            except AIProviderError as e:
+                status = 'error'
+                err_msg = str(e)[:1000]
+                logger.exception('AIClient.complete (ollama) failed (feature=%s)', self.feature)
+                raise AIError(str(e)) from e
+            except Exception as e:
+                status = 'error'
+                err_msg = str(e)[:1000]
+                logger.exception('AIClient.complete (ollama) failed (feature=%s)', self.feature)
+                raise AIError(str(e)) from e
+            finally:
+                duration_ms = int((time.monotonic() - t0) * 1000)
+                cost_tracker.record_cost(
+                    client=self.client, user=self.user, feature=self.feature,
+                    model=chosen_model, input_tokens=in_tok, output_tokens=out_tok,
+                    duration_ms=duration_ms, request_id=request_id,
+                    prompt_hash=self._hash_prompt(prompt, system, chosen_model),
+                    cached=False,
+                    request_payload=self._make_request_payload(
+                        prompt, system, chosen_model, temperature, max_tokens),
+                    response_summary=text[:200],
+                    status=status, error_message=err_msg,
+                )
+                if status == 'success':
+                    rate_limiter.increment(client_id, feature=self.feature)
+
+            if safety and text:
+                from . import safety as ai_safety
+                scan = ai_safety.scan_output(text)
+                if scan.flags:
+                    logger.warning('AIClient.complete: output safety flags %s (feature=%s)', scan.flags, self.feature)
+                text = scan.clean_text
+
+            if use_cache and text:
+                ai_cache.set(ckey, text)
+
+            return text
+
         sdk = self._sdk_client()
         kwargs = {
             'model': chosen_model,
@@ -450,7 +516,8 @@ class AIClient:
 
         raw = self.complete(prompt, system=json_system, model=model,
                             max_tokens=max_tokens, temperature=temperature,
-                            fast=fast, deep=deep, use_cache=False)
+                            fast=fast, deep=deep, use_cache=False,
+                            json_mode=(self._active_provider() == 'ollama'))
         return _parse_json_loose(raw)
 
 
