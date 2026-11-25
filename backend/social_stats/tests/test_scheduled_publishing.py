@@ -522,9 +522,10 @@ class ScheduledPublishingTests(TestCase):
         post.refresh_from_db()
         self.assertEqual(post.status, 'pending_approval')
 
-        # Step 2: approve immediate moves to queued and dispatches publish task
+        # Step 2: approve immediate moves to queued and dispatches publish task on commit
         with patch('social_stats.orchestrator.publish_unified_post.delay') as mock_delay:
-            res_app = self.api.post(f'/api/composer/posts/{post.id}/approve/')
+            with self.captureOnCommitCallbacks(execute=True):
+                res_app = self.api.post(f'/api/composer/posts/{post.id}/approve/')
             self.assertEqual(res_app.status_code, 200)
             self.assertEqual(res_app.data['status'], 'queued')
             mock_delay.assert_called_once_with(post.id)
