@@ -121,8 +121,11 @@ def can_approve_for_client(user, client: Client) -> bool:
     ).first()
     if not relation:
         return False
-    # Agency-side approval only when client has no external owner_user
-    if client.owner_user_id is not None:
+    # Agency-side approval is permitted for agency-owned workspaces
+    # (ownership_type == 'agency_owned') or legacy rows without an external owner_user.
+    # Externally owned client workspaces (end_user_owned with owner_user) require
+    # client-side approval (owner_user, ClientUserRole approver/client_admin, or superadmin).
+    if getattr(client, 'ownership_type', 'agency_owned') != 'agency_owned' and client.owner_user_id is not None:
         return False
     return True
 

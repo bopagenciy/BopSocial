@@ -115,9 +115,14 @@ def dashboard_counts(request):
                                     client=client, is_archived=False,
                                     is_resolved=False, sentiment='negative',
                                 ).count(),
-        'pending_approvals':    ApprovalRequest.objects.filter(
-                                    client=client, status='pending',
-                                ).count(),
+        'pending_approvals':    (
+                                    ApprovalRequest.objects.filter(
+                                        client=client, status='pending',
+                                    ).count()
+                                    + UnifiedPost.objects.filter(
+                                        client=client, status='pending_approval',
+                                    ).count()
+                                ),
         'new_leads':            Lead.objects.filter(
                                     client=client, status='new',
                                     created_at__gte=since_24h,

@@ -23,7 +23,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import CalendarPost, CalendarNote, PostingSchedule, Client, UnifiedPost
+from .models import CalendarPost, CalendarNote, PostingSchedule, Client, UnifiedPost, MediaAsset
 from .marketplace_models import ApprovalRequest
 from .marketplace_permissions import can_mutate_content, deny_response
 from .calendar_serializers import (
@@ -168,9 +168,6 @@ class CalendarPostViewSet(viewsets.ModelViewSet):
                 Q(published_at__date__range=[start, end]) |
                 Q(scheduled_at__isnull=True, published_at__isnull=True, created_at__date__range=[start, end])
             )
-        if platform:
-            u_qs = u_qs.filter(target_platforms__contains=[platform])
-
         unified_list = list(u_qs.order_by('scheduled_at', '-created_at')[:300])
         unified_ids = [u.id for u in unified_list]
         rejected_ids = set()
@@ -186,7 +183,30 @@ class CalendarPostViewSet(viewsets.ModelViewSet):
                     if ar['status'] == 'rejected':
                         rejected_ids.add(tid)
 
+        # Pre-resolve MediaAssets referenced by UnifiedPosts for authorized media previews
+        asset_ids_needed = set()
         for up in unified_list:
+            for u in (up.media_urls or []):
+                if isinstance(u, str) and u.startswith('asset:'):
+                    try:
+                        asset_ids_needed.add(int(u.split(':', 1)[1]))
+                    except (TypeError, ValueError, IndexError):
+                        pass
+        assets_by_id = {}
+        if asset_ids_needed:
+            assets_by_id = {
+                a.id: a
+                for a in MediaAsset.objects.filter(
+                    id__in=asset_ids_needed,
+                    client_id=client_id,
+                    source_asset__isnull=True,
+                )
+            }
+
+        for up in unified_list:
+            platforms = list(up.target_platforms or [])
+            if platform and platform not in platforms:
+                continue
             display_status = 'rejected' if (up.status == 'draft' and up.id in rejected_ids) else up.status
             if status_f and display_status != status_f:
                 continue
@@ -197,19 +217,39 @@ class CalendarPostViewSet(viewsets.ModelViewSet):
             else:
                 date_key = 'undated'
             platforms = list(up.target_platforms or [])
+            primary_platform = (
+                platform if (platform and platform in platforms)
+                else (platforms[0] if platforms else 'facebook')
+            )
+            resolved_media_urls = []
+            for u in (up.media_urls or []):
+                if isinstance(u, str) and u.startswith('asset:'):
+                    try:
+                        aid = int(u.split(':', 1)[1])
+                        asset_obj = assets_by_id.get(aid)
+                        if asset_obj and asset_obj.file:
+                            resolved_media_urls.append(
+                                asset_obj.get_authorized_url(request=request, thumb=False)
+                            )
+                    except (TypeError, ValueError, IndexError):
+                        pass
+                elif isinstance(u, str) and u:
+                    resolved_media_urls.append(u)
+
             posts_by_date[date_key].append({
                 'id': f'unified-{up.id}',
                 'unified_post_id': up.id,
                 'source': 'unified',
                 'client': up.client_id,
-                'platform': platforms[0] if platforms else 'facebook',
+                'platform': primary_platform,
                 'target_platforms': platforms,
                 'post_type': up.media_type or 'text',
                 'status': display_status,
                 'title': up.title or '',
                 'caption': up.content or '',
                 'hashtags': '',
-                'media_url': '',
+                'media_url': resolved_media_urls[0] if resolved_media_urls else '',
+                'media_urls': resolved_media_urls,
                 'scheduled_at': up.scheduled_at.isoformat() if up.scheduled_at else None,
                 'published_at': up.published_at.isoformat() if up.published_at else None,
                 'created_at': up.created_at.isoformat() if up.created_at else None,

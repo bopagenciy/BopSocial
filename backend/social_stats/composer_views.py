@@ -330,8 +330,19 @@ class UnifiedPostViewSet(TenantScopedMixin, viewsets.ModelViewSet):
             return deny_response('Insufficient client role to cancel posts.')
         if post.status in ('published', 'cancelled'):
             return Response({'detail': f'Already {post.status}'}, status=400)
+        prev_status = post.status
         post.status = 'cancelled'
         post.save(update_fields=['status'])
+        log_activity_for_request(
+            request, post.client,
+            action_type='post_rejected' if prev_status == 'pending_approval' else 'post_cancelled',
+            description=f'{"Rejected" if prev_status == "pending_approval" else "Cancelled"} post #{post.id}',
+            severity='notice',
+            target_object_type='UnifiedPost',
+            target_object_id=post.id,
+            metadata={'previous_status': prev_status, 'platforms': list(post.target_platforms or [])},
+            is_reversible=True,
+        )
         return Response(UnifiedPostSerializer(post).data)
 
     @action(detail=True, methods=['post'])
@@ -387,6 +398,20 @@ class UnifiedPostViewSet(TenantScopedMixin, viewsets.ModelViewSet):
                 locked_post.save(update_fields=['approved_by', 'approved_at', 'status', 'queued_at', 'scheduled_at'])
                 transaction.on_commit(lambda pid=locked_post.id: publish_unified_post.delay(pid))
         post.refresh_from_db()
+        log_activity_for_request(
+            request, post.client,
+            action_type='post_approved',
+            description=f'Approved post #{post.id} for {", ".join(post.target_platforms or [])}',
+            severity='notice',
+            target_object_type='UnifiedPost',
+            target_object_id=post.id,
+            metadata={
+                'status': post.status,
+                'scheduled_at': post.scheduled_at.isoformat() if post.scheduled_at else None,
+                'platforms': list(post.target_platforms or []),
+            },
+            is_reversible=True,
+        )
         return Response(UnifiedPostSerializer(post).data)
 
     @action(detail=True, methods=['post'])

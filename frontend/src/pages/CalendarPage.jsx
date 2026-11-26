@@ -9,7 +9,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { addMonths, subMonths, format, parseISO } from 'date-fns';
 import { ChevronLeft, ChevronRight, Plus, Calendar, List, BarChart2 } from 'lucide-react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../hooks/useAuth';
 import { useClients } from '../hooks/useData';
@@ -101,7 +101,10 @@ function ListView({ postsByDate, onPostClick, onEditPost, onDeletePost, onResche
             </span>
           </div>
           {posts.map(post => {
-            const p     = PLATFORMS[post.platform] || { color: 'var(--text-secondary)', label: post.platform };
+            const platformsList = Array.isArray(post.target_platforms) && post.target_platforms.length > 0
+              ? post.target_platforms
+              : [post.platform];
+            const p     = PLATFORMS[platformsList[0]] || { color: 'var(--text-secondary)', label: platformsList[0] };
             const badge = STATUS_BADGE[post.status] || STATUS_BADGE.draft;
             const timeStr = (post.scheduled_at || post.published_at)
               ? formatTime(parseISO(post.scheduled_at || post.published_at))
@@ -114,14 +117,17 @@ function ListView({ postsByDate, onPostClick, onEditPost, onDeletePost, onResche
                 borderLeft: `4px solid ${p.color}`,
                 padding: '12px 16px', marginBottom: 8,
               }}>
-                {/* Platform icon */}
+                {/* Platform icons */}
                 <div style={{
-                  width: 36, height: 36, borderRadius: '50%',
+                  minWidth: 36, height: 36, borderRadius: 18,
+                  padding: platformsList.length > 1 ? '0 8px' : 0,
                   background: p.color + '20',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 18, flexShrink: 0,
+                  gap: 4, fontSize: 18, flexShrink: 0,
                 }}>
-                  <SocialPlatformIcon platform={post.platform} size={18} />
+                  {platformsList.map(pk => (
+                    <SocialPlatformIcon key={pk} platform={pk} size={16} />
+                  ))}
                 </div>
 
                 {/* Content */}
@@ -197,10 +203,12 @@ const listBtnStyle = {
 // ── Main CalendarPage ─────────────────────────────────────────────────────────
 export default function CalendarPage({ clientId: propClientId }) {
   const { t } = useTranslation(['content', 'common', 'analytics']);
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { user }     = useAuth();
   const { clients }  = useClients();
   const isAdmin      = user?.role === 'superadmin' || user?.role === 'staff';
+  const basePath     = isAdmin ? '/admin/analytics' : '/dashboard/analytics';
   const isEmbedded   = !!propClientId;
   const showClientSelector = isAdmin && !propClientId;
   const queryClientId = searchParams.get('client');
@@ -277,6 +285,11 @@ export default function CalendarPage({ clientId: propClientId }) {
     setFormOpen(true);
   }
   function openFormForEdit(post) {
+    if (post?.source === 'unified' && post?.unified_post_id) {
+      setDetailOpen(false);
+      navigate(`${basePath}/composer/${post.unified_post_id}`);
+      return;
+    }
     if (!isAdmin) return;
     setEditingPost(post);
     setFormDate(null);
@@ -360,13 +373,13 @@ export default function CalendarPage({ clientId: propClientId }) {
   }
 
   return (
-    <div style={{
+    <div className="calendar-page-shell" style={{
       padding: '28px 32px 40px',
       background: 'var(--surface-page)',
       minHeight: '100vh',
       width: '100%',
       maxWidth: '100%',
-      overflowX: 'hidden',
+      overflowX: 'clip',
       boxSizing: 'border-box',
     }}>
       <div style={{
@@ -395,11 +408,14 @@ export default function CalendarPage({ clientId: propClientId }) {
         {/* Top bar */}
         <div className="calendar-toolbar" style={{
           display: 'flex',
-          alignItems: 'flex-start',
+          alignItems: 'center',
           gap: 12,
+          marginTop: 4,
           marginBottom: 20,
           flexWrap: 'wrap',
           width: '100%',
+          position: 'relative',
+          zIndex: 2,
         }}>
         {/* Month nav */}
         <div style={{

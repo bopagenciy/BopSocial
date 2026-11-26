@@ -22,10 +22,12 @@ function fmt(n) {
 }
 
 const STATUS_BADGE = {
-  published: { bg: '#D1FAE5', color: '#059669', label: 'Published' },
-  scheduled: { bg: '#DBEAFE', color: '#2563EB', label: 'Scheduled' },
-  draft:     { bg: '#F1F5F9', color: '#64748B', label: 'Draft'     },
-  failed:    { bg: '#FEE2E2', color: '#EF4444', label: 'Failed'    },
+  published:        { bg: '#D1FAE5', color: '#059669', label: 'Published'        },
+  scheduled:        { bg: '#DBEAFE', color: '#2563EB', label: 'Scheduled'        },
+  pending_approval: { bg: '#FEF3C7', color: '#B45309', label: 'Pending Approval' },
+  rejected:         { bg: '#FEE2E2', color: '#B91C1C', label: 'Rejected'         },
+  draft:            { bg: '#F1F5F9', color: '#64748B', label: 'Draft'            },
+  failed:           { bg: '#FEE2E2', color: '#EF4444', label: 'Failed'           },
 };
 
 export default function PostDrawer({ post, isOpen, onClose, onEdit, onDelete, onReschedule }) {
@@ -37,7 +39,14 @@ export default function PostDrawer({ post, isOpen, onClose, onEdit, onDelete, on
 
   if (!post) return null;
 
-  const platform = PLATFORMS[post.platform] || { color: '#64748B', label: post.platform };
+  const platformsList = Array.isArray(post.target_platforms) && post.target_platforms.length > 0
+    ? post.target_platforms
+    : (post.platform ? [post.platform] : ['facebook']);
+  const platform = PLATFORMS[platformsList[0]] || { color: '#64748B', label: platformsList[0] };
+  const platformLabels = platformsList.map(pk => PLATFORMS[pk]?.label || pk).join(' · ');
+  const mediaList = Array.isArray(post.media_urls) && post.media_urls.length > 0
+    ? post.media_urls
+    : (post.media_url ? [post.media_url] : []);
   const badge    = STATUS_BADGE[post.status] || STATUS_BADGE.draft;
   const badgeLabel = t(`status.${post.status}`, badge.label);
 
@@ -92,10 +101,14 @@ export default function PostDrawer({ post, isOpen, onClose, onEdit, onDelete, on
           background: platform.color + '10',
           position: 'sticky', top: 0, zIndex: 1,
         }}>
-          <SocialPlatformIcon platform={post.platform} size={28} />
-          <div style={{ flex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+            {platformsList.map(pk => (
+              <SocialPlatformIcon key={pk} platform={pk} size={24} />
+            ))}
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontWeight: 700, fontSize: 15, color: '#0f172a' }}>
-              {platform.label}
+              {platformLabels}
             </div>
             <div style={{
               display: 'inline-flex', alignItems: 'center',
@@ -145,15 +158,19 @@ export default function PostDrawer({ post, isOpen, onClose, onEdit, onDelete, on
             </div>
           )}
 
-          {/* Media thumbnail */}
-          {post.media_url && (
-            <div style={{ marginBottom: 14, borderRadius: 8, overflow: 'hidden' }}>
-              <img
-                src={post.media_url}
-                alt="Post media"
-                style={{ width: '100%', maxHeight: 200, objectFit: 'cover', display: 'block' }}
-                onError={e => { e.target.style.display = 'none'; }}
-              />
+          {/* Media preview */}
+          {mediaList.length > 0 && (
+            <div style={{ marginBottom: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {mediaList.map((src, idx) => (
+                <div key={`${src}-${idx}`} style={{ borderRadius: 8, overflow: 'hidden', background: '#F8FAFC', border: '1px solid #E2E8F0' }}>
+                  <img
+                    src={src}
+                    alt={post.title || 'Post media'}
+                    style={{ width: '100%', maxHeight: 260, objectFit: 'contain', display: 'block' }}
+                    onError={e => { e.target.style.display = 'none'; }}
+                  />
+                </div>
+              ))}
             </div>
           )}
 

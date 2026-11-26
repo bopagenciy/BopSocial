@@ -94,17 +94,27 @@ def approval_queue(request):
         return Response({'error': 'No profile'}, status=403)
 
     qs = UnifiedPost.objects.filter(status='pending_approval')
+    cid = request.query_params.get('client_id')
     if profile.role == 'client':
-        qs = qs.filter(client_id=profile.client_id)
+        if cid:
+            try:
+                cid_int = int(cid)
+            except (TypeError, ValueError):
+                return Response({'error': 'Invalid client_id'}, status=400)
+            if not profile.can_access_client(cid_int):
+                return Response({'error': 'Access denied'}, status=403)
+            qs = qs.filter(client_id=cid_int)
+        else:
+            qs = qs.filter(client_id=profile.client_id)
     elif profile.role == 'staff':
         qs = qs.filter(client__in=profile.assigned_clients.all())
-    # superadmin sees all (optionally filter by ?client_id=)
-    cid = request.query_params.get('client_id')
-    if cid:
+        if cid:
+            qs = qs.filter(client_id=cid)
+    elif cid:
         qs = qs.filter(client_id=cid)
 
     qs = qs.order_by('-created_at')[:200]
     return Response({
         'count':  qs.count() if hasattr(qs, 'count') else len(qs),
-        'queue':  UnifiedPostListSerializer(qs, many=True).data,
+        'queue':  UnifiedPostListSerializer(qs, many=True, context={'request': request}).data,
     })

@@ -416,10 +416,12 @@ const NAV_SETS = {
       {
         title: 'Publish',
         items: [
-          { label: 'Composer',      icon: PenSquare,   path: '/composer',  permission: 'composer.view' },
-          { label: 'Drafts',        icon: FileText,    path: '/drafts',    permission: 'composer.view' },
-          { label: 'Calendar',      icon: CalendarDays, path: '/calendar', permission: 'calendar.view' },
-          { label: 'Queues',        icon: Layers,      path: '/queues',    permission: 'composer.view' },
+          { label: 'Composer',      icon: PenSquare,      path: '/composer',  permission: 'composer.view' },
+          { label: 'Drafts',        icon: FileText,       path: '/drafts',    permission: 'composer.view' },
+          { label: 'Calendar',      icon: CalendarDays,   path: '/calendar',  permission: 'calendar.view' },
+          { label: 'Approvals',     icon: ClipboardCheck, path: '/approvals', permission: 'composer.approve',
+            badgeKey: 'pending_approvals' },
+          { label: 'Queues',        icon: Layers,         path: '/queues',    permission: 'composer.view' },
           { label: 'Operations',    icon: Activity,    path: '/operations',permission: 'composer.view' },
           { label: 'Media Library', icon: Images,      path: '/media',     permission: 'composer.view' },
           { label: 'Video Studio',  icon: Film,        path: '/video',     permission: 'video.view' },
@@ -473,8 +475,6 @@ const NAV_SETS = {
       {
         title: 'Setup',
         items: [
-          { label: 'Approvals',     icon: ClipboardCheck, path: '/approvals',     permission: 'composer.approve',
-            badgeKey: 'pending_approvals' },
           { label: 'Notifications', icon: Bell,           path: '/notifications',
             badgeKey: 'unread_notifications' },
           { label: 'Audit Log',     icon: ShieldCheck,    path: '/audit-log',     permission: 'audit.view' },

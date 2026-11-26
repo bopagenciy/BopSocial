@@ -298,6 +298,12 @@ def me(request):
         data['tenant_language'] = tenant_lang
         data['has_explicit_language'] = bool(user_lang)
         data['permissions'] = PermissionChecker.get_user_permissions(profile)
+        try:
+            from .marketplace_permissions import can_approve_for_client
+            if profile.client and can_approve_for_client(user, profile.client):
+                data['permissions']['composer.approve'] = True
+        except Exception:
+            pass
         data['onboarding_complete'] = profile.client.onboarding_complete if profile.client else False
         # Feature flags surfaced to the client app.
         data['feature_flags'] = {

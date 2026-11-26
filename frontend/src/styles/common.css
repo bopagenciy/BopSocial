@@ -76,6 +76,18 @@
   box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
 }
 
+/* CalendarPage: keep PageHeader in normal document flow so it never overlaps
+   the month navigation or platform filter buttons or blocks pointer clicks. */
+.calendar-page-shell .page-header-sticky {
+  position: static;
+  margin-left: 0;
+  margin-right: 0;
+  padding: 0 0 16px !important;
+  background: transparent !important;
+  border-bottom: none;
+  box-shadow: none;
+}
+
 @media (max-width: 768px) {
   .page-header-sticky {
     top: 56px;

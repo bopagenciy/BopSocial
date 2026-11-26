@@ -101,9 +101,13 @@ export default function CalendarGrid({
           const pastDay    = inMonth && isBefore(startOfDay(day), startOfDay(new Date()));
           const canSchedule = inMonth && !pastDay;
           const dateStr    = format(day, 'yyyy-MM-dd');
-          const posts      = (postsByDate[dateStr] || []).filter(p =>
-            !selectedPlatform || selectedPlatform === 'all' || p.platform === selectedPlatform
-          );
+          const posts      = (postsByDate[dateStr] || []).filter(p => {
+            if (!selectedPlatform || selectedPlatform === 'all') return true;
+            const itemPlatforms = Array.isArray(p.target_platforms) && p.target_platforms.length > 0
+              ? p.target_platforms
+              : [p.platform];
+            return itemPlatforms.includes(selectedPlatform);
+          });
           const notes      = notesByDate?.[dateStr] || [];
           const extraPosts = posts.length > 3 ? posts.length - 3 : 0;
 
