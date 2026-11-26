@@ -140,6 +140,7 @@
     },
     "items": {
       "composer": "Compositor",
+      "drafts": "Borradores",
       "calendar": "Calendario",
       "queues": "Colas",
       "media_library": "Biblioteca de medios",

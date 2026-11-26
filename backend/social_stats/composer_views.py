@@ -219,7 +219,10 @@ class UnifiedPostViewSet(TenantScopedMixin, viewsets.ModelViewSet):
                         pass
             asset_qs = MediaAsset.objects.filter(id__in=asset_ids, client=post.client)
             asset_map = {a.id: a for a in asset_qs}
-            post_assets = [asset_map[aid] for aid in asset_ids if aid in asset_map]
+            post_assets = [
+                media_service.ensure_platform_compatible_media(asset_map[aid], 'instagram', 'carousel')
+                for aid in asset_ids if aid in asset_map
+            ]
             from .locale_helpers import resolve_user_language
             lang = resolve_user_language(request.user, post.client)
             c_vr = media_service.validate_carousel_for_platform(post_assets, 'instagram', lang=lang)
@@ -440,7 +443,7 @@ class MediaAssetViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     http_method_names = ['get', 'post', 'patch', 'delete', 'head', 'options']
 
     def get_queryset(self):
-        qs = super().get_queryset()
+        qs = super().get_queryset().filter(source_asset__isnull=True)
         if self.request.query_params.get('folder'):
             qs = qs.filter(folder=self.request.query_params['folder'])
         if self.request.query_params.get('mime'):
@@ -469,7 +472,7 @@ class MediaAssetViewSet(TenantScopedMixin, viewsets.ModelViewSet):
                 alt_text=request.data.get('alt_text', ''),
                 tags=request.data.getlist('tags') if hasattr(request.data, 'getlist') else (request.data.get('tags') or []),
             )
-            return Response(MediaAssetSerializer(asset).data, status=201)
+            return Response(self.get_serializer(asset).data, status=201)
         except (ValueError, VideoProbeError) as e:
             return Response({'detail': str(e)}, status=400)
 
@@ -504,7 +507,7 @@ class MediaAssetViewSet(TenantScopedMixin, viewsets.ModelViewSet):
                 asset = media_service.upload_media(
                     f, client_id=client_id, uploaded_by_id=request.user.id, folder=folder,
                 )
-                out.append(MediaAssetSerializer(asset).data)
+                out.append(self.get_serializer(asset).data)
             except Exception as e:
                 logger.exception('bulk_upload failed for %s', f.name)
                 errors.append({'file': f.name, 'error': str(e)})
@@ -677,16 +680,21 @@ class PreflightCheckView(APIView):
                 any_block = True
                 continue
 
-            # Platform asset validation
+            # Platform asset validation (automatically prepares compatible variants)
             if p_media_type == 'carousel':
-                c_vr = media_service.validate_carousel_for_platform(assets, platform, lang=lang)
+                compatible_assets = [
+                    media_service.ensure_platform_compatible_media(a, platform, 'carousel')
+                    for a in assets
+                ]
+                c_vr = media_service.validate_carousel_for_platform(compatible_assets, platform, lang=lang)
                 if c_vr.errors:
                     errors.extend(c_vr.errors)
                 if c_vr.warnings:
                     warnings.extend(c_vr.warnings)
             else:
                 for asset in assets:
-                    vr = media_service.validate_for_platform(asset, platform, p_media_type)
+                    compatible_asset = media_service.ensure_platform_compatible_media(asset, platform, p_media_type)
+                    vr = media_service.validate_for_platform(compatible_asset, platform, p_media_type)
                     if vr.errors:
                         errors.extend([f'asset#{asset.id}: {e}' for e in vr.errors])
                     if vr.warnings:

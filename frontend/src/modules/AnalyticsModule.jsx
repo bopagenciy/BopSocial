@@ -22,6 +22,7 @@ const AlertsPage        = lazy(() => import('../pages/AlertsPage'));
 const SyncLogsPage      = lazy(() => import('../pages/SyncLogsPage'));
 // Composer ( unified control center)
 const ComposerPage      = lazy(() => import('../pages/composer/ComposerPage'));
+const DraftsPage        = lazy(() => import('../pages/composer/DraftsPage'));
 const MediaLibraryPage  = lazy(() => import('../pages/composer/MediaLibraryPage'));
 const QueueManagerPage  = lazy(() => import('../pages/composer/QueueManagerPage'));
 const PublicationOperationsPage = lazy(() => import('../pages/composer/PublicationOperationsPage'));
@@ -84,6 +85,7 @@ export default function AnalyticsModule({ isAdmin = false, clientId = null }) {
         {/* Composer */}
         <Route path="composer"      element={<ComposerPage />} />
         <Route path="composer/:id"  element={<ComposerPage />} />
+        <Route path="drafts"        element={<DraftsPage />} />
         <Route path="media"         element={<MediaLibraryPage />} />
         <Route path="queues"        element={<QueueManagerPage />} />
         <Route path="operations"    element={<PublicationOperationsPage />} />

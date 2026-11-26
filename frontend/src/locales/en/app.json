@@ -140,6 +140,7 @@
     },
     "items": {
       "composer": "Composer",
+      "drafts": "Drafts",
       "calendar": "Calendar",
       "queues": "Queues",
       "media_library": "Media Library",

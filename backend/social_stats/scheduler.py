@@ -468,17 +468,21 @@ def _preflight_check_item(queue: PostQueue, item: QueuedItem) -> tuple[bool, str
         except Exception as e:
             return False, f"Publisher error for platform '{platform}': {e}"
 
-        # Platform media constraints
+        # Platform media constraints (automatically prepares compatible variants)
         if assets:
+            compatible_assets = [
+                media_service.ensure_platform_compatible_media(a, platform, media_type)
+                for a in assets
+            ]
             if media_type == 'carousel':
-                c_vr = media_service.validate_carousel_for_platform(assets, platform)
+                c_vr = media_service.validate_carousel_for_platform(compatible_assets, platform)
                 if c_vr.errors:
                     return False, f"Carousel validation failed for {platform}: {'; '.join(c_vr.errors)}"
             else:
-                for a in assets:
-                    vr = media_service.validate_for_platform(a, platform, media_type)
+                for orig_a, compat_a in zip(assets, compatible_assets):
+                    vr = media_service.validate_for_platform(compat_a, platform, media_type)
                     if vr.errors:
-                        return False, f"Asset #{a.id} validation failed for {platform}: {'; '.join(vr.errors)}"
+                        return False, f"Asset #{orig_a.id} validation failed for {platform}: {'; '.join(vr.errors)}"
 
     return True, ""
 

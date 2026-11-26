@@ -38,7 +38,9 @@ from urllib.parse import urlparse
 
 from django.conf import settings
 from django.core.files.base import ContentFile
+from django.core.files.storage import default_storage
 from django.core.files.uploadedfile import UploadedFile
+from django.db import transaction
 from django.utils.text import slugify
 from PIL import Image, ImageOps
 
@@ -375,6 +377,199 @@ def validate_carousel_for_platform(
                 result.add_warning(f'asset#{aid}: {w}' if aid else w)
 
     return result
+
+
+def _flatten_image_to_rgb(img: Image.Image) -> Image.Image:
+    """Convert any PIL image (including transparent RGBA/LA/P) onto a white RGB background."""
+    img = ImageOps.exif_transpose(img)
+    if img.mode == 'P':
+        img = img.convert('RGBA' if 'transparency' in img.info else 'RGB')
+    if img.mode in ('RGBA', 'LA', 'PA'):
+        rgba = img.convert('RGBA')
+        background = Image.new('RGB', rgba.size, (255, 255, 255))
+        background.paste(rgba, mask=rgba.split()[3])
+        return background
+    if img.mode != 'RGB':
+        return img.convert('RGB')
+    return img
+
+
+def _encode_compatible_jpeg(
+    source_file,
+    *,
+    max_width: Optional[int] = None,
+    max_bytes: Optional[int] = None,
+) -> tuple[bytes, int, int]:
+    """
+    Encode `source_file` as a high-quality RGB JPEG, compositing transparency
+    onto white and preserving aspect ratio while respecting max_width / max_bytes.
+    """
+    with Image.open(source_file) as raw_img:
+        img = _flatten_image_to_rgb(raw_img)
+        if max_width and img.width > max_width:
+            new_h = max(1, round(img.height * (max_width / img.width)))
+            img = img.resize((max_width, new_h), Image.Resampling.LANCZOS)
+
+        buf = io.BytesIO()
+        qualities = (92, 85, 78, 70, 60, 50, 40)
+        for quality in qualities:
+            buf.seek(0)
+            buf.truncate(0)
+            img.save(buf, format='JPEG', quality=quality, optimize=True)
+            if not max_bytes or buf.tell() <= max_bytes:
+                break
+        return buf.getvalue(), img.width, img.height
+
+
+def _variant_storage_exists(variant: MediaAsset) -> bool:
+    if not variant or not variant.file or not variant.file.name:
+        return False
+    if _s3_enabled():
+        return True
+    try:
+        return default_storage.exists(variant.file.name)
+    except Exception:
+        return False
+
+
+def _read_asset_bytes(asset: MediaAsset) -> io.BytesIO:
+    """Read raw bytes for a MediaAsset from S3 (when enabled) or local storage."""
+    if _s3_enabled():
+        s3 = get_s3_client()
+        resp = s3.get_object(Bucket=get_s3_bucket_name(), Key=asset.file.name)
+        return io.BytesIO(resp['Body'].read())
+    asset.file.open('rb')
+    try:
+        return io.BytesIO(asset.file.read())
+    finally:
+        try:
+            asset.file.close()
+        except Exception:
+            pass
+
+
+def ensure_platform_compatible_media(
+    asset: MediaAsset,
+    platform: str,
+    post_type: str = 'image',
+) -> MediaAsset:
+    """
+    Return a platform-compatible MediaAsset for `(platform, post_type)`.
+
+    If `asset` already satisfies the platform's MIME/dimension/size constraints,
+    returns `asset` unchanged. Otherwise, safely generates (or reuses) a
+    tenant-scoped JPEG variant without mutating the original uploaded asset.
+    """
+    if not asset:
+        return asset
+
+    plat = (platform or '').lower().strip()
+    ptype = (post_type or 'image').lower().strip()
+
+    rules = (PLATFORM_LIMITS.get(plat) or {}).get(ptype)
+    if not rules and ptype == 'carousel':
+        effective_type = 'video' if (getattr(asset, 'mime_type', '') or '').startswith('video/') else 'image'
+        rules = (PLATFORM_LIMITS.get(plat) or {}).get(effective_type)
+    if not rules:
+        return asset
+
+    mime = (getattr(asset, 'mime_type', '') or '').lower().strip()
+    if not mime.startswith('image/'):
+        return asset
+
+    allowed = rules.get('allowed_mime') or set()
+    max_width = rules.get('max_width')
+    max_bytes = rules.get('max_bytes')
+    jpeg_allowed = (not allowed) or ('image/jpeg' in allowed)
+
+    mime_incompatible = bool(allowed and mime not in allowed and jpeg_allowed)
+    too_wide = bool(max_width and asset.width and asset.width > max_width and jpeg_allowed)
+    too_large = bool(max_bytes and asset.file_size and asset.file_size > max_bytes and jpeg_allowed)
+
+    if not (mime_incompatible or too_wide or too_large):
+        return asset
+
+    if not getattr(asset, 'pk', None) or not getattr(asset, 'file', None):
+        return asset
+
+    variant_key = f"{plat}:image/jpeg:w{max_width or 'orig'}:b{max_bytes or 'orig'}"
+
+    existing = MediaAsset.objects.filter(
+        source_asset_id=asset.id,
+        client_id=asset.client_id,
+        variant_platform=plat,
+        variant_key=variant_key,
+    ).first()
+    if existing and _variant_storage_exists(existing):
+        return existing
+
+    try:
+        with transaction.atomic():
+            MediaAsset.objects.select_for_update().filter(
+                pk=asset.pk, client_id=asset.client_id,
+            ).first()
+            existing = MediaAsset.objects.filter(
+                source_asset_id=asset.id,
+                client_id=asset.client_id,
+                variant_platform=plat,
+                variant_key=variant_key,
+            ).first()
+            if existing and _variant_storage_exists(existing):
+                return existing
+            if existing:
+                existing.delete()
+
+            source_buf = _read_asset_bytes(asset)
+            jpeg_bytes, width, height = _encode_compatible_jpeg(
+                source_buf,
+                max_width=max_width,
+                max_bytes=max_bytes,
+            )
+
+            stem = os.path.splitext(os.path.basename(asset.file.name or 'media'))[0]
+            variant_name = _safe_filename(f"{stem}_{plat}.jpg")
+
+            variant = MediaAsset(
+                client_id=asset.client_id,
+                uploaded_by_id=asset.uploaded_by_id,
+                source_asset_id=asset.id,
+                variant_platform=plat,
+                variant_key=variant_key,
+                mime_type='image/jpeg',
+                file_size=len(jpeg_bytes),
+                width=width,
+                height=height,
+                alt_text=asset.alt_text or '',
+                tags=list(asset.tags or []),
+                folder=asset.folder or '',
+                is_used=True,
+                technical_metadata={
+                    'derived_from': asset.id,
+                    'source_mime': asset.mime_type,
+                    'target_platform': plat,
+                },
+            )
+
+            if _s3_enabled():
+                main_key = media_asset_upload_path(variant, variant_name)
+                upload_to_s3(jpeg_bytes, main_key, content_type='image/jpeg')
+                variant.file.name = main_key
+                try:
+                    variant.save()
+                except Exception:
+                    delete_s3_object(main_key)
+                    raise
+            else:
+                variant.file.save(variant_name, ContentFile(jpeg_bytes), save=False)
+                variant.save()
+
+            return variant
+    except Exception:
+        logger.exception(
+            'Failed to generate compatible %s variant for MediaAsset %s',
+            plat, asset.id,
+        )
+        return asset
 
 
 def transcode_for_platform(asset: MediaAsset, platform: str, post_type: str) -> MediaAsset:

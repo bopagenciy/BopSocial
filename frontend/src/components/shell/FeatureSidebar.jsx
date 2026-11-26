@@ -417,6 +417,7 @@ const NAV_SETS = {
         title: 'Publish',
         items: [
           { label: 'Composer',      icon: PenSquare,   path: '/composer',  permission: 'composer.view' },
+          { label: 'Drafts',        icon: FileText,    path: '/drafts',    permission: 'composer.view' },
           { label: 'Calendar',      icon: CalendarDays, path: '/calendar', permission: 'calendar.view' },
           { label: 'Queues',        icon: Layers,      path: '/queues',    permission: 'composer.view' },
           { label: 'Operations',    icon: Activity,    path: '/operations',permission: 'composer.view' },

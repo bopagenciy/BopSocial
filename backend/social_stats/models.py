@@ -1976,6 +1976,11 @@ class MediaAsset(models.Model):
     tags         = models.JSONField(default=list, blank=True)
     folder       = models.CharField(max_length=100, blank=True)
     technical_metadata = models.JSONField(default=dict, blank=True)
+    source_asset = models.ForeignKey(
+        'self', on_delete=models.CASCADE, null=True, blank=True, related_name='variants',
+    )
+    variant_platform = models.CharField(max_length=32, blank=True, default='')
+    variant_key  = models.CharField(max_length=64, blank=True, default='')
     is_used      = models.BooleanField(default=False)
     created_at   = models.DateTimeField(auto_now_add=True)
 
@@ -1984,6 +1989,7 @@ class MediaAsset(models.Model):
         indexes = [
             models.Index(fields=['client', '-created_at']),
             models.Index(fields=['client', 'folder']),
+            models.Index(fields=['source_asset', 'variant_platform', 'variant_key']),
         ]
 
     def __str__(self):

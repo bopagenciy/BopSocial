@@ -225,7 +225,7 @@ def publish_to_platform(self, unified_post_id: int, platform: str):
 
     # Resolve any internal MediaAsset IDs to provider-safe URLs (e.g. S3 presigned or validated public URL).
     try:
-        media_urls = _resolve_media_urls(post, media_urls, platform=platform)
+        media_urls = _resolve_media_urls(post, media_urls, platform=platform, media_type=media_type)
     except PublishError as e:
         _mark_failed(log, code=e.code or 'public_media_required', message=str(e)[:500])
         update_unified_post_status(post.id)
@@ -243,7 +243,10 @@ def publish_to_platform(self, unified_post_id: int, platform: str):
                     pass
         asset_qs = MediaAsset.objects.filter(id__in=asset_ids, client=post.client)
         asset_map = {a.id: a for a in asset_qs}
-        post_assets = [asset_map[aid] for aid in asset_ids if aid in asset_map]
+        post_assets = [
+            media_service.ensure_platform_compatible_media(asset_map[aid], 'instagram', 'carousel')
+            for aid in asset_ids if aid in asset_map
+        ]
         lang = getattr(post.client, 'default_language', 'en') or 'en'
         c_vr = media_service.validate_carousel_for_platform(post_assets, 'instagram', lang=lang)
         if not c_vr.ok:
@@ -493,7 +496,12 @@ def _resolve_story_media_kind(post: UnifiedPost, raw_urls: list) -> str:
     )
 
 
-def _resolve_media_urls(post: UnifiedPost, media_urls: list, platform: Optional[str] = None) -> list:
+def _resolve_media_urls(
+    post: UnifiedPost,
+    media_urls: list,
+    platform: Optional[str] = None,
+    media_type: str = 'image',
+) -> list:
     """
     Translate a mix of bare URLs and `asset:<id>` placeholders into final URLs.
     Resolves provider-safe public URLs using media_service.get_provider_media_url.
@@ -509,7 +517,10 @@ def _resolve_media_urls(post: UnifiedPost, media_urls: list, platform: Optional[
                 ).first()
                 if asset:
                     if platform:
-                        resolved = media_service.get_provider_media_url(asset, platform, lang=lang)
+                        compatible = media_service.ensure_platform_compatible_media(
+                            asset, platform, media_type,
+                        )
+                        resolved = media_service.get_provider_media_url(compatible, platform, lang=lang)
                     else:
                         resolved = media_service.presigned_url(asset)
                     if resolved:

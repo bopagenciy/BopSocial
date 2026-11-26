@@ -7,10 +7,10 @@
  *  Released under the MIT License — see LICENSE. Keep this notice.
  * ========================================================================== */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
   Image as ImageIcon, Video, Calendar, Send, Save, AlertCircle, CheckCircle2,
-  X, Wand2, Hash, Clock, Layers, Loader2, Upload, Eye, Trash2,
+  X, Wand2, Hash, Clock, Layers, Loader2, Upload, Eye, Trash2, FileText,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -110,8 +110,10 @@ export function extractComposerHashtags(data, existingContent = '', limit = 8) {
 export default function ComposerPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const { t } = useTranslation('content');
+  const basePath = location.pathname.startsWith('/admin') ? '/admin/analytics' : '/dashboard/analytics';
 
   const isEditing = !!id;
   const currentClient = useCurrentClient();
@@ -158,6 +160,7 @@ export default function ComposerPage() {
       setContent(existing.content || '');
       setMediaType(existing.media_type || 'text');
       setTargetPlatforms(existing.target_platforms || []);
+      setMediaAssets(Array.isArray(existing.resolved_media_assets) ? existing.resolved_media_assets : []);
       if (existing.scheduled_at) {
         setScheduleMode('schedule');
         setScheduledAt(toLocalInput(existing.scheduled_at));
@@ -249,7 +252,7 @@ export default function ComposerPage() {
       return res.data;
     }
     const res = await composerAPI.posts.create(payload);
-    navigate(`/admin/analytics/composer/${res.data.id}`, { replace: true });
+    navigate(`${basePath}/composer/${res.data.id}`, { replace: true });
     return res.data;
   }
 
@@ -417,6 +420,9 @@ export default function ComposerPage() {
         subtitle={t('composer.subtitle')}
         action={
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <Button variant="ghost" icon={FileText} onClick={() => navigate(`${basePath}/drafts`)}>
+              {t('drafts.title', 'Borradores')}
+            </Button>
             <Button variant="secondary" icon={Save} onClick={onSaveDraft} loading={saving}>
               {t('composer.save_draft')}
             </Button>

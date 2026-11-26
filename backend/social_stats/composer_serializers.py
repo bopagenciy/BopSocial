@@ -82,10 +82,22 @@ class PlatformPublishLogSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
+def _resolve_asset_ids(media_urls):
+    ids = []
+    for item in (media_urls or []):
+        if isinstance(item, str) and item.startswith('asset:'):
+            try:
+                ids.append(int(item.split(':', 1)[1]))
+            except (TypeError, ValueError):
+                pass
+    return ids
+
+
 # ── Unified post ──────────────────────────────────────────────────────────────
 class UnifiedPostSerializer(serializers.ModelSerializer):
     publish_logs = PlatformPublishLogSerializer(many=True, read_only=True)
     created_by_name = serializers.CharField(source='created_by.get_full_name', read_only=True)
+    resolved_media_assets = serializers.SerializerMethodField()
 
     class Meta:
         model = UnifiedPost
@@ -101,13 +113,26 @@ class UnifiedPostSerializer(serializers.ModelSerializer):
             'approved_by', 'approved_at',
             'source_queue', 'source_queued_item',
             'publish_logs',
+            'resolved_media_assets',
         ]
         read_only_fields = [
             'client', 'status', 'queued_at', 'published_at',
             'created_by', 'created_by_name', 'created_at', 'updated_at',
             'approved_by', 'approved_at',
             'source_queue', 'source_queued_item',
+            'resolved_media_assets',
         ]
+
+    def get_resolved_media_assets(self, obj):
+        asset_ids = _resolve_asset_ids(obj.media_urls)
+        if not asset_ids:
+            return []
+        assets_by_id = {
+            a.id: a
+            for a in MediaAsset.objects.filter(id__in=asset_ids, client_id=obj.client_id)
+        }
+        ordered = [assets_by_id[aid] for aid in asset_ids if aid in assets_by_id]
+        return MediaAssetSerializer(ordered, many=True, context=self.context).data
 
     def validate_target_platforms(self, value):
         if not isinstance(value, list):
@@ -142,20 +167,36 @@ class UnifiedPostSerializer(serializers.ModelSerializer):
 class UnifiedPostListSerializer(serializers.ModelSerializer):
     """Compact serializer for list views — omits publish_logs to keep payload small."""
     platform_count = serializers.SerializerMethodField()
+    thumbnail_url = serializers.SerializerMethodField()
 
     class Meta:
         model = UnifiedPost
         fields = [
             'id', 'client', 'title',
-            'content', 'media_type', 'target_platforms', 'platform_count',
+            'content', 'media_type', 'media_urls', 'thumbnail_url',
+            'target_platforms', 'platform_count',
             'status', 'scheduled_at', 'published_at',
             'source_queue', 'source_queued_item',
-            'created_by', 'created_at',
+            'created_by', 'created_at', 'updated_at',
         ]
         read_only_fields = fields
 
     def get_platform_count(self, obj):
         return len(obj.target_platforms or [])
+
+    def get_thumbnail_url(self, obj):
+        asset_ids = _resolve_asset_ids(obj.media_urls)
+        if not asset_ids:
+            return ''
+        asset = MediaAsset.objects.filter(id=asset_ids[0], client_id=obj.client_id).first()
+        if not asset:
+            return ''
+        request = self.context.get('request')
+        if asset.thumbnail:
+            return asset.get_authorized_url(request=request, thumb=True)
+        if asset.file:
+            return asset.get_authorized_url(request=request, thumb=False)
+        return ''
 
 
 # ── Queues ────────────────────────────────────────────────────────────────────
