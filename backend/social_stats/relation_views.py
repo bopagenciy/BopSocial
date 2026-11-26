@@ -57,6 +57,31 @@ def _is_workspace_owner(user, relation: AgencyClientRelation) -> bool:
     return _is_superadmin(user) or _is_owner(user, relation.client)
 
 
+def _can_manage_relation_permissions(user, relation: AgencyClientRelation) -> bool:
+    """
+    True if `user` can manage relation permissions:
+      - Superadmin
+      - Workspace owner (Client.owner_user or ClientUserRole client_admin)
+      - Agency owner/admin managing their own agency_owned workspace when no
+        explicit client-side approver/client_admin role has been assigned.
+    Never grants permission management over externally managed (end_user_owned) clients.
+    """
+    if _is_workspace_owner(user, relation):
+        return True
+    if relation.status != 'active':
+        return False
+    if getattr(relation.client, 'ownership_type', 'agency_owned') != 'agency_owned':
+        return False
+    from .models import ClientUserRole
+    if ClientUserRole.objects.filter(
+        client=relation.client, role__in=('approver', 'client_admin'),
+    ).exists():
+        return False
+    return AgencyMembership.objects.filter(
+        user=user, agency=relation.agency, is_active=True, role__in=('owner', 'admin'),
+    ).exists()
+
+
 def _serialize_relation(relation: AgencyClientRelation, *, perspective: str = 'owner') -> dict:
     agency = relation.agency
     return {
@@ -123,11 +148,19 @@ def list_relations(request):
     for r in owned_qs.select_related('agency', 'client').order_by('-proposed_at'):
         if r.id in seen: continue
         seen.add(r.id)
-        out.append({**_serialize_relation(r, perspective='owner'), 'perspective': 'owner'})
+        out.append({
+            **_serialize_relation(r, perspective='owner'),
+            'perspective': 'owner',
+            'can_manage_permissions': _can_manage_relation_permissions(user, r),
+        })
     for r in agency_qs.select_related('agency', 'client').order_by('-proposed_at'):
         if r.id in seen: continue
         seen.add(r.id)
-        out.append({**_serialize_relation(r, perspective='agency'), 'perspective': 'agency'})
+        out.append({
+            **_serialize_relation(r, perspective='agency'),
+            'perspective': 'agency',
+            'can_manage_permissions': _can_manage_relation_permissions(user, r),
+        })
 
     return Response({'relations': out})
 
@@ -158,12 +191,13 @@ def get_relation(request, relation_id):
 @permission_classes([IsAuthenticated])
 def update_relation_permissions(request, relation_id):
     """PUT {permissions?, requires_approval_for?}. Only the workspace owner
-    can update. Each toggled key writes one ActivityLog row."""
+    (or agency owner/admin for their own agency_owned workspace) can update.
+    Each toggled key writes one ActivityLog row."""
     try:
         rel = AgencyClientRelation.objects.select_related('agency', 'client').get(pk=relation_id)
     except AgencyClientRelation.DoesNotExist:
         return Response({'error': 'relation not found'}, status=404)
-    if not _is_workspace_owner(request.user, rel):
+    if not _can_manage_relation_permissions(request.user, rel):
         return Response({'error': 'only the workspace owner can change permissions'}, status=403)
 
     data = request.data or {}
@@ -180,21 +214,24 @@ def update_relation_permissions(request, relation_id):
                 changed.append((key, old, nxt))
                 new_perms[key] = nxt
 
-    new_approval = list(rel.requires_approval_for or [])
+    old_approval = list(rel.requires_approval_for or [])
+    new_approval = list(old_approval)
     if 'requires_approval_for' in data and isinstance(data['requires_approval_for'], list):
         clean = [k for k in data['requires_approval_for'] if k in AGENCY_CLIENT_PERMISSIONS]
-        if set(clean) != set(new_approval):
+        if set(clean) != set(old_approval):
             new_approval = clean
 
     rel.permissions = new_perms
     rel.requires_approval_for = new_approval
     rel.save(update_fields=['permissions', 'requires_approval_for'])
 
-    if changed or new_approval != (rel.requires_approval_for or []):
+    if changed or set(new_approval) != set(old_approval):
+        prof = getattr(request.user, 'profile', None)
+        actor_type = 'agency' if (prof and prof.account_type == 'agency_member') else 'end_user'
         log_activity(
             rel.client,
             actor_user=request.user,
-            actor_type='end_user',
+            actor_type=actor_type,
             action_type='permissions_changed',
             description=(
                 f'Updated permissions for {rel.agency.name}: '

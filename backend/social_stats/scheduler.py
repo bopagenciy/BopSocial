@@ -75,6 +75,15 @@ def process_scheduled_posts(self):
                     logger.exception('process_scheduled_posts: failed to notify approver for post_id=%s', post.id)
             continue
 
+        from .marketplace_permissions import can_execute_scheduled_publish
+        allowed, reason = can_execute_scheduled_publish(post)
+        if not allowed:
+            logger.warning(
+                'process_scheduled_posts: blocked post_id=%s client_id=%s reason=%s',
+                post.id, post.client_id, reason,
+            )
+            continue
+
         with transaction.atomic():
             updated = (UnifiedPost.objects
                        .filter(id=post.id, status='scheduled')

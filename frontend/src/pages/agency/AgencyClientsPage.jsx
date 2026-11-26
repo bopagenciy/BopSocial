@@ -2,7 +2,7 @@
  *  Social Stats — Social Media Management & Marketing Platform
  *  BOP SOCIAL — Agency Client Management & Creation (BS-8F / BS-8G)
  * ========================================================================== */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
@@ -13,7 +13,7 @@ import {
 import { useAuth } from '../../hooks/useAuth';
 import { useClients } from '../../hooks/useData';
 import { useAppStore, useCurrentClient } from '../../stores/appStore';
-import { agencyClientAPI } from '../../services/api';
+import { agencyClientAPI, relationAPI } from '../../services/api';
 import PageHeader from '../../components/layout/PageHeader';
 
 const INITIAL_FORM = {
@@ -59,6 +59,68 @@ export default function AgencyClientsPage() {
   const [inviteErrors, setInviteErrors] = useState({});
   const [inviteSubmitting, setInviteSubmitting] = useState(false);
   const [pendingInvitesMap, setPendingInvitesMap] = useState({});
+
+  // Publishing authorization state (BS-10F.2)
+  const [relationsByClientId, setRelationsByClientId] = useState({});
+  const [permModalClient, setPermModalClient] = useState(null);
+  const [permPublishEnabled, setPermPublishEnabled] = useState(false);
+  const [permSaving, setPermSaving] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    if (typeof relationAPI?.list !== 'function') return;
+    relationAPI.list()
+      .then((res) => {
+        if (!active) return;
+        const map = {};
+        for (const r of (res?.data?.relations || [])) {
+          if (r?.client?.id) map[r.client.id] = r;
+        }
+        setRelationsByClientId(map);
+      })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [clients]);
+
+  const handleOpenPermModal = (client) => {
+    const rel = relationsByClientId[client.id];
+    if (!rel) return;
+    setPermModalClient(client);
+    setPermPublishEnabled(Boolean(rel.permissions?.publish_posts));
+  };
+
+  const handleSavePublishPerm = async () => {
+    if (!permModalClient) return;
+    const rel = relationsByClientId[permModalClient.id];
+    if (!rel) return;
+    setPermSaving(true);
+    try {
+      const res = await relationAPI.updatePerms(rel.id, {
+        permissions: { publish_posts: permPublishEnabled },
+      });
+      setRelationsByClientId((prev) => ({
+        ...prev,
+        [permModalClient.id]: {
+          ...rel,
+          permissions: res?.data?.permissions || { ...rel.permissions, publish_posts: permPublishEnabled },
+        },
+      }));
+      setFeedback({
+        type: 'success',
+        message: permPublishEnabled
+          ? `Publicación externa habilitada para "${permModalClient.company || permModalClient.name}".`
+          : `Publicación externa deshabilitada para "${permModalClient.company || permModalClient.name}".`,
+      });
+      setPermModalClient(null);
+    } catch (err) {
+      setFeedback({
+        type: 'error',
+        message: err?.response?.data?.error || 'No se pudieron actualizar los permisos de publicación.',
+      });
+    } finally {
+      setPermSaving(false);
+    }
+  };
 
   const handleOpenInviteModal = (client) => {
     setSelectedClientForInvite(client);
@@ -503,6 +565,37 @@ export default function AgencyClientsPage() {
                       >
                         <UserPlus size={12} />
                         <span>Invitar usuario</span>
+                      </button>
+                    )}
+                    {relationsByClientId[c.id]?.can_manage_permissions && (
+                      <button
+                        type="button"
+                        data-testid={`publish-perms-btn-${c.id}`}
+                        onClick={() => handleOpenPermModal(c)}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 5,
+                          background: relationsByClientId[c.id]?.permissions?.publish_posts
+                            ? 'rgba(16, 185, 129, 0.12)'
+                            : 'rgba(245, 158, 11, 0.12)',
+                          color: relationsByClientId[c.id]?.permissions?.publish_posts ? '#059669' : '#B45309',
+                          border: relationsByClientId[c.id]?.permissions?.publish_posts
+                            ? '1px solid rgba(16, 185, 129, 0.3)'
+                            : '1px solid rgba(245, 158, 11, 0.3)',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          padding: '3px 8px',
+                          borderRadius: 'var(--radius-sm, 6px)',
+                          fontSize: 11,
+                        }}
+                      >
+                        <ShieldCheck size={12} />
+                        <span>
+                          {relationsByClientId[c.id]?.permissions?.publish_posts
+                            ? 'Publicación: Activa'
+                            : 'Publicación: Pausada'}
+                        </span>
                       </button>
                     )}
                   </div>
@@ -1222,6 +1315,113 @@ export default function AgencyClientsPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Publishing Permissions Modal (BS-10F.2) */}
+      {permModalClient && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          data-testid="publish-perms-modal"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            zIndex: 1000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 16,
+          }}
+        >
+          <div style={{
+            width: '100%',
+            maxWidth: 440,
+            background: 'var(--surface-card, #ffffff)',
+            borderRadius: 16,
+            padding: 24,
+            boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>
+                Autorización de publicación
+              </h3>
+              <button
+                type="button"
+                onClick={() => !permSaving && setPermModalClient(null)}
+                style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-tertiary)' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 0, marginBottom: 16 }}>
+              Workspace: <strong>{permModalClient.company || permModalClient.name}</strong>
+            </p>
+            <label style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 10,
+              padding: 12,
+              borderRadius: 10,
+              border: '1px solid var(--border-default, #cbd5e1)',
+              cursor: 'pointer',
+              marginBottom: 18,
+            }}>
+              <input
+                type="checkbox"
+                data-testid="toggle-publish-posts-checkbox"
+                checked={permPublishEnabled}
+                onChange={(e) => setPermPublishEnabled(e.target.checked)}
+                style={{ marginTop: 2 }}
+              />
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
+                  Habilitar publicación externa (`publish_posts`)
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
+                  Permite que el programador y los workers ejecuten publicaciones aprobadas en Meta y redes conectadas.
+                </div>
+              </div>
+            </label>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+              <button
+                type="button"
+                onClick={() => setPermModalClient(null)}
+                disabled={permSaving}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: 8,
+                  border: '1px solid var(--border-default, #cbd5e1)',
+                  background: 'transparent',
+                  color: 'var(--text-secondary, #64748b)',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                data-testid="save-publish-perms-btn"
+                onClick={handleSavePublishPerm}
+                disabled={permSaving}
+                style={{
+                  padding: '8px 18px',
+                  borderRadius: 8,
+                  border: 'none',
+                  background: 'var(--brand-primary, #00b8d9)',
+                  color: '#ffffff',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                {permSaving ? 'Guardando…' : 'Guardar'}
+              </button>
+            </div>
           </div>
         </div>
       )}

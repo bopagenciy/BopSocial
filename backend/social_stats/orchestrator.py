@@ -98,6 +98,19 @@ def publish_unified_post(self, unified_post_id: int, mode: str = MODE_INITIAL_PU
         notify_approver_for_post.delay(post.id)
         return
 
+    # Publishing permission gate: never execute background publish when publish_posts=False
+    from .marketplace_permissions import can_execute_scheduled_publish
+    allowed, reason = can_execute_scheduled_publish(post)
+    if not allowed:
+        logger.warning(
+            'publish_unified_post: blocked post_id=%s client_id=%s reason=%s',
+            post.id, post.client_id, reason,
+        )
+        if post.status == 'queued':
+            post.status = 'scheduled' if (post.scheduled_at and post.scheduled_at > timezone.now()) else 'pending_approval'
+            post.save(update_fields=['status'])
+        return
+
     all_targets = list(post.target_platforms or [])
     if not all_targets:
         post.status = 'failed'
@@ -253,6 +266,19 @@ def publish_to_platform(self, unified_post_id: int, platform: str):
             _mark_failed(log, code='invalid_carousel_aspect_ratio', message=c_vr.errors[0])
             update_unified_post_status(post.id)
             return
+
+    # Defense-in-depth: recheck approval and publishing permission immediately before external provider call
+    if post.client.requires_approval and not post.approved_by_id:
+        _mark_failed(log, code='approval_required', message='Post requires approval before publishing.')
+        update_unified_post_status(post.id)
+        return
+
+    from .marketplace_permissions import can_execute_scheduled_publish
+    allowed, reason = can_execute_scheduled_publish(post)
+    if not allowed:
+        _mark_failed(log, code='permission_denied', message=reason)
+        update_unified_post_status(post.id)
+        return
 
     def _on_container_created(cid: str):
         try:

@@ -122,12 +122,45 @@ def can_approve_for_client(user, client: Client) -> bool:
     if not relation:
         return False
     # Agency-side approval is permitted for agency-owned workspaces
-    # (ownership_type == 'agency_owned') or legacy rows without an external owner_user.
-    # Externally owned client workspaces (end_user_owned with owner_user) require
-    # client-side approval (owner_user, ClientUserRole approver/client_admin, or superadmin).
+    # (ownership_type == 'agency_owned') ONLY when no explicit client-side
+    # approver/client_admin role has been assigned, or for legacy rows without
+    # an external owner_user.
+    from .models import ClientUserRole
+    if ClientUserRole.objects.filter(client=client, role__in=('approver', 'client_admin')).exists():
+        return False
     if getattr(client, 'ownership_type', 'agency_owned') != 'agency_owned' and client.owner_user_id is not None:
         return False
     return True
+
+
+def can_execute_scheduled_publish(post) -> tuple[bool, str]:
+    """
+    Verify that a scheduled/queued UnifiedPost is authorized to execute publishing
+    in the background scheduler/worker, respecting AgencyClientRelation.publish_posts.
+    """
+    client = getattr(post, 'client', None)
+    if not client:
+        return False, 'Post has no client.'
+    if getattr(client, 'is_processing_paused', False):
+        return False, 'Data processing is paused for this client.'
+
+    creator = getattr(post, 'created_by', None)
+    creator_prof = _profile(creator) if creator else None
+
+    if creator_prof and creator_prof.account_type == 'agency_member' and creator_prof.primary_agency_id:
+        rel = AgencyClientRelation.objects.filter(
+            agency_id=creator_prof.primary_agency_id, client=client, status='active',
+        ).first()
+        if not rel or not bool((rel.permissions or {}).get('publish_posts', False)):
+            return False, 'Agency relation does not have publish_posts permission enabled.'
+        return True, ''
+
+    if getattr(client, 'ownership_type', 'agency_owned') == 'agency_owned':
+        rel = AgencyClientRelation.objects.filter(client=client, status='active').first()
+        if rel and not bool((rel.permissions or {}).get('publish_posts', False)):
+            return False, 'Agency relation does not have publish_posts permission enabled.'
+
+    return True, ''
 
 
 def can_mutate_content(user, client: Client) -> bool:
